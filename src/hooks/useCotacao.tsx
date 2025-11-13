@@ -17,16 +17,43 @@ export const useCotacao = () => {
     const mutation = useMutation({
         mutationFn: async (requestData: any) => {
             setIsLoading(true);
+            console.log('🔄 Enviando requisição de cotação para API...');
             return serviceFrete.calculadoraFrete(requestData);
         },
-        onSuccess: () => {
+        onSuccess: (response) => {
             setIsLoading(false);
+            console.log('✅ Resposta da API recebida:', {
+                status: 'success',
+                totalCotacoes: response?.data?.length || 0,
+                cotacoes: response?.data
+            });
             queryClient.invalidateQueries({ queryKey: ["cotacao"] });
-            toast.success("Escolha uma opção de frete", { duration: 5000, position: "top-center" });
+            
+            if (response?.data && response.data.length > 0) {
+                toast.success(`${response.data.length} opção(ões) de frete encontrada(s)`, { 
+                    duration: 5000, 
+                    position: "top-center" 
+                });
+            } else {
+                toast.warning('Nenhuma opção de frete disponível para esta rota', { 
+                    duration: 5000, 
+                    position: "top-center" 
+                });
+            }
         },
-        onError: (error) => {
+        onError: (error: any) => {
             setIsLoading(false);
-            console.log(error);
+            console.error('❌ Erro na requisição de cotação:', error);
+            console.error('❌ Detalhes do erro:', {
+                message: error?.message,
+                response: error?.response?.data,
+                status: error?.response?.status
+            });
+            
+            toast.error(`Erro ao calcular frete: ${error?.message || 'Tente novamente'}`, {
+                duration: 5000,
+                position: "top-center"
+            });
         },
     })
 
@@ -67,9 +94,15 @@ export const useCotacao = () => {
             
             console.log('📦 Cotação enviada com CPF/CNPJ:', cpfCnpj ? 'Sim' : 'Não');
             const response = await mutation.mutateAsync(data);
+            
+            console.log('✅ Resposta da API de cotação:', response);
+            console.log('📊 Quantidade de fretes retornados:', response.data?.length || 0);
+            console.log('🚚 Fretes disponíveis:', response.data?.map((f: any) => f.nomeServico).join(', '));
+            
             setCotacoes(response.data);
         } catch (error) {
-            console.error('Erro na cotação:', error);
+            console.error('❌ Erro na cotação:', error);
+            toast.error('Erro ao calcular frete. Tente novamente.');
         }
     }
 
