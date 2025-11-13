@@ -7,6 +7,8 @@ import { ButtonComponent } from '../../../../components/button';
 import { AutocompleteDestinatario } from '../../../../components/autocomplete/AutocompleteDestinatario';
 import type { IDestinatario } from '../../../../types/IDestinatario';
 import { formatCpfCnpj, formatTelefone } from '../../../../utils/lib.formats';
+import { ViacepService } from '../../../../services/viacepService';
+import { toast } from 'sonner';
 
 interface Step2DestinatarioProps {
   onNext: () => void;
@@ -27,6 +29,39 @@ export const Step2Destinatario = ({ onNext, onBack, setDestinatarioSelecionado }
   const [localidade, setLocalidade] = useState<string>('');
   const [uf, setUf] = useState<string>('');
   const [complemento, setComplemento] = useState<string>('');
+  const [buscandoCep, setBuscandoCep] = useState<boolean>(false);
+
+  const viacepService = new ViacepService();
+
+  // Busca automática de endereço por CEP
+  const buscarCep = async (cepValue: string) => {
+    const cepLimpo = cepValue.replace(/\D/g, '');
+    
+    if (cepLimpo.length === 8) {
+      setBuscandoCep(true);
+      try {
+        console.log('🔍 Buscando CEP:', cepLimpo);
+        const endereco = await viacepService.consulta(cepLimpo);
+        
+        if (endereco && endereco.logradouro) {
+          setLogradouro(endereco.logradouro || '');
+          setBairro(endereco.bairro || '');
+          setLocalidade(endereco.localidade || '');
+          setUf(endereco.uf || '');
+          
+          console.log('✅ Endereço encontrado:', endereco);
+          toast.success('Endereço encontrado!');
+        } else {
+          toast.error('CEP não encontrado');
+        }
+      } catch (error) {
+        console.error('❌ Erro ao buscar CEP:', error);
+        toast.error('Erro ao buscar CEP');
+      } finally {
+        setBuscandoCep(false);
+      }
+    }
+  };
 
   // Atualiza o formulário quando os valores mudam
   useEffect(() => {
@@ -134,13 +169,25 @@ export const Step2Destinatario = ({ onNext, onBack, setDestinatarioSelecionado }
           <h4 className="text-sm font-semibold text-foreground">Endereço de Entrega</h4>
           
           <div className="grid grid-cols-3 gap-4">
-            <InputField 
-              label="CEP *" 
-              type="text"
-              placeholder="00000-000"
-              value={cep}
-              onChange={(e) => setCep(e.target.value)}
-            />
+            <div className="relative">
+              <InputField 
+                label="CEP *" 
+                type="text"
+                placeholder="00000-000"
+                value={cep}
+                onChange={(e) => {
+                  const valor = e.target.value;
+                  setCep(valor);
+                  buscarCep(valor);
+                }}
+                disabled={buscandoCep}
+              />
+              {buscandoCep && (
+                <div className="absolute right-3 top-9">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                </div>
+              )}
+            </div>
             <div className="col-span-2">
               <InputField 
                 label="Logradouro *" 
@@ -148,6 +195,7 @@ export const Step2Destinatario = ({ onNext, onBack, setDestinatarioSelecionado }
                 placeholder="Rua, Avenida..."
                 value={logradouro}
                 onChange={(e) => setLogradouro(e.target.value)}
+                disabled={buscandoCep}
               />
             </div>
           </div>
@@ -167,6 +215,7 @@ export const Step2Destinatario = ({ onNext, onBack, setDestinatarioSelecionado }
                 placeholder="Bairro"
                 value={bairro}
                 onChange={(e) => setBairro(e.target.value)}
+                disabled={buscandoCep}
               />
             </div>
           </div>
@@ -179,6 +228,7 @@ export const Step2Destinatario = ({ onNext, onBack, setDestinatarioSelecionado }
                 placeholder="Cidade"
                 value={localidade}
                 onChange={(e) => setLocalidade(e.target.value)}
+                disabled={buscandoCep}
               />
             </div>
             <InputField 
@@ -188,6 +238,7 @@ export const Step2Destinatario = ({ onNext, onBack, setDestinatarioSelecionado }
               maxLength={2}
               value={uf}
               onChange={(e) => setUf(e.target.value.toUpperCase())}
+              disabled={buscandoCep}
             />
           </div>
 
