@@ -1,5 +1,6 @@
 import { Box } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
+import { useState, useEffect } from 'react';
 import { FormCard } from '../../../../components/FormCard';
 import { InputField } from '../../../../components/InputField';
 import { ButtonComponent } from '../../../../components/button';
@@ -19,12 +20,22 @@ export const Step1Dimensoes = ({
   clienteSelecionado,
   setClienteSelecionado
 }: Step1DimensoesProps) => {
-  const { register, setValue, watch } = useFormContext();
+  const { setValue, getValues } = useFormContext();
+  
+  const [altura, setAltura] = useState<number>(0);
+  const [largura, setLargura] = useState<number>(0);
+  const [comprimento, setComprimento] = useState<number>(0);
+  const [peso, setPeso] = useState<number>(0);
 
-  const altura = watch('embalagem.altura');
-  const largura = watch('embalagem.largura');
-  const comprimento = watch('embalagem.comprimento');
-  const peso = watch('embalagem.peso');
+  // Atualiza o formulário quando os valores mudam
+  useEffect(() => {
+    setValue('embalagem.altura', altura);
+    setValue('embalagem.largura', largura);
+    setValue('embalagem.comprimento', comprimento);
+    setValue('embalagem.peso', peso);
+    
+    console.log('📦 Dimensões atualizadas:', { altura, largura, comprimento, peso });
+  }, [altura, largura, comprimento, peso, setValue]);
 
   const isFormValid = !!(
     clienteSelecionado && 
@@ -35,13 +46,17 @@ export const Step1Dimensoes = ({
   );
 
   const handleNext = () => {
-    console.log('=== CLICOU PRÓXIMO ===');
+    const formData = getValues();
+    console.log('=== AVANÇANDO PARA DESTINATÁRIO ===');
     console.log('Cliente:', clienteSelecionado?.nome);
-    console.log('Dimensões:', { altura, largura, comprimento, peso });
+    console.log('Dimensões locais:', { altura, largura, comprimento, peso });
+    console.log('Dados do form:', formData);
     console.log('Válido:', isFormValid);
     
     if (isFormValid) {
       onNext();
+    } else {
+      console.error('❌ Formulário inválido!');
     }
   };
 
@@ -55,6 +70,7 @@ export const Step1Dimensoes = ({
         <SelecionarRemetente 
           remetenteSelecionado={clienteSelecionado} 
           onSelect={(r: any) => {
+            console.log('✅ Remetente selecionado:', r.nome);
             setClienteSelecionado(r);
             setValue('nomeRemetente', r.nome);
             setValue('remetenteId', r.id);
@@ -65,52 +81,86 @@ export const Step1Dimensoes = ({
           <InputField 
             label="Altura (cm)" 
             type="number" 
-            {...register('embalagem.altura', { valueAsNumber: true })} 
             min="0"
             step="0.01"
             placeholder="0"
+            defaultValue={0}
+            onChange={(e) => {
+              const value = parseFloat(e.target.value) || 0;
+              console.log('Altura mudou:', value);
+              setAltura(value);
+            }}
           />
           <InputField 
             label="Largura (cm)" 
             type="number" 
-            {...register('embalagem.largura', { valueAsNumber: true })} 
             min="0"
             step="0.01"
             placeholder="0"
+            defaultValue={0}
+            onChange={(e) => {
+              const value = parseFloat(e.target.value) || 0;
+              console.log('Largura mudou:', value);
+              setLargura(value);
+            }}
           />
           <InputField 
             label="Comprimento (cm)" 
             type="number" 
-            {...register('embalagem.comprimento', { valueAsNumber: true })} 
             min="0"
             step="0.01"
             placeholder="0"
+            defaultValue={0}
+            onChange={(e) => {
+              const value = parseFloat(e.target.value) || 0;
+              console.log('Comprimento mudou:', value);
+              setComprimento(value);
+            }}
           />
           <InputField 
             label="Peso (g)" 
             type="number" 
-            {...register('embalagem.peso', { valueAsNumber: true })} 
             min="0"
             step="1"
             placeholder="0"
+            defaultValue={0}
+            onChange={(e) => {
+              const value = parseFloat(e.target.value) || 0;
+              console.log('Peso mudou:', value);
+              setPeso(value);
+            }}
           />
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="space-y-3">
+          {/* Status da validação */}
+          <div className="flex flex-wrap gap-2 text-sm">
+            <span className={clienteSelecionado ? "text-green-600" : "text-muted-foreground"}>
+              {clienteSelecionado ? "✓ Remetente selecionado" : "○ Selecione um remetente"}
+            </span>
+            <span className={altura > 0 ? "text-green-600" : "text-muted-foreground"}>
+              {altura > 0 ? "✓ Altura" : "○ Altura"}
+            </span>
+            <span className={largura > 0 ? "text-green-600" : "text-muted-foreground"}>
+              {largura > 0 ? "✓ Largura" : "○ Largura"}
+            </span>
+            <span className={comprimento > 0 ? "text-green-600" : "text-muted-foreground"}>
+              {comprimento > 0 ? "✓ Comprimento" : "○ Comprimento"}
+            </span>
+            <span className={peso > 0 ? "text-green-600" : "text-muted-foreground"}>
+              {peso > 0 ? "✓ Peso" : "○ Peso"}
+            </span>
+          </div>
+
           <ButtonComponent 
             type="button" 
             onClick={handleNext} 
             disabled={!isFormValid}
             variant="primary"
+            className="w-full"
           >
-            Próximo
+            Próximo: Destinatário →
           </ButtonComponent>
-          
-          {!isFormValid && (
-            <span className="text-sm text-muted-foreground">
-              {!clienteSelecionado ? 'Selecione um remetente' : 'Preencha todas as dimensões'}
-            </span>
-          )}
         </div>
       </div>
     </FormCard>
