@@ -86,11 +86,11 @@ export const Step1Dimensoes = ({
             step="0.01"
           />
           <InputField 
-            label="Peso (kg)" 
+            label="Peso (g)" 
             type="number" 
             {...register('embalagem.peso', { valueAsNumber: true })} 
             min="0"
-            step="0.01"
+            step="1"
           />
         </div>
 
