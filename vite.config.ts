@@ -1,14 +1,17 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { VitePWA } from 'vite-plugin-pwa';
+import { VitePWA } from 'vite-plugin-pwa'
+import path from 'path'
+import { componentTagger } from 'lovable-tagger'
 
-export default defineConfig(() => {
+export default defineConfig(({ mode }) => {
     return {
         plugins: [
             react(),
+            mode === 'development' && componentTagger(),
             {
                 name: 'html-transform',
-                transformIndexHtml(html) {
+                transformIndexHtml(html: string) {
                     return html.replace('%BASE_URL%', "/");
                 },
             },
@@ -34,11 +37,17 @@ export default defineConfig(() => {
                     ]
                 }
             })
-        ],
-    server: {
-        open: true,
-        port: 8080,
-    },
+        ].filter(Boolean),
+        server: {
+            host: "::",
+            open: true,
+            port: 8080,
+        },
+        resolve: {
+            alias: {
+                "@": path.resolve(__dirname, "./src"),
+            },
+        },
         base: "/",
         build: {
             assetsInlineLimit: 0,
