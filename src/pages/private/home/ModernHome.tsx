@@ -124,14 +124,14 @@ export const ModernHome = () => {
 
                             {/* Peso */}
                             <div>
-                                <label className="block text-sm font-medium mb-2">Peso (kg)*</label>
+                                <label className="block text-sm font-medium mb-2">Peso (g)*</label>
                                 <input
                                     type="number"
-                                    placeholder="0.0"
+                                    placeholder="0"
                                     value={freteData.peso}
                                     onChange={(e) => setFreteData({ ...freteData, peso: e.target.value })}
                                     className="w-full px-4 py-3 rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-                                    step="0.1"
+                                    step="1"
                                     min="0"
                                 />
                             </div>
