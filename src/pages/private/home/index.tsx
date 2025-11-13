@@ -1,7 +1,14 @@
-import { ModernHome } from "./ModernHome";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 const Home = () => {
-    return <ModernHome />;
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        navigate('/app/emissao');
+    }, [navigate]);
+
+    return null;
 };
 
 export default Home;
