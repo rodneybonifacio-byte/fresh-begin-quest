@@ -20,28 +20,39 @@ export const Step1Dimensoes = ({
   const {
     register,
     setValue,
-    watch
+    watch,
+    formState: { errors }
   } = useFormContext();
 
   const embalagem = watch('embalagem');
+  const remetenteId = watch('remetenteId');
 
   const handleNext = () => {
+    console.log('=== HANDLE NEXT ===');
     console.log('clienteSelecionado:', clienteSelecionado);
+    console.log('remetenteId:', remetenteId);
     console.log('embalagem:', embalagem);
+    console.log('errors:', errors);
     
     if (!clienteSelecionado) {
-      console.log('Cliente não selecionado');
+      console.log('❌ Cliente não selecionado');
       return;
     }
     
     if (!embalagem?.altura || !embalagem?.largura || !embalagem?.comprimento || !embalagem?.peso) {
-      console.log('Campos de embalagem incompletos');
+      console.log('❌ Campos de embalagem incompletos');
       return;
     }
     
-    console.log('Avançando para próxima etapa');
+    console.log('✅ Avançando para próxima etapa');
     onNext();
   };
+
+  const isFormValid = clienteSelecionado && 
+    embalagem?.altura > 0 && 
+    embalagem?.largura > 0 && 
+    embalagem?.comprimento > 0 && 
+    embalagem?.peso > 0;
   return <FormCard icon={Box} title="Dimensões e Embalagem" description="Configure o remetente e as dimensões do pacote">
       <div className="space-y-6">
         <SelecionarRemetente remetenteSelecionado={clienteSelecionado} onSelect={(r: any) => {
@@ -53,16 +64,40 @@ export const Step1Dimensoes = ({
         
 
         <div className="grid grid-cols-4 gap-4">
-          <InputField label="Altura" type="number" {...register('embalagem.altura')} />
-          <InputField label="Largura" type="number" {...register('embalagem.largura')} />
-          <InputField label="Comprimento" type="number" {...register('embalagem.comprimento')} />
-          <InputField label="Peso" type="number" {...register('embalagem.peso')} />
+          <InputField 
+            label="Altura (cm)" 
+            type="number" 
+            {...register('embalagem.altura', { valueAsNumber: true })} 
+            min="0"
+            step="0.01"
+          />
+          <InputField 
+            label="Largura (cm)" 
+            type="number" 
+            {...register('embalagem.largura', { valueAsNumber: true })} 
+            min="0"
+            step="0.01"
+          />
+          <InputField 
+            label="Comprimento (cm)" 
+            type="number" 
+            {...register('embalagem.comprimento', { valueAsNumber: true })} 
+            min="0"
+            step="0.01"
+          />
+          <InputField 
+            label="Peso (kg)" 
+            type="number" 
+            {...register('embalagem.peso', { valueAsNumber: true })} 
+            min="0"
+            step="0.01"
+          />
         </div>
 
         <ButtonComponent 
           type="button" 
           onClick={handleNext} 
-          disabled={!clienteSelecionado || !embalagem?.altura || !embalagem?.largura || !embalagem?.comprimento || !embalagem?.peso}
+          disabled={!isFormValid}
         >
           Próximo
         </ButtonComponent>
