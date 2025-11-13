@@ -34,25 +34,31 @@ export const Step1Dimensoes = ({
     console.log('embalagem:', embalagem);
     console.log('errors:', errors);
     
-    if (!clienteSelecionado) {
-      console.log('❌ Cliente não selecionado');
-      return;
-    }
-    
-    if (!embalagem?.altura || !embalagem?.largura || !embalagem?.comprimento || !embalagem?.peso) {
-      console.log('❌ Campos de embalagem incompletos');
-      return;
-    }
-    
-    console.log('✅ Avançando para próxima etapa');
     onNext();
   };
 
-  const isFormValid = clienteSelecionado && 
-    embalagem?.altura > 0 && 
-    embalagem?.largura > 0 && 
-    embalagem?.comprimento > 0 && 
-    embalagem?.peso > 0;
+  // Validação - converte strings para números se necessário
+  const altura = Number(embalagem?.altura) || 0;
+  const largura = Number(embalagem?.largura) || 0;
+  const comprimento = Number(embalagem?.comprimento) || 0;
+  const peso = Number(embalagem?.peso) || 0;
+
+  const isFormValid = !!(
+    clienteSelecionado && 
+    altura > 0 && 
+    largura > 0 && 
+    comprimento > 0 && 
+    peso > 0
+  );
+
+  console.log('=== VALIDAÇÃO ===', {
+    clienteSelecionado: !!clienteSelecionado,
+    altura,
+    largura,
+    comprimento,
+    peso,
+    isFormValid
+  });
   return <FormCard icon={Box} title="Dimensões e Embalagem" description="Configure o remetente e as dimensões do pacote">
       <div className="space-y-6">
         <SelecionarRemetente remetenteSelecionado={clienteSelecionado} onSelect={(r: any) => {
