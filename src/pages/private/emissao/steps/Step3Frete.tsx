@@ -1,4 +1,4 @@
-import { Truck } from 'lucide-react';
+import { Truck, BadgePercent } from 'lucide-react';
 import { useEffect } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { FormCard } from '../../../../components/FormCard';
@@ -73,18 +73,61 @@ export const Step3Frete = ({ onNext, onBack, clienteSelecionado, cotacaoSelecion
   };
 
   return (
-    <FormCard icon={Truck} title="Escolha o Frete" description="Selecione a opção de envio">
+    <FormCard icon={Truck} title="Escolha o Frete" description="Selecione a melhor opção de envio com desconto exclusivo">
       <div className="space-y-6">
-        {isLoadingCotacao && <div className="text-center py-8">Carregando...</div>}
-        {cotacoes && <ListaFretesDisponiveis data={cotacoes} onSelected={(c) => {
-          setCotacaoSelecionado(c);
-          setValue('cotacao.codigoServico', c.codigoServico);
-          clearErrors('cotacao');
-        }} selected={cotacaoSelecionado || null} />}
+        {/* Header com destaque de desconto */}
+        <div className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 p-4 rounded-xl border-2 border-green-200 dark:border-green-700">
+          <div className="flex items-center gap-3 justify-center">
+            <BadgePercent className="h-6 w-6 text-green-600 dark:text-green-400" />
+            <p className="text-lg font-bold text-green-700 dark:text-green-300">
+              Aproveite 50% de desconto em todos os fretes!
+            </p>
+          </div>
+        </div>
 
-        <div className="flex justify-between">
-          <ButtonComponent type="button" variant="primary" border="outline" onClick={onBack}>Voltar</ButtonComponent>
-          <ButtonComponent type="button" onClick={handleNext} disabled={!cotacaoSelecionado}>Próximo</ButtonComponent>
+        {isLoadingCotacao && (
+          <div className="flex flex-col items-center justify-center py-12 gap-4">
+            <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary"></div>
+            <span className="text-lg font-medium text-muted-foreground animate-pulse">Calculando melhores fretes...</span>
+          </div>
+        )}
+        
+        {cotacoes && cotacoes.length > 0 && (
+          <ListaFretesDisponiveis 
+            data={cotacoes} 
+            onSelected={(c) => {
+              setCotacaoSelecionado(c);
+              setValue('cotacao.codigoServico', c.codigoServico);
+              clearErrors('cotacao');
+            }} 
+            selected={cotacaoSelecionado || null} 
+          />
+        )}
+
+        {cotacoes && cotacoes.length === 0 && !isLoadingCotacao && (
+          <div className="text-center py-8 text-muted-foreground">
+            Nenhum frete disponível para esta rota. Verifique os dados informados.
+          </div>
+        )}
+
+        <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-border">
+          <ButtonComponent 
+            type="button" 
+            variant="primary" 
+            border="outline" 
+            onClick={onBack}
+            className="flex-1 h-12"
+          >
+            Voltar
+          </ButtonComponent>
+          <ButtonComponent 
+            type="button" 
+            onClick={handleNext} 
+            disabled={!cotacaoSelecionado}
+            className="flex-1 h-12 font-bold"
+          >
+            {cotacaoSelecionado ? 'Confirmar Frete →' : 'Selecione um Frete'}
+          </ButtonComponent>
         </div>
       </div>
     </FormCard>

@@ -1,5 +1,6 @@
 import type { ICotacaoMinimaResponse } from '../types/ICotacao';
 import { getTransportadoraAltText, getTransportadoraImage } from '../utils/imageHelper';
+import { BadgePercent } from 'lucide-react';
 
 interface CotacaoCardProps {
     cotacao: ICotacaoMinimaResponse;
@@ -9,26 +10,49 @@ interface CotacaoCardProps {
 }
 
 export const CotacaoCard = ({ cotacao, onSelect, isSelected = false, showSelectButton = false }: CotacaoCardProps) => {
+    // Calcula o valor original (50% maior)
+    const precoNumerico = parseFloat(cotacao.preco.replace('R$', '').replace(',', '.').trim());
+    const valorOriginal = precoNumerico * 1.5;
+    const economia = valorOriginal - precoNumerico;
+    
+    const valorOriginalFormatado = new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+    }).format(valorOriginal);
+    
+    const economiaFormatada = new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+    }).format(economia);
+
     return (
         <div
-            className={`bg-white dark:bg-slate-800 rounded-lg shadow-md dark:shadow-slate-700/20 p-4 gap-2 mb-4 w-full flex flex-col relative border transition-all duration-200 hover:shadow-lg dark:hover:shadow-slate-700/30 ${
+            className={`group bg-card rounded-xl shadow-lg p-5 gap-3 w-full flex flex-col relative border-2 transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] ${
                 isSelected
-                    ? 'border-primary dark:border-primary-dark ring-2 ring-primary/20 dark:ring-primary-dark/20'
-                    : 'border-gray-200 dark:border-slate-600'
+                    ? 'border-primary ring-4 ring-primary/20 bg-primary/5'
+                    : 'border-border hover:border-primary/50'
             }`}
         >
-            <div className="gap-2 mb-2 w-full flex flex-col">
+            {/* Badge de desconto */}
+            <div className="absolute -top-3 -right-3 z-10">
+                <div className="bg-gradient-to-br from-green-500 to-green-600 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 animate-bounce">
+                    <BadgePercent className="h-4 w-4" />
+                    <span className="font-bold text-sm">50% OFF</span>
+                </div>
+            </div>
+
+            <div className="gap-3 w-full flex flex-col">
                 <div className="flex items-center justify-between">
-                    <div className="bg-white dark:bg-white p-2 rounded-md shadow-sm">
+                    <div className="bg-white p-3 rounded-lg shadow-sm border border-border">
                         <img
                             src={getTransportadoraImage(cotacao.imagem || '')}
                             alt={getTransportadoraAltText(cotacao.imagem || '')}
-                            className="w-32 h-8 object-contain"
+                            className="w-32 h-10 object-contain"
                         />
                     </div>
                     {isSelected && (
-                        <div className="flex items-center justify-center w-8 h-8 bg-primary dark:bg-primary-dark rounded-full">
-                            <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <div className="flex items-center justify-center w-10 h-10 bg-primary rounded-full shadow-lg animate-scale-in">
+                            <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
                                 <path
                                     fillRule="evenodd"
                                     d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -38,27 +62,39 @@ export const CotacaoCard = ({ cotacao, onSelect, isSelected = false, showSelectB
                         </div>
                     )}
                 </div>
-                <div className="flex flex-col sm:flex-row justify-between sm:items-start">
-                    <div>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">Modalidade:</span>
-                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{cotacao.nomeServico}</p>
+                <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-3 bg-muted/50 p-3 rounded-lg">
+                    <div className="flex-1">
+                        <span className="text-xs text-muted-foreground font-medium">Modalidade:</span>
+                        <p className="text-base font-semibold text-foreground">{cotacao.nomeServico}</p>
                     </div>
-                    <div>
-                        <span className="text-xs text-gray-500 dark:text-gray-400 text-end">Prazo Estimado:</span>
-                        <p className="text-sm font-medium text-end text-gray-900 dark:text-gray-100">
+                    <div className="flex-1 text-right">
+                        <span className="text-xs text-muted-foreground font-medium">Prazo Estimado:</span>
+                        <p className="text-base font-semibold text-foreground">
                             {cotacao.prazo} {cotacao.prazo > 1 ? 'dias' : 'dia'}
                         </p>
                     </div>
                 </div>
             </div>
 
-            <div className="flex flex-row justify-between items-center bottom-0 rodape">
-                <span className="text-xl text-slate-600 dark:text-slate-300 font-semibold">Total Frete:</span>
-                <span className="text-xl font-bold text-secondary dark:text-secondary-dark">{cotacao.preco}</span>
+            {/* Seção de preços com destaque de desconto */}
+            <div className="flex flex-col gap-2 p-4 bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg border border-primary/20">
+                <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Valor de tabela:</span>
+                    <span className="text-lg text-muted-foreground line-through">{valorOriginalFormatado}</span>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-primary/20">
+                    <span className="text-base font-semibold text-foreground">Você paga apenas:</span>
+                    <span className="text-2xl font-bold text-primary">{cotacao.preco}</span>
+                </div>
+                <div className="text-center mt-1">
+                    <span className="text-xs font-medium text-green-600 dark:text-green-400">
+                        💰 Economia de {economiaFormatada}
+                    </span>
+                </div>
             </div>
 
             {showSelectButton && (
-                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-slate-600">
+                <div className="mt-2">
                     <button
                         type="button"
                         onClick={(e) => {
@@ -66,13 +102,13 @@ export const CotacaoCard = ({ cotacao, onSelect, isSelected = false, showSelectB
                             e.stopPropagation();
                             onSelect && onSelect(cotacao);
                         }}
-                        className={`w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+                        className={`w-full py-3 px-6 rounded-xl text-base font-bold transition-all duration-300 shadow-md ${
                             isSelected
-                                ? 'bg-primary dark:bg-primary-dark text-white'
-                                : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-primary/10 dark:hover:bg-primary-dark/10 hover:text-primary dark:hover:text-primary-dark'
+                                ? 'bg-primary text-white shadow-primary/50 scale-105'
+                                : 'bg-secondary text-secondary-foreground hover:bg-primary hover:text-white hover:shadow-lg hover:scale-105'
                         }`}
                     >
-                        {isSelected ? 'Selecionado' : 'Selecionar'}
+                        {isSelected ? '✓ Frete Selecionado' : 'Selecionar Frete'}
                     </button>
                 </div>
             )}

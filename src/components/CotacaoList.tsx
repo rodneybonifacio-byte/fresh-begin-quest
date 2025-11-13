@@ -20,28 +20,29 @@ export const CotacaoList = ({
 }: CotacaoListProps) => {
     if (isLoading) {
         return (
-            <div className="w-full grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="w-full grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                 {[...Array(3)].map((_, index) => (
-                    <div key={index} className="bg-white dark:bg-slate-800 rounded-lg shadow-md dark:shadow-slate-700/20 p-4 border border-gray-200 dark:border-slate-600 animate-pulse">
-                        <div className="gap-2 mb-2 w-full flex flex-col">
+                    <div key={index} className="bg-card rounded-xl shadow-lg p-6 border-2 border-border animate-pulse">
+                        <div className="gap-3 mb-3 w-full flex flex-col">
                             <div className="flex items-center justify-between">
-                                <div className="w-32 h-12 bg-gray-200 dark:bg-slate-700 rounded"></div>
+                                <div className="w-32 h-12 bg-muted rounded-lg"></div>
                             </div>
-                            <div className="flex flex-col sm:flex-row justify-between sm:items-start">
+                            <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-2">
                                 <div className="space-y-2">
-                                    <div className="w-16 h-3 bg-gray-200 dark:bg-slate-700 rounded"></div>
-                                    <div className="w-24 h-4 bg-gray-200 dark:bg-slate-700 rounded"></div>
+                                    <div className="w-16 h-3 bg-muted rounded"></div>
+                                    <div className="w-24 h-4 bg-muted rounded"></div>
                                 </div>
                                 <div className="space-y-2">
-                                    <div className="w-20 h-3 bg-gray-200 dark:bg-slate-700 rounded"></div>
-                                    <div className="w-16 h-4 bg-gray-200 dark:bg-slate-700 rounded"></div>
+                                    <div className="w-20 h-3 bg-muted rounded"></div>
+                                    <div className="w-16 h-4 bg-muted rounded"></div>
                                 </div>
                             </div>
                         </div>
-                        <div className="flex flex-row justify-between items-center">
-                            <div className="w-20 h-6 bg-gray-200 dark:bg-slate-700 rounded"></div>
-                            <div className="w-24 h-6 bg-gray-200 dark:bg-slate-700 rounded"></div>
+                        <div className="flex flex-col gap-2 p-4 bg-muted/30 rounded-lg">
+                            <div className="w-full h-6 bg-muted rounded"></div>
+                            <div className="w-full h-8 bg-muted rounded"></div>
                         </div>
+                        <div className="mt-4 w-full h-12 bg-muted rounded-xl"></div>
                     </div>
                 ))}
             </div>
@@ -67,7 +68,7 @@ export const CotacaoList = ({
     }
 
     return (
-        <div className="w-full grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="w-full grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
             {cotacoes.map((cotacao: ICotacaoMinimaResponse, index: number) => (
                 <CotacaoCard
                     key={index}
