@@ -66,7 +66,6 @@ const FormularioEmissaoNovo = () => {
     watch
   } = methods;
   const [clienteSelecionado, setClienteSelecionado] = useState<any>(null);
-  const [destinatarioSelecionado, setDestinatarioSelecionado] = useState<IDestinatario | null>();
   const [selectedEmbalagem, setSelectedEmbalagem] = useState<IEmbalagem | null>();
   const [cotacaoSelecionado, setCotacaoSelecionado] = useState<ICotacaoMinimaResponse>();
   const [valorDeclarado, setValorDeclarado] = useState<string>('');
@@ -116,11 +115,28 @@ const FormularioEmissaoNovo = () => {
       setValue('destinatario.endereco.localidade', destinatario.endereco?.localidade || '');
       setValue('destinatario.endereco.uf', destinatario.endereco?.uf || '');
     }
-    setDestinatarioSelecionado(destinatario);
   };
   const handleCalcularFrete = () => {
-    if (selectedEmbalagem && clienteSelecionado && destinatarioSelecionado) {
-      onGetCotacaoCorreios(clienteSelecionado.endereco.cep ?? '', destinatarioSelecionado?.endereco?.cep ?? '', selectedEmbalagem, valorDeclarado, 'N', clienteSelecionado);
+    const cepDestino = watch('destinatario.endereco.cep');
+    const embalagem = selectedEmbalagem || {
+      altura: watch('embalagem.altura'),
+      largura: watch('embalagem.largura'),
+      comprimento: watch('embalagem.comprimento'),
+      peso: watch('embalagem.peso'),
+      diametro: 0
+    } as IEmbalagem;
+
+    if (embalagem && clienteSelecionado && cepDestino) {
+      onGetCotacaoCorreios(
+        clienteSelecionado.endereco.cep ?? '', 
+        cepDestino, 
+        embalagem, 
+        valorDeclarado, 
+        'N', 
+        clienteSelecionado
+      );
+    } else {
+      toast.error('Preencha todos os campos obrigatórios: embalagem e CEP de destino');
     }
   };
   const handlerOnSubmit = async (data: any) => {
@@ -352,7 +368,16 @@ const FormularioEmissaoNovo = () => {
                                 <p className="text-xs text-muted-foreground mt-1">Valor declarado para fins de seguro</p>
                             </div>
                             <div className="flex items-end">
-                                <button type="button" onClick={handleCalcularFrete} disabled={!selectedEmbalagem || !destinatarioSelecionado} className="w-full h-11 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                                <button 
+                                    type="button" 
+                                    onClick={handleCalcularFrete}
+                                    disabled={
+                                        !clienteSelecionado || 
+                                        !watch('destinatario.endereco.cep') ||
+                                        (!selectedEmbalagem && (!watch('embalagem.peso') || !watch('embalagem.altura') || !watch('embalagem.largura') || !watch('embalagem.comprimento')))
+                                    }
+                                    className="w-full h-11 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                >
                                     <Box className="w-5 h-5" />
                                     Calcular Frete
                                 </button>
