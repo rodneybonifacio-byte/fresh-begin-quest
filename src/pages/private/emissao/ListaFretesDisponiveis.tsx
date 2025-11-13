@@ -21,7 +21,7 @@ export const ListaFretesDisponiveis = ({
                     Opções de Frete Disponíveis
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                    Todos os preços já incluem nosso desconto exclusivo de 50%
+                    Valores promocionais com descontos já aplicados
                 </p>
             </div>
             <div className="w-full">
