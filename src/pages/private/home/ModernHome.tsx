@@ -82,7 +82,7 @@ export const ModernHome = () => {
                             sem mensalidades ou taxas escondidas
                         </p>
                         <button
-                            onClick={() => navigate('/app/emissao')}
+                            onClick={() => navigate('/app/emissao/adicionar')}
                             className="bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-full text-lg font-bold shadow-2xl shadow-primary/40 transition-all duration-300 hover:scale-105 hover:shadow-primary/50"
                         >
                             Emitir frete com desconto
@@ -187,7 +187,7 @@ export const ModernHome = () => {
                                     <div
                                         key={index}
                                         className="p-4 bg-orange-50 dark:bg-orange-950/20 border-2 border-primary/30 rounded-xl hover:shadow-lg hover:border-primary transition-all cursor-pointer hover:scale-[1.02]"
-                                        onClick={() => navigate('/app/emissao')}
+                                        onClick={() => navigate('/app/emissao/adicionar')}
                                     >
                                         <div className="flex justify-between items-center">
                                             <div>
@@ -235,7 +235,7 @@ export const ModernHome = () => {
                         Comece agora mesmo a emitir fretes com desconto
                     </p>
                     <button
-                        onClick={() => navigate('/app/emissao')}
+                        onClick={() => navigate('/app/emissao/adicionar')}
                         className="bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-full text-lg font-bold shadow-2xl shadow-primary/40 transition-all duration-300 hover:scale-105 inline-flex items-center gap-2"
                     >
                         <Plus className="h-5 w-5" />
