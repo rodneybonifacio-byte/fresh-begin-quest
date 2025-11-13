@@ -2,11 +2,13 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
+import { componentTagger } from 'lovable-tagger'
 
-export default defineConfig(() => {
+export default defineConfig(({ mode }) => {
     return {
         plugins: [
             react(),
+            mode === 'development' && componentTagger(),
             {
                 name: 'html-transform',
                 transformIndexHtml(html: string) {
@@ -35,7 +37,7 @@ export default defineConfig(() => {
                     ]
                 }
             })
-        ],
+        ].filter(Boolean),
         server: {
             host: "::",
             open: true,
