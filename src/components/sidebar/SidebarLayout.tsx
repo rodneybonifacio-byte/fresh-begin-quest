@@ -53,7 +53,7 @@ export const SidebarLayout: React.FC<Props> = ({ navItems, isOpen, onClose, onNa
                     ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} w-64`}
             >
                 <div className="flex flex-col h-full">
-                    <div className="flex items-center justify-between p-6 min-h-[72px] border-b border-sidebar-border">
+                    <div className="flex items-center justify-between p-6 min-h-[72px] border-b border-sidebar-border bg-gradient-to-r from-primary/5 to-primary/10">
                         <div className={`flex items-center space-x-2 ${isSidebarOpen ? 'lg:block' : 'lg:hidden'}`}>
                             <div className="text-primary font-bold text-2xl tracking-tight">BRHUB</div>
                         </div>
