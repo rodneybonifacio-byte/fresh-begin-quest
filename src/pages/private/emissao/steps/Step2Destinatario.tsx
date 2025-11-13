@@ -1,8 +1,7 @@
-import { MapPin } from 'lucide-react';
+import { MapPin, User, MapPinned } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
 import { useState, useEffect } from 'react';
 import { FormCard } from '../../../../components/FormCard';
-import { InputField } from '../../../../components/InputField';
 import { ButtonComponent } from '../../../../components/button';
 import { AutocompleteDestinatario } from '../../../../components/autocomplete/AutocompleteDestinatario';
 import type { IDestinatario } from '../../../../types/IDestinatario';
@@ -33,14 +32,12 @@ export const Step2Destinatario = ({ onNext, onBack, setDestinatarioSelecionado }
 
   const viacepService = new ViacepService();
 
-  // Busca automática de endereço por CEP
   const buscarCep = async (cepValue: string) => {
     const cepLimpo = cepValue.replace(/\D/g, '');
     
     if (cepLimpo.length === 8) {
       setBuscandoCep(true);
       try {
-        console.log('🔍 Buscando CEP:', cepLimpo);
         const endereco = await viacepService.consulta(cepLimpo);
         
         if (endereco && endereco.logradouro) {
@@ -48,14 +45,11 @@ export const Step2Destinatario = ({ onNext, onBack, setDestinatarioSelecionado }
           setBairro(endereco.bairro || '');
           setLocalidade(endereco.localidade || '');
           setUf(endereco.uf || '');
-          
-          console.log('✅ Endereço encontrado:', endereco);
-          toast.success('Endereço encontrado!');
+          toast.success('✓ Endereço encontrado!');
         } else {
           toast.error('CEP não encontrado');
         }
       } catch (error) {
-        console.error('❌ Erro ao buscar CEP:', error);
         toast.error('Erro ao buscar CEP');
       } finally {
         setBuscandoCep(false);
@@ -63,7 +57,6 @@ export const Step2Destinatario = ({ onNext, onBack, setDestinatarioSelecionado }
     }
   };
 
-  // Atualiza o formulário quando os valores mudam
   useEffect(() => {
     setValue('destinatario.nome', nome);
     setValue('destinatario.cpfCnpj', cpfCnpj);
@@ -89,24 +82,21 @@ export const Step2Destinatario = ({ onNext, onBack, setDestinatarioSelecionado }
   );
 
   const handleNext = () => {
-    console.log('=== AVANÇANDO PARA FRETE ===');
     if (isFormValid) {
+      console.log('✅ Avançando para tela de frete com dados:', {
+        destinatario: { nome, cpfCnpj, celular },
+        endereco: { cep, logradouro, numero, bairro, localidade, uf }
+      });
       onNext();
     }
   };
 
   const handleDestinatarioSelect = (d: IDestinatario) => {
-    console.log('📍 Destinatário selecionado do banco:', d);
-    
-    // Preenche dados pessoais
     setNome(d.nome || '');
     setCpfCnpj(d.cpfCnpj ? formatCpfCnpj(d.cpfCnpj) : '');
-    
-    // Usa celular ou telefone
     const tel = d.celular || d.telefone || '';
     setCelular(tel ? formatTelefone(tel) : '');
     
-    // Preenche endereço completo
     if (d.endereco) {
       setCep(d.endereco.cep || '');
       setLogradouro(d.endereco.logradouro || '');
@@ -115,466 +105,105 @@ export const Step2Destinatario = ({ onNext, onBack, setDestinatarioSelecionado }
       setLocalidade(d.endereco.localidade || '');
       setUf(d.endereco.uf || '');
       setComplemento(d.endereco.complemento || '');
-      
-      console.log('✅ Todos os campos preenchidos automaticamente');
+      toast.success('✓ Destinatário carregado!');
     }
     
     setDestinatarioSelecionado(d);
   };
 
   return (
-    <FormCard 
-      icon={MapPin} 
-      title="Destinatário" 
-      description="Dados de entrega e endereço do destinatário"
-    >
-      <div className="space-y-5 md:space-y-6">
-        {/* Busca de Destinatário */}
-        <div className="p-3 md:p-4 bg-primary/5 rounded-lg md:rounded-xl border border-primary/20">
+    <FormCard icon={MapPin} title="Destinatário" description="Dados de entrega e endereço">
+      <div className="space-y-4 md:space-y-5">
+        <div className="p-3 md:p-4 bg-primary/5 rounded-lg border border-primary/20">
           <AutocompleteDestinatario onSelect={handleDestinatarioSelect} />
-          <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-            <span className="inline-block w-1.5 h-1.5 bg-primary rounded-full animate-pulse"></span>
-            Digite para buscar ou preencha para novo
-          </p>
+          <p className="text-xs text-muted-foreground mt-2">💡 Busque ou preencha novo</p>
         </div>
 
-        {/* Seção: Dados Pessoais */}
-        <div className="space-y-3 md:space-y-4 p-4 md:p-5 bg-gradient-to-br from-card to-muted/20 rounded-lg md:rounded-xl border border-border">
-          <div className="flex items-center gap-2 pb-2 border-b border-border/50">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <User className="h-4 w-4 text-primary" />
-            </div>
-            <h4 className="text-sm md:text-base font-bold text-foreground">Dados Pessoais</h4>
+        <div className="space-y-3 p-3 md:p-4 bg-card rounded-lg border">
+          <div className="flex items-center gap-2 pb-2 border-b">
+            <User className="h-4 w-4 text-primary" />
+            <h4 className="font-semibold text-sm">Dados Pessoais</h4>
           </div>
           
-          {/* Nome - sempre full width */}
           <div>
-            <label className="text-sm font-medium text-foreground mb-1.5 block">
-              Nome Completo *
-            </label>
-            <input
-              type="text"
-              placeholder="Digite o nome completo"
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              className="w-full h-12 md:h-11 px-4 text-base rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-            />
+            <label className="text-sm font-medium mb-1.5 block">Nome *</label>
+            <input type="text" placeholder="Nome completo" value={nome} onChange={(e) => setNome(e.target.value)} className="w-full h-12 px-4 text-base rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary" />
           </div>
 
-          {/* CPF/CNPJ e Celular - full width no mobile, 2 colunas no desktop */}
-          <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-4">
+          <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
             <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">
-                CPF/CNPJ *
-              </label>
-              <div className="relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                  <Hash className="h-4 w-4 text-muted-foreground" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="000.000.000-00"
-                  value={cpfCnpj}
-                  onChange={(e) => setCpfCnpj(e.target.value)}
-                  className="w-full h-12 md:h-11 pl-10 pr-4 text-base rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                />
-              </div>
+              <label className="text-sm font-medium mb-1.5 block">CPF/CNPJ *</label>
+              <input type="text" placeholder="000.000.000-00" value={cpfCnpj} onChange={(e) => setCpfCnpj(e.target.value)} className="w-full h-12 px-4 text-base rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
-
             <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">
-                Celular/WhatsApp *
-              </label>
-              <div className="relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                  <Phone className="h-4 w-4 text-muted-foreground" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="(11) 99999-9999"
-                  value={celular}
-                  onChange={(e) => setCelular(e.target.value)}
-                  className="w-full h-12 md:h-11 pl-10 pr-4 text-base rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                />
-              </div>
+              <label className="text-sm font-medium mb-1.5 block">Celular *</label>
+              <input type="text" placeholder="(11) 99999-9999" value={celular} onChange={(e) => setCelular(e.target.value)} className="w-full h-12 px-4 text-base rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
           </div>
         </div>
 
-        {/* Seção: Endereço */}
-        <div className="space-y-3 md:space-y-4 p-4 md:p-5 bg-gradient-to-br from-card to-muted/20 rounded-lg md:rounded-xl border border-border">
-          <div className="flex items-center gap-2 pb-2 border-b border-border/50">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <MapPinned className="h-4 w-4 text-primary" />
-            </div>
-            <h4 className="text-sm md:text-base font-bold text-foreground">Endereço de Entrega</h4>
+        <div className="space-y-3 p-3 md:p-4 bg-card rounded-lg border">
+          <div className="flex items-center gap-2 pb-2 border-b">
+            <MapPinned className="h-4 w-4 text-primary" />
+            <h4 className="font-semibold text-sm">Endereço</h4>
           </div>
 
-          {/* CEP com busca automática */}
           <div>
-            <label className="text-sm font-medium text-foreground mb-1.5 block">
-              CEP *
-            </label>
+            <label className="text-sm font-medium mb-1.5 block">CEP *</label>
             <div className="relative">
-              <input
-                type="text"
-                placeholder="00000-000"
-                value={cep}
-                onChange={(e) => {
-                  const valor = e.target.value;
-                  setCep(valor);
-                  buscarCep(valor);
-                }}
-                disabled={buscandoCep}
-                className="w-full h-12 md:h-11 px-4 pr-10 text-base rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50"
-              />
-              {buscandoCep && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
-                </div>
-              )}
-              {!buscandoCep && cep.replace(/\D/g, '').length === 8 && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-green-600">
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-              )}
+              <input type="text" placeholder="00000-000" value={cep} onChange={(e) => { setCep(e.target.value); buscarCep(e.target.value); }} disabled={buscandoCep} className="w-full h-12 px-4 text-base rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50" />
+              {buscandoCep && <div className="absolute right-3 top-4"><div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div></div>}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Digite o CEP para buscar automaticamente</p>
           </div>
 
-          {/* Logradouro */}
           <div>
-            <label className="text-sm font-medium text-foreground mb-1.5 block">
-              Logradouro *
-            </label>
-            <div className="relative">
-              <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                <Home className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <input
-                type="text"
-                placeholder="Rua, Avenida..."
-                value={logradouro}
-                onChange={(e) => setLogradouro(e.target.value)}
-                disabled={buscandoCep}
-                className="w-full h-12 md:h-11 pl-10 pr-4 text-base rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50"
-              />
-            </div>
+            <label className="text-sm font-medium mb-1.5 block">Logradouro *</label>
+            <input type="text" placeholder="Rua, Avenida..." value={logradouro} onChange={(e) => setLogradouro(e.target.value)} disabled={buscandoCep} className="w-full h-12 px-4 text-base rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50" />
           </div>
 
-          {/* Número e Bairro - full width no mobile, grid no desktop */}
-          <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-4 md:gap-4">
-            <div className="md:col-span-1">
-              <label className="text-sm font-medium text-foreground mb-1.5 block">
-                Número *
-              </label>
-              <input
-                type="text"
-                placeholder="123"
-                value={numero}
-                onChange={(e) => setNumero(e.target.value)}
-                className="w-full h-12 md:h-11 px-4 text-base rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              />
+          <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-4 md:gap-3">
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Número *</label>
+              <input type="text" placeholder="123" value={numero} onChange={(e) => setNumero(e.target.value)} className="w-full h-12 px-4 text-base rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
-
             <div className="md:col-span-3">
-              <label className="text-sm font-medium text-foreground mb-1.5 block">
-                Bairro
-              </label>
-              <div className="relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Nome do bairro"
-                  value={bairro}
-                  onChange={(e) => setBairro(e.target.value)}
-                  disabled={buscandoCep}
-                  className="w-full h-12 md:h-11 pl-10 pr-4 text-base rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50"
-                />
-              </div>
+              <label className="text-sm font-medium mb-1.5 block">Bairro</label>
+              <input type="text" placeholder="Bairro" value={bairro} onChange={(e) => setBairro(e.target.value)} disabled={buscandoCep} className="w-full h-12 px-4 text-base rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50" />
             </div>
           </div>
 
-          {/* Cidade e UF - grid otimizado */}
-          <div className="grid grid-cols-3 gap-3 md:grid-cols-4 md:gap-4">
-            <div className="col-span-2 md:col-span-3">
-              <label className="text-sm font-medium text-foreground mb-1.5 block">
-                Cidade *
-              </label>
-              <div className="relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                  <City className="h-4 w-4 text-muted-foreground" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Cidade"
-                  value={localidade}
-                  onChange={(e) => setLocalidade(e.target.value)}
-                  disabled={buscandoCep}
-                  className="w-full h-12 md:h-11 pl-10 pr-4 text-base rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50"
-                />
-              </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="col-span-2">
+              <label className="text-sm font-medium mb-1.5 block">Cidade *</label>
+              <input type="text" placeholder="Cidade" value={localidade} onChange={(e) => setLocalidade(e.target.value)} disabled={buscandoCep} className="w-full h-12 px-4 text-base rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50" />
             </div>
-
-            <div className="col-span-1">
-              <label className="text-sm font-medium text-foreground mb-1.5 block">
-                UF *
-              </label>
-              <input
-                type="text"
-                placeholder="SP"
-                maxLength={2}
-                value={uf}
-                onChange={(e) => setUf(e.target.value.toUpperCase())}
-                disabled={buscandoCep}
-                className="w-full h-12 md:h-11 px-4 text-base text-center rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50"
-              />
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">UF *</label>
+              <input type="text" placeholder="SP" maxLength={2} value={uf} onChange={(e) => setUf(e.target.value.toUpperCase())} disabled={buscandoCep} className="w-full h-12 px-4 text-base text-center rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50" />
             </div>
           </div>
 
-          {/* Complemento */}
           <div>
-            <label className="text-sm font-medium text-foreground mb-1.5 block">
-              Complemento <span className="text-muted-foreground">(opcional)</span>
-            </label>
-            <input
-              type="text"
-              placeholder="Apto, Bloco, Sala..."
-              value={complemento}
-              onChange={(e) => setComplemento(e.target.value)}
-              className="w-full h-12 md:h-11 px-4 text-base rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-            />
+            <label className="text-sm font-medium mb-1.5 block">Complemento <span className="text-muted-foreground">(opcional)</span></label>
+            <input type="text" placeholder="Apto, Bloco..." value={complemento} onChange={(e) => setComplemento(e.target.value)} className="w-full h-12 px-4 text-base rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary" />
           </div>
         </div>
 
-        {/* Indicadores de progresso */}
-        <div className="flex flex-wrap gap-2 text-xs p-3 md:p-4 bg-muted/30 rounded-lg">
-          <span className={`px-2.5 py-1.5 rounded-full transition-all font-medium ${nome.trim() ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
-            {nome.trim() ? "✓" : "○"} Nome
-          </span>
-          <span className={`px-2.5 py-1.5 rounded-full transition-all font-medium ${cpfCnpj.trim() ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
-            {cpfCnpj.trim() ? "✓" : "○"} CPF/CNPJ
-          </span>
-          <span className={`px-2.5 py-1.5 rounded-full transition-all font-medium ${celular.trim() ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
-            {celular.trim() ? "✓" : "○"} Celular
-          </span>
-          <span className={`px-2.5 py-1.5 rounded-full transition-all font-medium ${cep.trim() ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
-            {cep.trim() ? "✓" : "○"} CEP
-          </span>
-          <span className={`px-2.5 py-1.5 rounded-full transition-all font-medium ${logradouro.trim() ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
-            {logradouro.trim() ? "✓" : "○"} Logradouro
-          </span>
-          <span className={`px-2.5 py-1.5 rounded-full transition-all font-medium ${numero.trim() ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
-            {numero.trim() ? "✓" : "○"} Número
-          </span>
-          <span className={`px-2.5 py-1.5 rounded-full transition-all font-medium ${localidade.trim() ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
-            {localidade.trim() ? "✓" : "○"} Cidade
-          </span>
-          <span className={`px-2.5 py-1.5 rounded-full transition-all font-medium ${uf.trim() ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
-            {uf.trim() ? "✓" : "○"} UF
-          </span>
+        <div className="flex flex-wrap gap-2 text-xs p-3 bg-muted/30 rounded-lg">
+          {[
+            { l: 'Nome', v: nome }, { l: 'CPF', v: cpfCnpj }, { l: 'Tel', v: celular }, 
+            { l: 'CEP', v: cep }, { l: 'Log', v: logradouro }, { l: 'Nº', v: numero }, 
+            { l: 'Cidade', v: localidade }, { l: 'UF', v: uf }
+          ].map(f => (
+            <span key={f.l} className={`px-2.5 py-1.5 rounded-full font-medium ${f.v.trim() ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-muted-foreground"}`}>
+              {f.v.trim() ? "✓" : "○"} {f.l}
+            </span>
+          ))}
         </div>
 
-        {/* Botões de navegação */}
         <div className="flex flex-col sm:flex-row gap-3">
-          <ButtonComponent 
-            type="button" 
-            onClick={onBack}
-            variant="primary"
-            border="outline"
-            className="w-full sm:flex-1 h-12 md:h-11 text-base font-medium"
-          >
-            ← Voltar
-          </ButtonComponent>
-
-          <ButtonComponent 
-            type="button" 
-            onClick={handleNext} 
-            disabled={!isFormValid}
-            variant="primary"
-            className="w-full sm:flex-1 h-12 md:h-11 text-base font-semibold"
-          >
-            Próximo: Frete →
-          </ButtonComponent>
-        </div>
-      </div>
-    </FormCard>
-  );
-        <div>
-          <AutocompleteDestinatario onSelect={handleDestinatarioSelect} />
-          <p className="text-xs text-muted-foreground mt-1">
-            💡 Digite o nome para buscar ou preencha para novo cadastro
-          </p>
-        </div>
-
-        <div className="space-y-4">
-          <h4 className="text-sm font-semibold text-foreground">Dados Pessoais</h4>
-          
-          <InputField 
-            label="Nome Completo *" 
-            type="text"
-            placeholder="Nome do destinatário"
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-          />
-
-          <div className="grid grid-cols-2 gap-4">
-            <InputField 
-              label="CPF/CNPJ *" 
-              type="text"
-              placeholder="000.000.000-00"
-              value={cpfCnpj}
-              onChange={(e) => setCpfCnpj(e.target.value)}
-            />
-            <InputField 
-              label="Celular *" 
-              type="text"
-              placeholder="(00) 00000-0000"
-              value={celular}
-              onChange={(e) => setCelular(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <h4 className="text-sm font-semibold text-foreground">Endereço de Entrega</h4>
-          
-          <div className="grid grid-cols-3 gap-4">
-            <div className="relative">
-              <InputField 
-                label="CEP *" 
-                type="text"
-                placeholder="00000-000"
-                value={cep}
-                onChange={(e) => {
-                  const valor = e.target.value;
-                  setCep(valor);
-                  buscarCep(valor);
-                }}
-                disabled={buscandoCep}
-              />
-              {buscandoCep && (
-                <div className="absolute right-3 top-9">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                </div>
-              )}
-            </div>
-            <div className="col-span-2">
-              <InputField 
-                label="Logradouro *" 
-                type="text"
-                placeholder="Rua, Avenida..."
-                value={logradouro}
-                onChange={(e) => setLogradouro(e.target.value)}
-                disabled={buscandoCep}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <InputField 
-              label="Número *" 
-              type="text"
-              placeholder="123"
-              value={numero}
-              onChange={(e) => setNumero(e.target.value)}
-            />
-            <div className="col-span-2">
-              <InputField 
-                label="Bairro" 
-                type="text"
-                placeholder="Bairro"
-                value={bairro}
-                onChange={(e) => setBairro(e.target.value)}
-                disabled={buscandoCep}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div className="col-span-2">
-              <InputField 
-                label="Cidade *" 
-                type="text"
-                placeholder="Cidade"
-                value={localidade}
-                onChange={(e) => setLocalidade(e.target.value)}
-                disabled={buscandoCep}
-              />
-            </div>
-            <InputField 
-              label="UF *" 
-              type="text"
-              placeholder="SP"
-              maxLength={2}
-              value={uf}
-              onChange={(e) => setUf(e.target.value.toUpperCase())}
-              disabled={buscandoCep}
-            />
-          </div>
-
-          <InputField 
-            label="Complemento" 
-            type="text"
-            placeholder="Apto, Bloco, Sala..."
-            value={complemento}
-            onChange={(e) => setComplemento(e.target.value)}
-          />
-        </div>
-
-        <div className="space-y-3">
-          <div className="flex flex-wrap gap-2 text-sm">
-            <span className={nome.trim() ? "text-green-600" : "text-muted-foreground"}>
-              {nome.trim() ? "✓ Nome" : "○ Nome"}
-            </span>
-            <span className={cpfCnpj.trim() ? "text-green-600" : "text-muted-foreground"}>
-              {cpfCnpj.trim() ? "✓ CPF/CNPJ" : "○ CPF/CNPJ"}
-            </span>
-            <span className={celular.trim() ? "text-green-600" : "text-muted-foreground"}>
-              {celular.trim() ? "✓ Celular" : "○ Celular"}
-            </span>
-            <span className={cep.trim() ? "text-green-600" : "text-muted-foreground"}>
-              {cep.trim() ? "✓ CEP" : "○ CEP"}
-            </span>
-            <span className={logradouro.trim() ? "text-green-600" : "text-muted-foreground"}>
-              {logradouro.trim() ? "✓ Logradouro" : "○ Logradouro"}
-            </span>
-            <span className={numero.trim() ? "text-green-600" : "text-muted-foreground"}>
-              {numero.trim() ? "✓ Número" : "○ Número"}
-            </span>
-            <span className={localidade.trim() ? "text-green-600" : "text-muted-foreground"}>
-              {localidade.trim() ? "✓ Cidade" : "○ Cidade"}
-            </span>
-            <span className={uf.trim() ? "text-green-600" : "text-muted-foreground"}>
-              {uf.trim() ? "✓ UF" : "○ UF"}
-            </span>
-          </div>
-
-          <div className="flex gap-3">
-            <ButtonComponent 
-              type="button" 
-              onClick={onBack}
-              variant="primary"
-              border="outline"
-              className="flex-1"
-            >
-              ← Voltar
-            </ButtonComponent>
-
-            <ButtonComponent 
-              type="button" 
-              onClick={handleNext} 
-              disabled={!isFormValid}
-              variant="primary"
-              className="flex-1"
-            >
-              Próximo: Frete →
-            </ButtonComponent>
-          </div>
+          <ButtonComponent type="button" onClick={onBack} variant="primary" border="outline" className="w-full sm:flex-1 h-12">← Voltar</ButtonComponent>
+          <ButtonComponent type="button" onClick={handleNext} disabled={!isFormValid} variant="primary" className="w-full sm:flex-1 h-12 font-semibold">Próximo: Frete →</ButtonComponent>
         </div>
       </div>
     </FormCard>
