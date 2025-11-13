@@ -15,12 +15,16 @@ export const ListaFretesDisponiveis = ({
     isLoading = false
 }: ListaFretesDisponiveisProps) => {
     return (
-        <div className="flex flex-col w-full gap-4">
-            <h1 className="font-semibold text-2xl flex flex-col">
-                Lista de fretes disponíveis:
-                <small className="text-xs text-slate-400">Selecione um frete para prosseguir.</small>
-            </h1>
-            <div className="w-full rounded-lg flex-col">
+        <div className="flex flex-col w-full gap-6">
+            <div className="text-center">
+                <h2 className="font-bold text-2xl text-foreground mb-2">
+                    Opções de Frete Disponíveis
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                    Todos os preços já incluem nosso desconto exclusivo de 50%
+                </p>
+            </div>
+            <div className="w-full">
                 <CotacaoList
                     cotacoes={data}
                     onSelectCotacao={onSelected}
