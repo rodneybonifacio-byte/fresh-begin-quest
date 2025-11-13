@@ -51,6 +51,32 @@ export const ModernEmissaoWrapper = () => {
     const [clienteSelecionado, setClienteSelecionado] = useState<any>();
     const [_destinatarioSelecionado, setDestinatarioSelecionado] = useState<IDestinatario | undefined>();
     const [cotacaoSelecionado, setCotacaoSelecionado] = useState<ICotacaoMinimaResponse | undefined>();
+    
+    // Função para resetar cotações quando voltar
+    const resetCotacoes = () => {
+        console.log('🔄 Resetando cotações...');
+        setCotacaoSelecionado(undefined);
+        methods.setValue('cotacao.codigoServico', '');
+    };
+    
+    // Função para resetar destinatário quando voltar
+    const resetDestinatario = () => {
+        console.log('🔄 Resetando destinatário...');
+        setDestinatarioSelecionado(undefined);
+        methods.setValue('destinatario', {
+            nome: '',
+            cpfCnpj: '',
+            celular: '',
+            endereco: {
+                cep: '',
+                logradouro: '',
+                numero: '',
+                bairro: '',
+                localidade: '',
+                uf: '',
+            },
+        });
+    };
 
     const { user: userPayload } = useAuth();
     const { data: cliente } = useCliente(userPayload?.clienteId || '');
@@ -243,19 +269,25 @@ export const ModernEmissaoWrapper = () => {
                     {currentStep === 1 && (
                         <Step2Destinatario 
                             onNext={() => setCurrentStep(2)}
-                            onBack={() => setCurrentStep(0)}
+                            onBack={() => {
+                                resetDestinatario();
+                                setCurrentStep(0);
+                            }}
                             setDestinatarioSelecionado={setDestinatarioSelecionado}
                         />
                     )}
-                    {currentStep === 2 && (
-                        <Step3Frete 
-                            onNext={() => setCurrentStep(3)}
-                            onBack={() => setCurrentStep(1)}
-                            clienteSelecionado={clienteSelecionado}
-                            cotacaoSelecionado={cotacaoSelecionado}
-                            setCotacaoSelecionado={setCotacaoSelecionado}
-                        />
-                    )}
+            {currentStep === 2 && (
+                <Step3Frete
+                    onNext={() => setCurrentStep(3)}
+                    onBack={() => {
+                        resetCotacoes();
+                        setCurrentStep(1);
+                    }}
+                    clienteSelecionado={clienteSelecionado}
+                    cotacaoSelecionado={cotacaoSelecionado}
+                    setCotacaoSelecionado={setCotacaoSelecionado}
+                />
+            )}
                     {currentStep === 3 && (
                         <Step4Confirmacao 
                             onBack={() => setCurrentStep(2)}
