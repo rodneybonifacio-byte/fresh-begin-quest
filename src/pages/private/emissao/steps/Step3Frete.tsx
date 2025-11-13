@@ -62,10 +62,22 @@ export const Step3Frete = ({ onNext, onBack, clienteSelecionado, cotacaoSelecion
         'N',
         clienteSelecionado
       );
+      
+      console.log('✅ Cotação finalizada');
     };
 
     calcularFrete();
   }, [clienteSelecionado, getValues]);
+
+  // Log quando as cotações mudam
+  useEffect(() => {
+    if (cotacoes) {
+      console.log('📋 Cotações atualizadas no Step3:', {
+        quantidade: cotacoes.length,
+        servicos: cotacoes.map(c => c.nomeServico)
+      });
+    }
+  }, [cotacoes]);
 
   const handleNext = async () => {
     const isValid = await trigger(['cotacao']);
