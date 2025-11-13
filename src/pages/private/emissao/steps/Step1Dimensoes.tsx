@@ -23,8 +23,14 @@ export const Step1Dimensoes = ({
     trigger
   } = useFormContext();
   const handleNext = async () => {
-    const isValid = await trigger(['remetenteId', 'embalagem']);
-    if (isValid && clienteSelecionado) onNext();
+    if (!clienteSelecionado) {
+      return;
+    }
+    
+    const isValid = await trigger(['remetenteId', 'embalagem.altura', 'embalagem.largura', 'embalagem.comprimento', 'embalagem.peso']);
+    if (isValid) {
+      onNext();
+    }
   };
   return <FormCard icon={Box} title="Dimensões e Embalagem" description="Configure o remetente e as dimensões do pacote">
       <div className="space-y-6">
