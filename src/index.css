@@ -65,12 +65,28 @@
   }
 }
 
-.body-no-scroll {
-    overflow: hidden;
+.border-border {
+    border-color: hsl(var(--border));
+}
+
+.text-muted-foreground {
+    color: hsl(var(--muted-foreground));
+}
+
+.bg-muted {
+    background-color: hsl(var(--muted));
 }
 
 .hover-scale {
-    @apply transition-transform duration-200 hover:scale-105;
+    transition: transform 0.2s ease;
+}
+
+.hover-scale:hover {
+    transform: scale(1.02);
+}
+
+.body-no-scroll {
+    overflow: hidden;
 }
 
 .card {

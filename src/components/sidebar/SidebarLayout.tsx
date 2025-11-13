@@ -8,13 +8,14 @@ import { SidebarItem } from './SidebarItem';
 
 interface Props {
     navItems: any[];
+    adminSection?: any[];
     isOpen?: boolean;
     onClose?: () => void;
     onNavigate?: (page: string) => void;
     title?: string;
 }
 
-export const SidebarLayout: React.FC<Props> = ({ navItems, isOpen, onClose, onNavigate, title = 'Sistema' }) => {
+export const SidebarLayout: React.FC<Props> = ({ navItems, adminSection, isOpen, onClose, onNavigate, title = 'Sistema' }) => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [showAccountPopover, setShowAccountPopover] = useState(false);
     const accountButtonRef = useRef<HTMLDivElement>(null);
@@ -87,6 +88,27 @@ export const SidebarLayout: React.FC<Props> = ({ navItems, isOpen, onClose, onNa
                                 />
                             ))}
                         </ul>
+
+                        {/* Seção de Administração */}
+                        {adminSection && adminSection.length > 0 && adminSection.map((section, sectionIdx) => (
+                            <div key={sectionIdx} className="mt-6">
+                                <div className={`px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider ${isSidebarOpen ? 'block' : 'lg:hidden'}`}>
+                                    {section.section}
+                                </div>
+                                <ul className="py-2 space-y-1">
+                                    {section.items.map((item: any, idx: number) => (
+                                        <SidebarItem
+                                            key={idx}
+                                            {...item}
+                                            isSidebarOpen={isSidebarOpen}
+                                            onClick={() => onNavigate?.(item.label)}
+                                            onItemClick={onNavigate}
+                                            handleItemClick={onNavigate}
+                                        />
+                                    ))}
+                                </ul>
+                            </div>
+                        ))}
                     </nav>
 
                     <div className="p-4 border-t border-sidebar-border">
