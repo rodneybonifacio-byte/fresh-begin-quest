@@ -3,7 +3,6 @@ import clsx from "clsx";
 import { DestinatarioService } from "../../services/DestinatarioService";
 import { useFetchQuery } from "../../hooks/useFetchQuery";
 import type { IDestinatario } from "../../types/IDestinatario";
-import { InputLabel } from "../input-label";
 interface AutocompleteDestinatarioProps {
   onSelect: (destinatario: IDestinatario) => void;
 }
