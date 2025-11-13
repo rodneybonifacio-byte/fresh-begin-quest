@@ -20,17 +20,27 @@ export const Step1Dimensoes = ({
   const {
     register,
     setValue,
-    trigger
+    watch
   } = useFormContext();
-  const handleNext = async () => {
+
+  const embalagem = watch('embalagem');
+
+  const handleNext = () => {
+    console.log('clienteSelecionado:', clienteSelecionado);
+    console.log('embalagem:', embalagem);
+    
     if (!clienteSelecionado) {
+      console.log('Cliente não selecionado');
       return;
     }
     
-    const isValid = await trigger(['remetenteId', 'embalagem.altura', 'embalagem.largura', 'embalagem.comprimento', 'embalagem.peso']);
-    if (isValid) {
-      onNext();
+    if (!embalagem?.altura || !embalagem?.largura || !embalagem?.comprimento || !embalagem?.peso) {
+      console.log('Campos de embalagem incompletos');
+      return;
     }
+    
+    console.log('Avançando para próxima etapa');
+    onNext();
   };
   return <FormCard icon={Box} title="Dimensões e Embalagem" description="Configure o remetente e as dimensões do pacote">
       <div className="space-y-6">
@@ -49,7 +59,13 @@ export const Step1Dimensoes = ({
           <InputField label="Peso" type="number" {...register('embalagem.peso')} />
         </div>
 
-        <ButtonComponent type="button" onClick={handleNext} disabled={!clienteSelecionado}>Próximo</ButtonComponent>
+        <ButtonComponent 
+          type="button" 
+          onClick={handleNext} 
+          disabled={!clienteSelecionado || !embalagem?.altura || !embalagem?.largura || !embalagem?.comprimento || !embalagem?.peso}
+        >
+          Próximo
+        </ButtonComponent>
       </div>
     </FormCard>;
 };
