@@ -4,11 +4,11 @@ import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
 import { componentTagger } from 'lovable-tagger'
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(() => {
     return {
         plugins: [
             react(),
-            mode === 'development' && componentTagger(),
+            componentTagger(),
             {
                 name: 'html-transform',
                 transformIndexHtml(html: string) {
