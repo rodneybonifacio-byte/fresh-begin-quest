@@ -5,7 +5,7 @@ import { InputField } from '../../../../components/InputField';
 import { ButtonComponent } from '../../../../components/button';
 import { AutocompleteDestinatario } from '../../../../components/autocomplete/AutocompleteDestinatario';
 import type { IDestinatario } from '../../../../types/IDestinatario';
-import { formatCep, formatCpfCnpj, formatTelefone } from '../../../../utils/lib.formats';
+import { formatCpfCnpj, formatTelefone } from '../../../../utils/lib.formats';
 
 interface Step2DestinatarioProps {
   onNext: () => void;
@@ -14,7 +14,7 @@ interface Step2DestinatarioProps {
 }
 
 export const Step2Destinatario = ({ onNext, onBack, setDestinatarioSelecionado }: Step2DestinatarioProps) => {
-  const { register, setValue, formState: { errors }, trigger } = useFormContext();
+  const { register, setValue, trigger } = useFormContext();
 
   const handleNext = async () => {
     const isValid = await trigger(['destinatario']);
