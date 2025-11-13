@@ -15,18 +15,22 @@ export const AdminLayoutBase = () => {
     };
 
     return (
-        <div className="flex h-screen bg-gray-50 dark:bg-slate-900">
+        <div className="flex h-screen bg-background">
             {/* Admin Sidebar */}
             <AdminSidebar isOpen={sidebarOpen} onClose={closeSidebar} />
 
             {/* Main content area */}
             <div className="flex-1 flex flex-col overflow-hidden">
-                {/* Topbar */}
-                <AppTopbar toggleSidebar={toggleSidebar} />
+                {/* Topbar - apenas mobile */}
+                <div className="lg:hidden">
+                    <AppTopbar toggleSidebar={toggleSidebar} />
+                </div>
 
                 {/* Page content */}
-                <main className="flex-1 mt-20 xl:mt-0  overflow-x-hidden overflow-y-auto bg-gray-50 dark:bg-slate-900 p-4">
-                    <Outlet />
+                <main className="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 sm:p-6 lg:p-8">
+                    <div className="max-w-7xl mx-auto">
+                        <Outlet />
+                    </div>
                 </main>
             </div>
         </div>

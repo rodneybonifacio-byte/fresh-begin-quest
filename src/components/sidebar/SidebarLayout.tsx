@@ -3,7 +3,6 @@ import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import authStore from '../../authentica/authentication.store';
-import { IconFavicon } from '../logo/IconFavicon';
 import { SidebarItem } from './SidebarItem';
 
 interface Props {
@@ -14,7 +13,7 @@ interface Props {
     title?: string;
 }
 
-export const SidebarLayout: React.FC<Props> = ({ navItems, isOpen, onClose, onNavigate, title = 'Sistema' }) => {
+export const SidebarLayout: React.FC<Props> = ({ navItems, isOpen, onClose, onNavigate }) => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [showAccountPopover, setShowAccountPopover] = useState(false);
     const accountButtonRef = useRef<HTMLDivElement>(null);
@@ -49,14 +48,14 @@ export const SidebarLayout: React.FC<Props> = ({ navItems, isOpen, onClose, onNa
             {sidebarOpen && <div className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden" onClick={onClose} />}
 
             <aside
-                className={`fixed lg:relative z-50 h-screen bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-300 overflow-hidden
+                className={`fixed lg:relative z-50 h-screen bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-300 overflow-hidden shadow-sm
                     ${isSidebarOpen ? 'lg:w-64' : 'lg:w-20'}
                     ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} w-64`}
             >
                 <div className="flex flex-col h-full">
-                    <div className="flex items-center justify-between p-4 min-h-[72px] border-b border-sidebar-border">
+                    <div className="flex items-center justify-between p-6 min-h-[72px] border-b border-sidebar-border">
                         <div className={`flex items-center space-x-2 ${isSidebarOpen ? 'lg:block' : 'lg:hidden'}`}>
-                            <IconFavicon light title={title}/>
+                            <div className="text-primary font-bold text-2xl tracking-tight">BRHUB</div>
                         </div>
 
                         <button
@@ -74,8 +73,8 @@ export const SidebarLayout: React.FC<Props> = ({ navItems, isOpen, onClose, onNa
                         </button>
                     </div>
 
-                    <nav className="flex-1 overflow-y-auto">
-                        <ul className="py-4 space-y-1">
+                    <nav className="flex-1 overflow-y-auto p-4">
+                        <ul className="space-y-1">
                             {navItems.map((item, idx) => (
                                 <SidebarItem
                                     key={idx}
