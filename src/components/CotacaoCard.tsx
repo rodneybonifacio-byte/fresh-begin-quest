@@ -10,15 +10,17 @@ interface CotacaoCardProps {
 }
 
 export const CotacaoCard = ({ cotacao, onSelect, isSelected = false, showSelectButton = false }: CotacaoCardProps) => {
-    // Calcula o valor original (50% maior)
+    // O valor da API já vem com desconto aplicado
+    // Se pagamos X, o valor de tabela é X + 50% de X = 1.5X
     const precoNumerico = parseFloat(cotacao.preco.replace('R$', '').replace(',', '.').trim());
-    const valorOriginal = precoNumerico * 1.5;
-    const economia = valorOriginal - precoNumerico;
+    const valorTabela = precoNumerico * 1.5; // Valor original sem desconto
+    const economia = valorTabela - precoNumerico; // Quanto economizou
+    const percentualDesconto = ((economia / valorTabela) * 100).toFixed(0); // Porcentagem real de desconto
     
-    const valorOriginalFormatado = new Intl.NumberFormat('pt-BR', {
+    const valorTabelaFormatado = new Intl.NumberFormat('pt-BR', {
         style: 'currency',
         currency: 'BRL'
-    }).format(valorOriginal);
+    }).format(valorTabela);
     
     const economiaFormatada = new Intl.NumberFormat('pt-BR', {
         style: 'currency',
@@ -33,11 +35,11 @@ export const CotacaoCard = ({ cotacao, onSelect, isSelected = false, showSelectB
                     : 'border-border hover:border-primary/50'
             }`}
         >
-            {/* Badge de desconto */}
+            {/* Badge de desconto com porcentagem real */}
             <div className="absolute -top-3 -right-3 z-10">
                 <div className="bg-gradient-to-br from-green-500 to-green-600 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 animate-bounce">
                     <BadgePercent className="h-4 w-4" />
-                    <span className="font-bold text-sm">50% OFF</span>
+                    <span className="font-bold text-sm">{percentualDesconto}% OFF</span>
                 </div>
             </div>
 
@@ -80,7 +82,7 @@ export const CotacaoCard = ({ cotacao, onSelect, isSelected = false, showSelectB
             <div className="flex flex-col gap-2 p-4 bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg border border-primary/20">
                 <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Valor de tabela:</span>
-                    <span className="text-lg text-muted-foreground line-through">{valorOriginalFormatado}</span>
+                    <span className="text-lg text-muted-foreground line-through">{valorTabelaFormatado}</span>
                 </div>
                 <div className="flex items-center justify-between pt-2 border-t border-primary/20">
                     <span className="text-base font-semibold text-foreground">Você paga apenas:</span>
@@ -88,7 +90,7 @@ export const CotacaoCard = ({ cotacao, onSelect, isSelected = false, showSelectB
                 </div>
                 <div className="text-center mt-1">
                     <span className="text-xs font-medium text-green-600 dark:text-green-400">
-                        💰 Economia de {economiaFormatada}
+                        💰 Economize {economiaFormatada} ({percentualDesconto}% de desconto)
                     </span>
                 </div>
             </div>

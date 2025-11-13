@@ -92,7 +92,7 @@ export const Step3Frete = ({ onNext, onBack, clienteSelecionado, cotacaoSelecion
           <div className="flex items-center gap-3 justify-center">
             <BadgePercent className="h-6 w-6 text-green-600 dark:text-green-400" />
             <p className="text-lg font-bold text-green-700 dark:text-green-300">
-              Aproveite 50% de desconto em todos os fretes!
+              Descontos de até 33% em todos os fretes!
             </p>
           </div>
         </div>
