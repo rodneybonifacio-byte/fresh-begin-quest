@@ -154,7 +154,7 @@ const FormularioEmissaoNovo = () => {
 
   const handleBuscarCep = async (cep: string) => {
     if (cep.length === 9) {
-      const result = await onBuscaCep(cep.replace(/\D/g, ''), (isLoading) => {});
+      const result = await onBuscaCep(cep.replace(/\D/g, ''), () => {});
       if (result) {
         setValue('destinatario.endereco.logradouro', result.logradouro);
         setValue('destinatario.endereco.bairro', result.bairro);
