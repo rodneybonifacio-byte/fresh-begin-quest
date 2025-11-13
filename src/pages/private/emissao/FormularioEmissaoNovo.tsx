@@ -1,26 +1,25 @@
 import { yupResolver } from '@hookform/resolvers/yup';
-import { Box, MapPin, Package2, DollarSign, Save, X, CheckCircle, AlertCircle } from 'lucide-react';
+import { Box, MapPin, DollarSign } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import * as yup from 'yup';
 import { AutocompleteDestinatario } from '../../../components/autocomplete/AutocompleteDestinatario';
-import { InputLabel } from '../../../components/input-label';
+import { InputWithValidation } from '../../../components/input-with-validation';
 import { useAddress } from '../../../hooks/useAddress';
 import { useCliente } from '../../../hooks/useCliente';
 import { useCotacao } from '../../../hooks/useCotacao';
 import { useEmissao } from '../../../hooks/useEmissao';
 import { useAuth } from '../../../providers/AuthContext';
-import { useLoadingSpinner } from '../../../providers/LoadingSpinnerContext';
 import { useRemetentes } from '../../../hooks/useRemetente';
 import type { ICotacaoMinimaResponse } from '../../../types/ICotacao';
 import type { IDestinatario } from '../../../types/IDestinatario';
 import type { IEmbalagem } from '../../../types/IEmbalagem';
 import type { IEmissao } from '../../../types/IEmissao';
-import { formatCurrency } from '../../../utils/formatCurrency';
 import { formatCep, formatCpfCnpj, formatTelefone } from '../../../utils/lib.formats';
 import { ListaFretesDisponiveis } from './ListaFretesDisponiveis';
+
 const validationSchema = yup.object().shape({
   remetenteId: yup.string().required('O remetente é obrigatório'),
   embalagem: yup.object().shape({
@@ -45,54 +44,39 @@ const validationSchema = yup.object().shape({
     })
   })
 });
+
 const FormularioEmissaoNovo = () => {
   const navigate = useNavigate();
-  const {
-    setIsLoading
-  } = useLoadingSpinner();
   const methods = useForm({
     resolver: yupResolver(validationSchema),
     mode: 'onChange',
     reValidateMode: 'onChange'
   });
+
   const {
     register,
     handleSubmit,
-    formState: {
-      errors
-    },
+    formState: { errors },
     setValue,
-    setFocus,
     watch
   } = methods;
+
   const [clienteSelecionado, setClienteSelecionado] = useState<any>(null);
-  const [selectedEmbalagem, setSelectedEmbalagem] = useState<IEmbalagem | null>();
   const [cotacaoSelecionado, setCotacaoSelecionado] = useState<ICotacaoMinimaResponse>();
   const [valorDeclarado, setValorDeclarado] = useState<string>('');
-  const {
-    onGetCotacaoCorreios,
-    cotacoes,
-    isLoadingCotacao
-  } = useCotacao();
-  const {
-    onEmissaoCadastro
-  } = useEmissao();
-  const {
-    user: userPayload
-  } = useAuth();
-  const {
-    onBuscaCep
-  } = useAddress();
-  const {
-    data: cliente
-  } = useCliente(userPayload?.clienteId || '');
-  const {
-    data: remetentesResponse
-  } = useRemetentes({
+  const [isLoading, setIsLoadingLocal] = useState(false);
+
+  const { onGetCotacaoCorreios, cotacoes } = useCotacao();
+  const { onEmissaoCadastro } = useEmissao();
+  const { user: userPayload } = useAuth();
+  const { onBuscaCep } = useAddress();
+  const { data: cliente } = useCliente(userPayload?.clienteId || '');
+  const { data: remetentesResponse } = useRemetentes({
     clienteId: userPayload?.clienteId || '',
     page: 1,
     perPage: 100
   });
+
   useEffect(() => {
     if (cliente && remetentesResponse?.data && !clienteSelecionado) {
       const remetenteCompleto = remetentesResponse.data.find(r => r.id === cliente.id);
@@ -101,7 +85,8 @@ const FormularioEmissaoNovo = () => {
         setValue('remetenteId', remetenteCompleto.id);
       }
     }
-  }, [cliente, remetentesResponse]);
+  }, [cliente, remetentesResponse, clienteSelecionado, setValue]);
+
   const handleSelecionaDestinatario = (destinatario: IDestinatario) => {
     if (destinatario) {
       setValue('destinatario.nome', destinatario.nome);
@@ -116,9 +101,10 @@ const FormularioEmissaoNovo = () => {
       setValue('destinatario.endereco.uf', destinatario.endereco?.uf || '');
     }
   };
+
   const handleCalcularFrete = () => {
     const cepDestino = watch('destinatario.endereco.cep');
-    const embalagem = selectedEmbalagem || {
+    const embalagem = {
       altura: watch('embalagem.altura'),
       largura: watch('embalagem.largura'),
       comprimento: watch('embalagem.comprimento'),
@@ -139,273 +125,330 @@ const FormularioEmissaoNovo = () => {
       toast.error('Preencha todos os campos obrigatórios: embalagem e CEP de destino');
     }
   };
+
   const handlerOnSubmit = async (data: any) => {
+    if (!cotacaoSelecionado) {
+      toast.error('Selecione uma cotação de frete');
+      return;
+    }
+
+    const requestData: IEmissao = {
+      ...data,
+      cotacao: cotacaoSelecionado,
+      valorDeclarado: parseFloat(valorDeclarado.replace(/\D/g, '')) / 100,
+      valorNotaFiscal: 0,
+      logisticaReversa: 'N',
+      cienteObjetoNaoProibido: true
+    };
+
     try {
-      setIsLoading(true);
-      const dataSend: IEmissao = {
-        remetenteId: clienteSelecionado?.id || '',
-        cienteObjetoNaoProibido: true,
-        itensDeclaracaoConteudo: [],
-        rfidObjeto: '',
-        observacao: '',
-        chaveNFe: '',
-        numeroNotaFiscal: '',
-        valorNotaFiscal: 0,
-        logisticaReversa: 'N',
-        cotacao: cotacaoSelecionado as ICotacaoMinimaResponse,
-        embalagem: selectedEmbalagem as IEmbalagem,
-        destinatario: data.destinatario,
-        valorDeclarado: Number(valorDeclarado.replace(/\D/g, '')) / 100 || 0
-      };
-      await onEmissaoCadastro(dataSend, setIsLoading);
+      setIsLoadingLocal(true);
+      await onEmissaoCadastro(requestData, setIsLoadingLocal);
       toast.success('Etiqueta criada com sucesso!');
       navigate('/app/emissao');
     } catch (error) {
       toast.error('Erro ao criar etiqueta');
-    } finally {
-      setIsLoading(false);
+      setIsLoadingLocal(false);
     }
   };
-  return <div className="space-y-6 animate-fade-in">
-            {/* Header */}
-            <div>
-                <h1 className="text-3xl font-bold text-foreground">Nova etiqueta</h1>
-                <p className="text-muted-foreground mt-1">Preencha os dados para criar uma nova etiqueta de envio</p>
+
+  const handleBuscarCep = async (cep: string) => {
+    if (cep.length === 9) {
+      const result = await onBuscaCep(cep.replace(/\D/g, ''), (isLoading) => {});
+      if (result) {
+        setValue('destinatario.endereco.logradouro', result.logradouro);
+        setValue('destinatario.endereco.bairro', result.bairro);
+        setValue('destinatario.endereco.localidade', result.localidade);
+        setValue('destinatario.endereco.uf', result.uf);
+      }
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background p-6">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-foreground mb-2">Nova etiqueta</h1>
+          <p className="text-muted-foreground">Preencha os dados para criar uma nova etiqueta de envio</p>
+        </div>
+
+        <FormProvider {...methods}>
+          <form onSubmit={handleSubmit(handlerOnSubmit)} className="space-y-6">
+            
+            {/* Origem */}
+            <div className="bg-card rounded-lg border border-border p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <MapPin className="w-5 h-5 text-primary" />
+                <h3 className="text-sm font-semibold text-primary uppercase tracking-wide">Informe a origem</h3>
+              </div>
+
+              <div className="space-y-2">
+                {clienteSelecionado ? (
+                  <div className="space-y-1">
+                    <p className="font-semibold text-foreground">{clienteSelecionado.nome}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {clienteSelecionado.endereco?.logradouro}, {clienteSelecionado.endereco?.numero}, {clienteSelecionado.endereco?.complemento}, {clienteSelecionado.endereco?.bairro}, {clienteSelecionado.endereco?.localidade}/{clienteSelecionado.endereco?.uf}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Selecione um remetente...</p>
+                )}
+              </div>
             </div>
 
-            <FormProvider {...methods}>
-                <form onSubmit={handleSubmit(handlerOnSubmit)} className="space-y-6">
-                    {/* Seção Origem */}
-                    <div className="bg-card border border-border rounded-lg p-6">
-                        <div className="flex items-center gap-2 mb-4">
-                            <MapPin className="w-5 h-5 text-primary" />
-                            <h2 className="text-lg font-semibold text-primary uppercase">Informe a origem</h2>
-                        </div>
-                        {clienteSelecionado && <div className="space-y-1">
-                                <p className="font-semibold text-foreground">{clienteSelecionado.nome}</p>
-                                <p className="text-sm text-muted-foreground">
-                                    {clienteSelecionado.endereco?.logradouro}, {clienteSelecionado.endereco?.numero}
-                                    {clienteSelecionado.endereco?.complemento && `, ${clienteSelecionado.endereco.complemento}`}
-                                    , {clienteSelecionado.endereco?.bairro}, {clienteSelecionado.endereco?.localidade}/{clienteSelecionado.endereco?.uf}
-                                </p>
-                            </div>}
-                    </div>
+            {/* Pacote */}
+            <div className="bg-card rounded-lg border border-border p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Box className="w-5 h-5 text-primary" />
+                <h3 className="text-sm font-semibold text-primary uppercase tracking-wide">Informações do pacote</h3>
+              </div>
 
-                    {/* Seção Informações do Pacote */}
-                    <div className="bg-card border border-border rounded-lg p-6">
-                        <div className="flex items-center gap-2 mb-4">
-                            <Package2 className="w-5 h-5 text-primary" />
-                            <h2 className="text-lg font-semibold text-primary uppercase">Informações do pacote</h2>
-                        </div>
-                        <div className="space-y-4">
-                            
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div>
-                                    <label className="text-sm font-medium text-foreground mb-2 block">Peso (g)</label>
-                                    <div className="relative">
-                                        <input type="number" {...register('embalagem.peso')} onChange={e => {
-                    const peso = Number(e.target.value);
-                    setValue('embalagem.peso', peso, {
-                      shouldValidate: true,
-                      shouldDirty: true,
-                      shouldTouch: true
-                    });
-                    setSelectedEmbalagem({
-                      ...selectedEmbalagem,
-                      peso
-                    } as IEmbalagem);
-                  }} className={`w-full h-11 px-4 pr-10 bg-background border rounded-lg text-foreground focus:outline-none focus:ring-2 transition-colors ${errors.embalagem?.peso ? 'border-destructive focus:ring-destructive' : watch('embalagem.peso') && !errors.embalagem?.peso ? 'border-green-500 focus:ring-green-500' : 'border-input focus:ring-ring'}`} placeholder="100" />
-                                        {watch('embalagem.peso') && <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                                {errors.embalagem?.peso ? <AlertCircle className="w-5 h-5 text-destructive" /> : <CheckCircle className="w-5 h-5 text-green-500" />}
-                                            </div>}
-                                    </div>
-                                    {errors.embalagem?.peso && <span className="text-xs text-destructive mt-1 flex items-center gap-1">
-                                            <AlertCircle className="w-3 h-3" />
-                                            {errors.embalagem.peso.message}
-                                        </span>}
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium text-foreground mb-2 block">Altura (cm)</label>
-                                    <div className="relative">
-                                        <input type="number" {...register('embalagem.altura')} onChange={e => {
-                    const altura = Number(e.target.value);
-                    setValue('embalagem.altura', altura, {
-                      shouldValidate: true,
-                      shouldDirty: true,
-                      shouldTouch: true
-                    });
-                    setSelectedEmbalagem({
-                      ...selectedEmbalagem,
-                      altura
-                    } as IEmbalagem);
-                  }} className={`w-full h-11 px-4 pr-10 bg-background border rounded-lg text-foreground focus:outline-none focus:ring-2 transition-colors ${errors.embalagem?.altura ? 'border-destructive focus:ring-destructive' : watch('embalagem.altura') && !errors.embalagem?.altura ? 'border-green-500 focus:ring-green-500' : 'border-input focus:ring-ring'}`} placeholder="10" />
-                                        {watch('embalagem.altura') && <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                                {errors.embalagem?.altura ? <AlertCircle className="w-5 h-5 text-destructive" /> : <CheckCircle className="w-5 h-5 text-green-500" />}
-                                            </div>}
-                                    </div>
-                                    {errors.embalagem?.altura && <span className="text-xs text-destructive mt-1 flex items-center gap-1">
-                                            <AlertCircle className="w-3 h-3" />
-                                            {errors.embalagem.altura.message}
-                                        </span>}
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium text-foreground mb-2 block">Largura (cm)</label>
-                                    <div className="relative">
-                                        <input type="number" {...register('embalagem.largura')} onChange={e => {
-                    const largura = Number(e.target.value);
-                    setValue('embalagem.largura', largura, {
-                      shouldValidate: true,
-                      shouldDirty: true,
-                      shouldTouch: true
-                    });
-                    setSelectedEmbalagem({
-                      ...selectedEmbalagem,
-                      largura
-                    } as IEmbalagem);
-                  }} className={`w-full h-11 px-4 pr-10 bg-background border rounded-lg text-foreground focus:outline-none focus:ring-2 transition-colors ${errors.embalagem?.largura ? 'border-destructive focus:ring-destructive' : watch('embalagem.largura') && !errors.embalagem?.largura ? 'border-green-500 focus:ring-green-500' : 'border-input focus:ring-ring'}`} placeholder="15" />
-                                        {watch('embalagem.largura') && <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                                {errors.embalagem?.largura ? <AlertCircle className="w-5 h-5 text-destructive" /> : <CheckCircle className="w-5 h-5 text-green-500" />}
-                                            </div>}
-                                    </div>
-                                    {errors.embalagem?.largura && <span className="text-xs text-destructive mt-1 flex items-center gap-1">
-                                            <AlertCircle className="w-3 h-3" />
-                                            {errors.embalagem.largura.message}
-                                        </span>}
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium text-foreground mb-2 block">Comprimento (cm)</label>
-                                    <div className="relative">
-                                        <input type="number" {...register('embalagem.comprimento')} onChange={e => {
-                    const comprimento = Number(e.target.value);
-                    setValue('embalagem.comprimento', comprimento, {
-                      shouldValidate: true,
-                      shouldDirty: true,
-                      shouldTouch: true
-                    });
-                    setSelectedEmbalagem({
-                      ...selectedEmbalagem,
-                      comprimento
-                    } as IEmbalagem);
-                  }} className={`w-full h-11 px-4 pr-10 bg-background border rounded-lg text-foreground focus:outline-none focus:ring-2 transition-colors ${errors.embalagem?.comprimento ? 'border-destructive focus:ring-destructive' : watch('embalagem.comprimento') && !errors.embalagem?.comprimento ? 'border-green-500 focus:ring-green-500' : 'border-input focus:ring-ring'}`} placeholder="20" />
-                                        {watch('embalagem.comprimento') && <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                                {errors.embalagem?.comprimento ? <AlertCircle className="w-5 h-5 text-destructive" /> : <CheckCircle className="w-5 h-5 text-green-500" />}
-                                            </div>}
-                                    </div>
-                                    {errors.embalagem?.comprimento && <span className="text-xs text-destructive mt-1 flex items-center gap-1">
-                                            <AlertCircle className="w-3 h-3" />
-                                            {errors.embalagem.comprimento.message}
-                                        </span>}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Formato</label>
+                  <select className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+                    <option>Caixa / Pacote</option>
+                    <option>Envelope</option>
+                    <option>Rolo / Cilindro</option>
+                  </select>
+                </div>
 
-                    {/* Seção Destino */}
-                    <div className="bg-card border border-border rounded-lg p-6">
-                        <div className="flex items-center gap-2 mb-4">
-                            <MapPin className="w-5 h-5 text-primary" />
-                            <h2 className="text-lg font-semibold text-primary uppercase">Informe o destino</h2>
-                        </div>
-                        <div className="space-y-4">
-                            <div className="mb-4">
-                                <AutocompleteDestinatario onSelect={handleSelecionaDestinatario} />
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <InputLabel labelTitulo="Nome do destinatário" {...register('destinatario.nome')} fieldError={errors.destinatario?.nome?.message} placeholder="Nome completo" />
-                                <InputLabel labelTitulo="CPF/CNPJ" {...register('destinatario.cpfCnpj', {
-                onChange: e => setValue('destinatario.cpfCnpj', formatCpfCnpj(e.target.value))
-              })} fieldError={errors.destinatario?.cpfCnpj?.message} placeholder="000.000.000-00" />
-                                <InputLabel labelTitulo="Telefone" {...register('destinatario.celular', {
-                onChange: e => setValue('destinatario.celular', formatTelefone(e.target.value))
-              })} fieldError={errors.destinatario?.celular?.message} placeholder="(11) 99999-9999" />
-                                <InputLabel labelTitulo="CEP" {...register('destinatario.endereco.cep', {
-                onChange: async e => {
-                  const cep = formatCep(e.target.value);
-                  setValue('destinatario.endereco.cep', cep);
-                  if (cep.replace(/\D/g, '').length === 8) {
-                    const responseAddress = await onBuscaCep(cep, setIsLoading);
-                    if (responseAddress) {
-                      setValue('destinatario.endereco.logradouro', responseAddress.logradouro);
-                      setValue('destinatario.endereco.bairro', responseAddress.bairro);
-                      setValue('destinatario.endereco.localidade', responseAddress.localidade);
-                      setValue('destinatario.endereco.uf', responseAddress.uf);
-                      setFocus('destinatario.endereco.numero');
-                    }
-                  }
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">Peso (g)</label>
+                    <input
+                      type="number"
+                      {...register('embalagem.peso')}
+                      placeholder="100"
+                      className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    {errors.embalagem?.peso && (
+                      <p className="text-xs text-destructive mt-1">{errors.embalagem.peso.message}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">Altura (cm)</label>
+                    <input
+                      type="number"
+                      {...register('embalagem.altura')}
+                      placeholder="10"
+                      className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    {errors.embalagem?.altura && (
+                      <p className="text-xs text-destructive mt-1">{errors.embalagem.altura.message}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">Largura (cm)</label>
+                    <input
+                      type="number"
+                      {...register('embalagem.largura')}
+                      placeholder="15"
+                      className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    {errors.embalagem?.largura && (
+                      <p className="text-xs text-destructive mt-1">{errors.embalagem.largura.message}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">Comprimento (cm)</label>
+                    <input
+                      type="number"
+                      {...register('embalagem.comprimento')}
+                      placeholder="20"
+                      className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    {errors.embalagem?.comprimento && (
+                      <p className="text-xs text-destructive mt-1">{errors.embalagem.comprimento.message}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Destino */}
+            <div className="bg-card rounded-lg border border-border p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <MapPin className="w-5 h-5 text-primary" />
+                <h3 className="text-sm font-semibold text-primary uppercase tracking-wide">Informe o destino</h3>
+              </div>
+
+              <div className="space-y-4">
+                <div className="mb-4">
+                  <AutocompleteDestinatario onSelect={handleSelecionaDestinatario} />
+                </div>
+
+                <InputWithValidation
+                  label="Nome do destinatário"
+                  placeholder="Nome completo"
+                  {...register('destinatario.nome')}
+                  error={errors.destinatario?.nome?.message}
+                  value={watch('destinatario.nome')}
+                />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <InputWithValidation
+                    label="CPF/CNPJ"
+                    placeholder="000.000.000-00"
+                    {...register('destinatario.cpfCnpj')}
+                    error={errors.destinatario?.cpfCnpj?.message}
+                    value={watch('destinatario.cpfCnpj')}
+                    onChange={(e) => setValue('destinatario.cpfCnpj', formatCpfCnpj(e.target.value))}
+                  />
+
+                  <InputWithValidation
+                    label="Telefone"
+                    placeholder="(11) 99999-9999"
+                    {...register('destinatario.celular')}
+                    error={errors.destinatario?.celular?.message}
+                    value={watch('destinatario.celular')}
+                    onChange={(e) => setValue('destinatario.celular', formatTelefone(e.target.value))}
+                  />
+                </div>
+
+                <InputWithValidation
+                  label="CEP"
+                  placeholder="00000-000"
+                  {...register('destinatario.endereco.cep')}
+                  error={errors.destinatario?.endereco?.cep?.message}
+                  value={watch('destinatario.endereco.cep')}
+                  onChange={(e) => {
+                    const formatted = formatCep(e.target.value);
+                    setValue('destinatario.endereco.cep', formatted);
+                    handleBuscarCep(formatted);
+                  }}
+                />
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="md:col-span-2">
+                    <InputWithValidation
+                      label="Rua"
+                      placeholder="Nome da rua"
+                      {...register('destinatario.endereco.logradouro')}
+                      error={errors.destinatario?.endereco?.logradouro?.message}
+                      value={watch('destinatario.endereco.logradouro')}
+                    />
+                  </div>
+                  <InputWithValidation
+                    label="Número"
+                    placeholder="123"
+                    {...register('destinatario.endereco.numero')}
+                    error={errors.destinatario?.endereco?.numero?.message}
+                    value={watch('destinatario.endereco.numero')}
+                  />
+                </div>
+
+                <InputWithValidation
+                  label="Complemento"
+                  placeholder="Apto, bloco, etc"
+                  {...register('destinatario.endereco.complemento')}
+                  value={watch('destinatario.endereco.complemento')}
+                />
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <InputWithValidation
+                    label="Bairro"
+                    placeholder="Nome do bairro"
+                    {...register('destinatario.endereco.bairro')}
+                    error={errors.destinatario?.endereco?.bairro?.message}
+                    value={watch('destinatario.endereco.bairro')}
+                  />
+
+                  <InputWithValidation
+                    label="Cidade"
+                    placeholder="Nome da cidade"
+                    {...register('destinatario.endereco.localidade')}
+                    error={errors.destinatario?.endereco?.localidade?.message}
+                    value={watch('destinatario.endereco.localidade')}
+                  />
+
+                  <InputWithValidation
+                    label="UF"
+                    placeholder="SP"
+                    {...register('destinatario.endereco.uf')}
+                    error={errors.destinatario?.endereco?.uf?.message}
+                    value={watch('destinatario.endereco.uf')}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Valor Declarado */}
+            <div className="bg-card rounded-lg border border-border p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <DollarSign className="w-5 h-5 text-primary" />
+                <h3 className="text-sm font-semibold text-primary uppercase tracking-wide">Valor declarado</h3>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Valor do conteúdo</label>
+                  <input
+                    type="text"
+                    value={valorDeclarado}
+                    onChange={(e) => setValorDeclarado(e.target.value)}
+                    placeholder="R$ 0,00"
+                    className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Valor declarado para fins de seguro</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Botão Calcular Frete */}
+            <div className="flex justify-end">
+              <button 
+                type="button" 
+                onClick={handleCalcularFrete}
+                disabled={
+                  !clienteSelecionado || 
+                  !watch('destinatario.endereco.cep') ||
+                  (!watch('embalagem.peso') || !watch('embalagem.altura') || !watch('embalagem.largura') || !watch('embalagem.comprimento'))
                 }
-              })} fieldError={errors.destinatario?.endereco?.cep?.message} placeholder="00000-000" />
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="md:col-span-2">
-                                    <InputLabel labelTitulo="Rua" {...register('destinatario.endereco.logradouro')} fieldError={errors.destinatario?.endereco?.logradouro?.message} placeholder="Nome da rua" />
-                                </div>
-                                <InputLabel labelTitulo="Número" {...register('destinatario.endereco.numero')} fieldError={errors.destinatario?.endereco?.numero?.message} placeholder="123" />
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <InputLabel labelTitulo="Complemento" {...register('destinatario.endereco.complemento')} placeholder="Apto, Bloco, etc" />
-                                <InputLabel labelTitulo="Bairro" {...register('destinatario.endereco.bairro')} fieldError={errors.destinatario?.endereco?.bairro?.message} placeholder="Nome do bairro" />
-                                <div className="grid grid-cols-2 gap-4">
-                                    <InputLabel labelTitulo="Cidade" {...register('destinatario.endereco.localidade')} fieldError={errors.destinatario?.endereco?.localidade?.message} placeholder="Cidade" />
-                                    <InputLabel labelTitulo="UF" {...register('destinatario.endereco.uf')} fieldError={errors.destinatario?.endereco?.uf?.message} placeholder="SP" maxLength={2} />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                className="px-6 py-2 bg-primary text-primary-foreground rounded-md font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Calcular Frete
+              </button>
+            </div>
 
-                    {/* Seção Valor Declarado */}
-                    <div className="bg-card border border-border rounded-lg p-6">
-                        <div className="flex items-center gap-2 mb-4">
-                            <DollarSign className="w-5 h-5 text-primary" />
-                            <h2 className="text-lg font-semibold text-primary uppercase">Valor declarado</h2>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="text-sm font-medium text-foreground mb-2 block">Valor do conteúdo</label>
-                                <input type="text" onChange={e => {
-                const valor = formatCurrency(e.target.value);
-                setValorDeclarado(valor);
-              }} className="w-full h-11 px-4 bg-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring" placeholder="R$ 0,00" />
-                                <p className="text-xs text-muted-foreground mt-1">Valor declarado para fins de seguro</p>
-                            </div>
-                            <div className="flex items-end">
-                                <button 
-                                    type="button" 
-                                    onClick={handleCalcularFrete}
-                                    disabled={
-                                        !clienteSelecionado || 
-                                        !watch('destinatario.endereco.cep') ||
-                                        (!selectedEmbalagem && (!watch('embalagem.peso') || !watch('embalagem.altura') || !watch('embalagem.largura') || !watch('embalagem.comprimento')))
-                                    }
-                                    className="w-full h-11 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                                >
-                                    <Box className="w-5 h-5" />
-                                    Calcular Frete
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+            {/* Lista de Cotações */}
+            {cotacoes && cotacoes.length > 0 && (
+              <div className="bg-card rounded-lg border border-border p-6">
+                <h3 className="text-lg font-semibold text-foreground mb-4">Escolha uma opção de frete</h3>
+                <ListaFretesDisponiveis
+                  data={cotacoes}
+                  selected={cotacaoSelecionado || null}
+                  onSelected={(cotacao: ICotacaoMinimaResponse) => {
+                    setCotacaoSelecionado(cotacao);
+                    toast.success('Frete selecionado!');
+                  }}
+                />
+              </div>
+            )}
 
-                    {/* Lista de Fretes */}
-                    {cotacoes && cotacoes.length > 0 && <div className="bg-card border border-border rounded-lg p-6">
-                            <h2 className="text-lg font-semibold text-foreground mb-4">Opções de frete</h2>
-                            <ListaFretesDisponiveis onSelected={cotacao => {
-            setCotacaoSelecionado(cotacao);
-          }} data={cotacoes || []} selected={cotacaoSelecionado || null} isLoading={isLoadingCotacao} />
-                        </div>}
-
-                    {/* Botões de Ação */}
-                    <div className="flex gap-4 justify-end pt-6">
-                        <button type="button" onClick={() => navigate('/app/emissao')} className="px-6 py-3 border border-border rounded-lg text-foreground font-medium hover:bg-accent transition-colors flex items-center gap-2">
-                            <X className="w-5 h-5" />
-                            Cancelar
-                        </button>
-                        <button type="submit" disabled={!cotacaoSelecionado} className="px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
-                            <Save className="w-5 h-5" />
-                            Criar etiqueta
-                        </button>
-                    </div>
-                </form>
-            </FormProvider>
-        </div>;
+            {/* Botões de Ação */}
+            <div className="flex justify-end gap-3 pt-6">
+              <button
+                type="button"
+                onClick={() => navigate('/app/emissao')}
+                className="px-6 py-2 border border-border text-foreground rounded-md font-medium hover:bg-muted transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={isLoading || !cotacaoSelecionado}
+                className="px-6 py-2 bg-primary text-primary-foreground rounded-md font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? 'Criando...' : 'Criar etiqueta'}
+              </button>
+            </div>
+          </form>
+        </FormProvider>
+      </div>
+    </div>
+  );
 };
+
 export default FormularioEmissaoNovo;
