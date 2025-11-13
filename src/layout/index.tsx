@@ -15,7 +15,7 @@ export const LayoutBase = () => {
     };
 
     return (
-        <div className="flex h-screen bg-gray-50 dark:bg-slate-900">
+        <div className="flex h-screen w-full bg-background">
             {/* Sidebar */}
             <AppSidebar isOpen={sidebarOpen} onClose={closeSidebar} />
 
@@ -25,8 +25,10 @@ export const LayoutBase = () => {
                 <AppTopbar toggleSidebar={toggleSidebar} />
 
                 {/* Page content */}
-                <main className="flex-1 mt-20 sm:mt-0 overflow-x-hidden overflow-y-auto bg-gray-50 dark:bg-slate-900 p-6">
-                    <Outlet />
+                <main className="flex-1 mt-20 sm:mt-0 overflow-x-hidden overflow-y-auto bg-background p-4 sm:p-6 lg:p-8">
+                    <div className="max-w-7xl mx-auto">
+                        <Outlet />
+                    </div>
                 </main>
             </div>
         </div>
