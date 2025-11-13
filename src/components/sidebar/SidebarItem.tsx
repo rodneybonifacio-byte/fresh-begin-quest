@@ -28,7 +28,7 @@ export const SidebarItem: React.FC<SidebarItemProps & {
         const hasSubmenu = submenu && submenu.length > 0;
 
         const content = (
-            <div className={`flex items-center p-3 mx-2 rounded-md hover:bg-primary/10 dark:hover:bg-white/10 transition-colors ${active ? 'bg-primary/10 dark:bg-white/10 font-medium text-primary dark:text-white' : 'text-gray-700 dark:text-slate-300'
+            <div className={`flex items-center p-3 mx-2 rounded-md hover:bg-accent transition-colors cursor-pointer ${active ? 'bg-accent text-primary font-medium' : 'text-muted-foreground'
                 }`}>
                 <Icon className="w-5 h-5" />
                 {/* Desktop: mostra texto quando isSidebarOpen é true, Mobile: sempre mostra */}
@@ -36,7 +36,7 @@ export const SidebarItem: React.FC<SidebarItemProps & {
                     {label}
                 </span>
                 {hasSubmenu && (
-                    <div className={`lg:${isSidebarOpen ? 'block' : 'hidden'} text-gray-500 dark:text-slate-400`}>
+                    <div className={`lg:${isSidebarOpen ? 'block' : 'hidden'} text-muted-foreground`}>
                         {isSubmenuOpen ? (
                             <ChevronDown className="w-4 h-4" />
                         ) : (
@@ -88,8 +88,8 @@ export const SidebarItem: React.FC<SidebarItemProps & {
                                                 <Link
                                                     to={item.to}
                                                     className={`flex items-center px-3 py-2 text-sm rounded-md transition-colors ${item.active
-                                                        ? 'bg-primary/10 dark:bg-white/10 text-primary dark:text-white'
-                                                        : 'text-gray-600 dark:text-slate-400 hover:bg-primary/5 dark:hover:bg-white/5 hover:text-primary dark:hover:text-white'
+                                                        ? 'bg-accent text-primary'
+                                                        : 'text-muted-foreground hover:bg-accent'
                                                         }`}
                                                 >
                                                     <item.icon className="w-4 h-4 mr-3" />
@@ -99,8 +99,8 @@ export const SidebarItem: React.FC<SidebarItemProps & {
                                                 <a
                                                     href="#"
                                                     className={`flex items-center px-3 py-2 text-sm rounded-md transition-colors ${item.active
-                                                        ? 'bg-primary/10 dark:bg-white/10 text-primary dark:text-white'
-                                                        : 'text-gray-600 dark:text-slate-400 hover:bg-primary/5 dark:hover:bg-white/5 hover:text-primary dark:hover:text-white'
+                                                        ? 'bg-accent text-primary'
+                                                        : 'text-muted-foreground hover:bg-accent'
                                                         }`}
                                                     onClick={(e) => {
                                                         e.preventDefault();

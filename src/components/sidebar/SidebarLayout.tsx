@@ -49,26 +49,26 @@ export const SidebarLayout: React.FC<Props> = ({ navItems, isOpen, onClose, onNa
             {sidebarOpen && <div className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden" onClick={onClose} />}
 
             <aside
-                className={`fixed lg:relative z-50 h-screen bg-white dark:bg-slate-900 text-gray-900 dark:text-white border-r border-gray-200 dark:border-slate-700 transition-all duration-300 overflow-hidden
+                className={`fixed lg:relative z-50 h-screen bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-300 overflow-hidden
                     ${isSidebarOpen ? 'lg:w-64' : 'lg:w-20'}
                     ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} w-64`}
             >
                 <div className="flex flex-col h-full">
-                    <div className="flex items-center justify-between p-4 min-h-[72px] border-b border-gray-200 dark:border-slate-700">
+                    <div className="flex items-center justify-between p-4 min-h-[72px] border-b border-sidebar-border">
                         <div className={`flex items-center space-x-2 ${isSidebarOpen ? 'lg:block' : 'lg:hidden'}`}>
                             <IconFavicon light title={title}/>
                         </div>
 
                         <button
                             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                            className="p-1 rounded-md hover:bg-primary/10 dark:hover:bg-primary-dark/10 text-primary dark:text-primary-dark hidden lg:block"
+                            className="p-1 rounded-md hover:bg-accent text-primary hidden lg:block"
                         >
                             {isSidebarOpen ? <ChevronFirst className="w-5 h-5" /> : <ChevronLast className="w-5 h-5" />}
                         </button>
 
                         <button
                             onClick={onClose}
-                            className="p-1 rounded-md hover:bg-primary/10 dark:hover:bg-primary-dark/10 text-primary dark:text-primary-dark lg:hidden"
+                            className="p-1 rounded-md hover:bg-accent text-primary lg:hidden"
                         >
                             <ChevronFirst className="w-5 h-5" />
                         </button>

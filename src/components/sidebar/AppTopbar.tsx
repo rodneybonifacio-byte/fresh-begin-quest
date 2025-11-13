@@ -29,43 +29,43 @@ const AppTopbar = observer(({ toggleSidebar }: { toggleSidebar: () => void }) =>
     };
 
     return (
-        <header className="fixed lg:relative top-0 left-0 right-0 z-40 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700">
-            <div className="flex items-center justify-between p-4 min-h-[72px]">
-                {/* Left side - menu button and breadcrumb */}
+        <header className="sticky top-0 z-40 bg-background border-b border-border">
+            <div className="flex items-center justify-between px-4 py-3 sm:px-6">
+                {/* Left side - menu button and logo on mobile */}
                 <div className="flex items-center space-x-4">
                     <button
                         onClick={toggleSidebar}
-                        className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-slate-800 lg:hidden"
+                        className="p-2 rounded-md hover:bg-accent lg:hidden"
                     >
-                        <Menu className="w-5 h-5 text-gray-700 dark:text-slate-300" />
+                        <Menu className="w-5 h-5 text-foreground" />
                     </button>
 
-                    <div className="hidden md:flex items-center space-x-1 text-sm text-gray-600 dark:text-slate-400">
+                    <div className="flex lg:hidden items-center">
                        <LogoApp className="h-6 w-auto" light/>
                     </div>
                 </div>
 
                 {/* Right side - search, theme toggle and user */}
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2 sm:space-x-4">
                     <div className="relative hidden md:block">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-slate-500" />
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <input
                             type="text"
-                            placeholder="Buscar manifestos, usuários..."
-                            className="pl-10 pr-4 py-2 rounded-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Buscar..."
+                            className="pl-10 pr-4 py-2 rounded-md border border-input bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring w-64"
                         />
                     </div>
 
                     {/* Theme toggle button */}
                     <button
                         onClick={toggleTheme}
-                        className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+                        className="p-2 rounded-full hover:bg-accent transition-colors"
                         title={theme === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
                     >
                         {theme === 'dark' ? (
-                            <Sun className="w-5 h-5 text-yellow-500" />
+                            <Sun className="w-5 h-5 text-primary" />
                         ) : (
-                            <Moon className="w-5 h-5 text-gray-600" />
+                            <Moon className="w-5 h-5 text-muted-foreground" />
                         )}
                     </button>
 
@@ -74,7 +74,7 @@ const AppTopbar = observer(({ toggleSidebar }: { toggleSidebar: () => void }) =>
                         <div 
                             ref={profileButtonRef}
                             onClick={() => setShowProfilePopover(!showProfilePopover)}
-                            className="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg p-2 transition-colors"
+                            className="flex items-center space-x-2 cursor-pointer hover:bg-accent rounded-lg p-2 transition-colors"
                         >
                             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
                                 <span className="text-sm font-bold text-white">{userInfo.avatar}</span>
