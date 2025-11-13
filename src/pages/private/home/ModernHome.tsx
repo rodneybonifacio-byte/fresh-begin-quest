@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Package, Truck, DollarSign, Clock, Plus } from "lucide-react";
 import { useCotacao } from "../../../hooks/useCotacao";
 import { useNavigate } from "react-router-dom";
+import { BlackFridayBanner } from "../../../components/BlackFridayBanner";
 
 export const ModernHome = () => {
     const navigate = useNavigate();
@@ -68,6 +69,9 @@ export const ModernHome = () => {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background">
+            {/* Black Friday Banner */}
+            <BlackFridayBanner />
+            
             {/* Hero Section */}
             <div className="container mx-auto px-4 py-12">
                 <div className="grid lg:grid-cols-2 gap-12 items-center mb-16">
