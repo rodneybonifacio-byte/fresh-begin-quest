@@ -89,34 +89,34 @@ export const SidebarLayout: React.FC<Props> = ({ navItems, isOpen, onClose, onNa
                         </ul>
                     </nav>
 
-                    <div className="p-4 border-t border-gray-200 dark:border-slate-700">
+                    <div className="p-4 border-t border-sidebar-border">
                         <div className="relative">
                             <div
                                 ref={accountButtonRef}
                                 onClick={() => setShowAccountPopover(!showAccountPopover)}
-                                className="flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800 rounded-lg p-2 transition-colors"
+                                className="flex items-center justify-between cursor-pointer hover:bg-sidebar-accent rounded-lg p-2 transition-all duration-200 hover-scale"
                             >
                                 <div className="flex items-center space-x-3">
-                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary dark:from-primary-dark dark:to-secondary-dark flex items-center justify-center relative">
+                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-orange-600 flex items-center justify-center relative">
                                         <span className="text-sm font-bold text-white">{avatar}</span>
-                                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white dark:border-slate-900 rounded-full"></div>
+                                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-sidebar rounded-full"></div>
                                         {isAdmin && (
                                             <div
-                                                className="absolute -top-0.5 -left-0.5 w-3 h-3 bg-purple-500 border-2 border-white dark:border-slate-900 rounded-full"
+                                                className="absolute -top-0.5 -left-0.5 w-3 h-3 bg-purple-500 border-2 border-sidebar rounded-full"
                                                 title="Administrador"
                                             ></div>
                                         )}
                                     </div>
                                     <div className={`lg:${isSidebarOpen ? 'block' : 'hidden'}`}>
-                                        <div className="text-sm font-medium text-gray-900 dark:text-white">
+                                        <div className="text-sm font-medium text-sidebar-foreground">
                                             {userData?.name}
-                                            {isAdmin && <span className="ml-1 text-xs text-purple-600 dark:text-purple-400 font-normal">(Admin)</span>}
+                                            {isAdmin && <span className="ml-1 text-xs text-primary font-normal">(Admin)</span>}
                                         </div>
-                                        <div className="text-xs text-gray-500 dark:text-gray-400">{userData?.email}</div>
+                                        <div className="text-xs text-muted-foreground">{userData?.email}</div>
                                     </div>
                                 </div>
                                 <ArrowRightLeft
-                                    className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform ${showAccountPopover ? 'rotate-90' : ''} ${
+                                    className={`w-4 h-4 text-muted-foreground transition-transform ${showAccountPopover ? 'rotate-90' : ''} ${
                                         isSidebarOpen ? '' : 'lg:hidden'
                                     }`}
                                 />
@@ -126,47 +126,47 @@ export const SidebarLayout: React.FC<Props> = ({ navItems, isOpen, onClose, onNa
                             {showAccountPopover &&
                                 createPortal(
                                     <div
-                                        className="fixed bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-xl py-2 min-w-[280px] z-[70]"
+                                        className="fixed bg-card border border-border rounded-lg shadow-xl py-2 min-w-[280px] z-[70] animate-scale-in"
                                         style={{
                                             bottom: '80px',
                                             left: isSidebarOpen ? '20px' : '80px',
                                         }}
                                     >
                                         {/* Header */}
-                                        <div className="px-4 py-2 border-b border-gray-200 dark:border-slate-700">
-                                            <h3 className="text-sm font-medium text-gray-900 dark:text-white">Trocar Conta</h3>
-                                            <p className="text-xs text-gray-500 dark:text-slate-400">Selecione uma conta para conectar</p>
+                                        <div className="px-4 py-2 border-b border-border">
+                                            <h3 className="text-sm font-medium text-foreground">Trocar Conta</h3>
+                                            <p className="text-xs text-muted-foreground">Selecione uma conta para conectar</p>
                                         </div>
 
                                         {/* Conta atual */}
                                         <div className="py-2">
-                                            <div className="flex items-center space-x-3 px-4 py-3 bg-gray-50 dark:bg-slate-700">
-                                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary dark:from-primary-dark dark:to-secondary-dark flex items-center justify-center relative">
+                                            <div className="flex items-center space-x-3 px-4 py-3 bg-accent">
+                                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-orange-600 flex items-center justify-center relative">
                                                     <span className="text-sm font-bold text-white">{avatar}</span>
-                                                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white dark:border-slate-900 rounded-full"></div>
+                                                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-sidebar rounded-full"></div>
                                                     {isAdmin && (
                                                         <div
-                                                            className="absolute -top-0.5 -left-0.5 w-3 h-3 bg-purple-500 border-2 border-white dark:border-slate-900 rounded-full"
+                                                            className="absolute -top-0.5 -left-0.5 w-3 h-3 bg-purple-500 border-2 border-sidebar rounded-full"
                                                             title="Administrador"
                                                         ></div>
                                                     )}
                                                 </div>
                                                 <div className="flex-1">
-                                                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                                                    <div className="text-sm font-medium text-foreground">
                                                         {userData?.name}
                                                         {isAdmin && (
-                                                            <span className="ml-1 text-xs text-purple-600 dark:text-purple-400 font-normal">(Admin)</span>
+                                                            <span className="ml-1 text-xs text-primary font-normal">(Admin)</span>
                                                         )}
                                                     </div>
-                                                    <div className="text-xs text-gray-500 dark:text-slate-400">{userData?.email}</div>
+                                                    <div className="text-xs text-muted-foreground">{userData?.email}</div>
                                                 </div>
                                             </div>
                                         </div>
 
                                         {/* Adicionar conta */}
-                                        <div className="py-2 border-t border-gray-200 dark:border-slate-700">
+                                        <div className="py-2 border-t border-border">
                                             <button
-                                                className="w-full flex items-center space-x-3 px-4 py-2 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors text-blue-600 dark:text-blue-400"
+                                                className="w-full flex items-center space-x-3 px-4 py-2 hover:bg-accent transition-colors text-primary"
                                                 onClick={() => {
                                                     setShowAccountPopover(false);
                                                     navigate('/');
@@ -182,10 +182,10 @@ export const SidebarLayout: React.FC<Props> = ({ navItems, isOpen, onClose, onNa
 
                                         {/* Troca de painel - só aparece se for admin */}
                                         {isAdmin && (
-                                            <div className="py-2 border-t border-gray-200 dark:border-slate-700">
+                                            <div className="py-2 border-t border-border">
                                                 {isInClientPanel && (
                                                     <button
-                                                        className="w-full flex items-center space-x-3 px-4 py-2 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors text-purple-600 dark:text-purple-400"
+                                                        className="w-full flex items-center space-x-3 px-4 py-2 hover:bg-accent transition-colors text-primary"
                                                         onClick={() => {
                                                             setShowAccountPopover(false);
                                                             navigate('/admin');
@@ -201,7 +201,7 @@ export const SidebarLayout: React.FC<Props> = ({ navItems, isOpen, onClose, onNa
 
                                                 {isInAdminPanel && (
                                                     <button
-                                                        className="w-full flex items-center space-x-3 px-4 py-2 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors text-green-600 dark:text-green-400"
+                                                        className="w-full flex items-center space-x-3 px-4 py-2 hover:bg-accent transition-colors text-primary"
                                                         onClick={() => {
                                                             setShowAccountPopover(false);
                                                             navigate('/app');
@@ -218,9 +218,9 @@ export const SidebarLayout: React.FC<Props> = ({ navItems, isOpen, onClose, onNa
                                         )}
 
                                         {/* Logout */}
-                                        <div className="border-t border-gray-200 dark:border-slate-700 pt-2">
+                                        <div className="border-t border-border pt-2">
                                             <button
-                                                className="w-full flex items-center space-x-3 px-4 py-2 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors text-red-600 dark:text-red-400"
+                                                className="w-full flex items-center space-x-3 px-4 py-2 hover:bg-accent transition-colors text-destructive"
                                                 onClick={handleLogout}
                                             >
                                                 <LogOut className="w-4 h-4" />
