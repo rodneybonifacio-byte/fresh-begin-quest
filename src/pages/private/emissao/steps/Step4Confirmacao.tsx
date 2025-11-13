@@ -5,6 +5,7 @@ import { FormCard } from '../../../../components/FormCard';
 import { ButtonComponent } from '../../../../components/button';
 import { useEmissao } from '../../../../hooks/useEmissao';
 import type { IEmissao } from '../../../../types/IEmissao';
+import type { IEmbalagem } from '../../../../types/IEmbalagem';
 import { formatNumberString } from '../../../../utils/formatCurrency';
 import { toast } from 'sonner';
 
@@ -24,20 +25,33 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
   const onSubmit = async (data: any) => {
     try {
       setIsSubmitting(true);
+      
+      const embalagem: IEmbalagem = {
+        ...selectedEmbalagem,
+        altura: Number(data.embalagem.altura),
+        largura: Number(data.embalagem.largura),
+        comprimento: Number(data.embalagem.comprimento),
+        peso: Number(data.embalagem.peso),
+        diametro: 0,
+      };
+
       const emissao: IEmissao = {
         remetenteId: data.remetenteId,
         cienteObjetoNaoProibido: true,
-        embalagem: { ...selectedEmbalagem, altura: Number(data.embalagem.altura), largura: Number(data.embalagem.largura), comprimento: Number(data.embalagem.comprimento), peso: Number(data.embalagem.peso), diametro: 0 },
+        embalagem: embalagem,
         cotacao: cotacaoSelecionado,
         logisticaReversa: 'N',
         valorDeclarado: Number(formatNumberString('0')),
         valorNotaFiscal: Number(formatNumberString('0')),
         itensDeclaracaoConteudo: [],
+        destinatario: data.destinatario,
       };
+      
       await onEmissaoCadastro(emissao, setIsSubmitting);
-      toast.success('Etiqueta gerada!');
+      toast.success('Etiqueta gerada com sucesso!');
       onSuccess();
     } catch (error) {
+      console.error('Erro ao gerar etiqueta:', error);
       toast.error('Erro ao gerar etiqueta');
     } finally {
       setIsSubmitting(false);

@@ -1,19 +1,125 @@
-import { useState } from "react";
-import { Package, MapPin, Truck, CreditCard, CheckCircle2, ArrowLeft, ArrowRight } from "lucide-react";
-import FormularioEmissao from "./FormularioEmissao";
+import { useState, useEffect } from "react";
+import { Package, MapPin, Truck, CheckCircle2 } from "lucide-react";
+import { FormProvider, useForm } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
+import { useAuth } from '../../../providers/AuthContext';
+import { useCliente } from '../../../hooks/useCliente';
+import { useRemetentes } from '../../../hooks/useRemetente';
+import type { ICotacaoMinimaResponse } from '../../../types/ICotacao';
+import type { IDestinatario } from '../../../types/IDestinatario';
+import type { IEmbalagem } from '../../../types/IEmbalagem';
+import { Step1Dimensoes } from './steps/Step1Dimensoes';
+import { Step2Destinatario } from './steps/Step2Destinatario';
+import { Step3Frete } from './steps/Step3Frete';
+import { Step4Confirmacao } from './steps/Step4Confirmacao';
+import { useNavigate } from 'react-router-dom';
+
+const createValidationSchema = () => {
+    return yup.object().shape({
+        nomeRemetente: yup.string().required('O nome do remetente é obrigatório'),
+        remetenteId: yup.string().required('O remetente é obrigatório'),
+        embalagem: yup.object().shape({
+            altura: yup.number().typeError('A altura deve ser um número').required('A altura é obrigatória'),
+            comprimento: yup.number().typeError('O comprimento deve ser um número').required('O comprimento é obrigatório'),
+            largura: yup.number().typeError('A largura deve ser um número').required('A largura é obrigatória'),
+            peso: yup.number().typeError('O peso deve ser um número').required('O peso é obrigatório'),
+        }),
+        destinatario: yup.object().shape({
+            nome: yup.string().required('O nome é obrigatório'),
+            cpfCnpj: yup.string().required('O CPF/CNPJ é obrigatório'),
+            celular: yup.string().required('O celular é obrigatório'),
+            endereco: yup.object().shape({
+                cep: yup.string().required('O CEP é obrigatório'),
+                logradouro: yup.string().required('O logradouro é obrigatório'),
+                numero: yup.string().required('O número é obrigatório'),
+                bairro: yup.string().required('O bairro é obrigatório'),
+                localidade: yup.string().required('A cidade é obrigatória'),
+                uf: yup.string().required('O estado é obrigatório'),
+            }),
+        }),
+        cotacao: yup.object().shape({
+            codigoServico: yup.string().required('Selecione um serviço de frete'),
+        }),
+    });
+};
 
 export const ModernEmissaoWrapper = () => {
+    const navigate = useNavigate();
     const [currentStep, setCurrentStep] = useState(0);
+    const [selectedEmbalagem, setSelectedEmbalagem] = useState<IEmbalagem | undefined>();
+    const [clienteSelecionado, setClienteSelecionado] = useState<any>();
+    const [destinatarioSelecionado, setDestinatarioSelecionado] = useState<IDestinatario | undefined>();
+    const [cotacaoSelecionado, setCotacaoSelecionado] = useState<ICotacaoMinimaResponse | undefined>();
+
+    const { user: userPayload } = useAuth();
+    const { data: cliente } = useCliente(userPayload?.clienteId || '');
+    const { data: remetentesResponse } = useRemetentes({
+        clienteId: userPayload?.clienteId || '',
+        page: 1,
+        perPage: 100,
+    });
+
+    const methods = useForm({
+        resolver: yupResolver(createValidationSchema()),
+        mode: 'onChange',
+        defaultValues: {
+            nomeRemetente: '',
+            remetenteId: '',
+            embalagem: {
+                altura: 0,
+                largura: 0,
+                comprimento: 0,
+                peso: 0,
+            },
+            destinatario: {
+                nome: '',
+                cpfCnpj: '',
+                celular: '',
+                endereco: {
+                    cep: '',
+                    logradouro: '',
+                    numero: '',
+                    bairro: '',
+                    localidade: '',
+                    uf: '',
+                },
+            },
+            cotacao: {
+                codigoServico: '',
+            },
+        },
+    });
+
+    useEffect(() => {
+        if (remetentesResponse?.data && cliente) {
+            const remetenteCompleto = remetentesResponse.data.find((remetente) => remetente.id === cliente.id);
+            if (remetenteCompleto) {
+                setClienteSelecionado(remetenteCompleto);
+                methods.setValue('nomeRemetente', remetenteCompleto.nome);
+                methods.setValue('remetenteId', remetenteCompleto.id);
+            } else {
+                setClienteSelecionado(cliente);
+                methods.setValue('nomeRemetente', cliente.nome);
+                methods.setValue('remetenteId', cliente.id);
+            }
+        }
+    }, [cliente, remetentesResponse]);
 
     const steps = [
-        { icon: Package, label: "Pacote", description: "Dimensões e peso" },
-        { icon: MapPin, label: "Destino", description: "Endereço de entrega" },
+        { icon: Package, label: "Dimensões", description: "Embalagem e peso" },
+        { icon: MapPin, label: "Destinatário", description: "Endereço de entrega" },
         { icon: Truck, label: "Frete", description: "Escolha o serviço" },
-        { icon: CreditCard, label: "Confirmar", description: "Revisar e emitir" },
+        { icon: CheckCircle2, label: "Confirmar", description: "Revisar e emitir" },
     ];
 
+    const handleSuccess = () => {
+        navigate('/app/emissao');
+    };
+
     return (
-        <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background">
+        <FormProvider {...methods}>
+            <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background">
             {/* Header com Progress Stepper */}
             <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-lg border-b border-border shadow-lg">
                 <div className="container mx-auto px-4 py-6">
@@ -124,36 +230,46 @@ export const ModernEmissaoWrapper = () => {
 
             {/* Main Content */}
             <div className="container mx-auto px-4 py-8">
-                <div className="max-w-5xl mx-auto">
-                    {/* Formulário com animação */}
-                    <div className="animate-fade-in">
-                        <FormularioEmissao />
-                    </div>
+                <div className="max-w-3xl mx-auto">
+                    {currentStep === 0 && (
+                        <Step1Dimensoes 
+                            onNext={() => setCurrentStep(1)}
+                            selectedEmbalagem={selectedEmbalagem}
+                            setSelectedEmbalagem={setSelectedEmbalagem}
+                            clienteSelecionado={clienteSelecionado}
+                            setClienteSelecionado={setClienteSelecionado}
+                        />
+                    )}
+                    {currentStep === 1 && (
+                        <Step2Destinatario 
+                            onNext={() => setCurrentStep(2)}
+                            onBack={() => setCurrentStep(0)}
+                            setDestinatarioSelecionado={setDestinatarioSelecionado}
+                        />
+                    )}
+                    {currentStep === 2 && (
+                        <Step3Frete 
+                            onNext={() => setCurrentStep(3)}
+                            onBack={() => setCurrentStep(1)}
+                            selectedEmbalagem={selectedEmbalagem}
+                            destinatarioSelecionado={destinatarioSelecionado}
+                            clienteSelecionado={clienteSelecionado}
+                            cotacaoSelecionado={cotacaoSelecionado}
+                            setCotacaoSelecionado={setCotacaoSelecionado}
+                        />
+                    )}
+                    {currentStep === 3 && (
+                        <Step4Confirmacao 
+                            onBack={() => setCurrentStep(2)}
+                            onSuccess={handleSuccess}
+                            cotacaoSelecionado={cotacaoSelecionado}
+                            selectedEmbalagem={selectedEmbalagem}
+                            clienteSelecionado={clienteSelecionado}
+                        />
+                    )}
                 </div>
             </div>
-
-            {/* Floating Action Buttons (Mobile Only) */}
-            <div className="lg:hidden fixed bottom-6 left-4 right-4 z-50 flex gap-3">
-                {currentStep > 0 && (
-                    <button
-                        onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
-                        className="flex-1 bg-card border-2 border-border text-foreground py-4 rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 flex items-center justify-center gap-2"
-                    >
-                        <ArrowLeft className="h-5 w-5" />
-                        Voltar
-                    </button>
-                )}
-                
-                {currentStep < steps.length - 1 && (
-                    <button
-                        onClick={() => setCurrentStep(Math.min(steps.length - 1, currentStep + 1))}
-                        className="flex-1 bg-primary text-white py-4 rounded-2xl font-bold shadow-xl shadow-primary/40 hover:shadow-2xl hover:shadow-primary/50 transition-all duration-300 hover:scale-105 flex items-center justify-center gap-2"
-                    >
-                        Próximo
-                        <ArrowRight className="h-5 w-5" />
-                    </button>
-                )}
-            </div>
         </div>
+        </FormProvider>
     );
 };
