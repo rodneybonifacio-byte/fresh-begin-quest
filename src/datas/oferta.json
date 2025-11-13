@@ -1,0 +1,95 @@
+{
+    "ofertas":[
+    {
+        "id": 1,
+        "title": "Volkswagen • Amarok",
+        "description": "2020 • 51.769km • Trendline CD Turbo",
+        "location": "Vila Andrade",
+        "images": [
+            { "image": "/images/car/car763x414Main.png" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" }
+        ],
+        "imageDestaque": "/images/car/car763x414Main.png",
+        "status": "Em Proposta"
+    },
+    {
+        "id": 2,
+        "title": "Hyundai • HB20",
+        "description": "2019 • 80.633km • Automático",
+        "location": "Morumbi",
+        "image": [
+            { "image": "/images/car/car763x414Main.png" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" }
+        ],
+        "imageDestaque": "/images/car/car763x414Main.png"
+    },
+    {
+        "id": 3,
+        "title": "Jeep • Renegade",
+        "description": "2020 • 46.506km • Automático",
+        "location": "Vila das Belezas",
+        "image": [
+            { "image": "/images/car/car763x414Main.png" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" }
+        ],
+        "imageDestaque": "/images/car/car763x414Main.png"
+    },
+    {
+        "id": 4,
+        "title": "Chevrolet • Cruze",
+        "description": "2021 • 34.707km • Automático",
+        "location": "Campo Limpo",
+        "images": [
+             { "image": "/images/car/car763x414Main.png" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" }
+        ],
+        "imageDestaque": "/images/car/car763x414Main.png"
+    },
+    {
+        "id": 5,
+        "title": "Ford • EcoSport",
+        "description": "2018 • 63.000km • Automático",
+        "location": "Campo Limpo",
+        "image": [
+             { "image": "/images/car/car763x414Main.png" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" },
+            { "image": "https://via.placeholder.com/763x414" }
+        ],
+        "imageDestaque": "/images/car/car763x414Main.png"
+    }
+]
+}

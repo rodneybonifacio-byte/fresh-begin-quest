@@ -1,27 +1,35 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
+import { BrowserRouter } from 'react-router-dom';
+import { LoaderProvider } from './providers/LoadingSpinnerContext';
+import { GlobalConfigProvider } from './providers/GlobalConfigContext';
+import { RouterBase } from './router';
+import { IdleProvider } from './providers/IdleProvider';
+import { InstallButton } from '../install-button';
+import { useEffect } from 'react';
+import Clarity from '@microsoft/clarity';
+import { useTheme } from './hooks/useTheme';
 
-const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+export default function App() {
+    // Inicializa o tema global
+    useTheme();
 
-export default App;
+    useEffect(() => {
+        // enviar somente se o ambiente for produção
+        if (process.env.NODE_ENV === 'production')
+            Clarity.init(import.meta.env.VITE_CLARITY_ID); // substitua pelo ID do seu projeto Clarity
+    }, []);
+
+    const locationPath = '/';
+    return (
+        <BrowserRouter basename={locationPath}>
+            <LoaderProvider>
+                <GlobalConfigProvider>
+                    <IdleProvider>
+                        <RouterBase />
+                        <InstallButton />
+                    </IdleProvider>
+                </GlobalConfigProvider>
+            </LoaderProvider>
+        </BrowserRouter>
+    );
+}

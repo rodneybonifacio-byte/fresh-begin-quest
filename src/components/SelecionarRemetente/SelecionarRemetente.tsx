@@ -1,0 +1,1 @@
+export { SelecionarRemetente } from './index';

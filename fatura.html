@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fatura - TG GRIFFES</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#fff2e6',
+                            100: '#ffe0cc',
+                            200: '#ffc899',
+                            300: '#ffaf66',
+                            400: '#ff9733',
+                            500: '#fe5b01',
+                            600: '#cc4901',
+                            700: '#993700',
+                            800: '#662400',
+                            900: '#331200',
+                        },
+                        secondary: {
+                            50: '#f2e6ff',
+                            100: '#d9b3ff',
+                            200: '#bf80ff',
+                            300: '#a64dff',
+                            400: '#8c1aff',
+                            500: '#4b188b',
+                            600: '#3d1370',
+                            700: '#2e0e54',
+                            800: '#1f0938',
+                            900: '#0f041c',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        .status-badge {
+            @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium;
+        }
+
+        .status-pendente {
+            @apply bg-yellow-100 text-yellow-800;
+        }
+
+        .status-em_transito {
+            @apply bg-blue-100 text-blue-800;
+        }
+
+        .status-entregue {
+            @apply bg-green-100 text-green-800;
+        }
+    </style>
+</head>
+
+<body class="font-sans bg-gray-50 text-gray-800">
+    <div class="max-w-6xl mx-auto my-8 bg-white rounded-xl shadow-lg overflow-hidden">
+        <!-- Cabeçalho -->
+        <div class="bg-gradient-to-r from-primary-500 to-secondary-500 p-6 text-white">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h1 class="text-3xl font-bold">Fatura</h1>
+                    <p class="mt-2 opacity-90">Nº: <span class="font-medium">C5F3AD0B</span></p>
+                </div>
+                <div class="text-right">
+                    <div class="inline-block bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
+                        <p class="text-xs uppercase tracking-wider">Status</p>
+                        <p class="text-xl font-semibold">PENDENTE</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Informações da Fatura -->
+        <div class="p-6 border-b">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <h2 class="text-lg font-semibold text-primary-600 mb-3">Informações da Fatura</h2>
+                    <div class="space-y-2">
+                        <p><span class="font-medium">Data de Emissão:</span> 27/05/2025</p>
+                        <p><span class="font-medium">Vencimento:</span> 29/05/2025</p>
+                        <p><span class="font-medium">Período:</span> 19/05/2025 - 27/05/2025</p>
+                    </div>
+                </div>
+
+                <div>
+                    <h2 class="text-lg font-semibold text-primary-600 mb-3">Cliente</h2>
+                    <div class="space-y-2">
+                        <p class="font-medium">TG GRIFFES</p>
+                        <p>CNPJ: 51.854.758/0001-28</p>
+                        <p>Rua Xavantes, 715 - SALA 718 A</p>
+                        <p>Brás, São Paulo - SP</p>
+                        <p>CEP: 03027-000</p>
+                    </div>
+                </div>
+
+                <div>
+                    <h2 class="text-lg font-semibold text-primary-600 mb-3">Resumo</h2>
+                    <div class="space-y-3">
+                        <div class="flex justify-between">
+                            <span>Total Objetos:</span>
+                            <span class="font-medium">68</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Serviço de Notificação:</span>
+                            <span class="font-medium">130 × R$0,80</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Itens da Fatura -->
+        <div class="p-6">
+            <h2 class="text-lg font-semibold text-primary-600 mb-4">Itens da Fatura</h2>
+
+            <div class="mb-6 overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Código Objeto</th>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Data</th>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Status</th>
+                            <th scope="col"
+                                class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">AM455683177BR</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">19/05/2025</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <span class="status-badge status-em_transito">EM TRÂNSITO</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">R$ 78,02</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">AM470807191BR</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">22/05/2025</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <span class="status-badge status-em_transito">EM TRÂNSITO</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">R$ 23,31</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">AC639509405BR</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">22/05/2025</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <span class="status-badge status-em_transito">EM TRÂNSITO</span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">R$ 31,04</td>
+                        </tr>
+                        <!-- Mais itens podem ser adicionados aqui -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="flex justify-end">
+                <div class="w-full md:w-1/3 bg-primary-50 rounded-lg p-4 border border-primary-100">
+                    <h3 class="text-lg font-semibold text-primary-800 mb-3">Resumo de Pagamento</h3>
+                    <div class="space-y-2">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Total Faturado:</span>
+                            <span class="font-medium">R$ 3.177,54</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Serviço de Notificação:</span>
+                            <span class="font-medium">R$ 104,00</span>
+                        </div>
+                        <div class="flex justify-between pt-2 border-t border-gray-200">
+                            <span class="font-semibold">Total a Pagar:</span>
+                            <span class="font-bold text-primary-600">R$ 3.281,54</span>
+                        </div>
+                        <div class="pt-2 text-sm text-gray-500">
+                            <p>Vencimento: 29/05/2025</p>
+                            <p>Status: <span class="font-medium text-yellow-700">Pendente</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rodapé -->
+        <div class="bg-gray-50 p-6 border-t">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <h3 class="text-sm font-semibold text-gray-700">Informações de Contato</h3>
+                    <p class="text-sm text-gray-500">Dúvidas? Entre em contato com nosso suporte.</p>
+                </div>
+                <div class="flex space-x-4">
+                    <button id="downloadPdf"
+                        class="px-4 py-2 bg-primary-500 text-white rounded-md hover:bg-primary-600 transition-colors shadow-md">
+                        Baixar PDF
+                    </button>
+                    <button
+                        class="px-4 py-2 border border-secondary-500 text-secondary-500 rounded-md hover:bg-secondary-50 transition-colors">
+                        Compartilhar
+                    </button>
+                </div>
+            </div>
+            <div class="mt-6 text-center text-xs text-gray-400">
+                <p>Esta é uma fatura gerada automaticamente. Em caso de dúvidas, entre em contato com nosso suporte.</p>
+                <p class="mt-1">© 2025 Todos os direitos reservados.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script>
+        document.getElementById('downloadPdf').addEventListener('click', function () {
+            const element = document.querySelector('.max-w-6xl');
+            const opt = {
+                margin: 10,
+                filename: 'Fatura_TG_GRIFFES_' + new Date().toLocaleDateString('pt-BR') + '.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: {
+                    scale: 2,
+                    letterRendering: true,
+                    useCORS: true
+                },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            // Mostrar feedback visual
+            const btn = this;
+            btn.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Gerando PDF...';
+
+            // Gerar PDF
+            html2pdf().set(opt).from(element).save().then(() => {
+                btn.textContent = 'PDF Baixado!';
+                setTimeout(() => {
+                    btn.textContent = 'Baixar PDF';
+                }, 2000);
+            });
+        });
+    </script>
+</body>
+
+</html>
