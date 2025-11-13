@@ -1,6 +1,5 @@
 import { Box } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
-import { useEffect } from 'react';
 import { FormCard } from '../../../../components/FormCard';
 import { InputField } from '../../../../components/InputField';
 import { ButtonComponent } from '../../../../components/button';
@@ -20,19 +19,12 @@ export const Step1Dimensoes = ({
   clienteSelecionado,
   setClienteSelecionado
 }: Step1DimensoesProps) => {
-  const {
-    register,
-    setValue,
-    watch
-  } = useFormContext();
+  const { register, setValue, watch } = useFormContext();
 
-  const embalagem = watch('embalagem');
-
-  // Validação - converte strings para números se necessário
-  const altura = Number(embalagem?.altura) || 0;
-  const largura = Number(embalagem?.largura) || 0;
-  const comprimento = Number(embalagem?.comprimento) || 0;
-  const peso = Number(embalagem?.peso) || 0;
+  const altura = watch('embalagem.altura');
+  const largura = watch('embalagem.largura');
+  const comprimento = watch('embalagem.comprimento');
+  const peso = watch('embalagem.peso');
 
   const isFormValid = !!(
     clienteSelecionado && 
@@ -42,33 +34,32 @@ export const Step1Dimensoes = ({
     peso > 0
   );
 
-  useEffect(() => {
-    console.log('=== VALIDAÇÃO ===', {
-      clienteSelecionado: !!clienteSelecionado,
-      altura,
-      largura,
-      comprimento,
-      peso,
-      isFormValid
-    });
-  }, [clienteSelecionado, altura, largura, comprimento, peso, isFormValid]);
-
   const handleNext = () => {
-    console.log('=== CLICOU NO PRÓXIMO ===');
-    console.log('Validação passou:', isFormValid);
-    console.log('Cliente:', clienteSelecionado);
-    console.log('Embalagem:', embalagem);
-    onNext();
+    console.log('=== CLICOU PRÓXIMO ===');
+    console.log('Cliente:', clienteSelecionado?.nome);
+    console.log('Dimensões:', { altura, largura, comprimento, peso });
+    console.log('Válido:', isFormValid);
+    
+    if (isFormValid) {
+      onNext();
+    }
   };
-  return <FormCard icon={Box} title="Dimensões e Embalagem" description="Configure o remetente e as dimensões do pacote">
+
+  return (
+    <FormCard 
+      icon={Box} 
+      title="Dimensões e Embalagem" 
+      description="Configure o remetente e as dimensões do pacote"
+    >
       <div className="space-y-6">
-        <SelecionarRemetente remetenteSelecionado={clienteSelecionado} onSelect={(r: any) => {
-        setClienteSelecionado(r);
-        setValue('nomeRemetente', r.nome);
-        setValue('remetenteId', r.id);
-      }} />
-        
-        
+        <SelecionarRemetente 
+          remetenteSelecionado={clienteSelecionado} 
+          onSelect={(r: any) => {
+            setClienteSelecionado(r);
+            setValue('nomeRemetente', r.nome);
+            setValue('remetenteId', r.id);
+          }} 
+        />
 
         <div className="grid grid-cols-4 gap-4">
           <InputField 
@@ -77,6 +68,7 @@ export const Step1Dimensoes = ({
             {...register('embalagem.altura', { valueAsNumber: true })} 
             min="0"
             step="0.01"
+            placeholder="0"
           />
           <InputField 
             label="Largura (cm)" 
@@ -84,6 +76,7 @@ export const Step1Dimensoes = ({
             {...register('embalagem.largura', { valueAsNumber: true })} 
             min="0"
             step="0.01"
+            placeholder="0"
           />
           <InputField 
             label="Comprimento (cm)" 
@@ -91,6 +84,7 @@ export const Step1Dimensoes = ({
             {...register('embalagem.comprimento', { valueAsNumber: true })} 
             min="0"
             step="0.01"
+            placeholder="0"
           />
           <InputField 
             label="Peso (g)" 
@@ -98,16 +92,27 @@ export const Step1Dimensoes = ({
             {...register('embalagem.peso', { valueAsNumber: true })} 
             min="0"
             step="1"
+            placeholder="0"
           />
         </div>
 
-        <ButtonComponent 
-          type="button" 
-          onClick={handleNext} 
-          disabled={!isFormValid}
-        >
-          Próximo
-        </ButtonComponent>
+        <div className="flex items-center gap-4">
+          <ButtonComponent 
+            type="button" 
+            onClick={handleNext} 
+            disabled={!isFormValid}
+            variant="primary"
+          >
+            Próximo
+          </ButtonComponent>
+          
+          {!isFormValid && (
+            <span className="text-sm text-muted-foreground">
+              {!clienteSelecionado ? 'Selecione um remetente' : 'Preencha todas as dimensões'}
+            </span>
+          )}
+        </div>
       </div>
-    </FormCard>;
+    </FormCard>
+  );
 };
