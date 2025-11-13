@@ -25,20 +25,50 @@ export const Step2Destinatario = ({ onNext, onBack, setDestinatarioSelecionado }
     <FormCard icon={MapPin} title="Destinatário" description="Dados de entrega">
       <div className="space-y-4">
         <AutocompleteDestinatario onSelect={(d: IDestinatario) => {
+          console.log('📍 Destinatário selecionado:', d);
+          
+          // Preenche dados pessoais
           setValue('destinatario.nome', d.nome);
           setValue('destinatario.cpfCnpj', formatCpfCnpj(d.cpfCnpj));
           setValue('destinatario.celular', formatTelefone(d.celular));
+          
+          // Preenche endereço completo
+          if (d.endereco) {
+            setValue('destinatario.endereco.cep', d.endereco.cep || '');
+            setValue('destinatario.endereco.logradouro', d.endereco.logradouro || '');
+            setValue('destinatario.endereco.numero', d.endereco.numero || '');
+            setValue('destinatario.endereco.bairro', d.endereco.bairro || '');
+            setValue('destinatario.endereco.localidade', d.endereco.localidade || '');
+            setValue('destinatario.endereco.uf', d.endereco.uf || '');
+            setValue('destinatario.endereco.complemento', d.endereco.complemento || '');
+            
+            console.log('✅ Endereço preenchido:', d.endereco);
+          }
+          
           setDestinatarioSelecionado(d);
         }} />
         
-        <InputField label="Nome" required {...register('destinatario.nome')} />
-        <InputField label="CPF/CNPJ" required {...register('destinatario.cpfCnpj')} />
-        <InputField label="Celular" required {...register('destinatario.celular')} />
-        <InputField label="CEP" required {...register('destinatario.endereco.cep')} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <InputField label="Nome" required {...register('destinatario.nome')} />
+          <InputField label="CPF/CNPJ" required {...register('destinatario.cpfCnpj')} />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <InputField label="Celular" required {...register('destinatario.celular')} />
+          <InputField label="CEP" required {...register('destinatario.endereco.cep')} />
+        </div>
+
         <InputField label="Logradouro" required {...register('destinatario.endereco.logradouro')} />
-        <InputField label="Número" required {...register('destinatario.endereco.numero')} />
-        <InputField label="Cidade" required {...register('destinatario.endereco.localidade')} />
-        <InputField label="UF" required maxLength={2} {...register('destinatario.endereco.uf')} />
+        
+        <div className="grid grid-cols-2 gap-4">
+          <InputField label="Número" required {...register('destinatario.endereco.numero')} />
+          <InputField label="Bairro" {...register('destinatario.endereco.bairro')} />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <InputField label="Cidade" required {...register('destinatario.endereco.localidade')} />
+          <InputField label="UF" required maxLength={2} {...register('destinatario.endereco.uf')} />
+        </div>
 
         <div className="flex justify-between">
           <ButtonComponent type="button" variant="primary" border="outline" onClick={onBack}>Voltar</ButtonComponent>
