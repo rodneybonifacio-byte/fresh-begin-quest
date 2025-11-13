@@ -25,7 +25,7 @@
     --ring: 25 100% 50%;
     --radius: 0.5rem;
     --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 10% 20%;
+    --sidebar-foreground: 222.2 47.4% 11.2%;
     --sidebar-primary: 25 100% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 210 40% 96.1%;
@@ -37,7 +37,7 @@
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
-    --card: 217.2 32.6% 17.5%;
+    --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
@@ -65,41 +65,27 @@
   }
 }
 
-.border-border {
-    border-color: hsl(var(--border));
-}
-
-.text-muted-foreground {
-    color: hsl(var(--muted-foreground));
-}
-
-.bg-muted {
-    background-color: hsl(var(--muted));
-}
-
-.hover-scale {
-    transition: transform 0.2s ease;
-}
-
-.hover-scale:hover {
-    transform: scale(1.02);
-}
-
 .body-no-scroll {
     overflow: hidden;
 }
 
 .card {
     transition: all 0.3s ease;
-    background-color: hsl(var(--card));
-    border: 1px solid hsl(var(--border));
-    border-radius: 0.5rem;
-    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    background-color: white;
+    border-color: #e2e8f0;
 }
 
-.card:hover {
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+.dark .card {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    background-color: #334155;
+    border-color: #475569;
 }
+
+/* .card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+} */
 
 .status-badge {
     position: absolute;
@@ -128,15 +114,23 @@
 
 .search-box {
     transition: all 0.3s ease;
-    background-color: hsl(var(--background));
-    border: 1px solid hsl(var(--input));
-    color: hsl(var(--foreground));
+    background-color: white;
+    border-color: #e5e7eb;
+    color: #111827;
+}
+
+.dark .search-box {
+    background-color: #1f2937;
+    border-color: #4b5563;
+    color: #f9fafb;
 }
 
 .search-box:focus-within {
-    outline: none;
-    border-color: transparent;
-    box-shadow: 0 0 0 2px hsl(var(--ring));
+    box-shadow: 0 0 0 3px rgba(37, 117, 252, 0.3);
+}
+
+.dark .search-box:focus-within {
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.3);
 }
 
 @layer components {

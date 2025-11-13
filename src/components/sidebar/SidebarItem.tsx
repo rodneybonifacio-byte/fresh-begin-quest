@@ -121,7 +121,7 @@ export const SidebarItem: React.FC<SidebarItemProps & {
                             {/* Submenu como popover quando sidebar está minimizado e hover - APENAS DESKTOP */}
                             {hasSubmenu && !isSidebarOpen && isHovered && window.innerWidth >= 1024 && createPortal(
                                 <div
-                                    className="fixed bg-card border border-border rounded-md shadow-xl py-2 min-w-[200px] z-[60] animate-fade-in"
+                                    className="fixed bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-md shadow-xl py-2 min-w-[200px] z-[60]"
                                     style={{
                                         left: '5rem', // 80px (w-20 do sidebar) 
                                         top: itemRef.current ? `${itemRef.current.getBoundingClientRect().top}px` : '0px',
@@ -129,11 +129,11 @@ export const SidebarItem: React.FC<SidebarItemProps & {
                                 >
                                     {/* Seta indicativa */}
                                     <div className="absolute left-0 top-4 transform -translate-x-full">
-                                        <div className="w-0 h-0 border-t-4 border-b-4 border-r-4 border-transparent border-r-border"></div>
-                                        <div className="absolute top-0 left-0.5 w-0 h-0 border-t-4 border-b-4 border-r-4 border-transparent border-r-card"></div>
+                                        <div className="w-0 h-0 border-t-4 border-b-4 border-r-4 border-transparent border-r-gray-200 dark:border-r-slate-700"></div>
+                                        <div className="absolute top-0 left-0.5 w-0 h-0 border-t-4 border-b-4 border-r-4 border-transparent border-r-white dark:border-r-slate-800"></div>
                                     </div>
 
-                                    <div className="px-3 py-1 text-xs font-semibold text-muted-foreground border-b border-border mb-2">
+                                    <div className="px-3 py-1 text-xs font-semibold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-700 mb-2">
                                         {label}
                                     </div>
                                     {submenu.map((item, index) => (
@@ -142,8 +142,8 @@ export const SidebarItem: React.FC<SidebarItemProps & {
                                                 <Link
                                                     to={item.to}
                                                     className={`flex items-center px-3 py-2 text-sm transition-colors ${item.active
-                                                        ? 'bg-accent text-primary'
-                                                        : 'text-muted-foreground hover:bg-accent'
+                                                        ? 'bg-primary/10 dark:bg-white/10 text-primary dark:text-white'
+                                                        : 'text-gray-600 dark:text-slate-400 hover:bg-primary/5 dark:hover:bg-white/5 hover:text-primary dark:hover:text-white'
                                                         }`}
                                                 >
                                                     <item.icon className="w-4 h-4 mr-3" />
@@ -153,8 +153,8 @@ export const SidebarItem: React.FC<SidebarItemProps & {
                                                 <a
                                                     href="#"
                                                     className={`flex items-center px-3 py-2 text-sm transition-colors ${item.active
-                                                        ? 'bg-accent text-primary'
-                                                        : 'text-muted-foreground hover:bg-accent'
+                                                        ? 'bg-primary/10 dark:bg-white/10 text-primary dark:text-white'
+                                                        : 'text-gray-600 dark:text-slate-400 hover:bg-primary/5 dark:hover:bg-white/5 hover:text-primary dark:hover:text-white'
                                                         }`}
                                                     onClick={(e) => {
                                                         e.preventDefault();

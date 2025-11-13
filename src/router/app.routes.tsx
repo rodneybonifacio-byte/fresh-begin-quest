@@ -36,7 +36,7 @@ export const appRoutesConfig: ProtectedRouteItem[] = [
     },
     {
         path: "emissao/adicionar",
-        component: () => import("../pages/private/emissao/FormularioEmissaoNovo")
+        component: () => import("../pages/private/emissao/FormularioEmissao")
     },
     {
         path: "integracoes-pedidos",
