@@ -10,22 +10,62 @@ import type { ICotacaoMinimaResponse } from '../../../../types/ICotacao';
 interface Step3FreteProps {
   onNext: () => void;
   onBack: () => void;
-  selectedEmbalagem: any;
-  destinatarioSelecionado: any;
   clienteSelecionado: any;
   cotacaoSelecionado?: ICotacaoMinimaResponse;
   setCotacaoSelecionado: (c: ICotacaoMinimaResponse | undefined) => void;
 }
 
-export const Step3Frete = ({ onNext, onBack, selectedEmbalagem, destinatarioSelecionado, clienteSelecionado, cotacaoSelecionado, setCotacaoSelecionado }: Step3FreteProps) => {
-  const { setValue, clearErrors, trigger } = useFormContext();
+export const Step3Frete = ({ onNext, onBack, clienteSelecionado, cotacaoSelecionado, setCotacaoSelecionado }: Step3FreteProps) => {
+  const { setValue, clearErrors, trigger, getValues } = useFormContext();
   const { onGetCotacaoCorreios, cotacoes, isLoadingCotacao } = useCotacao();
 
   useEffect(() => {
-    if (selectedEmbalagem && clienteSelecionado && destinatarioSelecionado) {
-      onGetCotacaoCorreios(clienteSelecionado.endereco.cep, destinatarioSelecionado.endereco.cep, selectedEmbalagem, '0', 'N', clienteSelecionado);
-    }
-  }, []);
+    const calcularFrete = async () => {
+      console.log('🚚 Iniciando cálculo de frete...');
+      
+      const formData = getValues();
+      console.log('📦 Dados do formulário:', formData);
+      
+      // Pega os dados da embalagem do formulário
+      const embalagemData = formData.embalagem;
+      const destinatarioData = formData.destinatario;
+      
+      if (!embalagemData || !clienteSelecionado || !destinatarioData?.endereco?.cep) {
+        console.error('❌ Dados insuficientes para cotação:', {
+          embalagem: !!embalagemData,
+          cliente: !!clienteSelecionado,
+          destinatarioCep: !!destinatarioData?.endereco?.cep
+        });
+        return;
+      }
+
+      const embalagem = {
+        altura: embalagemData.altura,
+        largura: embalagemData.largura,
+        comprimento: embalagemData.comprimento,
+        peso: embalagemData.peso,
+        diametro: 0
+      };
+
+      console.log('📮 Cotação:', {
+        cepOrigem: clienteSelecionado.endereco?.cep,
+        cepDestino: destinatarioData.endereco.cep,
+        embalagem,
+        remetente: clienteSelecionado
+      });
+
+      await onGetCotacaoCorreios(
+        clienteSelecionado.endereco?.cep || clienteSelecionado.cep,
+        destinatarioData.endereco.cep,
+        embalagem as any,
+        '0',
+        'N',
+        clienteSelecionado
+      );
+    };
+
+    calcularFrete();
+  }, [clienteSelecionado, getValues]);
 
   const handleNext = async () => {
     const isValid = await trigger(['cotacao']);

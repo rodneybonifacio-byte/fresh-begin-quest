@@ -49,7 +49,7 @@ export const ModernEmissaoWrapper = () => {
     const [currentStep, setCurrentStep] = useState(0);
     const [selectedEmbalagem, setSelectedEmbalagem] = useState<IEmbalagem | undefined>();
     const [clienteSelecionado, setClienteSelecionado] = useState<any>();
-    const [destinatarioSelecionado, setDestinatarioSelecionado] = useState<IDestinatario | undefined>();
+    const [_destinatarioSelecionado, setDestinatarioSelecionado] = useState<IDestinatario | undefined>();
     const [cotacaoSelecionado, setCotacaoSelecionado] = useState<ICotacaoMinimaResponse | undefined>();
 
     const { user: userPayload } = useAuth();
@@ -251,8 +251,6 @@ export const ModernEmissaoWrapper = () => {
                         <Step3Frete 
                             onNext={() => setCurrentStep(3)}
                             onBack={() => setCurrentStep(1)}
-                            selectedEmbalagem={selectedEmbalagem}
-                            destinatarioSelecionado={destinatarioSelecionado}
                             clienteSelecionado={clienteSelecionado}
                             cotacaoSelecionado={cotacaoSelecionado}
                             setCotacaoSelecionado={setCotacaoSelecionado}

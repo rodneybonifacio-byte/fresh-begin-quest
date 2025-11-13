@@ -81,12 +81,21 @@ export const Step2Destinatario = ({ onNext, onBack, setDestinatarioSelecionado }
     uf.trim()
   );
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (isFormValid) {
       console.log('✅ Avançando para tela de frete com dados:', {
         destinatario: { nome, cpfCnpj, celular },
         endereco: { cep, logradouro, numero, bairro, localidade, uf }
       });
+      
+      // Define o destinatário selecionado antes de avançar
+      setDestinatarioSelecionado({
+        nome,
+        cpfCnpj,
+        celular,
+        endereco: { cep, logradouro, numero, bairro, localidade, uf, complemento }
+      } as IDestinatario);
+      
       onNext();
     }
   };
