@@ -3,7 +3,6 @@ import { useFormContext } from 'react-hook-form';
 import { FormCard } from '../../../../components/FormCard';
 import { InputField } from '../../../../components/InputField';
 import { ButtonComponent } from '../../../../components/button';
-import { useEmbalagens } from '../../../../hooks/useEmbalagens';
 import type { IEmbalagem } from '../../../../types/IEmbalagem';
 import { SelecionarRemetente } from '../../../../components/SelecionarRemetente';
 interface Step1DimensoesProps {
@@ -15,8 +14,6 @@ interface Step1DimensoesProps {
 }
 export const Step1Dimensoes = ({
   onNext,
-  selectedEmbalagem,
-  setSelectedEmbalagem,
   clienteSelecionado,
   setClienteSelecionado
 }: Step1DimensoesProps) => {
@@ -25,12 +22,9 @@ export const Step1Dimensoes = ({
     setValue,
     trigger
   } = useFormContext();
-  const {
-    embalagens
-  } = useEmbalagens();
   const handleNext = async () => {
     const isValid = await trigger(['remetenteId', 'embalagem']);
-    if (isValid && selectedEmbalagem && clienteSelecionado) onNext();
+    if (isValid && clienteSelecionado) onNext();
   };
   return <FormCard icon={Box} title="Dimensões e Embalagem" description="Configure o remetente e as dimensões do pacote">
       <div className="space-y-6">
@@ -49,7 +43,7 @@ export const Step1Dimensoes = ({
           <InputField label="Peso" type="number" {...register('embalagem.peso')} />
         </div>
 
-        <ButtonComponent type="button" onClick={handleNext} disabled={!selectedEmbalagem}>Próximo</ButtonComponent>
+        <ButtonComponent type="button" onClick={handleNext} disabled={!clienteSelecionado}>Próximo</ButtonComponent>
       </div>
     </FormCard>;
 };
