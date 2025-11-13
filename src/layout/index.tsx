@@ -21,11 +21,13 @@ export const LayoutBase = () => {
 
             {/* Main content area */}
             <div className="flex-1 flex flex-col overflow-hidden">
-                {/* Topbar */}
-                <AppTopbar toggleSidebar={toggleSidebar} />
+                {/* Topbar - apenas mobile */}
+                <div className="lg:hidden">
+                    <AppTopbar toggleSidebar={toggleSidebar} />
+                </div>
 
                 {/* Page content */}
-                <main className="flex-1 mt-20 sm:mt-0 overflow-x-hidden overflow-y-auto bg-background p-4 sm:p-6 lg:p-8">
+                <main className="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 sm:p-6 lg:p-8">
                     <div className="max-w-7xl mx-auto">
                         <Outlet />
                     </div>
