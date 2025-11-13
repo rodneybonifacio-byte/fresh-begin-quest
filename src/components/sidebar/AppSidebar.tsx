@@ -1,11 +1,12 @@
 import {
-    Archive, CloudDownload, FileBarChart, FileSpreadsheet, FileStack, Home,
-    PlugZap, Printer, ReceiptText, Settings, Truck, UsersRound, Wallet
+    Box, Calculator, CreditCard, Database, FileBarChart,  
+    FileStack, Home, Package, PlugZap, Printer, Settings, Truck, Users, UsersRound, Wallet, Wrench
 } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { observer } from 'mobx-react-lite';
 import { SidebarLayout } from './SidebarLayout';
+import authStore from '../../authentica/authentication.store';
 
 const AppSidebar = observer(({
     isOpen,
@@ -29,6 +30,9 @@ const AppSidebar = observer(({
         return false;
     };
 
+    const userData = authStore.getUser();
+    const isAdmin = userData?.role === 'ADMIN' || userData?.role === 'administrator';
+
     const navItems = [
         {
             icon: Home,
@@ -37,41 +41,39 @@ const AppSidebar = observer(({
             active: isPathActive('/app')
         },
         {
-            icon: Archive,
-            label: 'Cadastros',
-            active: ['/app/destinatarios'].some(path => isPathActive(path)),
-            submenu: [
-                {
-                    icon: UsersRound,
-                    label: 'Destinatarios',
-                    to: '/app/destinatarios',
-                    active: isPathActive('/app/destinatarios')
-                }
-            ]
+            icon: Package,
+            label: 'Etiquetas',
+            to: '/app/emissao',
+            active: isPathActive('/app/emissao')
         },
         {
-            icon: Archive,
-            label: 'Envios',
-            active: ['/app/emissao', '/app/integracoes-pedidos'].some(path => isPathActive(path)),
-            submenu: [
-                {
-                    icon: FileSpreadsheet,
-                    label: 'Pre-Postagem',
-                    to: '/app/emissao',
-                    active: isPathActive('/app/emissao')
-                },
-                {
-                    icon: CloudDownload,
-                    label: 'Integrações',
-                    to: '/app/integracoes-pedidos',
-                    active: isPathActive('/app/integracoes-pedidos')
-                }
-            ]
+            icon: Truck,
+            label: 'Rastreio',
+            to: '/app/rastrear',
+            active: isPathActive('/app/rastrear')
         },
         {
-            icon: Settings,
+            icon: Box,
+            label: 'Acompanhamento',
+            to: '/app/acompanhamento',
+            active: isPathActive('/app/acompanhamento')
+        },
+        {
+            icon: Wallet,
+            label: 'Financeiro',
+            to: '/app/financeiro/faturas',
+            active: isPathActive('/app/financeiro/faturas')
+        },
+        {
+            icon: UsersRound,
+            label: 'Clientes',
+            to: '/app/destinatarios',
+            active: isPathActive('/app/destinatarios')
+        },
+        {
+            icon: Wrench,
             label: 'Ferramentas',
-            active: ['/app/ferramentas/imprimir-etiquetas', '/app/ferramentas/manifestos', '/app/ferramentas/integracoes', '/app/rastrear', '/app/simulador/frete'].some(path => isPathActive(path)),
+            active: ['/app/ferramentas/imprimir-etiquetas', '/app/ferramentas/manifestos', '/app/ferramentas/integracoes', '/app/simulador/frete'].some(path => isPathActive(path)),
             submenu: [
                 {
                     icon: Printer,
@@ -92,13 +94,7 @@ const AppSidebar = observer(({
                     active: isPathActive('/app/ferramentas/integracoes')
                 },
                 {
-                    icon: Truck,
-                    label: 'Rastrear Pacote',
-                    to: '/app/rastrear',
-                    active: isPathActive('/app/rastrear')
-                },
-                {
-                    icon: ReceiptText,
+                    icon: Calculator,
                     label: 'Simulador de Frete',
                     to: '/app/simulador/frete',
                     active: isPathActive('/app/simulador/frete')
@@ -106,19 +102,51 @@ const AppSidebar = observer(({
             ]
         },
         {
-            icon: Wallet,
-            label: 'Financeiro',
-            active: ['/app/financeiro/faturas'].some(path => isPathActive(path)),
-            submenu: [
+            icon: Settings,
+            label: 'Configurações',
+            to: '/app/profile',
+            active: isPathActive('/app/profile')
+        }
+    ];
+
+    // Adiciona seção de administração se for admin
+    const adminSection = isAdmin ? [
+        {
+            section: 'ADMINISTRAÇÃO',
+            items: [
+                {
+                    icon: CreditCard,
+                    label: 'Gerenciar Créditos',
+                    to: '/admin',
+                    active: isPathActive('/admin')
+                },
                 {
                     icon: FileBarChart,
-                    label: 'Faturas',
-                    to: '/app/financeiro/faturas',
-                    active: isPathActive('/app/financeiro/faturas')
+                    label: 'Ajustes de Custos',
+                    to: '/admin/transportadoras',
+                    active: isPathActive('/admin/transportadoras')
+                },
+                {
+                    icon: Users,
+                    label: 'Gestão de Clientes',
+                    to: '/admin/clientes',
+                    active: isPathActive('/admin/clientes')
+                },
+                {
+                    icon: Database,
+                    label: 'Sincronização de Dados',
+                    to: '/admin/sincronizacao',
+                    active: isPathActive('/admin/sincronizacao')
+                },
+                {
+                    icon: Settings,
+                    label: 'Configurações do Sistema',
+                    to: '/admin/configuracoes',
+                    active: isPathActive('/admin/configuracoes')
                 }
             ]
         }
-    ];
+    ] : [];
 
     return (
         <>
@@ -131,7 +159,14 @@ const AppSidebar = observer(({
             )}
 
             {/* Sidebar */}
-            <SidebarLayout navItems={navItems} isOpen={isOpen} onClose={onClose} onNavigate={onNavigate} title="BRHUB" />
+            <SidebarLayout 
+                navItems={navItems} 
+                adminSection={adminSection}
+                isOpen={isOpen} 
+                onClose={onClose} 
+                onNavigate={onNavigate} 
+                title="BRHUB" 
+            />
         </>
     );
 });
