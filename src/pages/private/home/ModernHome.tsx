@@ -83,7 +83,7 @@ export const ModernHome = () => {
                         </p>
                         <button
                             onClick={() => navigate('/app/emissao')}
-                            className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-4 rounded-full text-lg font-semibold shadow-lg shadow-primary/30 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-primary/40"
+                            className="bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-full text-lg font-bold shadow-2xl shadow-primary/40 transition-all duration-300 hover:scale-105 hover:shadow-primary/50"
                         >
                             Emitir frete com desconto
                         </button>
@@ -173,7 +173,7 @@ export const ModernHome = () => {
                             <button
                                 type="submit"
                                 disabled={isLoadingCotacao}
-                                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-4 rounded-xl font-semibold shadow-lg shadow-primary/30 transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full bg-primary hover:bg-primary/90 text-white py-4 rounded-xl font-bold text-lg shadow-2xl shadow-primary/40 transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {isLoadingCotacao ? "Calculando..." : "Calcular frete com desconto"}
                             </button>
@@ -186,18 +186,18 @@ export const ModernHome = () => {
                                 {cotacoes.slice(0, 3).map((cotacao, index) => (
                                     <div
                                         key={index}
-                                        className="p-4 bg-primary/5 border border-primary/20 rounded-xl hover:shadow-md transition-all cursor-pointer"
+                                        className="p-4 bg-orange-50 dark:bg-orange-950/20 border-2 border-primary/30 rounded-xl hover:shadow-lg hover:border-primary transition-all cursor-pointer hover:scale-[1.02]"
                                         onClick={() => navigate('/app/emissao')}
                                     >
                                         <div className="flex justify-between items-center">
                                             <div>
-                                                <p className="font-semibold">{cotacao.nomeServico}</p>
-                                                <p className="text-xs text-muted-foreground">
+                                                <p className="font-bold text-foreground">{cotacao.nomeServico}</p>
+                                                <p className="text-sm text-muted-foreground">
                                                     {cotacao.prazo} dias úteis
                                                 </p>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-2xl font-bold text-primary">
+                                                <p className="text-3xl font-bold text-primary">
                                                     R$ {parseFloat(cotacao.preco).toFixed(2)}
                                                 </p>
                                             </div>
@@ -236,7 +236,7 @@ export const ModernHome = () => {
                     </p>
                     <button
                         onClick={() => navigate('/app/emissao')}
-                        className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-4 rounded-full text-lg font-semibold shadow-lg shadow-primary/30 transition-all duration-300 hover:scale-105 inline-flex items-center gap-2"
+                        className="bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-full text-lg font-bold shadow-2xl shadow-primary/40 transition-all duration-300 hover:scale-105 inline-flex items-center gap-2"
                     >
                         <Plus className="h-5 w-5" />
                         Criar primeira etiqueta
