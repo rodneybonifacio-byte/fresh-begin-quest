@@ -1,11 +1,8 @@
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa';
 
-export default defineConfig(({ mode }) => {
-    // Carrega as variáveis de ambiente baseado no modo
-    const env = loadEnv(mode, process.cwd(), '')
-    
+export default defineConfig(() => {
     return {
         plugins: [
             react(),
@@ -38,10 +35,10 @@ export default defineConfig(({ mode }) => {
                 }
             })
         ],
-        server: {
-            open: true,
-            port: env.VITE_PORT ? Number(env.VITE_PORT) : 5555,
-        },
+    server: {
+        open: true,
+        port: 8080,
+    },
         base: "/",
         build: {
             assetsInlineLimit: 0,
