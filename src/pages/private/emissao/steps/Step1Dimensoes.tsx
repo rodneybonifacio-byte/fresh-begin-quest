@@ -6,7 +6,6 @@ import { ButtonComponent } from '../../../../components/button';
 import { useEmbalagens } from '../../../../hooks/useEmbalagens';
 import type { IEmbalagem } from '../../../../types/IEmbalagem';
 import { SelecionarRemetente } from '../../../../components/SelecionarRemetente';
-
 interface Step1DimensoesProps {
   onNext: () => void;
   selectedEmbalagem?: IEmbalagem;
@@ -14,41 +13,34 @@ interface Step1DimensoesProps {
   clienteSelecionado: any;
   setClienteSelecionado: (cliente: any) => void;
 }
-
-export const Step1Dimensoes = ({ onNext, selectedEmbalagem, setSelectedEmbalagem, clienteSelecionado, setClienteSelecionado }: Step1DimensoesProps) => {
-  const { register, setValue, trigger } = useFormContext();
-  const { embalagens } = useEmbalagens();
-
+export const Step1Dimensoes = ({
+  onNext,
+  selectedEmbalagem,
+  setSelectedEmbalagem,
+  clienteSelecionado,
+  setClienteSelecionado
+}: Step1DimensoesProps) => {
+  const {
+    register,
+    setValue,
+    trigger
+  } = useFormContext();
+  const {
+    embalagens
+  } = useEmbalagens();
   const handleNext = async () => {
     const isValid = await trigger(['remetenteId', 'embalagem']);
     if (isValid && selectedEmbalagem && clienteSelecionado) onNext();
   };
-
-  return (
-    <FormCard icon={Box} title="Dimensões e Embalagem" description="Configure o remetente e as dimensões do pacote">
+  return <FormCard icon={Box} title="Dimensões e Embalagem" description="Configure o remetente e as dimensões do pacote">
       <div className="space-y-6">
-        <SelecionarRemetente 
-          remetenteSelecionado={clienteSelecionado}
-          onSelect={(r: any) => {
-            setClienteSelecionado(r);
-            setValue('nomeRemetente', r.nome);
-            setValue('remetenteId', r.id);
-          }}
-        />
+        <SelecionarRemetente remetenteSelecionado={clienteSelecionado} onSelect={(r: any) => {
+        setClienteSelecionado(r);
+        setValue('nomeRemetente', r.nome);
+        setValue('remetenteId', r.id);
+      }} />
         
-        <select className="w-full h-11 px-3 rounded-lg border" value={selectedEmbalagem?.id || ''} onChange={(e) => {
-          const emb = embalagens?.find((x: IEmbalagem) => x.id === e.target.value);
-          if (emb) {
-            setSelectedEmbalagem(emb);
-            setValue('embalagem.altura', emb.altura);
-            setValue('embalagem.largura', emb.largura);
-            setValue('embalagem.comprimento', emb.comprimento);
-            setValue('embalagem.peso', emb.peso);
-          }
-        }}>
-          <option value="">Selecione</option>
-          {embalagens?.map((e: IEmbalagem) => <option key={e.id} value={e.id}>{e.altura}x{e.largura}x{e.comprimento}cm</option>)}
-        </select>
+        
 
         <div className="grid grid-cols-4 gap-4">
           <InputField label="Altura" type="number" {...register('embalagem.altura')} />
@@ -59,6 +51,5 @@ export const Step1Dimensoes = ({ onNext, selectedEmbalagem, setSelectedEmbalagem
 
         <ButtonComponent type="button" onClick={handleNext} disabled={!selectedEmbalagem}>Próximo</ButtonComponent>
       </div>
-    </FormCard>
-  );
+    </FormCard>;
 };
