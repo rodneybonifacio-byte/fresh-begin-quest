@@ -1,10 +1,12 @@
 import { Box } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
+import { useEffect } from 'react';
 import { FormCard } from '../../../../components/FormCard';
 import { InputField } from '../../../../components/InputField';
 import { ButtonComponent } from '../../../../components/button';
 import type { IEmbalagem } from '../../../../types/IEmbalagem';
 import { SelecionarRemetente } from '../../../../components/SelecionarRemetente';
+
 interface Step1DimensoesProps {
   onNext: () => void;
   selectedEmbalagem?: IEmbalagem;
@@ -12,6 +14,7 @@ interface Step1DimensoesProps {
   clienteSelecionado: any;
   setClienteSelecionado: (cliente: any) => void;
 }
+
 export const Step1Dimensoes = ({
   onNext,
   clienteSelecionado,
@@ -20,22 +23,10 @@ export const Step1Dimensoes = ({
   const {
     register,
     setValue,
-    watch,
-    formState: { errors }
+    watch
   } = useFormContext();
 
   const embalagem = watch('embalagem');
-  const remetenteId = watch('remetenteId');
-
-  const handleNext = () => {
-    console.log('=== HANDLE NEXT ===');
-    console.log('clienteSelecionado:', clienteSelecionado);
-    console.log('remetenteId:', remetenteId);
-    console.log('embalagem:', embalagem);
-    console.log('errors:', errors);
-    
-    onNext();
-  };
 
   // Validação - converte strings para números se necessário
   const altura = Number(embalagem?.altura) || 0;
@@ -51,14 +42,24 @@ export const Step1Dimensoes = ({
     peso > 0
   );
 
-  console.log('=== VALIDAÇÃO ===', {
-    clienteSelecionado: !!clienteSelecionado,
-    altura,
-    largura,
-    comprimento,
-    peso,
-    isFormValid
-  });
+  useEffect(() => {
+    console.log('=== VALIDAÇÃO ===', {
+      clienteSelecionado: !!clienteSelecionado,
+      altura,
+      largura,
+      comprimento,
+      peso,
+      isFormValid
+    });
+  }, [clienteSelecionado, altura, largura, comprimento, peso, isFormValid]);
+
+  const handleNext = () => {
+    console.log('=== CLICOU NO PRÓXIMO ===');
+    console.log('Validação passou:', isFormValid);
+    console.log('Cliente:', clienteSelecionado);
+    console.log('Embalagem:', embalagem);
+    onNext();
+  };
   return <FormCard icon={Box} title="Dimensões e Embalagem" description="Configure o remetente e as dimensões do pacote">
       <div className="space-y-6">
         <SelecionarRemetente remetenteSelecionado={clienteSelecionado} onSelect={(r: any) => {
