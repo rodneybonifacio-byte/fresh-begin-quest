@@ -4,7 +4,6 @@ import { FormCard } from '../../../../components/FormCard';
 import { InputField } from '../../../../components/InputField';
 import { ButtonComponent } from '../../../../components/button';
 import { useEmbalagens } from '../../../../hooks/useEmbalagens';
-import { useState } from 'react';
 import type { IEmbalagem } from '../../../../types/IEmbalagem';
 import { SelecionarRemetente } from '../../../../components/SelecionarRemetente';
 
@@ -17,7 +16,7 @@ interface Step1DimensoesProps {
 }
 
 export const Step1Dimensoes = ({ onNext, selectedEmbalagem, setSelectedEmbalagem, clienteSelecionado, setClienteSelecionado }: Step1DimensoesProps) => {
-  const { register, setValue, formState: { errors }, trigger } = useFormContext();
+  const { register, setValue, trigger } = useFormContext();
   const { embalagens } = useEmbalagens();
 
   const handleNext = async () => {
