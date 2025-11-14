@@ -14,13 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      transacoes_credito: {
+        Row: {
+          cliente_id: string
+          created_at: string | null
+          descricao: string | null
+          emissao_id: string | null
+          id: string
+          tipo: string
+          updated_at: string | null
+          valor: number
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string | null
+          descricao?: string | null
+          emissao_id?: string | null
+          id?: string
+          tipo: string
+          updated_at?: string | null
+          valor: number
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string | null
+          descricao?: string | null
+          emissao_id?: string | null
+          id?: string
+          tipo?: string
+          updated_at?: string | null
+          valor?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      calcular_saldo_cliente: {
+        Args: { p_cliente_id: string }
+        Returns: number
+      }
+      consumir_creditos_etiqueta: {
+        Args: { p_cliente_id: string; p_emissao_id: string; p_valor: number }
+        Returns: boolean
+      }
+      registrar_recarga: {
+        Args: { p_cliente_id: string; p_descricao?: string; p_valor: number }
+        Returns: string
+      }
+      verificar_saldo_suficiente: {
+        Args: { p_cliente_id: string; p_valor: number }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
