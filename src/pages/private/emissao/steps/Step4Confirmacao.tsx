@@ -56,17 +56,25 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
       
       console.log('📤 Enviando emissão:', emissao);
       
-      // Primeiro gera a emissão e recebe a emissão criada com ID
-      const emissaoCriada = await onEmissaoCadastro(emissao, setIsSubmitting);
+      // Primeiro gera a emissão - backend retorna { id, frete, link_etiqueta }
+      const backendResponse = await onEmissaoCadastro(emissao, setIsSubmitting);
       
-      console.log('✅ Emissão criada:', emissaoCriada);
-      console.log('🆔 ID da emissão:', emissaoCriada?.id);
+      console.log('✅ Resposta do backend:', backendResponse);
+      console.log('🆔 ID da emissão:', backendResponse?.id);
+      console.log('🔗 Link etiqueta:', backendResponse?.link_etiqueta);
       
       // Verifica se temos o ID da emissão
-      if (!emissaoCriada?.id) {
-        console.error('❌ Emissão sem ID:', emissaoCriada);
+      if (!backendResponse?.id) {
+        console.error('❌ Backend não retornou ID:', backendResponse);
         throw new Error('Erro ao criar emissão: ID não retornado');
       }
+      
+      // Monta o objeto emissão completo com o ID retornado
+      const emissaoCriada: IEmissao = {
+        ...emissao,
+        id: backendResponse.id,
+        codigoObjeto: backendResponse.frete?.[0]?.codigoObjeto || 'Aguardando...',
+      };
       
       console.log('📄 Buscando PDF para emissão ID:', emissaoCriada.id);
       

@@ -2,7 +2,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { EmissaoService } from "../services/EmissaoService";
 import type { IEmissao } from "../types/IEmissao";
-import type { IResponse } from "../types/IResponse";
 import { useFetchQuery } from "./useFetchQuery";
 import { FreteService } from "../services/FreteService";
 
@@ -14,27 +13,31 @@ export const useEmissao = () => {
 
     const mutation = useMutation({
         mutationFn: async (requestData: IEmissao) => {
-            return freteService.create(requestData);
+            console.log('🚀 Mutation: Enviando dados para backend:', requestData);
+            const response = await freteService.create(requestData);
+            console.log('✅ Mutation: Resposta do backend:', response);
+            return response;
         },
-        onSuccess: () => {
+        onSuccess: (data) => {
+            console.log('✅ Mutation Success:', data);
             queryClient.invalidateQueries({ queryKey: ["emissoes"] });
-            toast.success("Emissão cadastrada com sucesso!", { duration: 5000, position: "top-center" });
+            toast.success("Emissão cadastrada com sucesso!", { duration: 5000, position: "top-center" });
         },
         onError: (error) => {
-            console.log(error);
+            console.error('❌ Mutation Error:', error);
         },
     })
 
-    const onEmissaoCadastro = async (data: IEmissao, onIsLoadingCadastro: (isLoading: boolean) => void): Promise<IEmissao> => {
+    const onEmissaoCadastro = async (data: IEmissao, onIsLoadingCadastro: (isLoading: boolean) => void): Promise<any> => {
         try {
             onIsLoadingCadastro(true);
             console.log('📤 onEmissaoCadastro: Iniciando criação da emissão');
-            const response = await mutation.mutateAsync(data) as IResponse<IEmissao>;
+            const response = await mutation.mutateAsync(data) as any;
             console.log('📦 onEmissaoCadastro: Resposta completa:', response);
-            console.log('📄 onEmissaoCadastro: Dados da emissão:', response?.data);
+            console.log('🆔 ID retornado:', response?.id);
             onIsLoadingCadastro(false);
-            // Retorna a emissão criada com o ID
-            return response.data;
+            // Backend retorna { id, frete, link_etiqueta } diretamente, não em response.data
+            return response;
         } catch (error) {
             console.error('❌ onEmissaoCadastro: Erro ao criar emissão:', error);
             onIsLoadingCadastro(false);
