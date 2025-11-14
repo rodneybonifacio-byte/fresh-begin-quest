@@ -12,6 +12,8 @@ import { ModalRecargaPix } from "./ModalRecargaPix";
 import { ICreatePixChargeResponse } from "../../../../types/IRecargaPix";
 import { useRecargaPixRealtime } from "../../../../hooks/useRecargaPixRealtime";
 import { useNavigate } from "react-router-dom";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 export default function Recarga() {
     const { user } = useAuth();
@@ -32,6 +34,18 @@ export default function Recarga() {
         {
             refetchOnWindowFocus: true,
             staleTime: 0 // Sempre buscar dados frescos
+        }
+    );
+
+    const { data: ultimaRecarga } = useFetchQuery(
+        ['ultima-recarga'],
+        async () => {
+            const recargas = await RecargaPixService.buscarRecargas(1);
+            return recargas.find(r => r.status === 'pago');
+        },
+        {
+            refetchOnWindowFocus: true,
+            staleTime: 0
         }
     );
 
@@ -176,7 +190,7 @@ export default function Recarga() {
                         <p className="text-3xl font-bold text-foreground">R$ 0,00</p>
                     </div>
 
-                    {/* Média de Recarga */}
+                    {/* Última Recarga */}
                     <div className="bg-card border border-border rounded-lg p-6 shadow-sm">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="p-2 bg-purple-500/10 rounded-lg">
@@ -184,7 +198,12 @@ export default function Recarga() {
                             </div>
                             <span className="text-sm font-medium text-muted-foreground">Última Recarga</span>
                         </div>
-                        <p className="text-3xl font-bold text-foreground">-</p>
+                        <p className="text-3xl font-bold text-foreground">
+                            {ultimaRecarga?.data_pagamento 
+                                ? format(new Date(ultimaRecarga.data_pagamento), "dd/MM/yyyy", { locale: ptBR })
+                                : "-"
+                            }
+                        </p>
                     </div>
                 </div>
 
