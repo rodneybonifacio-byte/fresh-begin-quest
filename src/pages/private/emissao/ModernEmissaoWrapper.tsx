@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Package, MapPin, Truck, CheckCircle2 } from "lucide-react";
+import { Package, MapPin, Truck, CheckCircle2, Printer } from "lucide-react";
 import { FormProvider, useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -9,10 +9,12 @@ import { useRemetentes } from '../../../hooks/useRemetente';
 import type { ICotacaoMinimaResponse } from '../../../types/ICotacao';
 import type { IDestinatario } from '../../../types/IDestinatario';
 import type { IEmbalagem } from '../../../types/IEmbalagem';
+import type { IEmissao } from '../../../types/IEmissao';
 import { Step1Dimensoes } from './steps/Step1Dimensoes';
 import { Step2Destinatario } from './steps/Step2Destinatario';
 import { Step3Frete } from './steps/Step3Frete';
 import { Step4Confirmacao } from './steps/Step4Confirmacao';
+import { Step5Imprimir } from './steps/Step5Imprimir';
 import { useNavigate } from 'react-router-dom';
 
 const createValidationSchema = () => {
@@ -51,6 +53,8 @@ export const ModernEmissaoWrapper = () => {
     const [clienteSelecionado, setClienteSelecionado] = useState<any>();
     const [_destinatarioSelecionado, setDestinatarioSelecionado] = useState<IDestinatario | undefined>();
     const [cotacaoSelecionado, setCotacaoSelecionado] = useState<ICotacaoMinimaResponse | undefined>();
+    const [emissaoGerada, setEmissaoGerada] = useState<IEmissao | null>(null);
+    const [pdfData, setPdfData] = useState<{ nome: string; dados: string } | null>(null);
     
     // Função para resetar cotações quando voltar
     const resetCotacoes = () => {
@@ -137,9 +141,16 @@ export const ModernEmissaoWrapper = () => {
         { icon: MapPin, label: "Destinatário", description: "Endereço de entrega" },
         { icon: Truck, label: "Frete", description: "Escolha o serviço" },
         { icon: CheckCircle2, label: "Confirmar", description: "Revisar e emitir" },
+        { icon: Printer, label: "Imprimir", description: "Etiqueta gerada" },
     ];
 
-    const handleSuccess = () => {
+    const handleSuccess = (emissao: any, pdf: { nome: string; dados: string }) => {
+        setEmissaoGerada(emissao);
+        setPdfData(pdf);
+        setCurrentStep(4); // Vai para o step 5 (índice 4)
+    };
+    
+    const handleFinish = () => {
         navigate('/app/emissao');
     };
 
@@ -295,6 +306,14 @@ export const ModernEmissaoWrapper = () => {
                             cotacaoSelecionado={cotacaoSelecionado}
                             selectedEmbalagem={selectedEmbalagem}
                             clienteSelecionado={clienteSelecionado}
+                        />
+                    )}
+                    {currentStep === 4 && emissaoGerada && pdfData && (
+                        <Step5Imprimir 
+                            onBack={() => setCurrentStep(3)}
+                            onFinish={handleFinish}
+                            emissaoGerada={emissaoGerada}
+                            pdfData={pdfData}
                         />
                     )}
                 </div>
