@@ -5,3 +5,6 @@ verify_jwt = true
 
 [functions.banco-inter-webhook]
 verify_jwt = false
+
+[functions.banco-inter-configure-webhook]
+verify_jwt = true

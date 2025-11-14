@@ -3,6 +3,7 @@ import { X, Copy, QrCode, Clock, CheckCircle2 } from "lucide-react";
 import { ICreatePixChargeResponse } from "../../../../types/IRecargaPix";
 import { toastSuccess, toastError } from "../../../../utils/toastNotify";
 import { ProcessarPagamentoManual } from './ProcessarPagamentoManual';
+import { ConfigurarWebhook } from './ConfigurarWebhook';
 
 interface ModalRecargaPixProps {
   isOpen: boolean;
@@ -24,6 +25,10 @@ export function ModalRecargaPix({ isOpen, onClose, chargeData }: ModalRecargaPix
     } catch {
       toastError("Erro ao copiar código");
     }
+  };
+
+  const handleClose = () => {
+    onClose();
   };
 
   return (
@@ -129,10 +134,13 @@ export function ModalRecargaPix({ isOpen, onClose, chargeData }: ModalRecargaPix
               Após realizar o pagamento, seus créditos serão adicionados automaticamente em alguns instantes.
             </p>
 
-            <ProcessarPagamentoManual txid={chargeData.txid} onSuccess={onClose} />
+            <div className="border-t pt-4 space-y-3">
+              <ConfigurarWebhook />
+              <ProcessarPagamentoManual txid={chargeData.txid} onSuccess={handleClose} />
+            </div>
             
             <p className="text-xs text-muted-foreground text-center">
-              Já pagou? Use o botão acima para processar manualmente
+              Configure o webhook para receber notificações automáticas ou processe manualmente
             </p>
 
             <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md border border-border">
