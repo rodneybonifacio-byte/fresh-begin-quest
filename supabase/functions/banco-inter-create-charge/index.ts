@@ -113,7 +113,7 @@ serve(async (req) => {
       body: new URLSearchParams({
         client_id: CLIENT_ID,
         client_secret: CLIENT_SECRET,
-        scope: 'cob.write cob.read pix.read pix.write webhook.read webhook.write',
+        scope: 'boleto-cobranca.read boleto-cobranca.write',
         grant_type: 'client_credentials'
       }),
       client: httpClient
@@ -137,10 +137,10 @@ serve(async (req) => {
       const supabaseUrl = Deno.env.get('SUPABASE_URL');
       const webhookUrl = `${supabaseUrl}/functions/v1/banco-inter-webhook`;
       
-      console.log('Verificando/configurando webhook:', webhookUrl);
+      console.log('Configurando webhook para Cobrança:', webhookUrl);
       
       const webhookResponse = await fetch(
-        `https://cdpj.partners.bancointer.com.br/banking/v2/pix/v2/webhook/${encodeURIComponent(CHAVE_PIX)}`,
+        'https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas/webhook',
         {
           method: 'PUT',
           headers: {
