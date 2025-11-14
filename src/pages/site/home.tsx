@@ -90,10 +90,11 @@ export const Home = () => {
                                 Até 80% de desconto
                             </div>
 
-                            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight">
+                            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight">
                                 Fretes a partir de{" "}
-                                <span className="text-primary bg-gray-100 px-4 py-1 rounded-lg">R$ 4,99</span>
-                                {" "}para você vender ainda mais!
+                                <span className="text-primary bg-gray-100 px-3 py-1 rounded-lg inline-block my-2">R$ 4,99</span>
+                                <br />
+                                para você vender ainda mais!
                             </h1>
                             
                             <p className="text-xl text-slate-300 leading-relaxed">
