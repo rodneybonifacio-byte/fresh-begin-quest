@@ -10,12 +10,19 @@ export class RecargaPixService {
       // Obter a sessão atual para pegar o token JWT
       const { data: { session } } = await supabase.auth.getSession();
       
+      console.log('🔐 Verificando autenticação...');
+      console.log('Session exists:', !!session);
+      console.log('User ID:', session?.user?.id);
+      
       if (!session) {
+        console.error('❌ Usuário não autenticado - sem sessão');
         return {
           success: false,
-          error: 'Usuário não autenticado'
+          error: 'Usuário não autenticado. Por favor, faça login novamente.'
         };
       }
+
+      console.log('✅ Usuário autenticado, chamando edge function...');
 
       const { data, error } = await supabase.functions.invoke('banco-inter-create-charge', {
         body: request,
@@ -25,16 +32,17 @@ export class RecargaPixService {
       });
 
       if (error) {
-        console.error('Erro ao criar cobrança PIX:', error);
+        console.error('❌ Erro ao criar cobrança PIX:', error);
         return {
           success: false,
           error: error.message || 'Erro ao criar cobrança PIX'
         };
       }
 
+      console.log('✅ Cobrança PIX criada com sucesso');
       return data as ICreatePixChargeResponse;
     } catch (error) {
-      console.error('Erro ao criar cobrança PIX:', error);
+      console.error('❌ Erro ao criar cobrança PIX:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Erro desconhecido'
