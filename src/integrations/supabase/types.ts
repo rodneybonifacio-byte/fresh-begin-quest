@@ -108,6 +108,7 @@ export type Database = {
         Args: { p_cliente_id: string; p_emissao_id: string; p_valor: number }
         Returns: boolean
       }
+      get_cliente_id_from_jwt: { Args: never; Returns: string }
       registrar_recarga: {
         Args: { p_cliente_id: string; p_descricao?: string; p_valor: number }
         Returns: string
