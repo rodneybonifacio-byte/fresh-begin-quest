@@ -1,6 +1,6 @@
 import {
     Archive, CloudDownload, FileBarChart, FileSpreadsheet, FileStack, Home,
-    PlugZap, Printer, ReceiptText, Settings, Truck, UsersRound, Wallet
+    PlugZap, Printer, Receipt, ReceiptText, Settings, Truck, UsersRound, Wallet, DollarSign
 } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
@@ -106,9 +106,9 @@ const AppSidebar = observer(({
             ]
         },
         {
-            icon: Wallet,
+            icon: DollarSign,
             label: 'Financeiro',
-            active: ['/app/financeiro/faturas', '/app/financeiro/recarga'].some(path => isPathActive(path)),
+            active: ['/app/financeiro/faturas', '/app/financeiro/recarga', '/app/financeiro/extrato'].some(path => isPathActive(path)),
             submenu: [
                 {
                     icon: FileBarChart,
@@ -121,6 +121,12 @@ const AppSidebar = observer(({
                     label: 'Recarga',
                     to: '/app/financeiro/recarga',
                     active: isPathActive('/app/financeiro/recarga')
+                },
+                {
+                    icon: Receipt,
+                    label: 'Extrato',
+                    to: '/app/financeiro/extrato',
+                    active: isPathActive('/app/financeiro/extrato')
                 }
             ]
         }

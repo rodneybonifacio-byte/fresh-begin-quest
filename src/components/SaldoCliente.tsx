@@ -1,28 +1,26 @@
 import { Eye, EyeOff } from "lucide-react";
 import { useFetchQuery } from "../hooks/useFetchQuery";
 import { useAuth } from "../providers/AuthContext";
-import { ClienteService } from "../services/ClienteService";
+import { CreditoService } from "../services/CreditoService";
 import { useState } from "react";
 import { formatCurrencyWithCents } from "../utils/formatCurrency";
 
 export const SaldoCliente = () => {
     const [isOpenSaldo, setIsOpenSaldo] = useState(false);
-    const service = new ClienteService();
+    const creditoService = new CreditoService();
     const { user } = useAuth()
 
-    const { data } = useFetchQuery<{ saldo: number } | null>(
+    const { data } = useFetchQuery<number>(
         ['cliente-logado'],
         async () => {
-
             if (!user?.clienteId) {
-                return null;
+                return 0;
             }
-            const result = (await service.obterSaldo(user?.clienteId ?? '')).data;
-            return result ?? null;
+            return await creditoService.calcularSaldo(user?.clienteId);
         }
     );
 
-    const saldo = formatCurrencyWithCents(data?.saldo.toString() || "0") ?? 0;
+    const saldo = formatCurrencyWithCents(data?.toString() || "0") ?? 0;
 
     const handlerIsOpenSaldo = () => {
         setIsOpenSaldo((prev) => !prev);
