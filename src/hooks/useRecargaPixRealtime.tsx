@@ -7,6 +7,7 @@ import { NotificacaoPagamentoConfirmado } from '../components/NotificacaoPagamen
 interface UseRecargaPixRealtimeProps {
   clienteId: string;
   enabled?: boolean;
+  onPaymentConfirmed?: () => void;
 }
 
 /**
@@ -15,7 +16,8 @@ interface UseRecargaPixRealtimeProps {
  */
 export const useRecargaPixRealtime = ({ 
   clienteId, 
-  enabled = true 
+  enabled = true,
+  onPaymentConfirmed
 }: UseRecargaPixRealtimeProps) => {
   const queryClient = useQueryClient();
 
@@ -50,23 +52,31 @@ export const useRecargaPixRealtime = ({
               valor
             });
 
-            // Mostrar toast customizado de sucesso
-            toast.custom(
-              () => <NotificacaoPagamentoConfirmado valor={valor} />,
-              {
-                duration: 8000,
-                position: 'top-center',
-              }
-            );
-
-            // Reproduzir som de notificação
-            try {
-              const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZUA0PVqzn77BdGAg+ltryxnMpBSuBzvPaiTgIG2i57OiaUg8MUKXk8LllHAY5kdXyzHksBSR4yPDcjUEKE16z6eyrWBQKRp/g8r5tIAUxh9Dz04IzBh5uwO/jmVAND1as5++wXRgIPpba8sZzKQUsgc7z2ok4CBtouuzomVIPDFCl5PC5ZRwGOZHV8sx5LAUkeMjw3I1BChNes+nsq1gUCkaf4PK+bSAFMYfQ89OCMwYebsDv45lQDQ9WrOfvsF0YCD6W2vLGcykFLIHO89qJOAgbaLrs6JlSDwxQpeTwuWUcBjmR1fLMeSwFJHjI8NyNQQoTXrPp7KtYFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZUA0PVqzn77BdGAg+ltryx3MpBSyBzvPaiTgIG2i67OiZUg8MUKXk8LllHAY5kdXyzHksBSR4yPDcjUEKE16z6eyrWBQKRp/g8r5tIAUxh9Dz04IzBh5uwO/jmVAND1as5++wXRgIPpba8sdzKQUsgc7z2ok4CBtouuzomVIPDFCl5PC5ZRwGOZHV8sx5LAUkeMjw3I1BChNes+nsq1gUCkaf4PK+bSAFMYfQ89OCMwYebsDv45lQDQ9WrOfvsF0YCD6W2vLHcykFLIHO89qJOAgbaLrs6JlSD');
-              audio.volume = 0.5;
-              audio.play().catch(e => console.log('Não foi possível reproduzir som:', e));
-            } catch (e) {
-              console.log('Audio não disponível');
+            // Fechar modal se callback fornecido
+            if (onPaymentConfirmed) {
+              onPaymentConfirmed();
             }
+
+            // Aguardar um pouco para o modal fechar
+            setTimeout(() => {
+              // Mostrar toast customizado de sucesso
+              toast.custom(
+                () => <NotificacaoPagamentoConfirmado valor={valor} />,
+                {
+                  duration: 8000,
+                  position: 'top-center',
+                }
+              );
+
+              // Reproduzir som de notificação
+              try {
+                const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZUA0PVqzn77BdGAg+ltryxnMpBSuBzvPaiTgIG2i57OiaUg8MUKXk8LllHAY5kdXyzHksBSR4yPDcjUEKE16z6eyrWBQKRp/g8r5tIAUxh9Dz04IzBh5uwO/jmVAND1as5++wXRgIPpba8sZzKQUsgc7z2ok4CBtouuzomVIPDFCl5PC5ZRwGOZHV8sx5LAUkeMjw3I1BChNes+nsq1gUCkaf4PK+bSAFMYfQ89OCMwYebsDv45lQDQ9WrOfvsF0YCD6W2vLGcykFLIHO89qJOAgbaLrs6JlSDwxQpeTwuWUcBjmR1fLMeSwFJHjI8NyNQQoTXrPp7KtYFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZUA0PVqzn77BdGAg+ltryx3MpBSyBzvPaiTgIG2i67OiZUg8MUKXk8LllHAY5kdXyzHksBSR4yPDcjUEKE16z6eyrWBQKRp/g8r5tIAUxh9Dz04IzBh5uwO/jmVAND1as5++wXRgIPpba8sdzKQUsgc7z2ok4CBtouuzomVIPDFCl5PC5ZRwGOZHV8sx5LAUkeMjw3I1BChNes+nsq1gUCkaf4PK+bSAFMYfQ89OCMwYebsDv45lQDQ9WrOfvsF0YCD6W2vLHcykFLIHO89qJOAgbaLrs6JlSD');
+                audio.volume = 0.5;
+                audio.play().catch(e => console.log('Não foi possível reproduzir som:', e));
+              } catch (e) {
+                console.log('Audio não disponível');
+              }
+            }, 500);
 
             // Invalidar queries para atualizar saldo e lista
             queryClient.invalidateQueries({ queryKey: ['cliente-saldo-recarga'] });
@@ -86,5 +96,5 @@ export const useRecargaPixRealtime = ({
       console.log('🔕 Removendo listener de pagamentos PIX');
       supabase.removeChannel(channel);
     };
-  }, [clienteId, enabled, queryClient]);
+  }, [clienteId, enabled, onPaymentConfirmed, queryClient]);
 };
