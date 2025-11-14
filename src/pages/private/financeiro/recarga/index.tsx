@@ -43,12 +43,37 @@ export default function Recarga() {
                 setShowPixModal(true);
                 toastSuccess("Cobrança PIX gerada com sucesso!");
             } else {
-                toastError(response.error || "Erro ao gerar cobrança PIX");
+                // Mensagens de erro mais amigáveis
+                let errorMessage = "Erro ao gerar cobrança PIX";
+                
+                if (response.error?.includes('Certificados')) {
+                    errorMessage = "Erro de configuração dos certificados. Contate o suporte.";
+                } else if (response.error?.includes('Configuração incompleta')) {
+                    errorMessage = "Sistema não configurado corretamente. Contate o administrador.";
+                } else if (response.error?.includes('autenticação')) {
+                    errorMessage = "Falha na autenticação com Banco Inter. Tente novamente.";
+                } else if (response.error?.includes('criar cobrança')) {
+                    errorMessage = "Não foi possível gerar a cobrança PIX. Tente novamente.";
+                } else if (response.error) {
+                    errorMessage = response.error;
+                }
+                
+                toastError(errorMessage);
+                console.error('Erro detalhado:', response.error);
             }
             setIsLoading(false);
         },
         onError: (error: any) => {
-            toastError(error?.message || "Erro ao gerar cobrança PIX");
+            console.error('Erro na requisição:', error);
+            let errorMessage = "Erro ao gerar cobrança PIX";
+            
+            if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
+                errorMessage = "Erro de conexão. Verifique sua internet e tente novamente.";
+            } else if (error?.message) {
+                errorMessage = error.message;
+            }
+            
+            toastError(errorMessage);
             setIsLoading(false);
         }
     });
