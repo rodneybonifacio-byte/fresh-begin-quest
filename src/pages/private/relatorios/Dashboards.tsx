@@ -1,37 +1,79 @@
-import { TrendingUp, Package, DollarSign, Clock, Truck, MapPin, BarChart3 } from 'lucide-react';
+import { TrendingUp, Package, DollarSign, Clock, Truck, MapPin, BarChart3, Loader2 } from 'lucide-react';
 import { useState } from 'react';
+import { useFetchQuery } from '../../hooks/useFetchQuery';
+import { DashboardService } from '../../services/DashboardService';
+
+const dashboardService = new DashboardService();
 
 export default function Dashboards() {
   const [period, setPeriod] = useState('30d');
 
-  // Mock data - substituir por dados reais da API
+  const { data: dashboardData, isLoading, error } = useFetchQuery(
+    ['dashboard', period],
+    () => dashboardService.getDashboard({ periodo: period })
+  );
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <p className="text-muted-foreground">Carregando dashboards...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !dashboardData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-destructive">Erro ao carregar dados do dashboard</p>
+          <p className="text-sm text-muted-foreground mt-2">Tente novamente mais tarde</p>
+        </div>
+      </div>
+    );
+  }
+
+  const { envio, entregaAnalitico } = dashboardData;
+
+  // Calcular estatísticas a partir dos dados reais
   const stats = {
-    totalEnvios: 1247,
-    crescimento: 12.5,
-    valorTotal: 45280.50,
-    tempoMedio: 2.8,
-    emTransito: 89,
-    entregues: 1158
+    totalEnvios: envio.analyticsUf.reduce((acc, uf) => acc + uf.totalEnviado, 0),
+    valorTotal: envio.analyticsUf.reduce((acc, uf) => acc + uf.valorFrete, 0),
+    tempoMedio: entregaAnalitico?.indicadores?.atrasoMedio || 0,
+    emTransito: entregaAnalitico?.indicadores?.totalEmTransito || 0,
+    entregues: entregaAnalitico?.indicadores?.totalEntregues || 0,
+    sla: entregaAnalitico?.indicadores?.sla || 0
   };
 
-  const topDestinos = [
-    { cidade: 'São Paulo', uf: 'SP', quantidade: 342, percentual: 27.4 },
-    { cidade: 'Rio de Janeiro', uf: 'RJ', quantidade: 218, percentual: 17.5 },
-    { cidade: 'Belo Horizonte', uf: 'MG', quantidade: 156, percentual: 12.5 },
-    { cidade: 'Curitiba', uf: 'PR', quantidade: 124, percentual: 9.9 },
-    { cidade: 'Porto Alegre', uf: 'RS', quantidade: 98, percentual: 7.9 }
-  ];
+  // Top destinos por cidade
+  const topDestinos = envio.analyticsCidade
+    .sort((a, b) => b.totalEnviado - a.totalEnviado)
+    .slice(0, 5)
+    .map(cidade => ({
+      cidade: cidade.destinatarioLocalidade,
+      uf: cidade.destinatarioUf,
+      quantidade: cidade.totalEnviado,
+      percentual: stats.totalEnvios > 0 ? (cidade.totalEnviado / stats.totalEnvios) * 100 : 0
+    }));
 
-  const statusDistribution = [
-    { status: 'Entregue', quantidade: 1158, cor: 'bg-green-500', percentual: 92.9 },
-    { status: 'Em Trânsito', quantidade: 89, cor: 'bg-blue-500', percentual: 7.1 }
-  ];
+  // Distribuição por status
+  const statusDistribution = entregaAnalitico?.distribuicaoStatus?.map(item => ({
+    status: item.status.replace(/_/g, ' '),
+    quantidade: item.total,
+    percentual: stats.totalEnvios > 0 ? (item.total / stats.totalEnvios) * 100 : 0,
+    cor: item.status.includes('ENTREGUE') ? 'bg-green-500' : 'bg-blue-500'
+  })) || [];
 
-  const servicosUtilizados = [
-    { nome: 'SEDEX', quantidade: 687, valor: 28450.30, cor: 'bg-orange-500' },
-    { nome: 'PAC', quantidade: 423, valor: 12830.20, cor: 'bg-blue-500' },
-    { nome: 'RodoNaves', quantidade: 137, valor: 4000.00, cor: 'bg-purple-500' }
-  ];
+  // Serviços utilizados
+  const servicosUtilizados = entregaAnalitico?.distribuicaoServicos?.map(servico => ({
+    nome: servico.servico,
+    quantidade: servico.total,
+    noPrazo: servico.totalNoPrazo,
+    comAtraso: servico.totalComAtraso,
+    cor: 'bg-primary'
+  })) || [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background">
@@ -73,10 +115,9 @@ export default function Dashboards() {
               <div className="p-3 bg-blue-600 rounded-xl">
                 <Package className="h-6 w-6 text-white" />
               </div>
-              <div className="flex items-center gap-1 text-green-600">
-                <TrendingUp className="h-4 w-4" />
-                <span className="text-sm font-bold">+{stats.crescimento}%</span>
-              </div>
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <span className="text-sm">SLA: {stats.sla.toFixed(1)}%</span>
+            </div>
             </div>
             <h3 className="text-3xl font-black text-blue-900 dark:text-blue-100">
               {stats.totalEnvios.toLocaleString('pt-BR')}
