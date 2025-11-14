@@ -2,53 +2,57 @@ import { useState, useEffect } from "react";
 import { X, Copy, QrCode, Clock, CheckCircle2 } from "lucide-react";
 import { ICreatePixChargeResponse } from "../../../../types/IRecargaPix";
 import { toastSuccess, toastError } from "../../../../utils/toastNotify";
-import { RecargaPixService } from "../../../../services/RecargaPixService";
+import { supabase } from "../../../../integrations/supabase/client";
 
 interface ModalRecargaPixProps {
   isOpen: boolean;
   onClose: () => void;
   chargeData?: ICreatePixChargeResponse['data'];
+  saldoInicial: number;
+  clienteId: string;
 }
 
-export function ModalRecargaPix({ isOpen, onClose, chargeData }: ModalRecargaPixProps) {
+export function ModalRecargaPix({ isOpen, onClose, chargeData, saldoInicial, clienteId }: ModalRecargaPixProps) {
   const [copied, setCopied] = useState(false);
 
-  // Polling para verificar status do pagamento a cada 3 segundos
+  // Polling simples: verifica se o saldo mudou
   useEffect(() => {
-    if (!isOpen || !chargeData?.txid) {
-      console.log('⚠️ Polling não iniciado - Modal fechado ou sem txid');
-      return;
-    }
+    if (!isOpen) return;
 
-    console.log('🔄 Iniciando polling para verificar pagamento (txid:', chargeData.txid, ')');
+    console.log('🔄 Iniciando polling - Saldo inicial:', saldoInicial);
     
     const verificarPagamento = async () => {
       try {
-        console.log('🔍 Verificando status do pagamento...');
-        const recarga = await RecargaPixService.verificarStatus(chargeData.txid);
-        console.log('📊 Recarga encontrada:', recarga);
-        console.log('📊 Status atual da recarga:', recarga?.status);
+        console.log('🔍 Verificando saldo...');
         
-        if (recarga?.status === 'pago') {
-          console.log('✅ Pagamento confirmado via polling! Fechando modal...');
+        const { data: saldoAtual, error } = await supabase
+          .rpc('calcular_saldo_cliente', { p_cliente_id: clienteId });
+
+        if (error) {
+          console.error('Erro ao verificar saldo:', error);
+          return;
+        }
+
+        console.log('💰 Saldo atual:', saldoAtual);
+        
+        if (saldoAtual > saldoInicial) {
+          console.log('✅ Saldo aumentou! Pagamento confirmado. Fechando modal...');
+          toastSuccess('Pagamento confirmado! Créditos adicionados à sua conta.');
           onClose();
-        } else {
-          console.log('⏳ Pagamento ainda pendente, continuando polling...');
         }
       } catch (error) {
-        console.error('❌ Erro ao verificar status:', error);
+        console.error('❌ Erro ao verificar pagamento:', error);
       }
     };
 
-    // Verificar imediatamente e depois a cada 3 segundos
-    verificarPagamento();
+    // Verificar a cada 3 segundos
     const interval = setInterval(verificarPagamento, 3000);
 
     return () => {
-      console.log('🛑 Parando polling de pagamento');
+      console.log('🛑 Parando polling');
       clearInterval(interval);
     };
-  }, [isOpen, chargeData?.txid, onClose]);
+  }, [isOpen, saldoInicial, clienteId, onClose]);
 
   if (!isOpen || !chargeData) return null;
 
