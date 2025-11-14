@@ -1,10 +1,6 @@
 import { CustomHttpClient } from '../utils/http-axios-client';
 import { BaseService } from './BaseService';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { supabase } from '../integrations/supabase/client';
 
 export interface ITransacaoCredito {
     id: string;
@@ -92,6 +88,16 @@ export class CreditoService extends BaseService<ITransacaoCredito> {
         try {
             console.log('🔍 Buscando extrato para cliente:', clienteId);
             
+            // Garantir que o token customizado está configurado no Supabase
+            const token = localStorage.getItem('token');
+            if (token) {
+                await supabase.auth.setSession({
+                    access_token: token,
+                    refresh_token: ''
+                });
+                console.log('✅ Token customizado configurado');
+            }
+            
             // Log do estado da autenticação
             const { data: { session } } = await supabase.auth.getSession();
             console.log('🔑 Sessão ativa:', !!session);
@@ -114,7 +120,7 @@ export class CreditoService extends BaseService<ITransacaoCredito> {
             if (data && data.length > 0) {
                 console.log('📄 Primeira transação:', data[0]);
             }
-            return data || [];
+            return (data || []) as ITransacaoCredito[];
         } catch (error) {
             console.error('💥 Exceção ao obter extrato:', error);
             return [];
