@@ -38,10 +38,37 @@ serve(async (req) => {
     const key = Deno.env.get('BANCO_INTER_CLIENT_KEY');
     const caCert = Deno.env.get('BANCO_INTER_CA_CERT');
 
-    if (!CLIENT_ID || !CLIENT_SECRET || !CHAVE_PIX || !cert || !key || !caCert) {
-      console.error('Credenciais do Banco Inter não configuradas');
+    // Validar configurações
+    if (!CLIENT_ID || !CLIENT_SECRET || !CHAVE_PIX) {
+      console.error('Credenciais básicas do Banco Inter não configuradas');
       return new Response(
-        JSON.stringify({ success: false, error: 'Configuração incompleta' }),
+        JSON.stringify({ success: false, error: 'Configuração incompleta: CLIENT_ID, CLIENT_SECRET ou CHAVE_PIX ausentes' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validar certificados
+    if (!cert || !key || !caCert) {
+      console.error('Certificados não configurados', { 
+        hasCert: !!cert, 
+        hasKey: !!key, 
+        hasCaCert: !!caCert 
+      });
+      return new Response(
+        JSON.stringify({ success: false, error: 'Certificados mTLS não configurados. Configure os secrets BANCO_INTER_CLIENT_CERT, BANCO_INTER_CLIENT_KEY e BANCO_INTER_CA_CERT' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validar formato dos certificados
+    if (!cert.includes('BEGIN CERTIFICATE') || !key.includes('BEGIN') || !caCert.includes('BEGIN CERTIFICATE')) {
+      console.error('Certificados em formato inválido', {
+        certValid: cert.includes('BEGIN CERTIFICATE'),
+        keyValid: key.includes('BEGIN'),
+        caCertValid: caCert.includes('BEGIN CERTIFICATE')
+      });
+      return new Response(
+        JSON.stringify({ success: false, error: 'Certificados em formato inválido. Certifique-se de copiar todo o conteúdo dos arquivos .crt e .key incluindo as linhas BEGIN e END' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
