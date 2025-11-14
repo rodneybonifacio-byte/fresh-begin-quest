@@ -1,10 +1,83 @@
 import { DollarSign, Truck, Clock, Box, Zap, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useCotacao } from "../../../hooks/useCotacao";
+import { useCliente } from "../../../hooks/useCliente";
+import { useAuth } from "../../../providers/AuthContext";
+import { CotacaoList } from "../../../components/CotacaoList";
+import { SelecionarRemetente } from "../../../components/SelecionarRemetente";
+import { toast } from "sonner";
 
 export const ModernHome = () => {
     const navigate = useNavigate();
     const [showBanner, setShowBanner] = useState(true);
+    
+    // Form states
+    const [cepDestino, setCepDestino] = useState("");
+    const [peso, setPeso] = useState("");
+    const [altura, setAltura] = useState("2");
+    const [largura, setLargura] = useState("11");
+    const [comprimento, setComprimento] = useState("16");
+    const [remetenteSelecionado, setRemetenteSelecionado] = useState<any>(null);
+    
+    // Hooks
+    const { user: userPayload } = useAuth();
+    const { data: cliente } = useCliente(userPayload?.clienteId || '');
+    const { onGetCotacaoCorreios, cotacoes, isLoadingCotacao } = useCotacao();
+
+    useEffect(() => {
+        if (cliente && !remetenteSelecionado) {
+            setRemetenteSelecionado(cliente);
+        }
+    }, [cliente, remetenteSelecionado]);
+
+    const handleCalcularFrete = async () => {
+        // Validação básica
+        if (!remetenteSelecionado?.endereco?.cep) {
+            toast.error("Selecione um remetente primeiro");
+            return;
+        }
+        
+        if (!cepDestino || cepDestino.length < 8) {
+            toast.error("Informe um CEP de destino válido");
+            return;
+        }
+        
+        if (!peso || parseFloat(peso) <= 0) {
+            toast.error("Informe o peso do pacote");
+            return;
+        }
+        
+        if (!altura || !largura || !comprimento) {
+            toast.error("Informe as dimensões do pacote");
+            return;
+        }
+
+        try {
+            const embalagem = {
+                id: '',
+                descricao: 'Simulação',
+                altura: parseFloat(altura),
+                largura: parseFloat(largura),
+                comprimento: parseFloat(comprimento),
+                peso: parseFloat(peso),
+                diametro: 0,
+                formatoObjeto: 'CAIXA_PACOTE' as const
+            };
+
+            await onGetCotacaoCorreios(
+                remetenteSelecionado.endereco.cep,
+                cepDestino.replace(/\D/g, ""),
+                embalagem,
+                "0",
+                "N",
+                remetenteSelecionado
+            );
+        } catch (error) {
+            console.error("Erro ao calcular frete:", error);
+            toast.error("Erro ao calcular frete. Tente novamente.");
+        }
+    };
 
     return (
         <div className="flex flex-col gap-0 -m-4 sm:-m-6 lg:-m-8">
@@ -54,11 +127,12 @@ export const ModernHome = () => {
                         
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium mb-2">CEP de origem*</label>
-                                <input
-                                    type="text"
-                                    placeholder="00000-000"
-                                    className="w-full px-4 py-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-purple-600"
+                                <label className="block text-sm font-medium mb-2">Remetente*</label>
+                                <SelecionarRemetente
+                                    remetenteSelecionado={remetenteSelecionado}
+                                    onSelect={(remetente) => {
+                                        setRemetenteSelecionado(remetente);
+                                    }}
                                 />
                             </div>
 
@@ -67,6 +141,9 @@ export const ModernHome = () => {
                                 <input
                                     type="text"
                                     placeholder="00000-000"
+                                    value={cepDestino}
+                                    onChange={(e) => setCepDestino(e.target.value)}
+                                    maxLength={9}
                                     className="w-full px-4 py-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-purple-600"
                                 />
                             </div>
@@ -76,6 +153,8 @@ export const ModernHome = () => {
                                 <input
                                     type="number"
                                     placeholder="0"
+                                    value={peso}
+                                    onChange={(e) => setPeso(e.target.value)}
                                     className="w-full px-4 py-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-purple-600"
                                 />
                             </div>
@@ -86,6 +165,8 @@ export const ModernHome = () => {
                                     <input
                                         type="number"
                                         placeholder="2"
+                                        value={altura}
+                                        onChange={(e) => setAltura(e.target.value)}
                                         className="w-full px-4 py-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-purple-600"
                                     />
                                 </div>
@@ -94,6 +175,8 @@ export const ModernHome = () => {
                                     <input
                                         type="number"
                                         placeholder="11"
+                                        value={largura}
+                                        onChange={(e) => setLargura(e.target.value)}
                                         className="w-full px-4 py-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-purple-600"
                                     />
                                 </div>
@@ -102,16 +185,19 @@ export const ModernHome = () => {
                                     <input
                                         type="number"
                                         placeholder="16"
+                                        value={comprimento}
+                                        onChange={(e) => setComprimento(e.target.value)}
                                         className="w-full px-4 py-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-purple-600"
                                     />
                                 </div>
                             </div>
 
                             <button
-                                onClick={() => navigate('/app/simulador')}
-                                className="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-lg font-semibold transition-colors"
+                                onClick={handleCalcularFrete}
+                                disabled={isLoadingCotacao}
+                                className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white py-4 rounded-lg font-semibold transition-colors"
                             >
-                                Calcular frete com desconto
+                                {isLoadingCotacao ? "Calculando..." : "Calcular frete com desconto"}
                             </button>
                         </div>
                     </div>
@@ -166,6 +252,20 @@ export const ModernHome = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Results Section */}
+            {cotacoes && cotacoes.length > 0 && (
+                <div className="px-4 sm:px-6 lg:px-8 py-12 bg-muted/30">
+                    <div className="max-w-7xl mx-auto">
+                        <h2 className="text-3xl font-bold mb-6 text-center">Opções de Frete Disponíveis</h2>
+                        <CotacaoList 
+                            cotacoes={cotacoes} 
+                            isLoading={isLoadingCotacao}
+                            emptyStateMessage="Preencha os campos acima para calcular o frete"
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
