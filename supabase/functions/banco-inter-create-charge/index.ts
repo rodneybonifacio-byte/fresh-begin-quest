@@ -113,7 +113,7 @@ serve(async (req) => {
       body: new URLSearchParams({
         client_id: CLIENT_ID,
         client_secret: CLIENT_SECRET,
-        scope: 'cob.write cob.read',
+        scope: 'cob.write cob.read pix.read pix.write webhook.read webhook.write',
         grant_type: 'client_credentials'
       }),
       client: httpClient
@@ -132,7 +132,42 @@ serve(async (req) => {
     const { access_token } = await tokenResponse.json();
     console.log('Token obtido com sucesso');
 
-    // 2. Criar cobrança PIX no Banco Inter
+    // 2. Configurar webhook (caso ainda não esteja configurado)
+    try {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL');
+      const webhookUrl = `${supabaseUrl}/functions/v1/banco-inter-webhook`;
+      
+      console.log('Verificando/configurando webhook:', webhookUrl);
+      
+      const webhookResponse = await fetch(
+        `https://cdpj.partners.bancointer.com.br/banking/v2/pix/v2/webhook/${encodeURIComponent(CHAVE_PIX)}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            webhookUrl: webhookUrl
+          }),
+          client: httpClient
+        } as any
+      );
+
+      if (webhookResponse.ok) {
+        const webhookData = await webhookResponse.json();
+        console.log('✓ Webhook configurado com sucesso:', webhookData);
+      } else {
+        const errorText = await webhookResponse.text();
+        console.warn('Aviso: Não foi possível configurar webhook:', webhookResponse.status, errorText);
+        // Não falha a operação, apenas registra o aviso
+      }
+    } catch (webhookError) {
+      console.warn('Aviso: Erro ao configurar webhook:', webhookError);
+      // Continua mesmo se o webhook falhar
+    }
+
+    // 3. Criar cobrança PIX no Banco Inter
     console.log('Criando cobrança PIX:', { txid, valor, chave: CHAVE_PIX });
     
     const cobResponse = await fetch(`https://cdpj.partners.bancointer.com.br/pix/v2/cob/${txid}`, {
@@ -174,7 +209,7 @@ serve(async (req) => {
     const pixCopiaECola = cobData.pixCopiaECola || '';
     const qrCodeUrl = cobData.loc?.qrcode || `https://gerarqrcodepix.com.br/api/v1?brcode=${encodeURIComponent(pixCopiaECola)}`;
     
-    // 3. Salvar no banco de dados
+    // 4. Salvar no banco de dados
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
