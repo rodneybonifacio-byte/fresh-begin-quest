@@ -1,95 +1,171 @@
-import { Package, Truck, DollarSign, TrendingUp } from "lucide-react";
+import { DollarSign, Truck, Clock, Box, Zap, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useFetchQuery } from "../../../hooks/useFetchQuery";
-import { DashboardService } from "../../../services/DashboardService";
-import type { IDashboardGeral } from "../../../types/dashboard/IDashboardGeral";
-import { formatMoedaDecimal } from "../../../utils/formatCurrency";
-import { StatCard } from "../../../components/StatCard";
+import { useState } from "react";
 
 export const ModernHome = () => {
     const navigate = useNavigate();
-    const dashboardService = new DashboardService();
-
-    const { data: dashboardData, isLoading } = useFetchQuery<IDashboardGeral>(
-        ['dashboard-cliente'],
-        async () => await dashboardService.getDashboard({ periodo: '30d' })
-    );
-
-    if (isLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <div className="text-muted-foreground">Carregando...</div>
-            </div>
-        );
-    }
-
-    if (!dashboardData || !dashboardData.entregaAnalitico) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-                <Package className="w-16 h-16 text-muted-foreground" />
-                <p className="text-muted-foreground">Nenhum dado disponível</p>
-                <button
-                    onClick={() => navigate('/app/emissao/adicionar')}
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2 rounded-lg transition-colors"
-                >
-                    Emitir primeiro frete
-                </button>
-            </div>
-        );
-    }
-
-    const { entregaAnalitico, faturamento } = dashboardData;
-    const { indicadores } = entregaAnalitico;
-    const totalEnvios = (indicadores.totalEntregues || 0) + (indicadores.totalEmTransito || 0);
+    const [showBanner, setShowBanner] = useState(true);
 
     return (
-        <div className="flex flex-col gap-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-3xl font-bold">Dashboard</h1>
-                    <p className="text-muted-foreground">Últimos 30 dias</p>
-                </div>
-                <button
-                    onClick={() => navigate('/app/emissao/adicionar')}
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2 rounded-lg transition-colors flex items-center gap-2"
-                >
-                    <Package className="w-4 h-4" />
-                    Nova Emissão
-                </button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard
-                    title="Total de Envios"
-                    value={totalEnvios}
-                    icon={<Package className="w-5 h-5" />}
-                />
-                <StatCard
-                    title="Em Trânsito"
-                    value={indicadores.totalEmTransito || 0}
-                    icon={<Truck className="w-5 h-5" />}
-                />
-                <StatCard
-                    title="Entregues"
-                    value={indicadores.totalEntregues || 0}
-                    icon={<TrendingUp className="w-5 h-5" />}
-                />
-                <StatCard
-                    title="Valor Total"
-                    value={formatMoedaDecimal(faturamento?.resumo?.faturado || 0)}
-                    icon={<DollarSign className="w-5 h-5" />}
-                />
-            </div>
-
-            {totalEnvios === 0 && (
-                <div className="bg-muted/50 rounded-lg p-8 text-center">
-                    <Package className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                    <h3 className="text-lg font-semibold mb-2">Comece a enviar agora</h3>
-                    <p className="text-muted-foreground mb-4">
-                        Você ainda não tem nenhum envio registrado. Clique no botão acima para criar sua primeira emissão.
-                    </p>
+        <div className="flex flex-col gap-0 -m-4 sm:-m-6 lg:-m-8">
+            {/* Black Friday Banner */}
+            {showBanner && (
+                <div className="bg-black text-white py-3 px-4 flex items-center justify-between">
+                    <div className="flex items-center gap-2 flex-1 justify-center">
+                        <Zap className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+                        <span className="font-bold text-yellow-400">BLACK FRIDAY</span>
+                        <span className="hidden sm:inline">Descontos imperdíveis no frete! 🔥</span>
+                        <span className="bg-yellow-400 text-black px-3 py-1 rounded-full font-bold text-sm">
+                            ATÉ 80% OFF
+                        </span>
+                        <Zap className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+                    </div>
+                    <button 
+                        onClick={() => setShowBanner(false)}
+                        className="text-white hover:text-gray-300"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
                 </div>
             )}
+
+            {/* Hero Section */}
+            <div className="bg-gradient-to-br from-background to-muted px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
+                <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+                    {/* Left Content */}
+                    <div className="space-y-6">
+                        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight">
+                            Calcular frete e emitir com desconto
+                        </h1>
+                        <p className="text-lg sm:text-xl text-muted-foreground">
+                            Venda mais com fretes <span className="font-bold text-foreground">até 80% mais baratos</span> com a BRHUB: sem mensalidades ou taxas escondidas
+                        </p>
+                        <button
+                            onClick={() => navigate('/app/emissao/adicionar')}
+                            className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 rounded-full text-lg font-semibold transition-colors"
+                        >
+                            Emitir frete com desconto
+                        </button>
+                    </div>
+
+                    {/* Right Content - Simulator Card */}
+                    <div className="bg-card rounded-2xl shadow-xl p-6 sm:p-8 border border-border">
+                        <h2 className="text-2xl font-bold mb-6">Simule seu frete em segundos</h2>
+                        
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium mb-2">CEP de origem*</label>
+                                <input
+                                    type="text"
+                                    placeholder="00000-000"
+                                    className="w-full px-4 py-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-purple-600"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium mb-2">CEP de destino*</label>
+                                <input
+                                    type="text"
+                                    placeholder="00000-000"
+                                    className="w-full px-4 py-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-purple-600"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium mb-2">Peso (g)*</label>
+                                <input
+                                    type="number"
+                                    placeholder="0"
+                                    className="w-full px-4 py-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-purple-600"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-3">
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Altura (cm)</label>
+                                    <input
+                                        type="number"
+                                        placeholder="2"
+                                        className="w-full px-4 py-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-purple-600"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Largura (cm)</label>
+                                    <input
+                                        type="number"
+                                        placeholder="11"
+                                        className="w-full px-4 py-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-purple-600"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Comprim. (cm)</label>
+                                    <input
+                                        type="number"
+                                        placeholder="16"
+                                        className="w-full px-4 py-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-purple-600"
+                                    />
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => navigate('/app/simulador')}
+                                className="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-lg font-semibold transition-colors"
+                            >
+                                Calcular frete com desconto
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Features Section */}
+            <div className="px-4 sm:px-6 lg:px-8 py-12 bg-background">
+                <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {/* Feature 1 */}
+                    <div className="bg-card rounded-xl p-6 border border-border hover:shadow-lg transition-shadow">
+                        <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center mb-4">
+                            <DollarSign className="w-6 h-6 text-green-600 dark:text-green-400" />
+                        </div>
+                        <h3 className="text-xl font-bold mb-2">Fretes até 80% mais baratos</h3>
+                        <p className="text-muted-foreground">
+                            Economize em todos os seus envios sem mensalidades
+                        </p>
+                    </div>
+
+                    {/* Feature 2 */}
+                    <div className="bg-card rounded-xl p-6 border border-border hover:shadow-lg transition-shadow">
+                        <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center mb-4">
+                            <Truck className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <h3 className="text-xl font-bold mb-2">Envie para todo o Brasil</h3>
+                        <p className="text-muted-foreground">
+                            Cobertura nacional com as melhores transportadoras
+                        </p>
+                    </div>
+
+                    {/* Feature 3 */}
+                    <div className="bg-card rounded-xl p-6 border border-border hover:shadow-lg transition-shadow">
+                        <div className="w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center mb-4">
+                            <Clock className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+                        </div>
+                        <h3 className="text-xl font-bold mb-2">Simule em segundos</h3>
+                        <p className="text-muted-foreground">
+                            Cotação rápida e fácil de usar
+                        </p>
+                    </div>
+
+                    {/* Feature 4 */}
+                    <div className="bg-card rounded-xl p-6 border border-border hover:shadow-lg transition-shadow">
+                        <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center mb-4">
+                            <Box className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                        </div>
+                        <h3 className="text-xl font-bold mb-2">Rastreamento completo</h3>
+                        <p className="text-muted-foreground">
+                            Acompanhe seus envios em tempo real
+                        </p>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };
