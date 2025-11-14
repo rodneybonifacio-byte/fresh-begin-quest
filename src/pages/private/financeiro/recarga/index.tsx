@@ -263,6 +263,8 @@ export default function Recarga() {
                     console.log('✅ Queries invalidadas');
                 }}
                 chargeData={pixChargeData}
+                saldoInicial={saldo || 0}
+                clienteId={user?.clienteId || ''}
             />
         </div>
     );
