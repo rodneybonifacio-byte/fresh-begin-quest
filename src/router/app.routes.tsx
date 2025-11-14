@@ -71,6 +71,10 @@ export const appRoutesConfig: ProtectedRouteItem[] = [
         component: () => import("../pages/private/financeiro/recarga")
     },
     {
+        path: "financeiro/recarga/historico",
+        component: () => import("../pages/private/financeiro/recarga/HistoricoRecargas")
+    },
+    {
         path: "financeiro/extrato",
         component: () => import("../pages/private/financeiro/extrato")
     },

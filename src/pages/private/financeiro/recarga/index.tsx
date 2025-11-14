@@ -11,9 +11,11 @@ import { toastSuccess, toastError } from "../../../../utils/toastNotify";
 import { ModalRecargaPix } from "./ModalRecargaPix";
 import { ICreatePixChargeResponse } from "../../../../types/IRecargaPix";
 import { useRecargaPixRealtime } from "../../../../hooks/useRecargaPixRealtime";
+import { useNavigate } from "react-router-dom";
 
 export default function Recarga() {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const creditoService = new CreditoService();
     const queryClient = useQueryClient();
     const { setIsLoading } = useLoadingSpinner();
@@ -121,14 +123,23 @@ export default function Recarga() {
         <div className="min-h-screen bg-background p-6">
             <div className="max-w-6xl mx-auto space-y-6">
                 {/* Header */}
-                <div className="flex items-center gap-3 mb-8">
-                    <div className="p-3 bg-primary/10 rounded-lg">
-                        <Wallet className="w-8 h-8 text-primary" />
+                <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-3">
+                        <div className="p-3 bg-primary/10 rounded-lg">
+                            <Wallet className="w-8 h-8 text-primary" />
+                        </div>
+                        <div>
+                            <h1 className="text-3xl font-bold text-foreground">Recarga de Créditos</h1>
+                            <p className="text-muted-foreground">Adicione créditos à sua carteira</p>
+                        </div>
                     </div>
-                    <div>
-                        <h1 className="text-3xl font-bold text-foreground">Recarga de Créditos</h1>
-                        <p className="text-muted-foreground">Adicione créditos à sua carteira</p>
-                    </div>
+                    <button
+                        onClick={() => navigate('/app/financeiro/recarga/historico')}
+                        className="flex items-center gap-2 px-4 py-2 bg-card hover:bg-muted border border-border rounded-lg transition-colors text-foreground"
+                    >
+                        <History className="w-5 h-5" />
+                        Ver Histórico
+                    </button>
                 </div>
 
                 {/* Cards Grid */}
