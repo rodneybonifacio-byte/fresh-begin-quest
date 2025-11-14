@@ -90,6 +90,13 @@ export class CreditoService extends BaseService<ITransacaoCredito> {
      */
     async obterExtrato(clienteId: string, limit: number = 50): Promise<ITransacaoCredito[]> {
         try {
+            console.log('🔍 Buscando extrato para cliente:', clienteId);
+            
+            // Log do estado da autenticação
+            const { data: { session } } = await supabase.auth.getSession();
+            console.log('🔑 Sessão ativa:', !!session);
+            console.log('🔑 Token presente:', !!session?.access_token);
+            
             const { data, error } = await supabase
                 .from('transacoes_credito')
                 .select('*')
@@ -98,14 +105,18 @@ export class CreditoService extends BaseService<ITransacaoCredito> {
                 .limit(limit);
 
             if (error) {
-                console.error('Erro ao buscar extrato:', error);
+                console.error('❌ Erro ao buscar extrato:', error);
+                console.error('❌ Detalhes do erro:', JSON.stringify(error, null, 2));
                 throw error;
             }
             
-            console.log('📊 Transações carregadas:', data?.length || 0);
+            console.log('✅ Transações carregadas:', data?.length || 0);
+            if (data && data.length > 0) {
+                console.log('📄 Primeira transação:', data[0]);
+            }
             return data || [];
         } catch (error) {
-            console.error('Erro ao obter extrato:', error);
+            console.error('💥 Exceção ao obter extrato:', error);
             return [];
         }
     }
