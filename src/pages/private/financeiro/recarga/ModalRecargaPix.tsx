@@ -15,18 +15,25 @@ export function ModalRecargaPix({ isOpen, onClose, chargeData }: ModalRecargaPix
 
   // Polling para verificar status do pagamento a cada 3 segundos
   useEffect(() => {
-    if (!isOpen || !chargeData?.txid) return;
+    if (!isOpen || !chargeData?.txid) {
+      console.log('⚠️ Polling não iniciado - Modal fechado ou sem txid');
+      return;
+    }
 
     console.log('🔄 Iniciando polling para verificar pagamento (txid:', chargeData.txid, ')');
     
     const verificarPagamento = async () => {
       try {
+        console.log('🔍 Verificando status do pagamento...');
         const recarga = await RecargaPixService.verificarStatus(chargeData.txid);
+        console.log('📊 Recarga encontrada:', recarga);
         console.log('📊 Status atual da recarga:', recarga?.status);
         
         if (recarga?.status === 'pago') {
           console.log('✅ Pagamento confirmado via polling! Fechando modal...');
           onClose();
+        } else {
+          console.log('⏳ Pagamento ainda pendente, continuando polling...');
         }
       } catch (error) {
         console.error('❌ Erro ao verificar status:', error);
