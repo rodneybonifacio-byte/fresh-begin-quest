@@ -29,12 +29,15 @@ serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+    
+    // Cliente com ANON key para autenticação
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
     });
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
     
     if (userError || !user) {
       console.error('Erro ao obter usuário:', userError);
@@ -45,6 +48,9 @@ serve(async (req) => {
     }
 
     const cliente_id = user.id;
+    
+    // Cliente com service role para operações privilegiadas
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const { valor, expiracao = 3600 } = await req.json() as CreateChargeRequest;
 
     console.log('Criando cobrança PIX para usuário:', cliente_id, 'valor:', valor);
