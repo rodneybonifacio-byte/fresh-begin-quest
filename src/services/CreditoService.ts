@@ -1,6 +1,6 @@
 import { CustomHttpClient } from '../utils/http-axios-client';
 import { BaseService } from './BaseService';
-import { supabase } from '../integrations/supabase/client';
+import { getSupabaseWithAuth } from '../integrations/supabase/custom-auth';
 
 export interface ITransacaoCredito {
     id: string;
@@ -24,6 +24,7 @@ export class CreditoService extends BaseService<ITransacaoCredito> {
      * Registra uma recarga de créditos usando a função do banco
      */
     async registrarRecarga(clienteId: string, valor: number, descricao?: string): Promise<any> {
+        const supabase = getSupabaseWithAuth();
         const { data, error } = await supabase.rpc('registrar_recarga', {
             p_cliente_id: clienteId,
             p_valor: valor,
@@ -38,6 +39,7 @@ export class CreditoService extends BaseService<ITransacaoCredito> {
      * Calcula o saldo atual do cliente
      */
     async calcularSaldo(clienteId: string): Promise<number> {
+        const supabase = getSupabaseWithAuth();
         const { data, error } = await supabase.rpc('calcular_saldo_cliente', {
             p_cliente_id: clienteId
         });
@@ -50,6 +52,7 @@ export class CreditoService extends BaseService<ITransacaoCredito> {
      * Verifica se o cliente tem saldo suficiente
      */
     async verificarSaldoSuficiente(clienteId: string, valor: number): Promise<boolean> {
+        const supabase = getSupabaseWithAuth();
         const { data, error } = await supabase.rpc('verificar_saldo_suficiente', {
             p_cliente_id: clienteId,
             p_valor: valor
@@ -68,6 +71,7 @@ export class CreditoService extends BaseService<ITransacaoCredito> {
         valor: number,
         status: string
     ): Promise<any> {
+        const supabase = getSupabaseWithAuth();
         const { data, error } = await supabase.functions.invoke('consumir-creditos-etiqueta', {
             body: {
                 cliente_id: clienteId,
@@ -88,21 +92,7 @@ export class CreditoService extends BaseService<ITransacaoCredito> {
         try {
             console.log('🔍 Buscando extrato para cliente:', clienteId);
             
-            // Garantir que o token customizado está configurado no Supabase
-            const token = localStorage.getItem('token');
-            if (token) {
-                await supabase.auth.setSession({
-                    access_token: token,
-                    refresh_token: ''
-                });
-                console.log('✅ Token customizado configurado');
-            }
-            
-            // Log do estado da autenticação
-            const { data: { session } } = await supabase.auth.getSession();
-            console.log('🔑 Sessão ativa:', !!session);
-            console.log('🔑 Token presente:', !!session?.access_token);
-            
+            const supabase = getSupabaseWithAuth();
             const { data, error } = await supabase
                 .from('transacoes_credito')
                 .select('*')
@@ -132,6 +122,7 @@ export class CreditoService extends BaseService<ITransacaoCredito> {
      */
     async obterResumo(clienteId: string, dataInicio?: string, dataFim?: string) {
         try {
+            const supabase = getSupabaseWithAuth();
             let query = supabase
                 .from('transacoes_credito')
                 .select('tipo, valor, created_at')
