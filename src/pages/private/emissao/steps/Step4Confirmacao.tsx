@@ -4,6 +4,7 @@ import { useFormContext } from 'react-hook-form';
 import { FormCard } from '../../../../components/FormCard';
 import { ButtonComponent } from '../../../../components/button';
 import { useEmissao } from '../../../../hooks/useEmissao';
+import { useImprimirEtiquetaPDF } from '../../../../hooks/useImprimirEtiquetaPDF';
 import type { IEmissao } from '../../../../types/IEmissao';
 import type { IEmbalagem } from '../../../../types/IEmbalagem';
 import { formatNumberString } from '../../../../utils/formatCurrency';
@@ -12,7 +13,7 @@ import { getTransportadoraImage, getTransportadoraAltText } from '../../../../ut
 
 interface Step4ConfirmacaoProps {
   onBack: () => void;
-  onSuccess: () => void;
+  onSuccess: (emissao: any, pdfData: { nome: string; dados: string }) => void;
   cotacaoSelecionado: any;
   selectedEmbalagem: any;
   clienteSelecionado: any;
@@ -21,6 +22,7 @@ interface Step4ConfirmacaoProps {
 export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, selectedEmbalagem, clienteSelecionado }: Step4ConfirmacaoProps) => {
   const { handleSubmit, getValues } = useFormContext();
   const { onEmissaoCadastro } = useEmissao();
+  const { onEmissaoImprimir } = useImprimirEtiquetaPDF();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const formData = getValues();
@@ -52,9 +54,20 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
         destinatario: data.destinatario,
       };
       
+      // Primeiro gera a emissão
       await onEmissaoCadastro(emissao, setIsSubmitting);
+      
+      // Depois busca o PDF da etiqueta
+      const pdfResponse = await onEmissaoImprimir(
+        emissao as IEmissao,
+        'etiqueta',
+        setIsSubmitting
+      );
+      
       toast.success('Etiqueta gerada com sucesso!');
-      onSuccess();
+      
+      // Passa a emissão e o PDF para o próximo step
+      onSuccess(emissao, pdfResponse.data);
     } catch (error) {
       console.error('Erro ao gerar etiqueta:', error);
       toast.error('Erro ao gerar etiqueta');
