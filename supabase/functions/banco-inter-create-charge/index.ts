@@ -35,41 +35,19 @@ serve(async (req) => {
     const CLIENT_ID = Deno.env.get('BANCO_INTER_CLIENT_ID');
     const CLIENT_SECRET = Deno.env.get('BANCO_INTER_CLIENT_SECRET');
     const CHAVE_PIX = Deno.env.get('BANCO_INTER_CHAVE_PIX');
+    const cert = Deno.env.get('BANCO_INTER_CLIENT_CERT');
+    const key = Deno.env.get('BANCO_INTER_CLIENT_KEY');
+    const caCert = Deno.env.get('BANCO_INTER_CA_CERT');
 
-    // Validar configurações
-    if (!CLIENT_ID || !CLIENT_SECRET || !CHAVE_PIX) {
-      console.error('Credenciais básicas do Banco Inter não configuradas');
+    if (!CLIENT_ID || !CLIENT_SECRET || !CHAVE_PIX || !cert || !key || !caCert) {
+      console.error('Configuração incompleta');
       return new Response(
-        JSON.stringify({ success: false, error: 'Configuração incompleta: CLIENT_ID, CLIENT_SECRET ou CHAVE_PIX ausentes' }),
+        JSON.stringify({ success: false, error: 'Configuração incompleta' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Ler certificados dos arquivos
-    console.log('Carregando certificados mTLS dos arquivos...');
-    let cert: string;
-    let key: string;
-    let caCert: string;
-    
-    try {
-      const certPath = new URL('../_shared/banco-inter-client.crt', import.meta.url).pathname;
-      const keyPath = new URL('../_shared/banco-inter-client.key', import.meta.url).pathname;
-      const caCertPath = new URL('../_shared/banco-inter-ca.crt', import.meta.url).pathname;
-      
-      cert = await Deno.readTextFile(certPath);
-      key = await Deno.readTextFile(keyPath);
-      caCert = await Deno.readTextFile(caCertPath);
-      
-      console.log('Certificados carregados com sucesso dos arquivos');
-    } catch (error) {
-      console.error('Erro ao ler certificados dos arquivos:', error);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Erro ao carregar certificados mTLS' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Configurar certificados mTLS
+    console.log('Configurando certificados mTLS...');
     const caCerts = [caCert];
 
     // Criar cliente HTTP com mTLS
