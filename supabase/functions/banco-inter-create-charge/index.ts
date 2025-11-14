@@ -137,10 +137,11 @@ serve(async (req) => {
       const supabaseUrl = Deno.env.get('SUPABASE_URL');
       const webhookUrl = `${supabaseUrl}/functions/v1/banco-inter-webhook`;
       
-      console.log('Verificando/configurando webhook:', webhookUrl);
+      console.log('Configurando webhook PIX:', webhookUrl);
       
+      // Endpoint correto da API PIX conforme documentação
       const webhookResponse = await fetch(
-        `https://cdpj.partners.bancointer.com.br/banking/v2/pix/v2/webhook/${encodeURIComponent(CHAVE_PIX)}`,
+        `https://cdpj.partners.bancointer.com.br/pix/v2/webhook/${encodeURIComponent(CHAVE_PIX)}`,
         {
           method: 'PUT',
           headers: {
@@ -156,15 +157,14 @@ serve(async (req) => {
 
       if (webhookResponse.ok) {
         const webhookData = await webhookResponse.json();
-        console.log('✓ Webhook configurado com sucesso:', webhookData);
+        console.log('✓ Webhook PIX configurado:', webhookData);
       } else {
         const errorText = await webhookResponse.text();
-        console.warn('Aviso: Não foi possível configurar webhook:', webhookResponse.status, errorText);
-        // Não falha a operação, apenas registra o aviso
+        console.error('❌ Erro ao configurar webhook:', webhookResponse.status, errorText);
+        // Não falha a operação mas registra o erro
       }
     } catch (webhookError) {
-      console.warn('Aviso: Erro ao configurar webhook:', webhookError);
-      // Continua mesmo se o webhook falhar
+      console.error('❌ Exceção ao configurar webhook:', webhookError);
     }
 
     // 3. Criar cobrança PIX no Banco Inter
