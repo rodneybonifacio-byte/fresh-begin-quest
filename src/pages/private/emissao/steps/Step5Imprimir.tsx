@@ -45,11 +45,20 @@ export const Step5Imprimir = ({ onBack, onFinish, emissaoGerada, pdfData }: Step
             </div>
             <div className="flex-1">
               <h3 className="font-bold text-lg text-green-900 dark:text-green-100 mb-2">
-                Etiqueta Gerada!
+                Etiqueta Gerada! 🎉
               </h3>
               <p className="text-sm text-green-700 dark:text-green-300 mb-3">
                 Código do Objeto: <span className="font-mono font-bold">{emissaoGerada.codigoObjeto || 'Processando...'}</span>
               </p>
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 mb-3 border-l-4 border-green-500">
+                <p className="text-sm text-green-700 dark:text-green-300 font-medium flex items-center gap-2">
+                  <span className="text-lg">📧</span>
+                  Já enviamos o código de rastreio para o destinatário! 😉
+                </p>
+                <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                  Pode ficar tranquilo, o cliente já está informado e pode acompanhar tudo! 📦✨
+                </p>
+              </div>
               <p className="text-sm text-green-600 dark:text-green-400">
                 Agora você pode imprimir, visualizar ou baixar sua etiqueta.
               </p>
