@@ -2,7 +2,6 @@ import { Link } from "react-router-dom"
 import { useState } from "react";
 import { AlignLeft, Moon, Sun } from "lucide-react";
 import { useTheme } from "../../../providers/ThemeContext";
-import brhubLogo from "@/assets/brhub-logo.png";
 
 interface NavBarPublicoProps {
     showMenuCadastro?: boolean;
@@ -19,8 +18,9 @@ export const NavBarPublico = ({ showMenuLogin = true, showMenuCadastro = true, s
             <div className="max-w-7xl mx-auto px-4">
                 <div className="flex justify-between items-center py-3">
                     <div className="flex items-center">
-                        <Link to="/">
-                            <img src={brhubLogo} alt="BRHUB Envios" className="h-12 w-auto" />
+                        <Link to="/" className="flex items-center gap-2">
+                            <span className="text-2xl font-bold text-primary">BRHUB</span>
+                            <span className="text-2xl font-semibold text-foreground">Envios</span>
                         </Link>
                     </div>
                     <div className="hidden lg:flex items-center space-x-6">
@@ -74,8 +74,9 @@ export const NavBarPublico = ({ showMenuLogin = true, showMenuCadastro = true, s
                         <div className="flex flex-col h-full">
                             {/* Header do menu */}
                             <div className="flex items-center justify-between p-4 border-b border-border">
-                                <div className="flex items-center">
-                                    <img src={brhubLogo} alt="BRHUB Envios" className="h-10 w-auto" />
+                                <div className="flex items-center gap-2">
+                                    <span className="text-2xl font-bold text-primary">BRHUB</span>
+                                    <span className="text-2xl font-semibold text-foreground">Envios</span>
                                 </div>
                                 <button
                                     onClick={() => setMenuOpen(false)}
