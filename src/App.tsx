@@ -6,12 +6,9 @@ import { IdleProvider } from './providers/IdleProvider';
 import { InstallButton } from '../install-button';
 import { useEffect } from 'react';
 import Clarity from '@microsoft/clarity';
-import { useTheme } from './hooks/useTheme';
 
 
 export default function App() {
-    // Inicializa o tema global
-    useTheme();
 
     useEffect(() => {
         // enviar somente se o ambiente for produção
