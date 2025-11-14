@@ -10,6 +10,11 @@ import type { IEmbalagem } from '../../../../types/IEmbalagem';
 import { formatNumberString } from '../../../../utils/formatCurrency';
 import { toast } from 'sonner';
 import { getTransportadoraImage, getTransportadoraAltText } from '../../../../utils/imageHelper';
+import { CreditoService } from '../../../../services/CreditoService';
+import { useAuth } from '../../../../providers/AuthContext';
+import { ModalRecargaPix } from '../../financeiro/recarga/ModalRecargaPix';
+import { RecargaPixService } from '../../../../services/RecargaPixService';
+import { ICreatePixChargeResponse } from '../../../../types/IRecargaPix';
 
 interface Step4ConfirmacaoProps {
   onBack: () => void;
@@ -24,6 +29,13 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
   const { onEmissaoCadastro } = useEmissao();
   const { onEmissaoImprimir } = useImprimirEtiquetaPDF();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user } = useAuth();
+  const creditoService = new CreditoService();
+  
+  // Estados para modal de recarga
+  const [showPixModal, setShowPixModal] = useState(false);
+  const [pixChargeData, setPixChargeData] = useState<ICreatePixChargeResponse['data']>();
+  const [saldoAtual, setSaldoAtual] = useState(0);
 
   const formData = getValues();
   const destinatarioData = formData.destinatario;
@@ -32,6 +44,54 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
   const onSubmit = async (data: any) => {
     try {
       setIsSubmitting(true);
+      
+      // VALIDAÇÃO DE SALDO ANTES DE GERAR ETIQUETA
+      if (!user?.clienteId) {
+        toast.error('Usuário não identificado');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const valorEtiqueta = Number(cotacaoSelecionado?.preco) || 0;
+      console.log('💰 Valor da etiqueta:', valorEtiqueta);
+      
+      // Buscar saldo atual
+      const saldoCliente = await creditoService.calcularSaldo(user.clienteId);
+      console.log('💳 Saldo atual do cliente:', saldoCliente);
+      setSaldoAtual(saldoCliente);
+      
+      // Validar saldo suficiente
+      if (saldoCliente < valorEtiqueta) {
+        console.log('❌ Saldo insuficiente!');
+        setIsSubmitting(false);
+        toast.error('Saldo insuficiente. Realize uma recarga para continuar.');
+        
+        // Calcular quanto falta
+        const valorFaltante = valorEtiqueta - saldoCliente;
+        const valorSugerido = Math.ceil(valorFaltante + 10); // Adiciona R$ 10 de margem
+        
+        // Gerar cobrança PIX automaticamente
+        try {
+          const response = await RecargaPixService.criarCobrancaPix({
+            valor: valorSugerido,
+            expiracao: 3600
+          });
+          
+          if (response.success && response.data) {
+            setPixChargeData(response.data);
+            setShowPixModal(true);
+            toast.success(`Cobrança PIX de R$ ${valorSugerido.toFixed(2)} gerada. Complete o pagamento para continuar.`);
+          } else {
+            toast.error('Erro ao gerar cobrança PIX. Tente novamente.');
+          }
+        } catch (error) {
+          console.error('Erro ao gerar PIX:', error);
+          toast.error('Erro ao gerar cobrança PIX');
+        }
+        return;
+      }
+      
+      console.log('✅ Saldo suficiente. Prosseguindo com geração da etiqueta...');
       
       const embalagem: IEmbalagem = {
         ...selectedEmbalagem,
@@ -127,6 +187,7 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
   };
 
   return (
+    <>
     <FormCard 
       icon={BadgeCheck} 
       title="Confirmação de Envio" 
@@ -335,5 +396,18 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
         </div>
       </div>
     </FormCard>
+    
+    {/* Modal de Recarga PIX */}
+    <ModalRecargaPix
+      isOpen={showPixModal}
+      onClose={() => {
+        setShowPixModal(false);
+        setPixChargeData(undefined);
+      }}
+      chargeData={pixChargeData}
+      saldoInicial={saldoAtual}
+      clienteId={user?.clienteId || ''}
+    />
+    </>
   );
 };
