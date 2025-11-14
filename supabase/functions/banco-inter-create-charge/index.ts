@@ -19,38 +19,37 @@ serve(async (req) => {
   }
 
   try {
-    // Obter user ID do token JWT
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    
+    // Criar cliente com service role
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Extrair e validar o JWT do header Authorization
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.error('Header Authorization ausente ou inválido');
       return new Response(
         JSON.stringify({ success: false, error: 'Não autenticado' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const token = authHeader.replace('Bearer ', '');
     
-    // Cliente com ANON key para autenticação
-    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } }
-    });
-
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    // Validar o JWT e obter o user_id
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     
     if (userError || !user) {
-      console.error('Erro ao obter usuário:', userError);
+      console.error('Token inválido ou usuário não encontrado:', userError);
       return new Response(
-        JSON.stringify({ success: false, error: 'Usuário não autenticado' }),
+        JSON.stringify({ success: false, error: 'Token inválido' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const cliente_id = user.id;
-    
-    // Cliente com service role para operações privilegiadas
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    console.log('Usuário autenticado:', cliente_id);
     const { valor, expiracao = 3600 } = await req.json() as CreateChargeRequest;
 
     console.log('Criando cobrança PIX para usuário:', cliente_id, 'valor:', valor);
