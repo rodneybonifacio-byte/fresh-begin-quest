@@ -48,16 +48,36 @@ serve(async (req) => {
     }
 
     console.log('Configurando certificados mTLS...');
-    console.log('Cert começa com:', cert.substring(0, 50));
-    console.log('Cert tem \\n?', cert.includes('\n'));
-    console.log('Cert tem \\r\\n?', cert.includes('\r\n'));
     
-    // Garantir formato correto com quebras de linha Unix
-    const certFixed = cert.replace(/\\n/g, '\n').replace(/\r\n/g, '\n');
-    const keyFixed = key.replace(/\\n/g, '\n').replace(/\r\n/g, '\n');
-    const caCertFixed = caCert.replace(/\\n/g, '\n').replace(/\r\n/g, '\n');
+    // Função para formatar certificado PEM corretamente
+    const formatPemCert = (pemString: string) => {
+      // Remove espaços e quebras de linha existentes
+      let cleaned = pemString.replace(/\s+/g, '');
+      
+      // Extrai header, conteúdo e footer
+      const beginMatch = cleaned.match(/-----BEGIN[^-]+-----/);
+      const endMatch = cleaned.match(/-----END[^-]+-----/);
+      
+      if (!beginMatch || !endMatch) {
+        console.error('Formato de certificado inválido');
+        return pemString;
+      }
+      
+      const header = beginMatch[0];
+      const footer = endMatch[0];
+      const content = cleaned.substring(header.length, cleaned.indexOf(footer));
+      
+      // Adiciona quebras de linha a cada 64 caracteres
+      const formatted = content.match(/.{1,64}/g)?.join('\n') || content;
+      
+      return `${header}\n${formatted}\n${footer}`;
+    };
     
-    console.log('Cert após correção começa com:', certFixed.substring(0, 50));
+    const certFixed = formatPemCert(cert);
+    const keyFixed = formatPemCert(key);
+    const caCertFixed = formatPemCert(caCert);
+    
+    console.log('Certificado formatado - primeiras linhas:', certFixed.split('\n').slice(0, 3).join('\n'));
     
     const caCerts = [caCertFixed];
 
