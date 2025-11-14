@@ -100,6 +100,32 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      buscar_resumo_transacoes: {
+        Args: {
+          p_cliente_id: string
+          p_data_fim?: string
+          p_data_inicio?: string
+        }
+        Returns: {
+          created_at: string
+          tipo: string
+          valor: number
+        }[]
+      }
+      buscar_transacoes_cliente: {
+        Args: { p_cliente_id: string; p_limit?: number }
+        Returns: {
+          cliente_id: string
+          cobrada: boolean
+          created_at: string
+          descricao: string
+          emissao_id: string
+          id: string
+          tipo: string
+          updated_at: string
+          valor: number
+        }[]
+      }
       calcular_saldo_cliente: {
         Args: { p_cliente_id: string }
         Returns: number
