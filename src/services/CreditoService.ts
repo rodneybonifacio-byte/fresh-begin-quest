@@ -89,50 +89,76 @@ export class CreditoService extends BaseService<ITransacaoCredito> {
      * Obtém o extrato de transações do cliente
      */
     async obterExtrato(clienteId: string, limit: number = 50): Promise<ITransacaoCredito[]> {
-        const { data, error } = await supabase
-            .from('transacoes_credito')
-            .select('*')
-            .eq('cliente_id', clienteId)
-            .order('created_at', { ascending: false })
-            .limit(limit);
+        try {
+            const { data, error } = await supabase
+                .from('transacoes_credito')
+                .select('*')
+                .eq('cliente_id', clienteId)
+                .order('created_at', { ascending: false })
+                .limit(limit);
 
-        if (error) throw error;
-        return data || [];
+            if (error) {
+                console.error('Erro ao buscar extrato:', error);
+                throw error;
+            }
+            
+            console.log('📊 Transações carregadas:', data?.length || 0);
+            return data || [];
+        } catch (error) {
+            console.error('Erro ao obter extrato:', error);
+            return [];
+        }
     }
 
     /**
      * Obtém o resumo de transações por período
      */
     async obterResumo(clienteId: string, dataInicio?: string, dataFim?: string) {
-        let query = supabase
-            .from('transacoes_credito')
-            .select('tipo, valor, created_at')
-            .eq('cliente_id', clienteId);
+        try {
+            let query = supabase
+                .from('transacoes_credito')
+                .select('tipo, valor, created_at')
+                .eq('cliente_id', clienteId);
 
-        if (dataInicio) {
-            query = query.gte('created_at', dataInicio);
+            if (dataInicio) {
+                query = query.gte('created_at', dataInicio);
+            }
+            if (dataFim) {
+                query = query.lte('created_at', dataFim);
+            }
+
+            const { data, error } = await query;
+
+            if (error) {
+                console.error('Erro ao buscar resumo:', error);
+                throw error;
+            }
+
+            // Calcular totais
+            const recargas = data?.filter((t: any) => t.tipo === 'recarga') || [];
+            const consumos = data?.filter((t: any) => t.tipo === 'consumo') || [];
+
+            const totalRecargas = recargas.reduce((sum: number, t: any) => sum + Number(t.valor), 0);
+            const totalConsumos = consumos.reduce((sum: number, t: any) => sum + Math.abs(Number(t.valor)), 0);
+
+            console.log('📈 Resumo calculado:', { totalRecargas, totalConsumos, quantidadeRecargas: recargas.length, quantidadeConsumos: consumos.length });
+
+            return {
+                totalRecargas,
+                totalConsumos,
+                quantidadeRecargas: recargas.length,
+                quantidadeConsumos: consumos.length,
+                transacoes: data
+            };
+        } catch (error) {
+            console.error('Erro ao obter resumo:', error);
+            return {
+                totalRecargas: 0,
+                totalConsumos: 0,
+                quantidadeRecargas: 0,
+                quantidadeConsumos: 0,
+                transacoes: []
+            };
         }
-        if (dataFim) {
-            query = query.lte('created_at', dataFim);
-        }
-
-        const { data, error } = await query;
-
-        if (error) throw error;
-
-        // Calcular totais
-        const recargas = data?.filter((t: any) => t.tipo === 'recarga') || [];
-        const consumos = data?.filter((t: any) => t.tipo === 'consumo') || [];
-
-        const totalRecargas = recargas.reduce((sum: number, t: any) => sum + Number(t.valor), 0);
-        const totalConsumos = consumos.reduce((sum: number, t: any) => sum + Math.abs(Number(t.valor)), 0);
-
-        return {
-            totalRecargas,
-            totalConsumos,
-            quantidadeRecargas: recargas.length,
-            quantidadeConsumos: consumos.length,
-            transacoes: data
-        };
     }
 }
