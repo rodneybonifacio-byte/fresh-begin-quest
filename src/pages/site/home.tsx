@@ -92,7 +92,7 @@ export const Home = () => {
 
                             <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight">
                                 Fretes a partir de{" "}
-                                <span className="text-primary bg-gray-100 px-3 py-1 rounded-lg inline-block my-2">R$ 4,99</span>
+                                <span className="text-primary bg-gray-100 px-3 py-1 rounded-lg inline-block my-2">R$ 9,99</span>
                                 <br />
                                 para você vender ainda mais!
                             </h1>
