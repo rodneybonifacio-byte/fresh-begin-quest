@@ -93,12 +93,10 @@ export class CreditoService extends BaseService<ITransacaoCredito> {
             console.log('🔍 Buscando extrato para cliente:', clienteId);
             
             const supabase = getSupabaseWithAuth();
-            const { data, error } = await supabase
-                .from('transacoes_credito')
-                .select('*')
-                .eq('cliente_id', clienteId)
-                .order('created_at', { ascending: false })
-                .limit(limit);
+            const { data, error } = await supabase.rpc('buscar_transacoes_cliente', {
+                p_cliente_id: clienteId,
+                p_limit: limit
+            });
 
             if (error) {
                 console.error('❌ Erro ao buscar extrato:', error);
@@ -123,19 +121,12 @@ export class CreditoService extends BaseService<ITransacaoCredito> {
     async obterResumo(clienteId: string, dataInicio?: string, dataFim?: string) {
         try {
             const supabase = getSupabaseWithAuth();
-            let query = supabase
-                .from('transacoes_credito')
-                .select('tipo, valor, created_at')
-                .eq('cliente_id', clienteId);
-
-            if (dataInicio) {
-                query = query.gte('created_at', dataInicio);
-            }
-            if (dataFim) {
-                query = query.lte('created_at', dataFim);
-            }
-
-            const { data, error } = await query;
+            
+            const { data, error } = await supabase.rpc('buscar_resumo_transacoes', {
+                p_cliente_id: clienteId,
+                p_data_inicio: dataInicio,
+                p_data_fim: dataFim
+            });
 
             if (error) {
                 console.error('Erro ao buscar resumo:', error);
