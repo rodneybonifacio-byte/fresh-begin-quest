@@ -1,4 +1,4 @@
-import { Filter, Import, Plus, Printer, ReceiptText } from 'lucide-react';
+import { Filter, Import, Plus, Printer, ReceiptText, BarChart3 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DataTable } from '../../../components/DataTable';
@@ -6,7 +6,6 @@ import { LoadSpinner } from '../../../components/loading';
 import { ModalCustom } from '../../../components/modal';
 import { PaginacaoCustom } from '../../../components/PaginacaoCustom';
 import { ResponsiveTabMenu } from '../../../components/ResponsiveTabMenu';
-import { ResumoDashboardCards } from '../../../components/ResumoDashboardCards';
 import { StatusBadgeEmissao } from '../../../components/StatusBadgeEmissao';
 import { useFetchQuery } from '../../../hooks/useFetchQuery';
 import { useImprimirEtiquetaPDF } from '../../../hooks/useImprimirEtiquetaPDF';
@@ -23,6 +22,7 @@ import { FiltroEmissao } from './FiltroEmissao';
 import { ModalViewDeclaracaoConteudo } from './ModalViewDeclaracaoConteudo';
 import { ModalViewErroPostagem } from './ModalViewErroPostagem';
 import { ModalViewPDF } from './ModalViewPDF';
+import { DashboardEmissoes } from './DashboardEmissoes';
 
 export const ListaEmissoes = () => {
     const { user } = useAuth();
@@ -39,8 +39,6 @@ export const ListaEmissoes = () => {
     const config = useGlobalConfig();
     const perPage = config.pagination.perPage;
     const [page, setPage] = useState<number>(1);
-
-    const filtros = Object.fromEntries(searchParams.entries());
 
     const [etiqueta, setEtiqueta] = useState<{ nome: string; dados: string }>();
 
@@ -99,6 +97,7 @@ export const ListaEmissoes = () => {
     };
 
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [showDashboard, setShowDashboard] = useState(true);
 
     const handlerToggleFilter = () => {
         setIsFilterOpen((prev) => !prev);
@@ -133,6 +132,12 @@ export const ListaEmissoes = () => {
                 },
                 {
                     label: '',
+                    onClick: () => setShowDashboard(!showDashboard),
+                    icon: <BarChart3 size={22} className="text-purple-600" />,
+                    bgColor: showDashboard ? 'bg-purple-100' : 'bg-slate-200',
+                },
+                {
+                    label: '',
                     onClick: () => handlerToggleFilter(),
                     icon: <Filter size={22} className="text-slate-500" />,
                     bgColor: 'bg-slate-300',
@@ -141,7 +146,12 @@ export const ListaEmissoes = () => {
             data={emissoes?.data && emissoes.data.length > 0 ? emissoes.data : []}
         >
             {isLoading ? <LoadSpinner mensagem="Carregando..." /> : null}
-            <ResumoDashboardCards filtros={filtros} />
+            
+            {/* Dashboard Analítico */}
+            {showDashboard && emissoes?.data && emissoes.data.length > 0 && (
+                <DashboardEmissoes emissoes={emissoes.data} />
+            )}
+
             <ResponsiveTabMenu tab={tab} setTab={setTab}>
                 {!isLoading && !isError && emissoes && emissoes.data.length > 0 && (
                     <>
