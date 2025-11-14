@@ -8,38 +8,39 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Função para formatar certificado PEM
-function formatPemCert(cert: string): string {
-  // Remove espaços em branco extras
-  cert = cert.trim();
+// Função para formatar certificado PEM corretamente
+const formatPemCert = (pemString: string) => {
+  // Remove apenas quebras de linha e espaços extras, mas preserva estrutura
+  let cleaned = pemString.trim();
   
-  // Se já está formatado corretamente, retorna
-  if (cert.includes('\n')) {
-    return cert;
+  // Se já tem quebras de linha, retorna como está
+  if (cleaned.includes('\n')) {
+    return cleaned;
   }
   
-  // Extrai o header e footer
-  const beginMatch = cert.match(/-----BEGIN [A-Z\s]+-----/);
-  const endMatch = cert.match(/-----END [A-Z\s]+-----/);
+  // Encontra os marcadores BEGIN e END
+  const beginRegex = /(-----BEGIN [^-]+-----)/;
+  const endRegex = /(-----END [^-]+-----)/;
+  
+  const beginMatch = cleaned.match(beginRegex);
+  const endMatch = cleaned.match(endRegex);
   
   if (!beginMatch || !endMatch) {
-    return cert;
+    console.error('Formato de certificado inválido');
+    return pemString;
   }
   
   const header = beginMatch[0];
   const footer = endMatch[0];
-  
-  // Extrai o conteúdo base64 (entre header e footer)
-  let content = cert.substring(header.length, cert.length - footer.length);
-  
-  // Remove espaços do conteúdo
-  content = content.replace(/\s/g, '');
+  const startPos = cleaned.indexOf(header) + header.length;
+  const endPos = cleaned.indexOf(footer);
+  const content = cleaned.substring(startPos, endPos).replace(/\s/g, '');
   
   // Adiciona quebras de linha a cada 64 caracteres
-  const formattedContent = content.match(/.{1,64}/g)?.join('\n') || content;
+  const formatted = content.match(/.{1,64}/g)?.join('\n') || content;
   
-  return `${header}\n${formattedContent}\n${footer}`;
-}
+  return `${header}\n${formatted}\n${footer}`;
+};
 
 async function getAccessToken(): Promise<string> {
   console.log('Obtendo token de autenticação do Banco Inter...');
