@@ -2,7 +2,6 @@ import { useState } from "react";
 import { X, Copy, QrCode, Clock, CheckCircle2 } from "lucide-react";
 import { ICreatePixChargeResponse } from "../../../../types/IRecargaPix";
 import { toastSuccess, toastError } from "../../../../utils/toastNotify";
-import { ProcessarPagamentoManual } from './ProcessarPagamentoManual';
 import { ConfigurarWebhook } from './ConfigurarWebhook';
 
 interface ModalRecargaPixProps {
@@ -25,10 +24,6 @@ export function ModalRecargaPix({ isOpen, onClose, chargeData }: ModalRecargaPix
     } catch {
       toastError("Erro ao copiar código");
     }
-  };
-
-  const handleClose = () => {
-    onClose();
   };
 
   return (
@@ -131,12 +126,11 @@ export function ModalRecargaPix({ isOpen, onClose, chargeData }: ModalRecargaPix
 
           <div className="space-y-3">
             <p className="text-xs text-muted-foreground text-center">
-              Após o pagamento, seus créditos serão adicionados automaticamente.
+              Após o pagamento, seus créditos serão adicionados automaticamente via webhook.
             </p>
 
-            <div className="border-t pt-3 space-y-2">
+            <div className="border-t pt-3">
               <ConfigurarWebhook />
-              <ProcessarPagamentoManual txid={chargeData.txid} onSuccess={handleClose} />
             </div>
 
             <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-md border border-border">
