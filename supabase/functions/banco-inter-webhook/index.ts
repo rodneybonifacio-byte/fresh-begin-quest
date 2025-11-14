@@ -17,14 +17,16 @@ serve(async (req) => {
     const payload = await req.json();
     console.log('Webhook recebido:', JSON.stringify(payload));
 
-    // Validar payload do Banco Inter
+    // Validar payload do Banco Inter - vem como array
     const { pix } = payload;
-    if (!pix || !pix.txid) {
+    if (!pix || !Array.isArray(pix) || pix.length === 0) {
       console.error('Payload inválido:', payload);
       return new Response('Invalid payload', { status: 400 });
     }
 
-    const { txid, horario } = pix;
+    // Processar cada pagamento recebido
+    const pixData = pix[0]; // Pegar o primeiro pagamento
+    const { txid, horario } = pixData;
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;

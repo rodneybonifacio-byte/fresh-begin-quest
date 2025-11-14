@@ -156,8 +156,16 @@ serve(async (req) => {
       );
 
       if (webhookResponse.ok) {
-        const webhookData = await webhookResponse.json();
-        console.log('✓ Webhook PIX configurado:', webhookData);
+        const responseText = await webhookResponse.text();
+        console.log('✓ Webhook PIX configurado - Status:', webhookResponse.status);
+        if (responseText) {
+          try {
+            const webhookData = JSON.parse(responseText);
+            console.log('Resposta webhook:', webhookData);
+          } catch (e) {
+            console.log('Resposta webhook (não-JSON):', responseText);
+          }
+        }
       } else {
         const errorText = await webhookResponse.text();
         console.error('❌ Erro ao configurar webhook:', webhookResponse.status, errorText);
