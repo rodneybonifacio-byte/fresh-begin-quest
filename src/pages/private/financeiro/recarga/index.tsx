@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../../../../providers/AuthContext";
-import { ClienteService } from "../../../../services/ClienteService";
+import { CreditoService } from "../../../../services/CreditoService";
 import { useFetchQuery } from "../../../../hooks/useFetchQuery";
 import { formatCurrencyWithCents } from "../../../../utils/formatCurrency";
 import { Wallet, Plus, History, TrendingUp, DollarSign } from "lucide-react";
@@ -10,27 +10,27 @@ import { toastSuccess, toastError } from "../../../../utils/toastNotify";
 
 export default function Recarga() {
     const { user } = useAuth();
-    const service = new ClienteService();
+    const creditoService = new CreditoService();
     const queryClient = useQueryClient();
     const { setIsLoading } = useLoadingSpinner();
     const [valorRecarga, setValorRecarga] = useState("");
 
-    const { data: cliente } = useFetchQuery<{ saldo: number } | null>(
+    const { data: saldo } = useFetchQuery<number>(
         ['cliente-saldo-recarga'],
         async () => {
-            if (!user?.clienteId) return null;
-            const result = (await service.obterSaldo(user?.clienteId ?? '')).data;
-            return result ?? null;
+            if (!user?.clienteId) return 0;
+            return await creditoService.calcularSaldo(user?.clienteId);
         }
     );
 
     const addCreditoMutation = useMutation({
         mutationFn: async (valor: number) => {
             if (!user?.clienteId) throw new Error("Cliente não encontrado");
-            return await service.adicionarCredito(user.clienteId, {
-                clienteId: user.clienteId,
-                valorCredito: valor.toString()
-            });
+            return await creditoService.registrarRecarga(
+                user.clienteId,
+                valor,
+                'Recarga manual via plataforma'
+            );
         },
         onSuccess: () => {
             toastSuccess("Crédito adicionado com sucesso!");
@@ -40,7 +40,7 @@ export default function Recarga() {
             setIsLoading(false);
         },
         onError: (error: any) => {
-            toastError(error?.response?.data?.message || "Erro ao adicionar crédito");
+            toastError(error?.message || "Erro ao adicionar crédito");
             setIsLoading(false);
         }
     });
@@ -71,7 +71,7 @@ export default function Recarga() {
         setValorRecarga(value);
     };
 
-    const saldoAtual = formatCurrencyWithCents(cliente?.saldo.toString() || "0");
+    const saldoAtual = formatCurrencyWithCents(saldo?.toString() || "0");
 
     return (
         <div className="min-h-screen bg-background p-6">
