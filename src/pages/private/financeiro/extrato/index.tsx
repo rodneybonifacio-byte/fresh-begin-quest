@@ -17,8 +17,10 @@ export default function ExtratoCreditos() {
     const [resumo, setResumo] = useState({
         totalRecargas: 0,
         totalConsumos: 0,
+        totalEtiquetasGeradas: 0, // Novo: total de etiquetas com status != pré-postado
         quantidadeRecargas: 0,
-        quantidadeConsumos: 0
+        quantidadeConsumos: 0,
+        quantidadeEtiquetas: 0 // Novo: quantidade de etiquetas com status != pré-postado
     });
 
     const service = new CreditoService();
@@ -80,12 +82,25 @@ export default function ExtratoCreditos() {
     const carregarDados = async () => {
         try {
             setLoading(true);
+            
+            // Carregar transações e resumo
             const [extratoData, resumoData] = await Promise.all([
                 service.obterExtrato(user?.clienteId ?? '', 100),
                 service.obterResumo(user?.clienteId ?? '')
             ]);
+            
             setTransacoes(extratoData);
-            setResumo(resumoData);
+            
+            // Por enquanto, usar os dados das transações já registradas
+            // TODO: Integrar com backend para buscar todas as emissões com status != pré-postado
+            setResumo({
+                totalRecargas: resumoData.totalRecargas,
+                totalConsumos: resumoData.totalConsumos,
+                totalEtiquetasGeradas: resumoData.totalConsumos, // Mesmo valor por enquanto
+                quantidadeRecargas: resumoData.quantidadeRecargas,
+                quantidadeConsumos: resumoData.quantidadeConsumos,
+                quantidadeEtiquetas: resumoData.quantidadeConsumos // Mesmo valor por enquanto
+            });
         } catch (error) {
             console.error('Erro ao carregar extrato:', error);
         } finally {
@@ -141,10 +156,10 @@ export default function ExtratoCreditos() {
                             <span className="text-sm font-medium text-muted-foreground">Total Consumos</span>
                         </div>
                         <p className="text-2xl font-bold text-foreground">
-                            {formatCurrencyWithCents(resumo.totalConsumos.toString())}
+                            {formatCurrencyWithCents(resumo.totalEtiquetasGeradas.toString())}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                            {resumo.quantidadeConsumos} etiquetas
+                            {resumo.quantidadeEtiquetas} etiquetas (status ≠ pré-postado)
                         </p>
                     </div>
 
@@ -156,10 +171,10 @@ export default function ExtratoCreditos() {
                             <span className="text-sm font-medium text-muted-foreground">Saldo Líquido</span>
                         </div>
                         <p className="text-2xl font-bold text-foreground">
-                            {formatCurrencyWithCents((resumo.totalRecargas - resumo.totalConsumos).toString())}
+                            {formatCurrencyWithCents((resumo.totalRecargas - resumo.totalEtiquetasGeradas).toString())}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                            Diferença entre recargas e consumos
+                            Recargas - Etiquetas geradas
                         </p>
                     </div>
 
@@ -265,10 +280,26 @@ export default function ExtratoCreditos() {
                         Sobre o Extrato
                     </h3>
                     <ul className="space-y-2 text-sm text-muted-foreground">
-                        <li>• <strong>Recargas:</strong> Créditos adicionados à sua conta</li>
-                        <li>• <strong>Consumos:</strong> Créditos utilizados para pagamento de etiquetas</li>
-                        <li>• Apenas etiquetas com status diferente de "pré-postado" consomem créditos</li>
-                        <li>• Cada etiqueta é cobrada apenas uma vez, mesmo que o status mude novamente</li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-green-500 font-bold">•</span>
+                            <span><strong>Recargas:</strong> Créditos adicionados à sua conta via PIX</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-red-500 font-bold">•</span>
+                            <span><strong>Consumos:</strong> Calculado pela soma dos valores de todas as etiquetas geradas com status diferente de "pré-postado"</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-blue-500 font-bold">•</span>
+                            <span><strong>Status pré-postado:</strong> Etiquetas neste status não consomem créditos</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-orange-500 font-bold">•</span>
+                            <span><strong>Cobrança única:</strong> Cada etiqueta é cobrada apenas uma vez, mesmo que o status mude novamente</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="text-purple-500 font-bold">•</span>
+                            <span><strong>Saldo líquido:</strong> Diferença entre total de recargas e total de etiquetas geradas</span>
+                        </li>
                     </ul>
                 </div>
             </div>
