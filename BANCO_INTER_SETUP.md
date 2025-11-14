@@ -2,29 +2,45 @@
 
 ## ✅ Já Configurado
 
-- ✅ Client ID
-- ✅ Client Secret
+- ✅ Certificado CA (ca.crt) adicionado
 - ✅ Tabela `recargas_pix` criada
 - ✅ Edge Functions criadas
 - ✅ Webhook configurado
 - ✅ Interface de recarga atualizada
 
-## 📋 Próximos Passos - Quando Tiver Acesso
+## 📋 ONDE ENCONTRAR AS INFORMAÇÕES NECESSÁRIAS
 
-### 1. Obter Certificados no Banco Inter
+### 🔑 Client ID e Client Secret
 
-Acesse o painel do Banco Inter:
-1. Entre no dashboard da API do Banco Inter
-2. Vá em **API → Certificados**
-3. Baixe o certificado (você receberá dois arquivos):
-   - `certificado.crt` (certificado público)
-   - `certificado.key` (chave privada)
+1. **Acesse:** https://developers.inter.co/
+2. **Faça login** com sua conta empresarial do Banco Inter
+3. **Vá em:** Aplicações → Suas Aplicações
+4. **Clique** na aplicação que você criou (ou crie uma nova)
+5. **Copie:**
+   - **Client ID**: Aparece na tela principal da aplicação
+   - **Client Secret**: Clique em "Visualizar" ou "Gerar novo"
 
-### 2. Obter Chave PIX
+### 📜 Certificados (certificado.crt e certificado.key)
 
-No painel do Banco Inter:
-1. Vá em **PIX → Minhas Chaves**
-2. Copie a chave cadastrada (pode ser email, telefone, CPF/CNPJ ou chave aleatória)
+1. **No painel:** https://developers.inter.co/
+2. **Vá em:** Certificados → Seus Certificados
+3. **Baixe o certificado** que você gerou (2 arquivos):
+   - `certificado.crt` - Certificado público
+   - `certificado.key` - Chave privada
+   
+**IMPORTANTE:** Se você ainda não gerou um certificado:
+- Clique em "Gerar Certificado"
+- Baixe os arquivos IMEDIATAMENTE (a chave privada não fica armazenada)
+
+### 💰 Chave PIX
+
+1. **Abra o app** do Banco Inter ou acesse o Internet Banking
+2. **Vá em:** PIX → Minhas Chaves PIX
+3. **Copie** uma chave cadastrada (pode ser):
+   - Email
+   - Telefone
+   - CPF/CNPJ
+   - Chave aleatória
 
 ### 3. Adicionar Secrets no Lovable Cloud
 
