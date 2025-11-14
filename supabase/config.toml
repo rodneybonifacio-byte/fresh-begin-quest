@@ -1,7 +1,7 @@
 project_id = "xikvfybxthvqhpjbrszp"
 
 [functions.banco-inter-create-charge]
-verify_jwt = true
+verify_jwt = false
 
 [functions.banco-inter-webhook]
 verify_jwt = false
