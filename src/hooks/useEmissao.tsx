@@ -28,12 +28,15 @@ export const useEmissao = () => {
     const onEmissaoCadastro = async (data: IEmissao, onIsLoadingCadastro: (isLoading: boolean) => void): Promise<IEmissao> => {
         try {
             onIsLoadingCadastro(true);
+            console.log('📤 onEmissaoCadastro: Iniciando criação da emissão');
             const response = await mutation.mutateAsync(data) as IResponse<IEmissao>;
+            console.log('📦 onEmissaoCadastro: Resposta completa:', response);
+            console.log('📄 onEmissaoCadastro: Dados da emissão:', response?.data);
             onIsLoadingCadastro(false);
             // Retorna a emissão criada com o ID
             return response.data;
         } catch (error) {
-            console.error(error);
+            console.error('❌ onEmissaoCadastro: Erro ao criar emissão:', error);
             onIsLoadingCadastro(false);
             throw error;
         }

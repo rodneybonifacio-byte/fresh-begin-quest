@@ -60,21 +60,32 @@ export const useImprimirEtiquetaPDF = () => {
         onIsModalViewPDF?: (isOpen: boolean) => void // Agora é opcional
     ): Promise<IResponse<{ nome: string, dados: string }>> => {
         try {
+            console.log('🖨️ onEmissaoImprimir: Iniciando impressão');
+            console.log('📦 Dados da emissão recebida:', data);
+            console.log('🆔 ID da emissão:', data?.id);
+            console.log('📝 Tipo de etiqueta:', typeEtiqueta);
+            
             onIsLoadingCadastro(true);
             let etiquetaResponse: IResponse<{ nome: string, dados: string }> = {} as IResponse<{ nome: string, dados: string }>;
 
-            if (typeEtiqueta === 'etiqueta')
+            if (typeEtiqueta === 'etiqueta') {
+                console.log('🔄 Chamando mutationEtiqueta.mutateAsync...');
                 etiquetaResponse = await mutationEtiqueta.mutateAsync(data);
-            if (typeEtiqueta === 'declaracao')
-                etiquetaResponse = await mutationDeclaracao.mutateAsync(data);
-            if (typeEtiqueta === 'merge')
-                etiquetaResponse = await mutationMerge.mutateAsync(data);
-
-            // Abre o PDF automaticamente em nova janela (igual ao imprimir)
-            if (etiquetaResponse.data?.dados) {
-                const fileName = etiquetaResponse.data.nome || `${typeEtiqueta}.pdf`;
-                viewPDF(etiquetaResponse.data.dados, fileName);
+                console.log('✅ Resposta da etiqueta:', etiquetaResponse);
             }
+            if (typeEtiqueta === 'declaracao') {
+                console.log('🔄 Chamando mutationDeclaracao.mutateAsync...');
+                etiquetaResponse = await mutationDeclaracao.mutateAsync(data);
+                console.log('✅ Resposta da declaração:', etiquetaResponse);
+            }
+            if (typeEtiqueta === 'merge') {
+                console.log('🔄 Chamando mutationMerge.mutateAsync...');
+                etiquetaResponse = await mutationMerge.mutateAsync(data);
+                console.log('✅ Resposta do merge:', etiquetaResponse);
+            }
+
+            // Não abre PDF automaticamente aqui - será aberto no Step5
+            console.log('✅ PDF gerado com sucesso');
 
             onIsLoadingCadastro(false);
             setEtiqueta(etiquetaResponse);
@@ -84,7 +95,8 @@ export const useImprimirEtiquetaPDF = () => {
             
             return etiquetaResponse;
         } catch (error) {
-            console.error(error);
+            console.error('❌ Erro ao imprimir etiqueta:', error);
+            console.error('Stack:', (error as Error)?.stack);
             onIsLoadingCadastro(false);
             onIsModalViewPDF?.(false);
             throw error;

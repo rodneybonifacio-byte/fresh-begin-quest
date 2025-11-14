@@ -54,15 +54,24 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
         destinatario: data.destinatario,
       };
       
+      console.log('📤 Enviando emissão:', emissao);
+      
       // Primeiro gera a emissão e recebe a emissão criada com ID
       const emissaoCriada = await onEmissaoCadastro(emissao, setIsSubmitting);
       
-      console.log('Emissão criada:', emissaoCriada);
+      console.log('✅ Emissão criada:', emissaoCriada);
+      console.log('🆔 ID da emissão:', emissaoCriada?.id);
       
       // Verifica se temos o ID da emissão
       if (!emissaoCriada?.id) {
+        console.error('❌ Emissão sem ID:', emissaoCriada);
         throw new Error('Erro ao criar emissão: ID não retornado');
       }
+      
+      console.log('📄 Buscando PDF para emissão ID:', emissaoCriada.id);
+      
+      // Aguarda 500ms para garantir que o backend processou
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       // Depois busca o PDF da etiqueta usando a emissão com ID
       const pdfResponse = await onEmissaoImprimir(
@@ -71,13 +80,21 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
         setIsSubmitting
       );
       
+      console.log('✅ PDF recebido:', pdfResponse);
+      
+      if (!pdfResponse?.data?.dados) {
+        console.error('❌ PDF sem dados:', pdfResponse);
+        throw new Error('Erro ao gerar PDF: dados não retornados');
+      }
+      
       toast.success('Etiqueta gerada com sucesso!');
       
       // Passa a emissão criada e o PDF para o próximo step
       onSuccess(emissaoCriada, pdfResponse.data);
-    } catch (error) {
-      console.error('Erro ao gerar etiqueta:', error);
-      toast.error('Erro ao gerar etiqueta');
+    } catch (error: any) {
+      console.error('❌ Erro completo ao gerar etiqueta:', error);
+      console.error('Stack:', error?.stack);
+      toast.error(error?.message || 'Erro ao gerar etiqueta');
     } finally {
       setIsSubmitting(false);
     }
