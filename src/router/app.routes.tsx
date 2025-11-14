@@ -67,6 +67,10 @@ export const appRoutesConfig: ProtectedRouteItem[] = [
         component: () => import("../pages/private/admin/financeiro/FaturaViewDetail")
     },
     {
+        path: "financeiro/recarga",
+        component: () => import("../pages/private/financeiro/recarga")
+    },
+    {
         path: "pdf-viewer/:encodedData",
         component: () => import("../pages/private/emissao/PDFViewerPage")
     },

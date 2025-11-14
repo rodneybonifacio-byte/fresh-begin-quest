@@ -108,13 +108,19 @@ const AppSidebar = observer(({
         {
             icon: Wallet,
             label: 'Financeiro',
-            active: ['/app/financeiro/faturas'].some(path => isPathActive(path)),
+            active: ['/app/financeiro/faturas', '/app/financeiro/recarga'].some(path => isPathActive(path)),
             submenu: [
                 {
                     icon: FileBarChart,
                     label: 'Faturas',
                     to: '/app/financeiro/faturas',
                     active: isPathActive('/app/financeiro/faturas')
+                },
+                {
+                    icon: Wallet,
+                    label: 'Recarga',
+                    to: '/app/financeiro/recarga',
+                    active: isPathActive('/app/financeiro/recarga')
                 }
             ]
         }
