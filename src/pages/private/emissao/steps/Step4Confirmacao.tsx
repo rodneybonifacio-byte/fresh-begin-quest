@@ -62,6 +62,7 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
       console.log('✅ Resposta do backend:', backendResponse);
       console.log('🆔 ID da emissão:', backendResponse?.id);
       console.log('🔗 Link etiqueta:', backendResponse?.link_etiqueta);
+      console.log('📦 Array frete:', backendResponse?.frete);
       
       // Verifica se temos o ID da emissão
       if (!backendResponse?.id) {
@@ -69,11 +70,28 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
         throw new Error('Erro ao criar emissão: ID não retornado');
       }
       
-      // Monta o objeto emissão completo com o ID retornado
+      // Aguarda 1 segundo para o backend processar e gerar o código de rastreio
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Busca a emissão completa para obter o código de rastreio atualizado
+      console.log('🔍 Buscando dados completos da emissão...');
+      const EmissaoServiceClass = (await import('../../../../services/EmissaoService')).EmissaoService;
+      const emissaoService = new EmissaoServiceClass();
+      const emissaoCompletaResponse = await emissaoService.getById(backendResponse.id);
+      
+      console.log('📦 Emissão completa recebida:', emissaoCompletaResponse);
+      
+      const codigoObjeto = emissaoCompletaResponse?.data?.codigoObjeto || 
+                          backendResponse?.frete?.[0]?.codigoObjeto || 
+                          'Processando...';
+      
+      console.log('🏷️ Código de rastreio:', codigoObjeto);
+      
+      // Monta o objeto emissão completo com o ID e código de rastreio
       const emissaoCriada: IEmissao = {
         ...emissao,
         id: backendResponse.id,
-        codigoObjeto: backendResponse.frete?.[0]?.codigoObjeto || 'Aguardando...',
+        codigoObjeto: codigoObjeto,
       };
       
       console.log('📄 Buscando PDF para emissão ID:', emissaoCriada.id);
