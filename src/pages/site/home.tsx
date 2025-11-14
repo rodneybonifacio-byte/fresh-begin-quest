@@ -1,6 +1,7 @@
-import { Package, Truck, DollarSign, Clock, Shield, BarChart, ArrowRight, CheckCircle, Play } from "lucide-react";
+import { Package, Truck, DollarSign, Clock, Shield, BarChart, ArrowRight, CheckCircle, Play, Pause } from "lucide-react";
 import { NavBarPublico } from "./layout/NavBarPublico";
 import { useState } from "react";
+import brhubLogo from "@/assets/brhub-logo.png";
 
 export const Home = () => {
     const [isVideoPlaying, setIsVideoPlaying] = useState(false);
@@ -73,85 +74,102 @@ export const Home = () => {
         <div className="min-h-screen bg-background">
             <NavBarPublico />
 
-            {/* Hero Section with Video */}
-            <section className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-background pt-20">
-                <div className="container mx-auto px-4 py-12 lg:py-20">
-                    <div className="grid lg:grid-cols-2 gap-12 items-center">
-                        {/* Left Column - Text */}
-                        <div className="space-y-6 animate-fade-in">
-                            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">
-                                Calcule e emita fretes com{" "}
-                                <span className="text-primary">desconto de até 80%</span>
-                            </h1>
-                            
-                            <p className="text-lg md:text-xl text-muted-foreground">
-                                A plataforma completa para gerenciar todos os seus envios.
-                                Sem mensalidades. Sem complicação.
-                            </p>
+            {/* Hero Section - Video First */}
+            <section className="relative overflow-hidden bg-gradient-to-br from-background via-primary/5 to-background pt-24 pb-12">
+                <div className="container mx-auto px-4">
+                    {/* Logo centered */}
+                    <div className="flex justify-center mb-8 animate-fade-in">
+                        <img src={brhubLogo} alt="BRHUB Envios" className="h-32 w-auto" />
+                    </div>
 
-                            {/* Trust Indicators */}
-                            <div className="flex flex-wrap gap-4 pt-4">
-                                <div className="flex items-center gap-2 text-sm">
-                                    <CheckCircle className="w-5 h-5 text-primary" />
-                                    <span>Sem mensalidade</span>
-                                </div>
-                                <div className="flex items-center gap-2 text-sm">
-                                    <CheckCircle className="w-5 h-5 text-primary" />
-                                    <span>Sem taxa de adesão</span>
-                                </div>
-                                <div className="flex items-center gap-2 text-sm">
-                                    <CheckCircle className="w-5 h-5 text-primary" />
-                                    <span>Suporte especializado</span>
-                                </div>
-                            </div>
-
-                            <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                                <a
-                                    href="/cadastro"
-                                    className="group bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-4 rounded-full text-lg font-bold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 flex items-center justify-center gap-2"
-                                >
-                                    Começar agora grátis
-                                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                                </a>
-                                
-                                <a
-                                    href="/login"
-                                    className="bg-card hover:bg-muted text-foreground px-8 py-4 rounded-full text-lg font-semibold border border-border shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center"
-                                >
-                                    Já tenho conta
-                                </a>
-                            </div>
-                        </div>
-
-                        {/* Right Column - Video */}
-                        <div className="relative animate-scale-in">
-                            <div className="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-primary/20 group">
+                    {/* Video Container - Destaque principal */}
+                    <div className="max-w-5xl mx-auto mb-12 animate-scale-in">
+                        <div className="relative rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br from-primary/10 to-primary/5 p-2">
+                            <div className="relative rounded-2xl overflow-hidden group cursor-pointer" onClick={handleVideoClick}>
                                 <video
                                     id="hero-video"
                                     className="w-full h-auto"
                                     loop
+                                    muted
                                     playsInline
-                                    onClick={handleVideoClick}
                                 >
                                     <source src="/assets/videos/hero-video.mp4" type="video/mp4" />
                                 </video>
                                 
-                                {/* Play button overlay */}
+                                {/* Video Controls Overlay */}
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                    <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-4">
+                                        <button className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full p-4 shadow-2xl transform hover:scale-110 transition-all">
+                                            {isVideoPlaying ? (
+                                                <Pause className="w-8 h-8" fill="currentColor" />
+                                            ) : (
+                                                <Play className="w-8 h-8" fill="currentColor" />
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Play overlay quando parado */}
                                 {!isVideoPlaying && (
-                                    <div 
-                                        onClick={handleVideoClick}
-                                        className="absolute inset-0 bg-black/30 flex items-center justify-center cursor-pointer group-hover:bg-black/40 transition-all"
-                                    >
-                                        <div className="bg-primary/90 hover:bg-primary text-primary-foreground rounded-full p-6 shadow-2xl transform group-hover:scale-110 transition-all">
-                                            <Play className="w-12 h-12" fill="currentColor" />
+                                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                                        <div className="bg-primary/95 hover:bg-primary text-primary-foreground rounded-full p-8 shadow-2xl transform hover:scale-110 transition-all">
+                                            <Play className="w-16 h-16" fill="currentColor" />
                                         </div>
                                     </div>
                                 )}
                             </div>
+                        </div>
+                        
+                        {/* Decorative blur elements */}
+                        <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/20 rounded-full blur-3xl -z-10" />
+                        <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-primary/20 rounded-full blur-3xl -z-10" />
+                    </div>
+
+                    {/* Headline e CTAs */}
+                    <div className="max-w-4xl mx-auto text-center space-y-8 animate-fade-in">
+                        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">
+                            Economize até{" "}
+                            <span className="text-primary">80% em fretes</span>
+                            {" "}para todo o Brasil
+                        </h1>
+                        
+                        <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto">
+                            A plataforma completa para gerenciar todos os seus envios. 
+                            Sem mensalidades. Sem complicação.
+                        </p>
+
+                        {/* Trust Indicators */}
+                        <div className="flex flex-wrap justify-center gap-6 pt-4">
+                            <div className="flex items-center gap-2 text-base">
+                                <CheckCircle className="w-6 h-6 text-primary" />
+                                <span className="font-semibold">Sem mensalidade</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-base">
+                                <CheckCircle className="w-6 h-6 text-primary" />
+                                <span className="font-semibold">Sem taxa de adesão</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-base">
+                                <CheckCircle className="w-6 h-6 text-primary" />
+                                <span className="font-semibold">Suporte especializado</span>
+                            </div>
+                        </div>
+
+                        {/* CTAs */}
+                        <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6">
+                            <a
+                                href="/cadastro"
+                                className="group bg-primary hover:bg-primary/90 text-primary-foreground px-10 py-5 rounded-full text-xl font-bold shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 flex items-center justify-center gap-3"
+                            >
+                                Começar agora grátis
+                                <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                            </a>
                             
-                            {/* Decorative elements */}
-                            <div className="absolute -top-4 -right-4 w-24 h-24 bg-primary/10 rounded-full blur-2xl" />
-                            <div className="absolute -bottom-4 -left-4 w-32 h-32 bg-primary/10 rounded-full blur-3xl" />
+                            <a
+                                href="/login"
+                                className="bg-card hover:bg-primary/10 text-foreground px-10 py-5 rounded-full text-xl font-semibold border-2 border-primary/20 hover:border-primary/40 shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center justify-center"
+                            >
+                                Já tenho conta
+                            </a>
                         </div>
                     </div>
                 </div>
