@@ -36,8 +36,9 @@ serve(async (req) => {
     const CHAVE_PIX = Deno.env.get('BANCO_INTER_CHAVE_PIX');
     const cert = Deno.env.get('BANCO_INTER_CLIENT_CERT');
     const key = Deno.env.get('BANCO_INTER_CLIENT_KEY');
+    const caCert = Deno.env.get('BANCO_INTER_CA_CERT');
 
-    if (!CLIENT_ID || !CLIENT_SECRET || !CHAVE_PIX || !cert || !key) {
+    if (!CLIENT_ID || !CLIENT_SECRET || !CHAVE_PIX || !cert || !key || !caCert) {
       console.error('Credenciais do Banco Inter não configuradas');
       return new Response(
         JSON.stringify({ success: false, error: 'Configuração incompleta' }),
@@ -45,10 +46,9 @@ serve(async (req) => {
       );
     }
 
-    // Carregar certificado CA
-    console.log('Carregando certificados mTLS...');
-    const caCertPath = new URL('../_shared/banco-inter-ca.crt', import.meta.url).pathname;
-    const caCerts = [await Deno.readTextFile(caCertPath)];
+    // Configurar certificados mTLS
+    console.log('Carregando certificados mTLS dos secrets...');
+    const caCerts = [caCert];
 
     // Criar cliente HTTP com mTLS
     const httpClient = Deno.createHttpClient({
