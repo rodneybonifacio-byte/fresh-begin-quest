@@ -33,13 +33,9 @@ serve(async (req) => {
 
     const CLIENT_ID = Deno.env.get('BANCO_INTER_CLIENT_ID');
     const CLIENT_SECRET = Deno.env.get('BANCO_INTER_CLIENT_SECRET');
-    
-    // TODO: Quando o usuário adicionar os certificados, usar aqui
-    // const CERT_KEY = Deno.env.get('BANCO_INTER_CERT_KEY');
-    // const CERT_CRT = Deno.env.get('BANCO_INTER_CERT_CRT');
-    // const CHAVE_PIX = Deno.env.get('BANCO_INTER_CHAVE_PIX');
+    const CHAVE_PIX = Deno.env.get('BANCO_INTER_CHAVE_PIX');
 
-    if (!CLIENT_ID || !CLIENT_SECRET) {
+    if (!CLIENT_ID || !CLIENT_SECRET || !CHAVE_PIX) {
       console.error('Credenciais do Banco Inter não configuradas');
       return new Response(
         JSON.stringify({ success: false, error: 'Configuração incompleta' }),
@@ -47,41 +43,57 @@ serve(async (req) => {
       );
     }
 
-    // NOTA: Por enquanto, retornar uma simulação até que os certificados sejam adicionados
-    // Quando tiver os certificados, descomentar o código abaixo
+    // Ler certificados do diretório _shared
+    console.log('Carregando certificados mTLS...');
+    const cert = await Deno.readTextFile('/var/task/supabase/functions/_shared/banco-inter-client.crt');
+    const key = await Deno.readTextFile('/var/task/supabase/functions/_shared/banco-inter-client.key');
+    const caCerts = [await Deno.readTextFile('/var/task/supabase/functions/_shared/banco-inter-ca.crt')];
 
-    /*
-    // 1. Obter token de autenticação
+    // Criar cliente HTTP com mTLS
+    const httpClient = Deno.createHttpClient({
+      cert,
+      key,
+      caCerts
+    });
+
+    // Gerar txid único
+    const txid = crypto.randomUUID().replace(/-/g, '').substring(0, 35);
+    
+    console.log('Obtendo token de autenticação do Banco Inter...');
+
+    // 1. Obter token de autenticação com mTLS
     const tokenResponse = await fetch('https://cdpj.partners.bancointer.com.br/oauth/v2/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      // TODO: Adicionar certificados mTLS aqui quando disponíveis
       body: new URLSearchParams({
         client_id: CLIENT_ID,
         client_secret: CLIENT_SECRET,
         scope: 'cob.write cob.read',
         grant_type: 'client_credentials'
-      })
-    });
+      }),
+      client: httpClient
+    } as any);
 
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();
-      console.error('Erro ao obter token:', errorText);
+      console.error('Erro ao obter token:', tokenResponse.status, errorText);
+      httpClient.close();
       return new Response(
-        JSON.stringify({ success: false, error: 'Erro na autenticação' }),
+        JSON.stringify({ success: false, error: 'Erro na autenticação com Banco Inter' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const { access_token } = await tokenResponse.json();
+    console.log('Token obtido com sucesso');
 
-    // 2. Criar cobrança PIX
-    const txid = crypto.randomUUID().replace(/-/g, '').substring(0, 35);
+    // 2. Criar cobrança PIX no Banco Inter
+    console.log('Criando cobrança PIX:', { txid, valor, chave: CHAVE_PIX });
     
-    const cobResponse = await fetch('https://cdpj.partners.bancointer.com.br/pix/v2/cob', {
-      method: 'POST',
+    const cobResponse = await fetch(`https://cdpj.partners.bancointer.com.br/pix/v2/cob/${txid}`, {
+      method: 'PUT',
       headers: {
         'Authorization': `Bearer ${access_token}`,
         'Content-Type': 'application/json',
@@ -94,25 +106,30 @@ serve(async (req) => {
           original: valor.toFixed(2)
         },
         chave: CHAVE_PIX,
-        solicitacaoPagador: `Recarga de créditos - ${valor.toFixed(2)}`
-      })
-    });
+        solicitacaoPagador: `Recarga de créditos - R$ ${valor.toFixed(2)}`
+      }),
+      client: httpClient
+    } as any);
 
     if (!cobResponse.ok) {
       const errorText = await cobResponse.text();
-      console.error('Erro ao criar cobrança:', errorText);
+      console.error('Erro ao criar cobrança:', cobResponse.status, errorText);
+      httpClient.close();
       return new Response(
-        JSON.stringify({ success: false, error: 'Erro ao criar cobrança' }),
+        JSON.stringify({ success: false, error: 'Erro ao criar cobrança PIX no Banco Inter' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const cobData = await cobResponse.json();
-    */
+    console.log('Cobrança PIX criada com sucesso no Banco Inter:', cobData);
 
-    // Simulação temporária até ter os certificados
-    const txid = crypto.randomUUID().replace(/-/g, '').substring(0, 35);
-    const pixCopiaECola = `00020126580014br.gov.bcb.pix0136${txid}52040000530398654${valor.toFixed(2).padStart(13, '0')}5802BR5925BRHUB ENVIOS6009SAO PAULO62070503***6304XXXX`;
+    // Fechar cliente HTTP
+    httpClient.close();
+
+    // Extrair dados da resposta do Banco Inter
+    const pixCopiaECola = cobData.pixCopiaECola || '';
+    const qrCodeUrl = cobData.loc?.qrcode || `https://gerarqrcodepix.com.br/api/v1?brcode=${encodeURIComponent(pixCopiaECola)}`;
     
     // 3. Salvar no banco de dados
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -151,7 +168,8 @@ serve(async (req) => {
         data: {
           txid,
           pix_copia_cola: pixCopiaECola,
-          qr_code: `https://gerarqrcodepix.com.br/api/v1?brcode=${encodeURIComponent(pixCopiaECola)}`,
+          qr_code: qrCodeUrl,
+          qr_code_image: qrCodeUrl,
           expiracao: dataExpiracao.toISOString()
         }
       }),
