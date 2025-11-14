@@ -2,6 +2,7 @@ import { useState } from "react";
 import { X, Copy, QrCode, Clock, CheckCircle2 } from "lucide-react";
 import { ICreatePixChargeResponse } from "../../../../types/IRecargaPix";
 import { toastSuccess, toastError } from "../../../../utils/toastNotify";
+import { ProcessarPagamentoManual } from './ProcessarPagamentoManual';
 
 interface ModalRecargaPixProps {
   isOpen: boolean;
@@ -102,31 +103,48 @@ export function ModalRecargaPix({ isOpen, onClose, chargeData }: ModalRecargaPix
 
           {/* Instructions */}
           <div className="p-4 bg-muted/50 rounded-lg border border-border">
-            <h3 className="text-sm font-semibold text-foreground mb-2">
-              Como pagar:
-            </h3>
-            <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-              <li>Abra o app do seu banco</li>
-              <li>Escolha pagar com PIX</li>
-              <li>Escaneie o QR Code ou cole o código</li>
-              <li>Confirme o pagamento</li>
+            <h3 className="font-medium text-foreground mb-2">Como pagar:</h3>
+            <ol className="space-y-2 text-sm text-muted-foreground">
+              <li className="flex gap-2">
+                <span className="font-semibold text-foreground">1.</span>
+                <span>Abra o app do seu banco</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="font-semibold text-foreground">2.</span>
+                <span>Escolha pagar com Pix QR Code ou Pix Copia e Cola</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="font-semibold text-foreground">3.</span>
+                <span>Escaneie o código ou cole o texto acima</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="font-semibold text-foreground">4.</span>
+                <span>Confirme o pagamento</span>
+              </li>
             </ol>
           </div>
 
-          {/* Expiration */}
-          {chargeData.expiracao && (
-            <p className="text-xs text-muted-foreground text-center">
-              Este código expira em{" "}
-              {new Date(chargeData.expiracao).toLocaleString("pt-BR")}
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Após realizar o pagamento, seus créditos serão adicionados automaticamente em alguns instantes.
             </p>
-          )}
-        </div>
 
-        {/* Footer */}
-        <div className="p-6 border-t border-border">
-          <p className="text-xs text-muted-foreground text-center">
-            Após o pagamento, seus créditos serão adicionados automaticamente
-          </p>
+            <ProcessarPagamentoManual txid={chargeData.txid} onSuccess={onClose} />
+            
+            <p className="text-xs text-muted-foreground text-center">
+              Já pagou? Use o botão acima para processar manualmente
+            </p>
+
+            <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md border border-border">
+              <Clock className="w-5 h-5 text-muted-foreground" />
+              <div className="text-sm">
+                <p className="font-medium text-foreground">Válido até:</p>
+                <p className="text-muted-foreground">
+                  {new Date(chargeData.expiracao).toLocaleString('pt-BR')}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
