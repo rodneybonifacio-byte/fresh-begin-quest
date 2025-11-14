@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useAuth } from "../../../../providers/AuthContext";
 import { RecargaPixService } from "../../../../services/RecargaPixService";
+import { IRecargaPix } from "../../../../types/IRecargaPix";
 import { useFetchQuery } from "../../../../hooks/useFetchQuery";
 import { formatCurrencyWithCents } from "../../../../utils/formatCurrency";
 import { format } from "date-fns";
@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 
 export default function HistoricoRecargas() {
-  const { user } = useAuth();
   const [filtros, setFiltros] = useState({
     dataInicio: "",
     dataFim: "",
@@ -27,16 +26,12 @@ export default function HistoricoRecargas() {
     valorMax: ""
   });
 
-  const { data: recargas = [], isLoading } = useFetchQuery(
-    ['recargas-historico', user?.clienteId, filtros],
-    async () => {
-      if (!user?.clienteId) return [];
-      return await RecargaPixService.buscarRecargas(user.clienteId, 100);
-    },
-    {
-      enabled: !!user?.clienteId
-    }
-  );
+    const { data: recargas = [], isLoading } = useFetchQuery<IRecargaPix[]>(
+        ['recargas-historico'],
+        async () => {
+            return await RecargaPixService.buscarRecargas(100);
+        }
+    );
 
   const recargasFiltradas = recargas.filter((recarga) => {
     // Filtro por data

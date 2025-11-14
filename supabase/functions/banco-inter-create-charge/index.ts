@@ -9,7 +9,6 @@ const corsHeaders = {
 };
 
 interface CreateChargeRequest {
-  cliente_id: string;
   valor: number;
   expiracao?: number;
 }
@@ -20,14 +19,40 @@ serve(async (req) => {
   }
 
   try {
-    const { cliente_id, valor, expiracao = 3600 } = await req.json() as CreateChargeRequest;
+    // Obter user ID do token JWT
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Não autenticado' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    console.log('Criando cobrança PIX para cliente:', cliente_id, 'valor:', valor);
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+      console.error('Erro ao obter usuário:', userError);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Usuário não autenticado' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const cliente_id = user.id;
+    const { valor, expiracao = 3600 } = await req.json() as CreateChargeRequest;
+
+    console.log('Criando cobrança PIX para usuário:', cliente_id, 'valor:', valor);
 
     // Validações
-    if (!cliente_id || !valor || valor <= 0) {
+    if (!valor || valor <= 0) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Dados inválidos' }),
+        JSON.stringify({ success: false, error: 'Valor inválido' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -217,10 +242,7 @@ serve(async (req) => {
     const pixCopiaECola = cobData.pixCopiaECola || '';
     const qrCodeUrl = cobData.loc?.qrcode || `https://gerarqrcodepix.com.br/api/v1?brcode=${encodeURIComponent(pixCopiaECola)}`;
     
-    // 4. Salvar no banco de dados
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // 4. Salvar no banco de dados (reutilizar cliente supabase criado no início)
 
     const dataExpiracao = new Date();
     dataExpiracao.setSeconds(dataExpiracao.getSeconds() + expiracao);

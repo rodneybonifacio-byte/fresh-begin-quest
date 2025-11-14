@@ -13,7 +13,6 @@ export interface IRecargaPix {
 }
 
 export interface ICreatePixChargeRequest {
-  cliente_id: string;
   valor: number;
   expiracao?: number; // em segundos, padrão 3600 (1 hora)
 }

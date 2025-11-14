@@ -5,7 +5,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { NotificacaoPagamentoConfirmado } from '../components/NotificacaoPagamentoConfirmado';
 
 interface UseRecargaPixRealtimeProps {
-  clienteId: string;
   enabled?: boolean;
   onPaymentConfirmed?: () => void;
 }
@@ -15,14 +14,13 @@ interface UseRecargaPixRealtimeProps {
  * e exibe notificações quando pagamentos são confirmados
  */
 export const useRecargaPixRealtime = ({ 
-  clienteId, 
   enabled = true,
   onPaymentConfirmed
 }: UseRecargaPixRealtimeProps) => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (!enabled || !clienteId) {
+    if (!enabled) {
       return;
     }
 
@@ -35,8 +33,7 @@ export const useRecargaPixRealtime = ({
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'recargas_pix',
-          filter: `cliente_id=eq.${clienteId}`
+          table: 'recargas_pix'
         },
         (payload) => {
           console.log('📥 Atualização recebida:', payload);
@@ -96,5 +93,5 @@ export const useRecargaPixRealtime = ({
       console.log('🔕 Removendo listener de pagamentos PIX');
       supabase.removeChannel(channel);
     };
-  }, [clienteId, enabled, onPaymentConfirmed, queryClient]);
+  }, [enabled, onPaymentConfirmed, queryClient]);
 };

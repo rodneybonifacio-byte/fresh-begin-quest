@@ -30,14 +30,21 @@ export class RecargaPixService {
   }
 
   /**
-   * Buscar recargas do cliente
+   * Buscar recargas do usuário autenticado
    */
-  static async buscarRecargas(clienteId: string, limit: number = 20): Promise<IRecargaPix[]> {
+  static async buscarRecargas(limit: number = 100): Promise<IRecargaPix[]> {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        console.error('Usuário não autenticado');
+        return [];
+      }
+
       const { data, error } = await supabase
         .from('recargas_pix')
         .select('*')
-        .eq('cliente_id', clienteId)
+        .eq('cliente_id', user.id)
         .order('data_criacao', { ascending: false })
         .limit(limit);
 
