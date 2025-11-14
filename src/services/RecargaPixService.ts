@@ -7,8 +7,21 @@ export class RecargaPixService {
    */
   static async criarCobrancaPix(request: ICreatePixChargeRequest): Promise<ICreatePixChargeResponse> {
     try {
+      // Obter a sessão atual para pegar o token JWT
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        return {
+          success: false,
+          error: 'Usuário não autenticado'
+        };
+      }
+
       const { data, error } = await supabase.functions.invoke('banco-inter-create-charge', {
-        body: request
+        body: request,
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
       });
 
       if (error) {
