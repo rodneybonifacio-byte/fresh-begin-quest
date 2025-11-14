@@ -1,0 +1,89 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const payload = await req.json();
+    console.log('Webhook recebido:', JSON.stringify(payload));
+
+    // Validar payload do Banco Inter
+    const { pix } = payload;
+    if (!pix || !pix.txid) {
+      console.error('Payload inválido:', payload);
+      return new Response('Invalid payload', { status: 400 });
+    }
+
+    const { txid, valor, horario } = pix;
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // 1. Buscar a recarga pendente
+    const { data: recarga, error: findError } = await supabase
+      .from('recargas_pix')
+      .select('*')
+      .eq('txid', txid)
+      .eq('status', 'pendente_pagamento')
+      .single();
+
+    if (findError || !recarga) {
+      console.error('Recarga não encontrada ou já processada:', txid, findError);
+      return new Response('Not found', { status: 404 });
+    }
+
+    console.log('Recarga encontrada:', recarga.id, 'valor:', recarga.valor);
+
+    // 2. Atualizar status da recarga para pago
+    const { error: updateError } = await supabase
+      .from('recargas_pix')
+      .update({
+        status: 'pago',
+        data_pagamento: horario || new Date().toISOString()
+      })
+      .eq('id', recarga.id);
+
+    if (updateError) {
+      console.error('Erro ao atualizar recarga:', updateError);
+      return new Response('Update error', { status: 500 });
+    }
+
+    // 3. Registrar transação de crédito (recarga)
+    const { error: creditError } = await supabase.rpc('registrar_recarga', {
+      p_cliente_id: recarga.cliente_id,
+      p_valor: recarga.valor,
+      p_descricao: `Recarga PIX - txid: ${txid}`
+    });
+
+    if (creditError) {
+      console.error('Erro ao registrar crédito:', creditError);
+      return new Response('Credit error', { status: 500 });
+    }
+
+    console.log('Recarga processada com sucesso:', txid);
+
+    return new Response(
+      JSON.stringify({ success: true, message: 'Pagamento processado' }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('Erro no webhook:', error);
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Erro desconhecido' 
+      }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});
