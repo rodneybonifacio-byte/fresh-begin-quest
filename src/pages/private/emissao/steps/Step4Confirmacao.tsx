@@ -54,20 +54,27 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
         destinatario: data.destinatario,
       };
       
-      // Primeiro gera a emissão
-      await onEmissaoCadastro(emissao, setIsSubmitting);
+      // Primeiro gera a emissão e recebe a emissão criada com ID
+      const emissaoCriada = await onEmissaoCadastro(emissao, setIsSubmitting);
       
-      // Depois busca o PDF da etiqueta
+      console.log('Emissão criada:', emissaoCriada);
+      
+      // Verifica se temos o ID da emissão
+      if (!emissaoCriada?.id) {
+        throw new Error('Erro ao criar emissão: ID não retornado');
+      }
+      
+      // Depois busca o PDF da etiqueta usando a emissão com ID
       const pdfResponse = await onEmissaoImprimir(
-        emissao as IEmissao,
+        emissaoCriada,
         'etiqueta',
         setIsSubmitting
       );
       
       toast.success('Etiqueta gerada com sucesso!');
       
-      // Passa a emissão e o PDF para o próximo step
-      onSuccess(emissao, pdfResponse.data);
+      // Passa a emissão criada e o PDF para o próximo step
+      onSuccess(emissaoCriada, pdfResponse.data);
     } catch (error) {
       console.error('Erro ao gerar etiqueta:', error);
       toast.error('Erro ao gerar etiqueta');
