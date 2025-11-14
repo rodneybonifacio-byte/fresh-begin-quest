@@ -2,7 +2,6 @@ import { useState } from "react";
 import { X, Copy, QrCode, Clock, CheckCircle2 } from "lucide-react";
 import { ICreatePixChargeResponse } from "../../../../types/IRecargaPix";
 import { toastSuccess, toastError } from "../../../../utils/toastNotify";
-import { ConfigurarWebhook } from './ConfigurarWebhook';
 
 interface ModalRecargaPixProps {
   isOpen: boolean;
@@ -128,10 +127,6 @@ export function ModalRecargaPix({ isOpen, onClose, chargeData }: ModalRecargaPix
             <p className="text-xs text-muted-foreground text-center">
               Após o pagamento, seus créditos serão adicionados automaticamente via webhook.
             </p>
-
-            <div className="border-t pt-3">
-              <ConfigurarWebhook />
-            </div>
 
             <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-md border border-border">
               <Clock className="w-4 h-4 text-muted-foreground shrink-0" />
