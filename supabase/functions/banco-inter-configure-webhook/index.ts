@@ -59,10 +59,17 @@ async function getAccessToken(): Promise<string> {
   // Formatar certificados
   const formattedClientCert = formatPemCert(clientCert);
   const formattedCaCert = formatPemCert(caCert);
-  const formattedClientKey = clientKey.includes('\n') ? clientKey : clientKey.replace(/(.{64})/g, '$1\n');
+  const formattedClientKey = formatPemCert(clientKey);
 
   console.log('Certificado formatado - primeira linha:', formattedClientCert.split('\n')[0]);
   console.log('Certificado formatado - segunda linha:', formattedClientCert.split('\n')[1]);
+
+  // Criar cliente HTTP com mTLS
+  const httpClient = Deno.createHttpClient({
+    cert: formattedClientCert,
+    key: formattedClientKey,
+    caCerts: [formattedCaCert]
+  });
 
   const tokenUrl = 'https://cdpj.partners.bancointer.com.br/oauth/v2/token';
   
@@ -79,12 +86,7 @@ async function getAccessToken(): Promise<string> {
       'Content-Type': 'application/x-www-form-urlencoded',
     },
     body: body.toString(),
-    // @ts-ignore - Deno supports client certificates
-    client: {
-      cert: formattedClientCert,
-      key: formattedClientKey,
-      ca: formattedCaCert,
-    }
+    client: httpClient
   });
 
   if (!response.ok) {
@@ -112,7 +114,14 @@ async function configureWebhook(accessToken: string, webhookUrl: string): Promis
 
   const formattedClientCert = formatPemCert(clientCert!);
   const formattedCaCert = formatPemCert(caCert!);
-  const formattedClientKey = clientKey!.includes('\n') ? clientKey : clientKey!.replace(/(.{64})/g, '$1\n');
+  const formattedClientKey = formatPemCert(clientKey!);
+
+  // Criar cliente HTTP com mTLS
+  const httpClient = Deno.createHttpClient({
+    cert: formattedClientCert,
+    key: formattedClientKey,
+    caCerts: [formattedCaCert]
+  });
 
   console.log('Configurando webhook para chave:', chave);
   console.log('URL do webhook:', webhookUrl);
@@ -128,12 +137,7 @@ async function configureWebhook(accessToken: string, webhookUrl: string): Promis
     body: JSON.stringify({
       webhookUrl: webhookUrl
     }),
-    // @ts-ignore - Deno supports client certificates
-    client: {
-      cert: formattedClientCert,
-      key: formattedClientKey,
-      ca: formattedCaCert,
-    }
+    client: httpClient
   });
 
   if (!response.ok) {
