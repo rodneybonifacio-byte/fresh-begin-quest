@@ -39,6 +39,7 @@ export default function Recarga() {
     useRecargaPixRealtime({
         enabled: true,
         onPaymentConfirmed: () => {
+            console.log('🎉 onPaymentConfirmed callback acionado pelo realtime!');
             // Fechar modal
             setShowPixModal(false);
             setPixChargeData(undefined);
@@ -254,9 +255,12 @@ export default function Recarga() {
             <ModalRecargaPix
                 isOpen={showPixModal}
                 onClose={() => {
+                    console.log('🚪 Modal fechando via onClose...');
                     setShowPixModal(false);
                     setValorRecarga("");
                     queryClient.invalidateQueries({ queryKey: ['cliente-saldo-recarga'] });
+                    queryClient.invalidateQueries({ queryKey: ['recargas-historico'] });
+                    console.log('✅ Queries invalidadas');
                 }}
                 chargeData={pixChargeData}
             />

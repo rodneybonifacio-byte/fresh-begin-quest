@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Copy, QrCode, Clock, CheckCircle2 } from "lucide-react";
 import { ICreatePixChargeResponse } from "../../../../types/IRecargaPix";
 import { toastSuccess, toastError } from "../../../../utils/toastNotify";
+import { RecargaPixService } from "../../../../services/RecargaPixService";
 
 interface ModalRecargaPixProps {
   isOpen: boolean;
@@ -11,6 +12,36 @@ interface ModalRecargaPixProps {
 
 export function ModalRecargaPix({ isOpen, onClose, chargeData }: ModalRecargaPixProps) {
   const [copied, setCopied] = useState(false);
+
+  // Polling para verificar status do pagamento a cada 3 segundos
+  useEffect(() => {
+    if (!isOpen || !chargeData?.txid) return;
+
+    console.log('🔄 Iniciando polling para verificar pagamento (txid:', chargeData.txid, ')');
+    
+    const verificarPagamento = async () => {
+      try {
+        const recarga = await RecargaPixService.verificarStatus(chargeData.txid);
+        console.log('📊 Status atual da recarga:', recarga?.status);
+        
+        if (recarga?.status === 'pago') {
+          console.log('✅ Pagamento confirmado via polling! Fechando modal...');
+          onClose();
+        }
+      } catch (error) {
+        console.error('❌ Erro ao verificar status:', error);
+      }
+    };
+
+    // Verificar imediatamente e depois a cada 3 segundos
+    verificarPagamento();
+    const interval = setInterval(verificarPagamento, 3000);
+
+    return () => {
+      console.log('🛑 Parando polling de pagamento');
+      clearInterval(interval);
+    };
+  }, [isOpen, chargeData?.txid, onClose]);
 
   if (!isOpen || !chargeData) return null;
 
