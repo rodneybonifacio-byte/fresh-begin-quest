@@ -85,7 +85,7 @@ export const Home = () => {
                         {/* Left Column - Content */}
                         <div className="space-y-8 animate-fade-in">
                             {/* Badge */}
-                            <div className="inline-flex items-center gap-2 bg-primary/20 text-primary px-4 py-2 rounded-full text-sm font-semibold border border-primary/30">
+                            <div className="inline-flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
                                 <TrendingUp className="w-4 h-4" />
                                 Até 80% de desconto
                             </div>
@@ -176,15 +176,22 @@ export const Home = () => {
             </section>
 
             {/* Calculator CTA Bar */}
-            <section className="bg-primary py-4">
+            <section className="bg-primary py-5 shadow-lg">
                 <div className="container mx-auto px-4">
-                    <div className="flex items-center justify-center gap-3 text-primary-foreground">
-                        <Calculator className="w-5 h-5" />
-                        <span className="font-semibold">Use a</span>
-                        <a href="/simulador" className="underline font-bold hover:no-underline">
-                            Calculadora de Frete
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 max-w-6xl mx-auto">
+                        <div className="flex items-center gap-3">
+                            <Calculator className="w-6 h-6 text-white" />
+                            <span className="text-lg font-bold text-white">
+                                Calcule seu frete agora mesmo
+                            </span>
+                        </div>
+                        <a 
+                            href="/simulador"
+                            className="bg-white hover:bg-white/95 text-primary px-8 py-3 rounded-full font-bold transition-all duration-300 hover:scale-105 shadow-xl flex items-center gap-2"
+                        >
+                            Calcular frete
+                            <ArrowRight className="w-5 h-5" />
                         </a>
-                        <span className="font-semibold">da BRHUB</span>
                     </div>
                 </div>
             </section>
