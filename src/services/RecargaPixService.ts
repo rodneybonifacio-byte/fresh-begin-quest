@@ -104,22 +104,20 @@ export class RecargaPixService {
   }
 
   /**
-   * Verificar status da recarga
+   * Verificar status da recarga do usuário autenticado
    */
   static async verificarStatus(txid: string): Promise<IRecargaPix | null> {
     try {
-      const { data, error } = await supabase
-        .from('recargas_pix')
-        .select('*')
-        .eq('txid', txid)
-        .single();
-
-      if (error) {
-        console.error('Erro ao verificar status:', error);
+      // Buscar todas as recargas do usuário autenticado e filtrar por txid no client
+      const recargas = await this.buscarRecargas(100);
+      const recarga = recargas.find(r => r.txid === txid);
+      
+      if (!recarga) {
+        console.log('Recarga não encontrada para txid:', txid);
         return null;
       }
 
-      return data as IRecargaPix;
+      return recarga;
     } catch (error) {
       console.error('Erro ao verificar status:', error);
       return null;
