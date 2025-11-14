@@ -37,8 +37,7 @@ export default function Recarga() {
 
     // Listener de notificações em tempo real para pagamentos PIX
     useRecargaPixRealtime({
-        clienteId: user?.clienteId || '',
-        enabled: !!user?.clienteId,
+        enabled: true,
         onPaymentConfirmed: () => {
             // Fechar modal
             setShowPixModal(false);
@@ -51,9 +50,7 @@ export default function Recarga() {
 
     const createPixChargeMutation = useMutation({
         mutationFn: async (valor: number) => {
-            if (!user?.clienteId) throw new Error("Cliente não encontrado");
             return await RecargaPixService.criarCobrancaPix({
-                cliente_id: user.clienteId,
                 valor,
                 expiracao: 3600
             });
