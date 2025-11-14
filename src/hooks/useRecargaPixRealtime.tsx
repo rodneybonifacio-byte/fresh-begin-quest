@@ -36,11 +36,13 @@ export const useRecargaPixRealtime = ({
           table: 'recargas_pix'
         },
         (payload) => {
-          console.log('📥 Atualização recebida:', payload);
+          console.log('📥 Atualização recebida na tabela recargas_pix:', payload);
 
           const novoStatus = payload.new?.status;
           const statusAnterior = payload.old?.status;
           const valor = payload.new?.valor;
+
+          console.log(`Status mudou de ${statusAnterior} para ${novoStatus}`);
 
           // Detectar quando pagamento é confirmado
           if (statusAnterior === 'pendente_pagamento' && novoStatus === 'pago') {
@@ -78,6 +80,8 @@ export const useRecargaPixRealtime = ({
             // Invalidar queries para atualizar saldo e lista
             queryClient.invalidateQueries({ queryKey: ['cliente-saldo-recarga'] });
             queryClient.invalidateQueries({ queryKey: ['recargas-historico'] });
+            
+            console.log('🔄 Queries invalidadas para atualização');
           }
         }
       )
@@ -85,6 +89,10 @@ export const useRecargaPixRealtime = ({
         console.log('Status do canal realtime:', status);
         if (status === 'SUBSCRIBED') {
           console.log('✅ Inscrito no canal de notificações de pagamento');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Erro no canal de realtime');
+        } else if (status === 'TIMED_OUT') {
+          console.error('⏰ Timeout no canal de realtime');
         }
       });
 
