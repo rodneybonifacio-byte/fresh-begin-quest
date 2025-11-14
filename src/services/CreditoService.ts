@@ -92,6 +92,7 @@ export class CreditoService extends BaseService<ITransacaoCredito> {
         try {
             console.log('🔍 Buscando extrato para cliente:', clienteId);
             
+            // Usar cliente Supabase padrão (não precisa de autenticação para RPC com SECURITY DEFINER)
             const supabase = getSupabaseWithAuth();
             const { data, error } = await supabase.rpc('buscar_transacoes_cliente', {
                 p_cliente_id: clienteId,
@@ -99,18 +100,18 @@ export class CreditoService extends BaseService<ITransacaoCredito> {
             });
 
             if (error) {
-                console.error('❌ Erro ao buscar extrato:', error);
-                console.error('❌ Detalhes do erro:', JSON.stringify(error, null, 2));
-                throw error;
+                console.error('❌ Erro RPC:', error);
+                return [];
             }
             
-            console.log('✅ Transações carregadas:', data?.length || 0);
+            console.log('✅ RPC retornou:', data?.length || 0, 'transações');
             if (data && data.length > 0) {
-                console.log('📄 Primeira transação:', data[0]);
+                console.log('📄 Primeira transação do RPC:', data[0]);
             }
+            
             return (data || []) as ITransacaoCredito[];
         } catch (error) {
-            console.error('💥 Exceção ao obter extrato:', error);
+            console.error('💥 Erro ao buscar extrato:', error);
             return [];
         }
     }
@@ -120,8 +121,9 @@ export class CreditoService extends BaseService<ITransacaoCredito> {
      */
     async obterResumo(clienteId: string, dataInicio?: string, dataFim?: string) {
         try {
-            const supabase = getSupabaseWithAuth();
+            console.log('🔍 Buscando resumo para cliente:', clienteId);
             
+            const supabase = getSupabaseWithAuth();
             const { data, error } = await supabase.rpc('buscar_resumo_transacoes', {
                 p_cliente_id: clienteId,
                 p_data_inicio: dataInicio,
@@ -129,9 +131,17 @@ export class CreditoService extends BaseService<ITransacaoCredito> {
             });
 
             if (error) {
-                console.error('Erro ao buscar resumo:', error);
-                throw error;
+                console.error('❌ Erro RPC resumo:', error);
+                return {
+                    totalRecargas: 0,
+                    totalConsumos: 0,
+                    quantidadeRecargas: 0,
+                    quantidadeConsumos: 0,
+                    transacoes: []
+                };
             }
+
+            console.log('✅ RPC resumo retornou:', data?.length || 0, 'registros');
 
             // Calcular totais
             const recargas = data?.filter((t: any) => t.tipo === 'recarga') || [];
@@ -140,7 +150,12 @@ export class CreditoService extends BaseService<ITransacaoCredito> {
             const totalRecargas = recargas.reduce((sum: number, t: any) => sum + Number(t.valor), 0);
             const totalConsumos = consumos.reduce((sum: number, t: any) => sum + Math.abs(Number(t.valor)), 0);
 
-            console.log('📈 Resumo calculado:', { totalRecargas, totalConsumos, quantidadeRecargas: recargas.length, quantidadeConsumos: consumos.length });
+            console.log('📈 Resumo:', { 
+                totalRecargas, 
+                totalConsumos, 
+                qtdRecargas: recargas.length, 
+                qtdConsumos: consumos.length 
+            });
 
             return {
                 totalRecargas,
@@ -150,7 +165,7 @@ export class CreditoService extends BaseService<ITransacaoCredito> {
                 transacoes: data
             };
         } catch (error) {
-            console.error('Erro ao obter resumo:', error);
+            console.error('💥 Erro ao obter resumo:', error);
             return {
                 totalRecargas: 0,
                 totalConsumos: 0,

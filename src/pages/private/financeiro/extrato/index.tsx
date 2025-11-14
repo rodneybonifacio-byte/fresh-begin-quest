@@ -83,28 +83,42 @@ export default function ExtratoCreditos() {
         try {
             setLoading(true);
             
+            console.log('🚀 Iniciando carregamento...');
+            console.log('👤 User:', user);
+            console.log('🆔 Cliente ID:', user?.clienteId);
+            
+            if (!user?.clienteId) {
+                console.error('❌ Cliente ID não encontrado!');
+                setLoading(false);
+                return;
+            }
+            
             // Carregar transações e resumo
-            const [extratoData, resumoData] = await Promise.all([
-                service.obterExtrato(user?.clienteId ?? '', 100),
-                service.obterResumo(user?.clienteId ?? '')
-            ]);
+            console.log('📞 Chamando obterExtrato...');
+            const extratoData = await service.obterExtrato(user.clienteId, 100);
+            console.log('✅ Extrato retornado:', extratoData?.length || 0, 'itens');
+            
+            console.log('📞 Chamando obterResumo...');
+            const resumoData = await service.obterResumo(user.clienteId);
+            console.log('✅ Resumo retornado:', resumoData);
             
             setTransacoes(extratoData);
+            console.log('💾 Transações salvas no estado');
             
-            // Por enquanto, usar os dados das transações já registradas
-            // TODO: Integrar com backend para buscar todas as emissões com status != pré-postado
             setResumo({
                 totalRecargas: resumoData.totalRecargas,
                 totalConsumos: resumoData.totalConsumos,
-                totalEtiquetasGeradas: resumoData.totalConsumos, // Mesmo valor por enquanto
+                totalEtiquetasGeradas: resumoData.totalConsumos,
                 quantidadeRecargas: resumoData.quantidadeRecargas,
                 quantidadeConsumos: resumoData.quantidadeConsumos,
-                quantidadeEtiquetas: resumoData.quantidadeConsumos // Mesmo valor por enquanto
+                quantidadeEtiquetas: resumoData.quantidadeConsumos
             });
+            console.log('💾 Resumo salvo no estado');
         } catch (error) {
-            console.error('Erro ao carregar extrato:', error);
+            console.error('💥 Erro fatal:', error);
         } finally {
             setLoading(false);
+            console.log('✅ Carregamento concluído');
         }
     };
 
