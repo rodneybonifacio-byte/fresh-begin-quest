@@ -5,6 +5,9 @@ import { formatCurrencyWithCents } from "../../../../utils/formatCurrency";
 import { Receipt, TrendingUp, TrendingDown, Calendar, Filter } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { supabase } from "../../../../integrations/supabase/client";
+import { useRecargaPixRealtime } from "../../../../hooks/useRecargaPixRealtime";
+import { toast } from "sonner";
 
 export default function ExtratoCreditos() {
     const { user } = useAuth();
@@ -19,6 +22,54 @@ export default function ExtratoCreditos() {
     });
 
     const service = new CreditoService();
+
+    // Listener de notificações em tempo real para pagamentos PIX e transações
+    useRecargaPixRealtime({
+        enabled: true,
+        onPaymentConfirmed: () => {
+            console.log('🎉 Pagamento confirmado! Atualizando extrato...');
+            carregarDados();
+        }
+    });
+
+    // Listener para atualizações em tempo real na tabela transacoes_credito
+    useEffect(() => {
+        if (!user?.clienteId) return;
+
+        console.log('🔔 Iniciando listener de transações em tempo real...');
+
+        const channel = supabase
+            .channel('transacoes-credito-changes')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*', // Escuta INSERT, UPDATE, DELETE
+                    schema: 'public',
+                    table: 'transacoes_credito',
+                    filter: `cliente_id=eq.${user.clienteId}`
+                },
+                (payload) => {
+                    console.log('📥 Mudança detectada em transações:', payload);
+                    
+                    if (payload.eventType === 'INSERT') {
+                        const novaTransacao = payload.new as ITransacaoCredito;
+                        const tipo = novaTransacao.tipo === 'recarga' ? 'Recarga' : 'Consumo';
+                        toast.success(`${tipo} registrada: ${formatCurrencyWithCents(novaTransacao.valor.toString())}`);
+                    }
+                    
+                    // Atualizar dados
+                    carregarDados();
+                }
+            )
+            .subscribe((status) => {
+                console.log('Status do canal de transações:', status);
+            });
+
+        return () => {
+            console.log('🔕 Removendo listener de transações');
+            supabase.removeChannel(channel);
+        };
+    }, [user?.clienteId]);
 
     useEffect(() => {
         if (user?.clienteId) {

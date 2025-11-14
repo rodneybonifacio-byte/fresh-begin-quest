@@ -79,7 +79,9 @@ export const useRecargaPixRealtime = ({
 
             // Invalidar queries para atualizar saldo e lista
             queryClient.invalidateQueries({ queryKey: ['cliente-saldo-recarga'] });
+            queryClient.invalidateQueries({ queryKey: ['cliente-logado'] });
             queryClient.invalidateQueries({ queryKey: ['recargas-historico'] });
+            queryClient.invalidateQueries({ queryKey: ['extrato-creditos'] });
             
             console.log('🔄 Queries invalidadas para atualização');
           }
