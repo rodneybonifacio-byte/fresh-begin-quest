@@ -42,6 +42,44 @@ const formatPemCert = (pemString: string) => {
   return `${header}\n${formatted}\n${footer}`;
 };
 
+// Função para delay com retry
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Função de retry com exponential backoff
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  initialDelay: number = 1000
+): Promise<T> {
+  let lastError: Error;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      console.log(`Tentativa ${attempt + 1} de ${maxRetries}...`);
+      return await fn();
+    } catch (error) {
+      lastError = error as Error;
+      
+      // Não tentar novamente em caso de erro de autenticação ou configuração
+      if (
+        lastError.message.includes('não configurad') ||
+        lastError.message.includes('401') ||
+        lastError.message.includes('403')
+      ) {
+        throw lastError;
+      }
+      
+      if (attempt < maxRetries - 1) {
+        const delay = initialDelay * Math.pow(2, attempt);
+        console.log(`Tentativa falhou: ${lastError.message}. Aguardando ${delay}ms antes da próxima tentativa...`);
+        await sleep(delay);
+      }
+    }
+  }
+  
+  throw lastError!;
+}
+
 async function getAccessToken(): Promise<string> {
   console.log('Obtendo token de autenticação do Banco Inter...');
   
@@ -165,16 +203,42 @@ serve(async (req) => {
       throw new Error('SUPABASE_URL não configurado');
     }
 
+    // Validar que todas as credenciais estão configuradas
+    const requiredEnvs = [
+      'BANCO_INTER_CLIENT_ID',
+      'BANCO_INTER_CLIENT_SECRET',
+      'BANCO_INTER_CHAVE_PIX',
+      'BANCO_INTER_CLIENT_CERT',
+      'BANCO_INTER_CLIENT_KEY',
+      'BANCO_INTER_CA_CERT'
+    ];
+
+    const missingEnvs = requiredEnvs.filter(env => !Deno.env.get(env));
+    if (missingEnvs.length > 0) {
+      throw new Error(`Credenciais não configuradas: ${missingEnvs.join(', ')}`);
+    }
+
     // URL do webhook para o Banco Inter
     const webhookUrl = `${supabaseUrl}/functions/v1/banco-inter-webhook`;
 
     console.log('Iniciando configuração do webhook...');
+    console.log('Webhook URL:', webhookUrl);
 
-    // Obter token de acesso
-    const accessToken = await getAccessToken();
+    // Obter token de acesso com retry
+    const accessToken = await retryWithBackoff(
+      () => getAccessToken(),
+      3,
+      1000
+    );
 
-    // Configurar webhook
-    const result = await configureWebhook(accessToken, webhookUrl);
+    // Configurar webhook com retry
+    const result = await retryWithBackoff(
+      () => configureWebhook(accessToken, webhookUrl),
+      3,
+      2000
+    );
+
+    console.log('✓ Webhook configurado com sucesso!');
 
     return new Response(
       JSON.stringify({
@@ -190,14 +254,26 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Erro ao configurar webhook:', error);
+    console.error('✗ Erro ao configurar webhook:', error);
+    
+    // Determinar código de status apropriado
+    let statusCode = 500;
+    if (error instanceof Error) {
+      if (error.message.includes('não configurad')) {
+        statusCode = 400;
+      } else if (error.message.includes('401') || error.message.includes('403')) {
+        statusCode = 401;
+      }
+    }
+    
     return new Response(
       JSON.stringify({
         success: false,
-        error: error instanceof Error ? error.message : 'Erro desconhecido'
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        details: error instanceof Error ? error.stack : undefined
       }),
       {
-        status: 500,
+        status: statusCode,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
