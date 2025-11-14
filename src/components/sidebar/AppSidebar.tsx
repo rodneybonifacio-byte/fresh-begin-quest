@@ -50,10 +50,22 @@ const AppSidebar = observer(({
             ]
         },
         {
-            icon: Archive,
-            label: 'Envios',
-            active: ['/app/emissao', '/app/integracoes-pedidos'].some(path => isPathActive(path)),
+            icon: FileBarChart,
+            label: 'Relatórios',
+            active: ['/app/relatorios/dashboards', '/app/relatorios/envios', '/app/integracoes-pedidos'].some(path => isPathActive(path)),
             submenu: [
+                {
+                    icon: FileBarChart,
+                    label: 'Dashboards',
+                    to: '/app/relatorios/dashboards',
+                    active: isPathActive('/app/relatorios/dashboards')
+                },
+                {
+                    icon: FileSpreadsheet,
+                    label: 'Lista de Envios',
+                    to: '/app/relatorios/envios',
+                    active: isPathActive('/app/relatorios/envios')
+                },
                 {
                     icon: FileSpreadsheet,
                     label: 'Pre-Postagem',
