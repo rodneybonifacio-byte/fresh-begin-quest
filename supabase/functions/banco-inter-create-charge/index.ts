@@ -121,7 +121,7 @@ serve(async (req) => {
     const dataExpiracao = new Date();
     dataExpiracao.setSeconds(dataExpiracao.getSeconds() + expiracao);
 
-    const { data: recarga, error: dbError } = await supabase
+    const { error: dbError } = await supabase
       .from('recargas_pix')
       .insert({
         cliente_id,

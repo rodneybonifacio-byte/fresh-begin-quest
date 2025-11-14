@@ -22,7 +22,7 @@ serve(async (req) => {
       return new Response('Invalid payload', { status: 400 });
     }
 
-    const { txid, valor, horario } = pix;
+    const { txid, horario } = pix;
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;

@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { useAuth } from "../../../../providers/AuthContext";
 import { CreditoService } from "../../../../services/CreditoService";
+import { RecargaPixService } from "../../../../services/RecargaPixService";
 import { useFetchQuery } from "../../../../hooks/useFetchQuery";
 import { formatCurrencyWithCents } from "../../../../utils/formatCurrency";
-import { Wallet, Plus, History, TrendingUp, DollarSign } from "lucide-react";
+import { Wallet, Plus, History, TrendingUp, DollarSign, QrCode } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLoadingSpinner } from "../../../../providers/LoadingSpinnerContext";
 import { toastSuccess, toastError } from "../../../../utils/toastNotify";
+import { ModalRecargaPix } from "./ModalRecargaPix";
+import { ICreatePixChargeResponse } from "../../../../types/IRecargaPix";
 
 export default function Recarga() {
     const { user } = useAuth();
@@ -14,6 +17,8 @@ export default function Recarga() {
     const queryClient = useQueryClient();
     const { setIsLoading } = useLoadingSpinner();
     const [valorRecarga, setValorRecarga] = useState("");
+    const [showPixModal, setShowPixModal] = useState(false);
+    const [pixChargeData, setPixChargeData] = useState<ICreatePixChargeResponse['data']>();
 
     const { data: saldo } = useFetchQuery<number>(
         ['cliente-saldo-recarga'],
@@ -23,36 +28,43 @@ export default function Recarga() {
         }
     );
 
-    const addCreditoMutation = useMutation({
+    const createPixChargeMutation = useMutation({
         mutationFn: async (valor: number) => {
             if (!user?.clienteId) throw new Error("Cliente não encontrado");
-            return await creditoService.registrarRecarga(
-                user.clienteId,
+            return await RecargaPixService.criarCobrancaPix({
+                cliente_id: user.clienteId,
                 valor,
-                'Recarga manual via plataforma'
-            );
+                expiracao: 3600
+            });
         },
-        onSuccess: () => {
-            toastSuccess("Crédito adicionado com sucesso!");
-            queryClient.invalidateQueries({ queryKey: ['cliente-saldo-recarga'] });
-            queryClient.invalidateQueries({ queryKey: ['cliente-logado'] });
-            setValorRecarga("");
+        onSuccess: (response) => {
+            if (response.success && response.data) {
+                setPixChargeData(response.data);
+                setShowPixModal(true);
+                toastSuccess("Cobrança PIX gerada com sucesso!");
+            } else {
+                toastError(response.error || "Erro ao gerar cobrança PIX");
+            }
             setIsLoading(false);
         },
         onError: (error: any) => {
-            toastError(error?.message || "Erro ao adicionar crédito");
+            toastError(error?.message || "Erro ao gerar cobrança PIX");
             setIsLoading(false);
         }
     });
 
-    const handleAddCredito = () => {
+    const handleGeneratePixCharge = () => {
         const valor = parseFloat(valorRecarga.replace(/\D/g, "")) / 100;
         if (valor <= 0) {
             toastError("Valor inválido");
             return;
         }
+        if (valor < 1) {
+            toastError("Valor mínimo de R$ 1,00");
+            return;
+        }
         setIsLoading(true);
-        addCreditoMutation.mutate(valor);
+        createPixChargeMutation.mutate(valor);
     };
 
     const formatInputCurrency = (value: string) => {
@@ -161,12 +173,12 @@ export default function Recarga() {
                         </div>
 
                         <button
-                            onClick={handleAddCredito}
+                            onClick={handleGeneratePixCharge}
                             disabled={!valorRecarga || parseFloat(valorRecarga.replace(/\D/g, "")) === 0}
                             className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
-                            <Plus className="w-5 h-5" />
-                            Adicionar Créditos
+                            <QrCode className="w-5 h-5" />
+                            Gerar PIX
                         </button>
                     </div>
                 </div>
@@ -185,6 +197,17 @@ export default function Recarga() {
                     </ul>
                 </div>
             </div>
+
+            {/* Modal PIX */}
+            <ModalRecargaPix
+                isOpen={showPixModal}
+                onClose={() => {
+                    setShowPixModal(false);
+                    setValorRecarga("");
+                    queryClient.invalidateQueries({ queryKey: ['cliente-saldo-recarga'] });
+                }}
+                chargeData={pixChargeData}
+            />
         </div>
     );
 }
