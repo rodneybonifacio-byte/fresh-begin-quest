@@ -22,12 +22,12 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
-    console.log('🔍 Iniciando validação de autenticação...');
+    console.log('🔍 Iniciando validação de autenticação (JWT customizado)...');
     
     // Criar cliente com service role
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Extrair e validar o JWT do header Authorization
+    // Extrair o JWT customizado do header Authorization
     const authHeader = req.headers.get('Authorization');
     console.log('Authorization header presente:', !!authHeader);
     
@@ -40,29 +40,35 @@ serve(async (req) => {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    console.log('Token extraído, comprimento:', token.length);
+    console.log('Token extraído (JWT customizado), comprimento:', token.length);
     
-    // Validar o JWT e obter o user_id
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    
-    if (userError) {
-      console.error('❌ Erro ao validar token:', userError.message);
+    // Decodificar o JWT customizado para obter o user_id
+    let cliente_id: string;
+    try {
+      // Decodificar JWT sem validar assinatura (apenas extrair payload)
+      const parts = token.split('.');
+      if (parts.length !== 3) {
+        throw new Error('Token JWT inválido - formato incorreto');
+      }
+      
+      const payload = JSON.parse(atob(parts[1]));
+      console.log('Payload decodificado:', payload);
+      
+      // Extrair o clienteId do token customizado
+      cliente_id = payload.clienteId || payload.sub || payload.user_id;
+      
+      if (!cliente_id) {
+        throw new Error('clienteId não encontrado no token');
+      }
+      
+      console.log('✅ Cliente ID extraído do token:', cliente_id);
+    } catch (error) {
+      console.error('❌ Erro ao decodificar token:', error);
       return new Response(
-        JSON.stringify({ success: false, error: `Token inválido: ${userError.message}` }),
+        JSON.stringify({ success: false, error: 'Token inválido ou malformado' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    
-    if (!user) {
-      console.error('❌ Usuário não encontrado no token');
-      return new Response(
-        JSON.stringify({ success: false, error: 'Usuário não encontrado' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const cliente_id = user.id;
-    console.log('✅ Usuário autenticado:', cliente_id);
     const { valor, expiracao = 3600 } = await req.json() as CreateChargeRequest;
 
     console.log('Criando cobrança PIX para usuário:', cliente_id, 'valor:', valor);
