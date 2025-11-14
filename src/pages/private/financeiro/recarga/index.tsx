@@ -12,8 +12,7 @@ import { ModalRecargaPix } from "./ModalRecargaPix";
 import { ICreatePixChargeResponse } from "../../../../types/IRecargaPix";
 import { useRecargaPixRealtime } from "../../../../hooks/useRecargaPixRealtime";
 import { useNavigate } from "react-router-dom";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { formatInTimeZone } from "date-fns-tz";
 
 export default function Recarga() {
     const { user } = useAuth();
@@ -200,7 +199,7 @@ export default function Recarga() {
                         </div>
                         <p className="text-3xl font-bold text-foreground">
                             {ultimaRecarga?.data_pagamento 
-                                ? format(new Date(ultimaRecarga.data_pagamento), "dd/MM/yyyy", { locale: ptBR })
+                                ? formatInTimeZone(new Date(ultimaRecarga.data_pagamento), "America/Sao_Paulo", "dd/MM/yyyy 'às' HH:mm")
                                 : "-"
                             }
                         </p>
