@@ -1,5 +1,5 @@
-import { supabase } from "@/integrations/supabase/client";
-import { IRecargaPix, ICreatePixChargeRequest, ICreatePixChargeResponse } from "@/types/IRecargaPix";
+import { supabase } from "../integrations/supabase/client";
+import { IRecargaPix, ICreatePixChargeRequest, ICreatePixChargeResponse } from "../types/IRecargaPix";
 
 export class RecargaPixService {
   /**

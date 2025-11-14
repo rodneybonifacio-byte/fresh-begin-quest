@@ -14,9 +14,55 @@ export type Database = {
   }
   public: {
     Tables: {
+      recargas_pix: {
+        Row: {
+          cliente_id: string
+          data_criacao: string
+          data_expiracao: string | null
+          data_pagamento: string | null
+          id: string
+          pix_copia_cola: string | null
+          qr_code: string | null
+          qr_code_image: string | null
+          status: string
+          txid: string
+          updated_at: string | null
+          valor: number
+        }
+        Insert: {
+          cliente_id: string
+          data_criacao?: string
+          data_expiracao?: string | null
+          data_pagamento?: string | null
+          id?: string
+          pix_copia_cola?: string | null
+          qr_code?: string | null
+          qr_code_image?: string | null
+          status?: string
+          txid: string
+          updated_at?: string | null
+          valor: number
+        }
+        Update: {
+          cliente_id?: string
+          data_criacao?: string
+          data_expiracao?: string | null
+          data_pagamento?: string | null
+          id?: string
+          pix_copia_cola?: string | null
+          qr_code?: string | null
+          qr_code_image?: string | null
+          status?: string
+          txid?: string
+          updated_at?: string | null
+          valor?: number
+        }
+        Relationships: []
+      }
       transacoes_credito: {
         Row: {
           cliente_id: string
+          cobrada: boolean | null
           created_at: string | null
           descricao: string | null
           emissao_id: string | null
@@ -27,6 +73,7 @@ export type Database = {
         }
         Insert: {
           cliente_id: string
+          cobrada?: boolean | null
           created_at?: string | null
           descricao?: string | null
           emissao_id?: string | null
@@ -37,6 +84,7 @@ export type Database = {
         }
         Update: {
           cliente_id?: string
+          cobrada?: boolean | null
           created_at?: string | null
           descricao?: string | null
           emissao_id?: string | null
@@ -63,6 +111,15 @@ export type Database = {
       registrar_recarga: {
         Args: { p_cliente_id: string; p_descricao?: string; p_valor: number }
         Returns: string
+      }
+      verificar_e_cobrar_etiqueta: {
+        Args: {
+          p_cliente_id: string
+          p_emissao_id: string
+          p_status_etiqueta: string
+          p_valor: number
+        }
+        Returns: boolean
       }
       verificar_saldo_suficiente: {
         Args: { p_cliente_id: string; p_valor: number }
