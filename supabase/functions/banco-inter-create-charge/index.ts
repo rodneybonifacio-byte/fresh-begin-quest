@@ -22,34 +22,47 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
+    console.log('🔍 Iniciando validação de autenticação...');
+    
     // Criar cliente com service role
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Extrair e validar o JWT do header Authorization
     const authHeader = req.headers.get('Authorization');
+    console.log('Authorization header presente:', !!authHeader);
+    
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.error('Header Authorization ausente ou inválido');
+      console.error('❌ Header Authorization ausente ou inválido');
       return new Response(
-        JSON.stringify({ success: false, error: 'Não autenticado' }),
+        JSON.stringify({ success: false, error: 'Não autenticado - token ausente' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const token = authHeader.replace('Bearer ', '');
+    console.log('Token extraído, comprimento:', token.length);
     
     // Validar o JWT e obter o user_id
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     
-    if (userError || !user) {
-      console.error('Token inválido ou usuário não encontrado:', userError);
+    if (userError) {
+      console.error('❌ Erro ao validar token:', userError.message);
       return new Response(
-        JSON.stringify({ success: false, error: 'Token inválido' }),
+        JSON.stringify({ success: false, error: `Token inválido: ${userError.message}` }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    if (!user) {
+      console.error('❌ Usuário não encontrado no token');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Usuário não encontrado' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const cliente_id = user.id;
-    console.log('Usuário autenticado:', cliente_id);
+    console.log('✅ Usuário autenticado:', cliente_id);
     const { valor, expiracao = 3600 } = await req.json() as CreateChargeRequest;
 
     console.log('Criando cobrança PIX para usuário:', cliente_id, 'valor:', valor);
