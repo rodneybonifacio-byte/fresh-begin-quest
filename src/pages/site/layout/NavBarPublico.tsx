@@ -14,7 +14,7 @@ export const NavBarPublico = ({ showMenuLogin = true, showMenuCadastro = true, s
     const { theme, toggleTheme } = useTheme();
     
     return (
-        <nav className="bg-background/80 backdrop-blur-lg border-b border-border fixed top-0 left-0 right-0 z-50 shadow-sm">
+        <nav className="bg-white border-b border-gray-200 fixed top-0 left-0 right-0 z-50 shadow-sm">
             <div className="max-w-7xl mx-auto px-4">
                 <div className="flex justify-between items-center py-3">
                     <div className="flex items-center">
