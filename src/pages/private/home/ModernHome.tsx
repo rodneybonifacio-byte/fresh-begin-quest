@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Package, Truck, DollarSign, Clock, Plus } from "lucide-react";
 import { useCotacao } from "../../../hooks/useCotacao";
 import { useNavigate } from "react-router-dom";
+import { BlackFridayBanner } from "../../../components/BlackFridayBanner";
 
 export const ModernHome = () => {
     const navigate = useNavigate();
@@ -68,6 +69,9 @@ export const ModernHome = () => {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background">
+            {/* Black Friday Banner */}
+            <BlackFridayBanner />
+            
             {/* Hero Section */}
             <div className="container mx-auto px-4 py-12">
                 <div className="grid lg:grid-cols-2 gap-12 items-center mb-16">
@@ -224,6 +228,281 @@ export const ModernHome = () => {
                             <p className="text-sm text-muted-foreground">{feature.description}</p>
                         </div>
                     ))}
+                </div>
+
+                {/* BRHUB Services Section */}
+                <div className="mb-16">
+                    <div className="text-center mb-12">
+                        <h2 className="text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                            Tudo que a BRHUB oferece para você
+                        </h2>
+                        <p className="text-xl text-muted-foreground">
+                            Soluções completas para simplificar e acelerar sua logística
+                        </p>
+                    </div>
+
+                    {/* Main Services Grid */}
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+                        {/* Integração Direta */}
+                        <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 hover:scale-105">
+                            <div className="flex items-start gap-4">
+                                <div className="p-3 bg-blue-600 rounded-xl">
+                                    <Package className="h-6 w-6 text-white" />
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className="text-lg font-bold mb-2 text-blue-900 dark:text-blue-100">
+                                        Integração Direta no App VESTI
+                                    </h3>
+                                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                                        Emita etiqueta com poucos cliques sem sair da plataforma
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Solução Completa */}
+                        <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/30 dark:to-purple-900/20 border-2 border-purple-200 dark:border-purple-800 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 hover:scale-105">
+                            <div className="flex items-start gap-4">
+                                <div className="p-3 bg-purple-600 rounded-xl">
+                                    <Truck className="h-6 w-6 text-white" />
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className="text-lg font-bold mb-2 text-purple-900 dark:text-purple-100">
+                                        Solução Completa de Envio
+                                    </h3>
+                                    <p className="text-sm text-purple-700 dark:text-purple-300">
+                                        Da geração da etiqueta à entrega, com atualizações automáticas via WhatsApp
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Suporte 24/7 */}
+                        <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/30 dark:to-green-900/20 border-2 border-green-200 dark:border-green-800 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 hover:scale-105">
+                            <div className="flex items-start gap-4">
+                                <div className="p-3 bg-green-600 rounded-xl">
+                                    <Clock className="h-6 w-6 text-white" />
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className="text-lg font-bold mb-2 text-green-900 dark:text-green-100">
+                                        Suporte 24/7
+                                    </h3>
+                                    <p className="text-sm text-green-700 dark:text-green-300">
+                                        Atendimento humanizado via IA a qualquer hora do dia para o destinatário
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Tabela de Frete Exclusiva */}
+                        <div className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950/30 dark:to-orange-900/20 border-2 border-orange-200 dark:border-orange-800 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 hover:scale-105">
+                            <div className="flex items-start gap-4">
+                                <div className="p-3 bg-orange-600 rounded-xl">
+                                    <DollarSign className="h-6 w-6 text-white" />
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className="text-lg font-bold mb-2 text-orange-900 dark:text-orange-100">
+                                        Tabela de Frete Exclusiva
+                                    </h3>
+                                    <p className="text-sm text-orange-700 dark:text-orange-300">
+                                        Tabela competitiva para lojistas VESTI sem custos extras
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Coleta na Loja */}
+                        <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-950/30 dark:to-indigo-900/20 border-2 border-indigo-200 dark:border-indigo-800 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 hover:scale-105">
+                            <div className="flex items-start gap-4">
+                                <div className="p-3 bg-indigo-600 rounded-xl">
+                                    <Package className="h-6 w-6 text-white" />
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className="text-lg font-bold mb-2 text-indigo-900 dark:text-indigo-100">
+                                        Coleta na sua loja
+                                    </h3>
+                                    <p className="text-sm text-indigo-700 dark:text-indigo-300">
+                                        Coletamos suas encomendas em sua loja sem custo extra e sem necessidade de volume mínimo de pacote
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Endereço */}
+                        <div className="bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-950/30 dark:to-pink-900/20 border-2 border-pink-200 dark:border-pink-800 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 hover:scale-105">
+                            <div className="flex items-start gap-4">
+                                <div className="p-3 bg-pink-600 rounded-xl">
+                                    <Package className="h-6 w-6 text-white" />
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className="text-lg font-bold mb-2 text-pink-900 dark:text-pink-100">
+                                        Endereço
+                                    </h3>
+                                    <p className="text-sm text-pink-700 dark:text-pink-300">
+                                        Estamos localizados no Shopping Fashion Brás, 7° andar BRHUB Coworking
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Operational Flow Section */}
+                    <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 rounded-3xl p-8 mb-12">
+                        <h3 className="text-2xl font-bold mb-6 text-center">
+                            Fluxo Operacional Simples e Eficiente
+                        </h3>
+                        <div className="grid md:grid-cols-3 gap-6">
+                            <div className="bg-card rounded-xl p-6 border border-border">
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                                        <Clock className="h-5 w-5 text-blue-600 dark:text-blue-300" />
+                                    </div>
+                                    <h4 className="font-bold">Agendamento Automático</h4>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                    Gerou a etiqueta, o sistema agenda sua coleta automaticamente
+                                </p>
+                            </div>
+                            <div className="bg-card rounded-xl p-6 border border-border">
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+                                        <Package className="h-5 w-5 text-green-600 dark:text-green-300" />
+                                    </div>
+                                    <h4 className="font-bold">Todas encomendas</h4>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                    Seguem fluxo de postagem no mesmo dia
+                                </p>
+                            </div>
+                            <div className="bg-card rounded-xl p-6 border border-border">
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                                        <Truck className="h-5 w-5 text-purple-600 dark:text-purple-300" />
+                                    </div>
+                                    <h4 className="font-bold">Postagem Direta</h4>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                    <span className="font-semibold">Está fora de São Paulo?</span> Faça sua postagem direto na agência e aproveite os benefícios do serviço
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Pricing Section */}
+                    <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/30 dark:to-green-900/20 border-2 border-green-300 dark:border-green-700 rounded-3xl p-8">
+                        <div className="grid md:grid-cols-2 gap-8 items-center">
+                            <div>
+                                <h3 className="text-3xl font-bold mb-4 text-green-900 dark:text-green-100">
+                                    Quanto Custa?
+                                </h3>
+                                <div className="space-y-3">
+                                    <div className="flex items-start gap-3">
+                                        <div className="p-1 bg-green-600 rounded-full mt-1">
+                                            <Package className="h-4 w-4 text-white" />
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-green-900 dark:text-green-100">
+                                                Você não paga para usar
+                                            </p>
+                                            <p className="text-sm text-green-700 dark:text-green-300">
+                                                Sistema 100% gratuito para lojistas
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-start gap-3">
+                                        <div className="p-1 bg-green-600 rounded-full mt-1">
+                                            <Clock className="h-4 w-4 text-white" />
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-green-900 dark:text-green-100">
+                                                Receba Fatura Semanal dos objetos postados
+                                            </p>
+                                            <p className="text-sm text-green-700 dark:text-green-300">
+                                                Controle total do seu fluxo de caixa
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-start gap-3">
+                                        <div className="p-1 bg-green-600 rounded-full mt-1">
+                                            <DollarSign className="h-4 w-4 text-white" />
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-green-900 dark:text-green-100">
+                                                Relatório completo com status das postagens
+                                            </p>
+                                            <p className="text-sm text-green-700 dark:text-green-300">
+                                                Acompanhe tudo em tempo real
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-start gap-3">
+                                        <div className="p-1 bg-green-600 rounded-full mt-1">
+                                            <Package className="h-4 w-4 text-white" />
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-green-900 dark:text-green-100">
+                                                Sem custos adicionais
+                                            </p>
+                                            <p className="text-sm text-green-700 dark:text-green-300">
+                                                Transparência total nos valores
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-start gap-3">
+                                        <div className="p-1 bg-green-600 rounded-full mt-1">
+                                            <Clock className="h-4 w-4 text-white" />
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-green-900 dark:text-green-100">
+                                                Pague semanalmente apenas pelos objetos postados
+                                            </p>
+                                            <p className="text-sm text-green-700 dark:text-green-300">
+                                                Flexibilidade no pagamento
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex items-center justify-center">
+                                <div className="text-center">
+                                    <div className="text-6xl font-black text-green-600 dark:text-green-400 mb-4">
+                                        R$ 0
+                                    </div>
+                                    <p className="text-2xl font-bold text-green-900 dark:text-green-100 mb-2">
+                                        Para usar a plataforma
+                                    </p>
+                                    <p className="text-sm text-green-700 dark:text-green-300">
+                                        Pague apenas pelo que usar
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Benefits for VESTI Merchants */}
+                    <div className="mt-12 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 rounded-3xl p-8 border-2 border-blue-200 dark:border-blue-800">
+                        <h3 className="text-2xl font-bold mb-6 text-center">
+                            Benefícios ao Lojista VESTI
+                        </h3>
+                        <div className="grid md:grid-cols-3 gap-4">
+                            <div className="bg-white dark:bg-gray-900 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
+                                <p className="text-sm">
+                                    <span className="font-bold text-blue-600 dark:text-blue-400">→</span> Reduza para{" "}
+                                    <span className="font-bold">zero</span> os erros na emissão de etiquetas
+                                </p>
+                            </div>
+                            <div className="bg-white dark:bg-gray-900 rounded-xl p-4 border border-purple-200 dark:border-purple-800">
+                                <p className="text-sm">
+                                    <span className="font-bold text-purple-600 dark:text-purple-400">→</span> Tenha mais controle e acompanhamento das suas encomendas
+                                </p>
+                            </div>
+                            <div className="bg-white dark:bg-gray-900 rounded-xl p-4 border border-pink-200 dark:border-pink-800">
+                                <p className="text-sm">
+                                    <span className="font-bold text-pink-600 dark:text-pink-400">→</span> Suporte especializado
+                                </p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 {/* CTA Section */}

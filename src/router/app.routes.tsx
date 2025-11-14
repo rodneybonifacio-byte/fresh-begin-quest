@@ -11,14 +11,6 @@ export const appRoutesConfig: ProtectedRouteItem[] = [
         component: () => import("../pages/private/home")
     },
     {
-        path: "relatorios/dashboards",
-        component: () => import("../pages/private/relatorios/Dashboards")
-    },
-    {
-        path: "relatorios/envios",
-        component: () => import("../pages/private/relatorios/ListaEnvios")
-    },
-    {
         path: "rastrear",
         component: () => import("../pages/private/rastreio")
     },
