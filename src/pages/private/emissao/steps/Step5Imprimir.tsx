@@ -1,4 +1,5 @@
 import { Printer, Download, Eye, CheckCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { FormCard } from '../../../../components/FormCard';
 import { ButtonComponent } from '../../../../components/button';
 import { printPDF, downloadPDF, viewPDF } from '../../../../utils/pdfUtils';
@@ -12,6 +13,32 @@ interface Step5ImprimirProps {
 }
 
 export const Step5Imprimir = ({ onBack, onFinish, emissaoGerada, pdfData }: Step5ImprimirProps) => {
+  const [pdfUrl, setPdfUrl] = useState<string>('');
+
+  // Converte base64 para blob URL que o Chrome não bloqueia
+  useEffect(() => {
+    if (pdfData?.dados) {
+      try {
+        const base64Data = pdfData.dados;
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        setPdfUrl(url);
+
+        // Cleanup: revoga a URL quando o componente for desmontado
+        return () => {
+          URL.revokeObjectURL(url);
+        };
+      } catch (error) {
+        console.error('Erro ao converter PDF:', error);
+      }
+    }
+  }, [pdfData]);
+
   const handlePrint = () => {
     if (pdfData?.dados) {
       printPDF(pdfData.dados, pdfData.nome);
@@ -66,20 +93,39 @@ export const Step5Imprimir = ({ onBack, onFinish, emissaoGerada, pdfData }: Step
           </div>
         </div>
 
-        {/* PDF Preview */}
-        {pdfData?.dados && (
+        {/* PDF Preview com Blob URL */}
+        {pdfUrl && (
           <div className="bg-muted/50 rounded-xl p-4 border border-border">
             <h4 className="font-semibold text-sm text-foreground mb-3 flex items-center gap-2">
               <Eye className="h-4 w-4" />
-              Pré-visualização da Etiqueta
+              Pré-visualização da Etiqueta 👀
             </h4>
-            <div className="relative bg-white dark:bg-gray-900 rounded-lg overflow-hidden shadow-md" style={{ height: '400px' }}>
-              <iframe
-                src={`data:application/pdf;base64,${pdfData.dados}`}
-                className="w-full h-full border-0"
-                title="Preview da Etiqueta"
-              />
+            <div className="relative bg-white dark:bg-gray-900 rounded-lg overflow-hidden shadow-md" style={{ height: '500px' }}>
+              <object
+                data={pdfUrl}
+                type="application/pdf"
+                className="w-full h-full"
+                aria-label="Pré-visualização da Etiqueta PDF"
+              >
+                <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+                  <Eye className="h-16 w-16 text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground mb-4">
+                    Não foi possível carregar a pré-visualização do PDF no navegador.
+                  </p>
+                  <ButtonComponent
+                    type="button"
+                    onClick={handleView}
+                    className="bg-primary text-primary-foreground"
+                  >
+                    <Eye className="h-4 w-4 mr-2" />
+                    Abrir PDF em Nova Janela
+                  </ButtonComponent>
+                </div>
+              </object>
             </div>
+            <p className="text-xs text-muted-foreground mt-2 text-center">
+              💡 Dica: Use os botões abaixo para visualizar em tela cheia, imprimir ou baixar
+            </p>
           </div>
         )}
 
