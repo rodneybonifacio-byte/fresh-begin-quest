@@ -54,17 +54,21 @@ export class RecargaPixService {
    */
   static async buscarRecargas(limit: number = 100): Promise<IRecargaPix[]> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
+      // Usar o token JWT customizado do sistema
+      const token = localStorage.getItem('token');
+      if (!token) {
         console.error('Usuário não autenticado');
         return [];
       }
 
+      // Decodificar token para pegar cliente_id
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const clienteId = payload.clienteId;
+
       const { data, error } = await supabase
         .from('recargas_pix')
         .select('*')
-        .eq('cliente_id', user.id)
+        .eq('cliente_id', clienteId)
         .order('data_criacao', { ascending: false })
         .limit(limit);
 
