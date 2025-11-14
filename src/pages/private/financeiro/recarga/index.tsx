@@ -23,18 +23,30 @@ export default function Recarga() {
     const [showPixModal, setShowPixModal] = useState(false);
     const [pixChargeData, setPixChargeData] = useState<ICreatePixChargeResponse['data']>();
 
-    const { data: saldo } = useFetchQuery<number>(
+    const { data: saldo, refetch: refetchSaldo } = useFetchQuery<number>(
         ['cliente-saldo-recarga'],
         async () => {
             if (!user?.clienteId) return 0;
             return await creditoService.calcularSaldo(user?.clienteId);
+        },
+        {
+            refetchOnWindowFocus: true,
+            staleTime: 0 // Sempre buscar dados frescos
         }
     );
 
     // Listener de notificações em tempo real para pagamentos PIX
     useRecargaPixRealtime({
         clienteId: user?.clienteId || '',
-        enabled: !!user?.clienteId
+        enabled: !!user?.clienteId,
+        onPaymentConfirmed: () => {
+            // Fechar modal
+            setShowPixModal(false);
+            setPixChargeData(undefined);
+            
+            // Forçar atualização imediata do saldo
+            refetchSaldo();
+        }
     });
 
     const createPixChargeMutation = useMutation({

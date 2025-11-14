@@ -124,8 +124,19 @@ export function ModalRecargaPix({ isOpen, onClose, chargeData }: ModalRecargaPix
           </div>
 
           <div className="space-y-3">
+            {/* Indicador de monitoramento em tempo real */}
+            <div className="flex items-center justify-center gap-2 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+              <div className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+              </div>
+              <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                Monitorando pagamento em tempo real
+              </p>
+            </div>
+
             <p className="text-xs text-muted-foreground text-center">
-              Após o pagamento, seus créditos serão adicionados automaticamente via webhook.
+              Após o pagamento, a tela fechará automaticamente e seus créditos serão adicionados.
             </p>
 
             <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-md border border-border">
