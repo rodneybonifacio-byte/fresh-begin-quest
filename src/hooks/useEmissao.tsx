@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { EmissaoService } from "../services/EmissaoService";
 import type { IEmissao } from "../types/IEmissao";
+import type { IResponse } from "../types/IResponse";
 import { useFetchQuery } from "./useFetchQuery";
 import { FreteService } from "../services/FreteService";
 
@@ -24,15 +25,17 @@ export const useEmissao = () => {
         },
     })
 
-    const onEmissaoCadastro = async (data: IEmissao, onIsLoadingCadastro: (isLoading: boolean) => void) => {
+    const onEmissaoCadastro = async (data: IEmissao, onIsLoadingCadastro: (isLoading: boolean) => void): Promise<IEmissao> => {
         try {
             onIsLoadingCadastro(true);
-            await mutation.mutateAsync(data);
+            const response = await mutation.mutateAsync(data) as IResponse<IEmissao>;
             onIsLoadingCadastro(false);
+            // Retorna a emissão criada com o ID
+            return response.data;
         } catch (error) {
             console.error(error);
             onIsLoadingCadastro(false);
-            throw error; // Re-throw the error to be handled by the caller if needed
+            throw error;
         }
     }
 
