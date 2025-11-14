@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom"
+import { LogoApp } from "../../../components/logo"
 import { useState } from "react";
 import { AlignLeft, Moon, Sun } from "lucide-react";
 import { useTheme } from "../../../providers/ThemeContext";
@@ -14,48 +15,45 @@ export const NavBarPublico = ({ showMenuLogin = true, showMenuCadastro = true, s
     const { theme, toggleTheme } = useTheme();
     
     return (
-        <nav className="bg-white border-b border-gray-200 fixed top-0 left-0 right-0 z-50 shadow-sm">
+        <nav className="bg-white dark:bg-slate-800 shadow-sm border-b border-gray-200 dark:border-slate-700">
             <div className="max-w-7xl mx-auto px-4">
-                <div className="flex justify-between items-center py-3">
+                <div className="flex justify-between items-center py-4">
                     <div className="flex items-center">
-                        <Link to="/" className="flex items-center gap-2">
-                            <span className="text-2xl font-bold text-primary">BRHUB</span>
-                            <span className="text-2xl font-semibold text-foreground">Envios</span>
-                        </Link>
+                        <LogoApp light />
                     </div>
-                    <div className="hidden lg:flex items-center space-x-6">
-                        <Link to="/" className="py-2 px-4 text-foreground hover:text-primary font-medium transition duration-300">Home</Link>
+                    <div className="hidden lg:flex items-center space-x-4">
+                        <Link to="/" className="py-2 px-4 text-gray-600 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 transition duration-300">Home</Link>
                         {showMenuRastreio && (
-                            <Link to="/rastreio/encomenda" className="py-2 px-4 text-foreground hover:text-primary font-medium transition duration-300">Rastreio</Link>
+                            <Link to="/rastreio/encomenda" className="py-2 px-4 text-gray-600 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 transition duration-300">Rastreio</Link>
                         )}
                         
                         {/* Botão de toggle do tema */}
                         <button
                             onClick={toggleTheme}
-                            className="p-2 text-foreground hover:text-primary rounded-lg hover:bg-muted transition duration-300"
+                            className="p-2 text-gray-600 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition duration-300"
                             title={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
                         >
                             {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
                         </button>
 
                         {showMenuCadastro && (
-                            <Link to="/cadastro" className="border-2 border-primary text-primary py-2 px-6 rounded-full font-semibold hover:bg-primary/10 transition duration-300">Cadastre-se</Link>
+                            <Link to="/manutencao" className="border border-orange-600 dark:border-orange-500 text-orange-600 dark:text-orange-500 py-2 px-6 rounded-lg hover:bg-orange-700/10 dark:hover:bg-orange-500/10 transition duration-300">Cadastre-se</Link>
                         )}
                         {showMenuLogin && (
-                            <Link to="/login" className="bg-primary text-primary-foreground py-2 px-6 rounded-full font-semibold hover:bg-primary/90 transition duration-300 shadow-md">Login</Link>
+                            <Link to="/login" className="bg-orange-600 dark:bg-orange-500 text-white py-2 px-6 rounded-lg hover:bg-orange-700 dark:hover:bg-orange-600 transition duration-300">Login</Link>
                         )}
                     </div>
                     <div className="lg:hidden flex items-center space-x-2">
                         {/* Botão de toggle do tema - mobile */}
                         <button
                             onClick={toggleTheme}
-                            className="p-2 text-foreground hover:text-primary rounded-lg hover:bg-muted transition duration-300"
+                            className="p-2 text-gray-600 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition duration-300"
                             title={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
                         >
                             {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
                         </button>
 
-                        <button onClick={() => setMenuOpen(!menuOpen)} className="text-foreground focus:outline-none">
+                        <button onClick={() => setMenuOpen(!menuOpen)} className="text-gray-600 dark:text-gray-300 focus:outline-none">
                             <AlignLeft className="w-8 h-8" />
                         </button>
                     </div>
@@ -70,17 +68,16 @@ export const NavBarPublico = ({ showMenuLogin = true, showMenuCadastro = true, s
                     />
 
                     {/* Menu lateral */}
-                    <div className={`absolute left-0 top-0 h-full w-80 bg-card shadow-xl transform transition-transform duration-300 ${menuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                    <div className={`absolute left-0 top-0 h-full w-80 bg-white dark:bg-slate-800 shadow-xl transform transition-transform duration-300 ${menuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                         <div className="flex flex-col h-full">
                             {/* Header do menu */}
-                            <div className="flex items-center justify-between p-4 border-b border-border">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-2xl font-bold text-primary">BRHUB</span>
-                                    <span className="text-2xl font-semibold text-foreground">Envios</span>
+                            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-slate-600">
+                                <div className="flex items-center">
+                                    <LogoApp light />
                                 </div>
                                 <button
                                     onClick={() => setMenuOpen(false)}
-                                    className="p-2 text-foreground hover:text-primary rounded-lg hover:bg-muted transition duration-300"
+                                    className="p-2 text-gray-600 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition duration-300"
                                 >
                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -92,7 +89,7 @@ export const NavBarPublico = ({ showMenuLogin = true, showMenuCadastro = true, s
                             <div className="flex-1 flex flex-col space-y-2 p-4">
                                 <Link
                                     to="/"
-                                    className="py-3 px-4 text-foreground hover:text-primary hover:bg-muted rounded-lg transition duration-300 font-medium"
+                                    className="py-3 px-4 text-gray-600 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition duration-300"
                                     onClick={() => setMenuOpen(false)}
                                 >
                                     Home
@@ -101,7 +98,7 @@ export const NavBarPublico = ({ showMenuLogin = true, showMenuCadastro = true, s
                                 {showMenuRastreio && (
                                     <Link
                                         to="/rastreio/encomenda"
-                                        className="py-3 px-4 text-foreground hover:text-primary hover:bg-muted rounded-lg transition duration-300 font-medium"
+                                        className="py-3 px-4 text-gray-600 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition duration-300"
                                         onClick={() => setMenuOpen(false)}
                                     >
                                         Rastreio
@@ -114,7 +111,7 @@ export const NavBarPublico = ({ showMenuLogin = true, showMenuCadastro = true, s
                                         toggleTheme();
                                         setMenuOpen(false);
                                     }}
-                                    className="flex items-center gap-3 py-3 px-4 text-foreground hover:text-primary hover:bg-muted rounded-lg transition duration-300 w-full text-left font-medium"
+                                    className="flex items-center gap-3 py-3 px-4 text-gray-600 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition duration-300 w-full text-left"
                                 >
                                     {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
                                     {theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
@@ -122,11 +119,11 @@ export const NavBarPublico = ({ showMenuLogin = true, showMenuCadastro = true, s
                             </div>
 
                             {/* Botões de ação no final */}
-                            <div className="p-4 border-t border-border space-y-3">
+                            <div className="p-4 border-t border-gray-200 dark:border-slate-600 space-y-3">
                                 {showMenuCadastro && (
                                     <Link
-                                        to="/cadastro"
-                                        className="block w-full border-2 border-primary text-primary py-3 px-6 rounded-full hover:bg-primary/10 transition duration-300 text-center font-semibold"
+                                        to="/manutencao"
+                                        className="block w-full border border-orange-600 dark:border-orange-500 text-orange-600 dark:text-orange-500 py-3 px-6 rounded-lg hover:bg-orange-700/10 dark:hover:bg-orange-500/10 transition duration-300 text-center"
                                         onClick={() => setMenuOpen(false)}
                                     >
                                         Cadastre-se
@@ -135,7 +132,7 @@ export const NavBarPublico = ({ showMenuLogin = true, showMenuCadastro = true, s
                                 {showMenuLogin && (
                                     <Link
                                         to="/login"
-                                        className="block w-full bg-primary text-primary-foreground py-3 px-6 rounded-full hover:bg-primary/90 transition duration-300 text-center font-semibold shadow-md"
+                                        className="block w-full bg-orange-600 dark:bg-orange-500 text-white py-3 px-6 rounded-lg hover:bg-orange-700 dark:hover:bg-orange-600 transition duration-300 text-center"
                                         onClick={() => setMenuOpen(false)}
                                     >
                                         Login

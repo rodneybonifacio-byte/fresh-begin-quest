@@ -1,271 +1,248 @@
-import { DollarSign, Truck, Clock, Box, Zap, X } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { Package, Truck, DollarSign, Clock, Plus } from "lucide-react";
 import { useCotacao } from "../../../hooks/useCotacao";
-import { useCliente } from "../../../hooks/useCliente";
-import { useAuth } from "../../../providers/AuthContext";
-import { CotacaoList } from "../../../components/CotacaoList";
-import { SelecionarRemetente } from "../../../components/SelecionarRemetente";
-import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 export const ModernHome = () => {
     const navigate = useNavigate();
-    const [showBanner, setShowBanner] = useState(true);
-    
-    // Form states
-    const [cepDestino, setCepDestino] = useState("");
-    const [peso, setPeso] = useState("");
-    const [altura, setAltura] = useState("2");
-    const [largura, setLargura] = useState("11");
-    const [comprimento, setComprimento] = useState("16");
-    const [remetenteSelecionado, setRemetenteSelecionado] = useState<any>(null);
-    
-    // Hooks
-    const { user: userPayload } = useAuth();
-    const { data: cliente } = useCliente(userPayload?.clienteId || '');
     const { onGetCotacaoCorreios, cotacoes, isLoadingCotacao } = useCotacao();
+    
+    const [freteData, setFreteData] = useState({
+        cepOrigem: "",
+        cepDestino: "",
+        peso: "",
+        altura: "",
+        largura: "",
+        comprimento: ""
+    });
 
-    useEffect(() => {
-        if (cliente && !remetenteSelecionado) {
-            setRemetenteSelecionado(cliente);
-        }
-    }, [cliente, remetenteSelecionado]);
-
-    const handleCalcularFrete = async () => {
-        // Validação básica
-        if (!remetenteSelecionado?.endereco?.cep) {
-            toast.error("Selecione um remetente primeiro");
-            return;
-        }
+    const handleCalcular = async (e: React.FormEvent) => {
+        e.preventDefault();
         
-        if (!cepDestino || cepDestino.length < 8) {
-            toast.error("Informe um CEP de destino válido");
-            return;
-        }
-        
-        if (!peso || parseFloat(peso) <= 0) {
-            toast.error("Informe o peso do pacote");
-            return;
-        }
-        
-        if (!altura || !largura || !comprimento) {
-            toast.error("Informe as dimensões do pacote");
+        if (!freteData.cepOrigem || !freteData.cepDestino || !freteData.peso) {
             return;
         }
 
-        try {
-            const embalagem = {
-                id: '',
-                descricao: 'Simulação',
-                altura: parseFloat(altura),
-                largura: parseFloat(largura),
-                comprimento: parseFloat(comprimento),
-                peso: parseFloat(peso),
+        await onGetCotacaoCorreios(
+            freteData.cepOrigem,
+            freteData.cepDestino,
+            {
+                id: "temp-id",
+                descricao: "Pacote temporário",
+                peso: parseFloat(freteData.peso) || 0.3,
+                altura: parseFloat(freteData.altura) || 2,
+                largura: parseFloat(freteData.largura) || 11,
+                comprimento: parseFloat(freteData.comprimento) || 16,
                 diametro: 0,
-                formatoObjeto: 'CAIXA_PACOTE' as const
-            };
-
-            await onGetCotacaoCorreios(
-                remetenteSelecionado.endereco.cep,
-                cepDestino.replace(/\D/g, ""),
-                embalagem,
-                "0",
-                "N",
-                remetenteSelecionado
-            );
-        } catch (error) {
-            console.error("Erro ao calcular frete:", error);
-            toast.error("Erro ao calcular frete. Tente novamente.");
-        }
+                formatoObjeto: "CAIXA_PACOTE"
+            }
+        );
     };
 
-    return (
-        <div className="flex flex-col gap-0 -m-4 sm:-m-6 lg:-m-8">
-            {/* Black Friday Banner */}
-            {showBanner && (
-                <div className="bg-black text-white py-3 px-4 flex items-center justify-between">
-                    <div className="flex items-center gap-2 flex-1 justify-center">
-                        <Zap className="w-5 h-5 text-yellow-400 fill-yellow-400" />
-                        <span className="font-bold text-yellow-400">BLACK FRIDAY</span>
-                        <span className="hidden sm:inline">Descontos imperdíveis no frete! 🔥</span>
-                        <span className="bg-yellow-400 text-black px-3 py-1 rounded-full font-bold text-sm">
-                            ATÉ 80% OFF
-                        </span>
-                        <Zap className="w-5 h-5 text-yellow-400 fill-yellow-400" />
-                    </div>
-                    <button 
-                        onClick={() => setShowBanner(false)}
-                        className="text-white hover:text-gray-300"
-                    >
-                        <X className="w-5 h-5" />
-                    </button>
-                </div>
-            )}
+    const features = [
+        {
+            icon: DollarSign,
+            title: "Fretes até 80% mais baratos",
+            description: "Economize em todos os seus envios sem mensalidades",
+            color: "text-green-600"
+        },
+        {
+            icon: Truck,
+            title: "Envie para todo o Brasil",
+            description: "Cobertura nacional com as melhores transportadoras",
+            color: "text-blue-600"
+        },
+        {
+            icon: Clock,
+            title: "Simule em segundos",
+            description: "Cotação rápida e fácil de usar",
+            color: "text-orange-600"
+        },
+        {
+            icon: Package,
+            title: "Rastreamento completo",
+            description: "Acompanhe seus envios em tempo real",
+            color: "text-purple-600"
+        }
+    ];
 
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background">
             {/* Hero Section */}
-            <div className="bg-gradient-to-br from-background to-muted px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
-                <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-                    {/* Left Content */}
-                    <div className="space-y-6">
-                        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight">
-                            Calcular frete e emitir com desconto
+            <div className="container mx-auto px-4 py-12">
+                <div className="grid lg:grid-cols-2 gap-12 items-center mb-16">
+                    {/* Left Column - Text */}
+                    <div className="space-y-6 animate-fade-in">
+                        <h1 className="text-5xl lg:text-6xl font-bold leading-tight">
+                            Calcular frete e emitir com{" "}
+                            <span className="text-primary">desconto</span>
                         </h1>
-                        <p className="text-lg sm:text-xl text-muted-foreground">
-                            Venda mais com fretes <span className="font-bold text-foreground">até 80% mais baratos</span> com a BRHUB: sem mensalidades ou taxas escondidas
+                        <p className="text-xl text-muted-foreground">
+                            Venda mais com fretes <strong className="text-primary">até 80% mais baratos</strong> com a BRHUB: 
+                            sem mensalidades ou taxas escondidas
                         </p>
                         <button
                             onClick={() => navigate('/app/emissao/adicionar')}
-                            className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 rounded-full text-lg font-semibold transition-colors"
+                            className="bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-full text-lg font-bold shadow-2xl shadow-primary/40 transition-all duration-300 hover:scale-105 hover:shadow-primary/50"
                         >
                             Emitir frete com desconto
                         </button>
                     </div>
 
-                    {/* Right Content - Simulator Card */}
-                    <div className="bg-card rounded-2xl shadow-xl p-6 sm:p-8 border border-border">
-                        <h2 className="text-2xl font-bold mb-6">Simule seu frete em segundos</h2>
+                    {/* Right Column - Calculator */}
+                    <div className="bg-card border border-border rounded-3xl shadow-2xl p-8 animate-scale-in">
+                        <h2 className="text-2xl font-bold mb-6 text-primary">
+                            Simule seu frete em segundos
+                        </h2>
                         
-                        <div className="space-y-4">
+                        <form onSubmit={handleCalcular} className="space-y-4">
+                            {/* CEP Origem */}
                             <div>
-                                <label className="block text-sm font-medium mb-2">Remetente*</label>
-                                <SelecionarRemetente
-                                    remetenteSelecionado={remetenteSelecionado}
-                                    onSelect={(remetente) => {
-                                        setRemetenteSelecionado(remetente);
-                                    }}
+                                <label className="block text-sm font-medium mb-2">CEP de origem*</label>
+                                <input
+                                    type="text"
+                                    placeholder="00000-000"
+                                    value={freteData.cepOrigem}
+                                    onChange={(e) => setFreteData({ ...freteData, cepOrigem: e.target.value })}
+                                    className="w-full px-4 py-3 rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                                    maxLength={9}
                                 />
                             </div>
 
+                            {/* CEP Destino */}
                             <div>
                                 <label className="block text-sm font-medium mb-2">CEP de destino*</label>
                                 <input
                                     type="text"
                                     placeholder="00000-000"
-                                    value={cepDestino}
-                                    onChange={(e) => setCepDestino(e.target.value)}
+                                    value={freteData.cepDestino}
+                                    onChange={(e) => setFreteData({ ...freteData, cepDestino: e.target.value })}
+                                    className="w-full px-4 py-3 rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary transition-all"
                                     maxLength={9}
-                                    className="w-full px-4 py-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-purple-600"
                                 />
                             </div>
 
+                            {/* Peso */}
                             <div>
                                 <label className="block text-sm font-medium mb-2">Peso (g)*</label>
                                 <input
                                     type="number"
                                     placeholder="0"
-                                    value={peso}
-                                    onChange={(e) => setPeso(e.target.value)}
-                                    className="w-full px-4 py-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-purple-600"
+                                    value={freteData.peso}
+                                    onChange={(e) => setFreteData({ ...freteData, peso: e.target.value })}
+                                    className="w-full px-4 py-3 rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                                    step="1"
+                                    min="0"
                                 />
                             </div>
 
+                            {/* Dimensões */}
                             <div className="grid grid-cols-3 gap-3">
                                 <div>
-                                    <label className="block text-sm font-medium mb-2">Altura (cm)</label>
+                                    <label className="block text-xs font-medium mb-2">Altura (cm)</label>
                                     <input
                                         type="number"
                                         placeholder="2"
-                                        value={altura}
-                                        onChange={(e) => setAltura(e.target.value)}
-                                        className="w-full px-4 py-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-purple-600"
+                                        value={freteData.altura}
+                                        onChange={(e) => setFreteData({ ...freteData, altura: e.target.value })}
+                                        className="w-full px-3 py-2 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium mb-2">Largura (cm)</label>
+                                    <label className="block text-xs font-medium mb-2">Largura (cm)</label>
                                     <input
                                         type="number"
                                         placeholder="11"
-                                        value={largura}
-                                        onChange={(e) => setLargura(e.target.value)}
-                                        className="w-full px-4 py-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-purple-600"
+                                        value={freteData.largura}
+                                        onChange={(e) => setFreteData({ ...freteData, largura: e.target.value })}
+                                        className="w-full px-3 py-2 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium mb-2">Comprim. (cm)</label>
+                                    <label className="block text-xs font-medium mb-2">Comprim. (cm)</label>
                                     <input
                                         type="number"
                                         placeholder="16"
-                                        value={comprimento}
-                                        onChange={(e) => setComprimento(e.target.value)}
-                                        className="w-full px-4 py-3 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-purple-600"
+                                        value={freteData.comprimento}
+                                        onChange={(e) => setFreteData({ ...freteData, comprimento: e.target.value })}
+                                        className="w-full px-3 py-2 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                                     />
                                 </div>
                             </div>
 
                             <button
-                                onClick={handleCalcularFrete}
+                                type="submit"
                                 disabled={isLoadingCotacao}
-                                className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white py-4 rounded-lg font-semibold transition-colors"
+                                className="w-full bg-primary hover:bg-primary/90 text-white py-4 rounded-xl font-bold text-lg shadow-2xl shadow-primary/40 transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {isLoadingCotacao ? "Calculando..." : "Calcular frete com desconto"}
                             </button>
-                        </div>
+                        </form>
+
+                        {/* Resultados */}
+                        {cotacoes && cotacoes.length > 0 && (
+                            <div className="mt-6 space-y-3 animate-fade-in">
+                                <p className="text-sm font-medium text-muted-foreground">Fretes disponíveis:</p>
+                                {cotacoes.slice(0, 3).map((cotacao, index) => (
+                                    <div
+                                        key={index}
+                                        className="p-4 bg-orange-50 dark:bg-orange-950/20 border-2 border-primary/30 rounded-xl hover:shadow-lg hover:border-primary transition-all cursor-pointer hover:scale-[1.02]"
+                                        onClick={() => navigate('/app/emissao/adicionar')}
+                                    >
+                                        <div className="flex justify-between items-center">
+                                            <div>
+                                                <p className="font-bold text-foreground">{cotacao.nomeServico}</p>
+                                                <p className="text-sm text-muted-foreground">
+                                                    {cotacao.prazo} dias úteis
+                                                </p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-3xl font-bold text-primary">
+                                                    R$ {parseFloat(cotacao.preco).toFixed(2)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
+                </div>
+
+                {/* Features Grid */}
+                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+                    {features.map((feature, index) => (
+                        <div
+                            key={index}
+                            className="bg-card border border-border rounded-2xl p-6 hover:shadow-lg transition-all duration-300 hover:scale-105 animate-fade-in"
+                            style={{ animationDelay: `${index * 100}ms` }}
+                        >
+                            <div className={`${feature.color} mb-4`}>
+                                <feature.icon className="h-10 w-10" />
+                            </div>
+                            <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
+                            <p className="text-sm text-muted-foreground">{feature.description}</p>
+                        </div>
+                    ))}
+                </div>
+
+                {/* CTA Section */}
+                <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 rounded-3xl p-12 text-center">
+                    <h2 className="text-3xl font-bold mb-4">
+                        Pronto para economizar nos seus fretes?
+                    </h2>
+                    <p className="text-lg text-muted-foreground mb-8">
+                        Comece agora mesmo a emitir fretes com desconto
+                    </p>
+                    <button
+                        onClick={() => navigate('/app/emissao/adicionar')}
+                        className="bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-full text-lg font-bold shadow-2xl shadow-primary/40 transition-all duration-300 hover:scale-105 inline-flex items-center gap-2"
+                    >
+                        <Plus className="h-5 w-5" />
+                        Criar primeira etiqueta
+                    </button>
                 </div>
             </div>
-
-            {/* Features Section */}
-            <div className="px-4 sm:px-6 lg:px-8 py-12 bg-background">
-                <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {/* Feature 1 */}
-                    <div className="bg-card rounded-xl p-6 border border-border hover:shadow-lg transition-shadow">
-                        <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center mb-4">
-                            <DollarSign className="w-6 h-6 text-green-600 dark:text-green-400" />
-                        </div>
-                        <h3 className="text-xl font-bold mb-2">Fretes até 80% mais baratos</h3>
-                        <p className="text-muted-foreground">
-                            Economize em todos os seus envios sem mensalidades
-                        </p>
-                    </div>
-
-                    {/* Feature 2 */}
-                    <div className="bg-card rounded-xl p-6 border border-border hover:shadow-lg transition-shadow">
-                        <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center mb-4">
-                            <Truck className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                        </div>
-                        <h3 className="text-xl font-bold mb-2">Envie para todo o Brasil</h3>
-                        <p className="text-muted-foreground">
-                            Cobertura nacional com as melhores transportadoras
-                        </p>
-                    </div>
-
-                    {/* Feature 3 */}
-                    <div className="bg-card rounded-xl p-6 border border-border hover:shadow-lg transition-shadow">
-                        <div className="w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center mb-4">
-                            <Clock className="w-6 h-6 text-orange-600 dark:text-orange-400" />
-                        </div>
-                        <h3 className="text-xl font-bold mb-2">Simule em segundos</h3>
-                        <p className="text-muted-foreground">
-                            Cotação rápida e fácil de usar
-                        </p>
-                    </div>
-
-                    {/* Feature 4 */}
-                    <div className="bg-card rounded-xl p-6 border border-border hover:shadow-lg transition-shadow">
-                        <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center mb-4">
-                            <Box className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-                        </div>
-                        <h3 className="text-xl font-bold mb-2">Rastreamento completo</h3>
-                        <p className="text-muted-foreground">
-                            Acompanhe seus envios em tempo real
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Results Section */}
-            {cotacoes && cotacoes.length > 0 && (
-                <div className="px-4 sm:px-6 lg:px-8 py-12 bg-muted/30">
-                    <div className="max-w-7xl mx-auto">
-                        <h2 className="text-3xl font-bold mb-6 text-center">Opções de Frete Disponíveis</h2>
-                        <CotacaoList 
-                            cotacoes={cotacoes} 
-                            isLoading={isLoadingCotacao}
-                            emptyStateMessage="Preencha os campos acima para calcular o frete"
-                        />
-                    </div>
-                </div>
-            )}
         </div>
     );
 };
