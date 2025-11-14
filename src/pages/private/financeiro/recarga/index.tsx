@@ -10,6 +10,7 @@ import { useLoadingSpinner } from "../../../../providers/LoadingSpinnerContext";
 import { toastSuccess, toastError } from "../../../../utils/toastNotify";
 import { ModalRecargaPix } from "./ModalRecargaPix";
 import { ICreatePixChargeResponse } from "../../../../types/IRecargaPix";
+import { useRecargaPixRealtime } from "../../../../hooks/useRecargaPixRealtime";
 
 export default function Recarga() {
     const { user } = useAuth();
@@ -27,6 +28,12 @@ export default function Recarga() {
             return await creditoService.calcularSaldo(user?.clienteId);
         }
     );
+
+    // Listener de notificações em tempo real para pagamentos PIX
+    useRecargaPixRealtime({
+        clienteId: user?.clienteId || '',
+        enabled: !!user?.clienteId
+    });
 
     const createPixChargeMutation = useMutation({
         mutationFn: async (valor: number) => {
