@@ -7,27 +7,26 @@ export class RecargaPixService {
    */
   static async criarCobrancaPix(request: ICreatePixChargeRequest): Promise<ICreatePixChargeResponse> {
     try {
-      // Obter a sessão atual para pegar o token JWT
-      const { data: { session } } = await supabase.auth.getSession();
+      // Usar o token JWT do sistema existente (não Supabase Auth)
+      const token = localStorage.getItem('token');
       
       console.log('🔐 Verificando autenticação...');
-      console.log('Session exists:', !!session);
-      console.log('User ID:', session?.user?.id);
+      console.log('Token exists:', !!token);
       
-      if (!session) {
-        console.error('❌ Usuário não autenticado - sem sessão');
+      if (!token) {
+        console.error('❌ Usuário não autenticado - sem token');
         return {
           success: false,
           error: 'Usuário não autenticado. Por favor, faça login novamente.'
         };
       }
 
-      console.log('✅ Usuário autenticado, chamando edge function...');
+      console.log('✅ Token encontrado, chamando edge function...');
 
       const { data, error } = await supabase.functions.invoke('banco-inter-create-charge', {
         body: request,
         headers: {
-          Authorization: `Bearer ${session.access_token}`
+          Authorization: `Bearer ${token}`
         }
       });
 
