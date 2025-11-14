@@ -48,12 +48,23 @@ serve(async (req) => {
     }
 
     console.log('Configurando certificados mTLS...');
-    const caCerts = [caCert];
+    console.log('Cert começa com:', cert.substring(0, 50));
+    console.log('Cert tem \\n?', cert.includes('\n'));
+    console.log('Cert tem \\r\\n?', cert.includes('\r\n'));
+    
+    // Garantir formato correto com quebras de linha Unix
+    const certFixed = cert.replace(/\\n/g, '\n').replace(/\r\n/g, '\n');
+    const keyFixed = key.replace(/\\n/g, '\n').replace(/\r\n/g, '\n');
+    const caCertFixed = caCert.replace(/\\n/g, '\n').replace(/\r\n/g, '\n');
+    
+    console.log('Cert após correção começa com:', certFixed.substring(0, 50));
+    
+    const caCerts = [caCertFixed];
 
     // Criar cliente HTTP com mTLS
     const httpClient = Deno.createHttpClient({
-      cert,
-      key,
+      cert: certFixed,
+      key: keyFixed,
       caCerts
     });
 
