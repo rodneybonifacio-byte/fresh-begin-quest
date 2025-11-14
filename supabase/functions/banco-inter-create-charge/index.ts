@@ -51,12 +51,20 @@ serve(async (req) => {
     
     // Função para formatar certificado PEM corretamente
     const formatPemCert = (pemString: string) => {
-      // Remove espaços e quebras de linha existentes
-      let cleaned = pemString.replace(/\s+/g, '');
+      // Remove apenas quebras de linha e espaços extras, mas preserva estrutura
+      let cleaned = pemString.trim();
       
-      // Extrai header, conteúdo e footer
-      const beginMatch = cleaned.match(/-----BEGIN[^-]+-----/);
-      const endMatch = cleaned.match(/-----END[^-]+-----/);
+      // Se já tem quebras de linha, retorna como está
+      if (cleaned.includes('\n')) {
+        return cleaned;
+      }
+      
+      // Encontra os marcadores BEGIN e END
+      const beginRegex = /(-----BEGIN [^-]+-----)/;
+      const endRegex = /(-----END [^-]+-----)/;
+      
+      const beginMatch = cleaned.match(beginRegex);
+      const endMatch = cleaned.match(endRegex);
       
       if (!beginMatch || !endMatch) {
         console.error('Formato de certificado inválido');
@@ -65,7 +73,9 @@ serve(async (req) => {
       
       const header = beginMatch[0];
       const footer = endMatch[0];
-      const content = cleaned.substring(header.length, cleaned.indexOf(footer));
+      const startPos = cleaned.indexOf(header) + header.length;
+      const endPos = cleaned.indexOf(footer);
+      const content = cleaned.substring(startPos, endPos).replace(/\s/g, '');
       
       // Adiciona quebras de linha a cada 64 caracteres
       const formatted = content.match(/.{1,64}/g)?.join('\n') || content;
@@ -77,7 +87,8 @@ serve(async (req) => {
     const keyFixed = formatPemCert(key);
     const caCertFixed = formatPemCert(caCert);
     
-    console.log('Certificado formatado - primeiras linhas:', certFixed.split('\n').slice(0, 3).join('\n'));
+    console.log('Certificado formatado - primeira linha:', certFixed.split('\n')[0]);
+    console.log('Certificado formatado - segunda linha:', certFixed.split('\n')[1]);
     
     const caCerts = [caCertFixed];
 
