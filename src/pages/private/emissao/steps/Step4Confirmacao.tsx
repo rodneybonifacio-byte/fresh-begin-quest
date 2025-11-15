@@ -66,21 +66,22 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
         setIsSubmitting(false);
         toast.error('Saldo insuficiente. Realize uma recarga para continuar.');
         
-        // Calcular quanto falta
-        const valorFaltante = valorEtiqueta - saldoCliente;
-        const valorSugerido = Math.ceil(valorFaltante + 10); // Adiciona R$ 10 de margem
+        // Valor da recarga = valor exato da etiqueta (o que falta será descontado do saldo)
+        const valorRecarga = valorEtiqueta;
+        
+        console.log(`💰 Gerando PIX de R$ ${valorRecarga.toFixed(2)} (valor da etiqueta)`);
         
         // Gerar cobrança PIX automaticamente
         try {
           const response = await RecargaPixService.criarCobrancaPix({
-            valor: valorSugerido,
+            valor: valorRecarga,
             expiracao: 3600
           });
           
           if (response.success && response.data) {
             setPixChargeData(response.data);
             setShowPixModal(true);
-            toast.success(`Cobrança PIX de R$ ${valorSugerido.toFixed(2)} gerada. Complete o pagamento para continuar.`);
+            toast.success(`Cobrança PIX de R$ ${valorRecarga.toFixed(2)} gerada. Complete o pagamento para continuar.`);
           } else {
             toast.error('Erro ao gerar cobrança PIX. Tente novamente.');
           }
