@@ -3,72 +3,59 @@ import { Package, Truck, DollarSign, Clock, Plus } from "lucide-react";
 import { useCotacao } from "../../../hooks/useCotacao";
 import { useNavigate } from "react-router-dom";
 import { BlackFridayBanner } from "../../../components/BlackFridayBanner";
-
 export const ModernHome = () => {
-    const navigate = useNavigate();
-    const { onGetCotacaoCorreios, cotacoes, isLoadingCotacao } = useCotacao();
-    
-    const [freteData, setFreteData] = useState({
-        cepOrigem: "",
-        cepDestino: "",
-        peso: "",
-        altura: "",
-        largura: "",
-        comprimento: ""
+  const navigate = useNavigate();
+  const {
+    onGetCotacaoCorreios,
+    cotacoes,
+    isLoadingCotacao
+  } = useCotacao();
+  const [freteData, setFreteData] = useState({
+    cepOrigem: "",
+    cepDestino: "",
+    peso: "",
+    altura: "",
+    largura: "",
+    comprimento: ""
+  });
+  const handleCalcular = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!freteData.cepOrigem || !freteData.cepDestino || !freteData.peso) {
+      return;
+    }
+    await onGetCotacaoCorreios(freteData.cepOrigem, freteData.cepDestino, {
+      id: "temp-id",
+      descricao: "Pacote temporário",
+      peso: parseFloat(freteData.peso) || 0.3,
+      altura: parseFloat(freteData.altura) || 2,
+      largura: parseFloat(freteData.largura) || 11,
+      comprimento: parseFloat(freteData.comprimento) || 16,
+      diametro: 0,
+      formatoObjeto: "CAIXA_PACOTE"
     });
-
-    const handleCalcular = async (e: React.FormEvent) => {
-        e.preventDefault();
-        
-        if (!freteData.cepOrigem || !freteData.cepDestino || !freteData.peso) {
-            return;
-        }
-
-        await onGetCotacaoCorreios(
-            freteData.cepOrigem,
-            freteData.cepDestino,
-            {
-                id: "temp-id",
-                descricao: "Pacote temporário",
-                peso: parseFloat(freteData.peso) || 0.3,
-                altura: parseFloat(freteData.altura) || 2,
-                largura: parseFloat(freteData.largura) || 11,
-                comprimento: parseFloat(freteData.comprimento) || 16,
-                diametro: 0,
-                formatoObjeto: "CAIXA_PACOTE"
-            }
-        );
-    };
-
-    const features = [
-        {
-            icon: DollarSign,
-            title: "Fretes até 80% mais baratos",
-            description: "Economize em todos os seus envios sem mensalidades",
-            color: "text-green-600"
-        },
-        {
-            icon: Truck,
-            title: "Envie para todo o Brasil",
-            description: "Cobertura nacional com as melhores transportadoras",
-            color: "text-blue-600"
-        },
-        {
-            icon: Clock,
-            title: "Simule em segundos",
-            description: "Cotação rápida e fácil de usar",
-            color: "text-orange-600"
-        },
-        {
-            icon: Package,
-            title: "Rastreamento completo",
-            description: "Acompanhe seus envios em tempo real",
-            color: "text-purple-600"
-        }
-    ];
-
-    return (
-        <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background">
+  };
+  const features = [{
+    icon: DollarSign,
+    title: "Fretes até 80% mais baratos",
+    description: "Economize em todos os seus envios sem mensalidades",
+    color: "text-green-600"
+  }, {
+    icon: Truck,
+    title: "Envie para todo o Brasil",
+    description: "Cobertura nacional com as melhores transportadoras",
+    color: "text-blue-600"
+  }, {
+    icon: Clock,
+    title: "Simule em segundos",
+    description: "Cotação rápida e fácil de usar",
+    color: "text-orange-600"
+  }, {
+    icon: Package,
+    title: "Rastreamento completo",
+    description: "Acompanhe seus envios em tempo real",
+    color: "text-purple-600"
+  }];
+  return <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background">
             {/* Black Friday Banner */}
             <BlackFridayBanner />
             
@@ -85,10 +72,7 @@ export const ModernHome = () => {
                             Venda mais com fretes <strong className="text-primary">até 80% mais baratos</strong> com a BRHUB: 
                             sem mensalidades ou taxas escondidas
                         </p>
-                        <button
-                            onClick={() => navigate('/app/emissao/adicionar')}
-                            className="bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-full text-lg font-bold shadow-2xl shadow-primary/40 transition-all duration-300 hover:scale-105 hover:shadow-primary/50"
-                        >
+                        <button onClick={() => navigate('/app/emissao/adicionar')} className="bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-full text-lg font-bold shadow-2xl shadow-primary/40 transition-all duration-300 hover:scale-105 hover:shadow-primary/50">
                             Emitir frete com desconto
                         </button>
                     </div>
@@ -103,96 +87,64 @@ export const ModernHome = () => {
                             {/* CEP Origem */}
                             <div>
                                 <label className="block text-sm font-medium mb-2">CEP de origem*</label>
-                                <input
-                                    type="text"
-                                    placeholder="00000-000"
-                                    value={freteData.cepOrigem}
-                                    onChange={(e) => setFreteData({ ...freteData, cepOrigem: e.target.value })}
-                                    className="w-full px-4 py-3 rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-                                    maxLength={9}
-                                />
+                                <input type="text" placeholder="00000-000" value={freteData.cepOrigem} onChange={e => setFreteData({
+                ...freteData,
+                cepOrigem: e.target.value
+              })} className="w-full px-4 py-3 rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary transition-all" maxLength={9} />
                             </div>
 
                             {/* CEP Destino */}
                             <div>
                                 <label className="block text-sm font-medium mb-2">CEP de destino*</label>
-                                <input
-                                    type="text"
-                                    placeholder="00000-000"
-                                    value={freteData.cepDestino}
-                                    onChange={(e) => setFreteData({ ...freteData, cepDestino: e.target.value })}
-                                    className="w-full px-4 py-3 rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-                                    maxLength={9}
-                                />
+                                <input type="text" placeholder="00000-000" value={freteData.cepDestino} onChange={e => setFreteData({
+                ...freteData,
+                cepDestino: e.target.value
+              })} className="w-full px-4 py-3 rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary transition-all" maxLength={9} />
                             </div>
 
                             {/* Peso */}
                             <div>
                                 <label className="block text-sm font-medium mb-2">Peso (g)*</label>
-                                <input
-                                    type="number"
-                                    placeholder="0"
-                                    value={freteData.peso}
-                                    onChange={(e) => setFreteData({ ...freteData, peso: e.target.value })}
-                                    className="w-full px-4 py-3 rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-                                    step="1"
-                                    min="0"
-                                />
+                                <input type="number" placeholder="0" value={freteData.peso} onChange={e => setFreteData({
+                ...freteData,
+                peso: e.target.value
+              })} className="w-full px-4 py-3 rounded-xl border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary transition-all" step="1" min="0" />
                             </div>
 
                             {/* Dimensões */}
                             <div className="grid grid-cols-3 gap-3">
                                 <div>
                                     <label className="block text-xs font-medium mb-2">Altura (cm)</label>
-                                    <input
-                                        type="number"
-                                        placeholder="2"
-                                        value={freteData.altura}
-                                        onChange={(e) => setFreteData({ ...freteData, altura: e.target.value })}
-                                        className="w-full px-3 py-2 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-                                    />
+                                    <input type="number" placeholder="2" value={freteData.altura} onChange={e => setFreteData({
+                  ...freteData,
+                  altura: e.target.value
+                })} className="w-full px-3 py-2 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary text-sm" />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-medium mb-2">Largura (cm)</label>
-                                    <input
-                                        type="number"
-                                        placeholder="11"
-                                        value={freteData.largura}
-                                        onChange={(e) => setFreteData({ ...freteData, largura: e.target.value })}
-                                        className="w-full px-3 py-2 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-                                    />
+                                    <input type="number" placeholder="11" value={freteData.largura} onChange={e => setFreteData({
+                  ...freteData,
+                  largura: e.target.value
+                })} className="w-full px-3 py-2 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary text-sm" />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-medium mb-2">Comprim. (cm)</label>
-                                    <input
-                                        type="number"
-                                        placeholder="16"
-                                        value={freteData.comprimento}
-                                        onChange={(e) => setFreteData({ ...freteData, comprimento: e.target.value })}
-                                        className="w-full px-3 py-2 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-                                    />
+                                    <input type="number" placeholder="16" value={freteData.comprimento} onChange={e => setFreteData({
+                  ...freteData,
+                  comprimento: e.target.value
+                })} className="w-full px-3 py-2 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary text-sm" />
                                 </div>
                             </div>
 
-                            <button
-                                type="submit"
-                                disabled={isLoadingCotacao}
-                                className="w-full bg-primary hover:bg-primary/90 text-white py-4 rounded-xl font-bold text-lg shadow-2xl shadow-primary/40 transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
+                            <button type="submit" disabled={isLoadingCotacao} className="w-full bg-primary hover:bg-primary/90 text-white py-4 rounded-xl font-bold text-lg shadow-2xl shadow-primary/40 transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed">
                                 {isLoadingCotacao ? "Calculando..." : "Calcular frete com desconto"}
                             </button>
                         </form>
 
                         {/* Resultados */}
-                        {cotacoes && cotacoes.length > 0 && (
-                            <div className="mt-6 space-y-3 animate-fade-in">
+                        {cotacoes && cotacoes.length > 0 && <div className="mt-6 space-y-3 animate-fade-in">
                                 <p className="text-sm font-medium text-muted-foreground">Fretes disponíveis:</p>
-                                {cotacoes.slice(0, 3).map((cotacao, index) => (
-                                    <div
-                                        key={index}
-                                        className="p-4 bg-orange-50 dark:bg-orange-950/20 border-2 border-primary/30 rounded-xl hover:shadow-lg hover:border-primary transition-all cursor-pointer hover:scale-[1.02]"
-                                        onClick={() => navigate('/app/emissao/adicionar')}
-                                    >
+                                {cotacoes.slice(0, 3).map((cotacao, index) => <div key={index} className="p-4 bg-orange-50 dark:bg-orange-950/20 border-2 border-primary/30 rounded-xl hover:shadow-lg hover:border-primary transition-all cursor-pointer hover:scale-[1.02]" onClick={() => navigate('/app/emissao/adicionar')}>
                                         <div className="flex justify-between items-center">
                                             <div>
                                                 <p className="font-bold text-foreground">{cotacao.nomeServico}</p>
@@ -206,28 +158,22 @@ export const ModernHome = () => {
                                                 </p>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+                                    </div>)}
+                            </div>}
                     </div>
                 </div>
 
                 {/* Features Grid */}
                 <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
-                    {features.map((feature, index) => (
-                        <div
-                            key={index}
-                            className="bg-card border border-border rounded-2xl p-6 hover:shadow-lg transition-all duration-300 hover:scale-105 animate-fade-in"
-                            style={{ animationDelay: `${index * 100}ms` }}
-                        >
+                    {features.map((feature, index) => <div key={index} className="bg-card border border-border rounded-2xl p-6 hover:shadow-lg transition-all duration-300 hover:scale-105 animate-fade-in" style={{
+          animationDelay: `${index * 100}ms`
+        }}>
                             <div className={`${feature.color} mb-4`}>
                                 <feature.icon className="h-10 w-10" />
                             </div>
                             <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
                             <p className="text-sm text-muted-foreground">{feature.description}</p>
-                        </div>
-                    ))}
+                        </div>)}
                 </div>
 
                 {/* BRHUB Services Section */}
@@ -244,21 +190,7 @@ export const ModernHome = () => {
                     {/* Main Services Grid */}
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
                         {/* Integração Direta */}
-                        <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 hover:scale-105">
-                            <div className="flex items-start gap-4">
-                                <div className="p-3 bg-blue-600 rounded-xl">
-                                    <Package className="h-6 w-6 text-white" />
-                                </div>
-                                <div className="flex-1">
-                                    <h3 className="text-lg font-bold mb-2 text-blue-900 dark:text-blue-100">
-                                        Integração Direta no App VESTI
-                                    </h3>
-                                    <p className="text-sm text-blue-700 dark:text-blue-300">
-                                        Emita etiqueta com poucos cliques sem sair da plataforma
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
+                        
 
                         {/* Solução Completa */}
                         <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/30 dark:to-purple-900/20 border-2 border-purple-200 dark:border-purple-800 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 hover:scale-105">
@@ -329,21 +261,7 @@ export const ModernHome = () => {
                         </div>
 
                         {/* Endereço */}
-                        <div className="bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-950/30 dark:to-pink-900/20 border-2 border-pink-200 dark:border-pink-800 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 hover:scale-105">
-                            <div className="flex items-start gap-4">
-                                <div className="p-3 bg-pink-600 rounded-xl">
-                                    <Package className="h-6 w-6 text-white" />
-                                </div>
-                                <div className="flex-1">
-                                    <h3 className="text-lg font-bold mb-2 text-pink-900 dark:text-pink-100">
-                                        Endereço
-                                    </h3>
-                                    <p className="text-sm text-pink-700 dark:text-pink-300">
-                                        Estamos localizados no Shopping Fashion Brás, 7° andar BRHUB Coworking
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
+                        
                     </div>
 
                     {/* Operational Flow Section */}
@@ -480,29 +398,7 @@ export const ModernHome = () => {
                     </div>
 
                     {/* Benefits for VESTI Merchants */}
-                    <div className="mt-12 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 rounded-3xl p-8 border-2 border-blue-200 dark:border-blue-800">
-                        <h3 className="text-2xl font-bold mb-6 text-center">
-                            Benefícios ao Lojista VESTI
-                        </h3>
-                        <div className="grid md:grid-cols-3 gap-4">
-                            <div className="bg-white dark:bg-gray-900 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
-                                <p className="text-sm">
-                                    <span className="font-bold text-blue-600 dark:text-blue-400">→</span> Reduza para{" "}
-                                    <span className="font-bold">zero</span> os erros na emissão de etiquetas
-                                </p>
-                            </div>
-                            <div className="bg-white dark:bg-gray-900 rounded-xl p-4 border border-purple-200 dark:border-purple-800">
-                                <p className="text-sm">
-                                    <span className="font-bold text-purple-600 dark:text-purple-400">→</span> Tenha mais controle e acompanhamento das suas encomendas
-                                </p>
-                            </div>
-                            <div className="bg-white dark:bg-gray-900 rounded-xl p-4 border border-pink-200 dark:border-pink-800">
-                                <p className="text-sm">
-                                    <span className="font-bold text-pink-600 dark:text-pink-400">→</span> Suporte especializado
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+                    
                 </div>
 
                 {/* CTA Section */}
@@ -513,15 +409,11 @@ export const ModernHome = () => {
                     <p className="text-lg text-muted-foreground mb-8">
                         Comece agora mesmo a emitir fretes com desconto
                     </p>
-                    <button
-                        onClick={() => navigate('/app/emissao/adicionar')}
-                        className="bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-full text-lg font-bold shadow-2xl shadow-primary/40 transition-all duration-300 hover:scale-105 inline-flex items-center gap-2"
-                    >
+                    <button onClick={() => navigate('/app/emissao/adicionar')} className="bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-full text-lg font-bold shadow-2xl shadow-primary/40 transition-all duration-300 hover:scale-105 inline-flex items-center gap-2">
                         <Plus className="h-5 w-5" />
                         Criar primeira etiqueta
                     </button>
                 </div>
             </div>
-        </div>
-    );
+        </div>;
 };
