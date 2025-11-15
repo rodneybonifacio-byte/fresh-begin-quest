@@ -114,7 +114,7 @@ export const ListaDestinatario = () => {
                     bgColor: 'bg-slate-300',
                 },
             ]}
-            data={destinatarios?.data && destinatarios.data.length > 0 ? destinatarios.data : []}
+            data={destinatarios?.data && Array.isArray(destinatarios.data) && destinatarios.data.length > 0 ? destinatarios.data : []}
         >
             <div
                 className={clsx('transition-all duration-300', isFilterOpen ? 'max-h-[1000px] opacity-100 translate-y-0' : 'max-h-0 opacity-0 -translate-y-2')}
@@ -153,7 +153,7 @@ export const ListaDestinatario = () => {
             </div>
 
             {isLoading ? <LoadSpinner mensagem="Carregando..." /> : null}
-            {!isLoading && !isError && destinatarios && destinatarios.data.length > 0 && (
+            {!isLoading && !isError && destinatarios && destinatarios.data && destinatarios.data.length > 0 && (
                 <div className="rounded-lg">
                     <div className="bg-white dark:bg-slate-800 rounded p-6 shadow-sm overflow-visible">
                         <DataTable<IDestinatario>
