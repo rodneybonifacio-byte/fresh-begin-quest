@@ -45,8 +45,6 @@ export const SidebarLayout: React.FC<Props> = ({ navItems, isOpen, onClose, onNa
 
     return (
         <>
-            {sidebarOpen && <div className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden" onClick={onClose} />}
-
             <aside
                 className={`fixed lg:relative z-50 h-screen bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-300 overflow-hidden shadow-sm
                     ${isSidebarOpen ? 'lg:w-64' : 'lg:w-20'}
