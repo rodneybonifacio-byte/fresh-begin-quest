@@ -19,13 +19,18 @@ export const useImprimirEtiquetaPDF = () => {
 
     const mutationEtiqueta = useMutation({
         mutationFn: async (emissao: IEmissao) => {
+            console.log('🔄 [API] Chamando imprimirEtiquetaCorreios com ID:', emissao.id);
+            if (!emissao.id) {
+                throw new Error('ID da emissão não encontrado');
+            }
             return service.imprimirEtiquetaCorreios(emissao);
         },
         onSuccess: () => {
             toast.success("Etiqueta gerada com sucesso!", { duration: 5000, position: "top-center" });
         },
         onError: (error) => {
-            console.log(error);
+            console.error('❌ [API] Erro ao gerar etiqueta:', error);
+            toast.error('Erro ao gerar etiqueta', { duration: 5000, position: "top-center" });
         },
     })
 
@@ -43,13 +48,18 @@ export const useImprimirEtiquetaPDF = () => {
 
     const mutationMerge = useMutation({
         mutationFn: async (emissao: IEmissao) => {
+            console.log('🔄 [API] Chamando imprimirMergePDF com ID:', emissao.id);
+            if (!emissao.id) {
+                throw new Error('ID da emissão não encontrado');
+            }
             return service.imprimirMergePDF(emissao);
         },
         onSuccess: () => {
             toast.success("Impressão gerada com sucesso!", { duration: 5000, position: "top-center" });
         },
         onError: (error) => {
-            console.log(error);
+            console.error('❌ [API] Erro ao gerar merge PDF:', error);
+            toast.error('Erro ao gerar PDF completo', { duration: 5000, position: "top-center" });
         },
     })
 
@@ -110,9 +120,14 @@ export const useImprimirEtiquetaPDF = () => {
         onIsLoadingCadastro: (isLoading: boolean) => void
     ): Promise<void> => {
         try {
+            console.log('🖨️ [IMPRESSÃO] Iniciando processo de impressão');
+            console.log('📦 [IMPRESSÃO] Emissão:', data);
+            console.log('🏷️ [IMPRESSÃO] Tipo:', typeEtiqueta);
+            
             onIsLoadingCadastro(true);
             let etiquetaResponse: IResponse<{ nome: string, dados: string }> = {} as IResponse<{ nome: string, dados: string }>;
 
+            console.log('🔄 [IMPRESSÃO] Chamando API...');
             if (typeEtiqueta === 'etiqueta')
                 etiquetaResponse = await mutationEtiqueta.mutateAsync(data);
             if (typeEtiqueta === 'declaracao')
@@ -120,15 +135,35 @@ export const useImprimirEtiquetaPDF = () => {
             if (typeEtiqueta === 'merge')
                 etiquetaResponse = await mutationMerge.mutateAsync(data);
 
-            // Abre o PDF automaticamente para impressão
-            if (etiquetaResponse.data?.dados) {
-                const fileName = etiquetaResponse.data.nome || `${typeEtiqueta}.pdf`;
-                printPDF(etiquetaResponse.data.dados, fileName);
+            console.log('📄 [IMPRESSÃO] Resposta da API:', etiquetaResponse);
+            console.log('📄 [IMPRESSÃO] Dados do PDF:', etiquetaResponse.data);
+            console.log('📄 [IMPRESSÃO] Base64 length:', etiquetaResponse.data?.dados?.length);
+
+            // Valida se o PDF foi gerado
+            if (!etiquetaResponse.data?.dados || etiquetaResponse.data.dados.trim() === '') {
+                console.error('❌ [IMPRESSÃO] PDF vazio ou não gerado!');
+                toast.error('Erro ao gerar PDF. O arquivo está vazio.', { 
+                    duration: 5000, 
+                    position: "top-center" 
+                });
+                onIsLoadingCadastro(false);
+                return;
             }
+
+            // Abre o PDF automaticamente para impressão
+            console.log('🖨️ [IMPRESSÃO] Abrindo janela de impressão...');
+            const fileName = etiquetaResponse.data.nome || `${typeEtiqueta}.pdf`;
+            printPDF(etiquetaResponse.data.dados, fileName);
+            console.log('✅ [IMPRESSÃO] Janela de impressão aberta!');
 
             onIsLoadingCadastro(false);
         } catch (error) {
-            console.error(error);
+            console.error('❌ [IMPRESSÃO] Erro ao processar impressão:', error);
+            console.error('Stack:', (error as Error)?.stack);
+            toast.error('Erro ao gerar etiqueta para impressão', { 
+                duration: 5000, 
+                position: "top-center" 
+            });
             onIsLoadingCadastro(false);
         }
     };

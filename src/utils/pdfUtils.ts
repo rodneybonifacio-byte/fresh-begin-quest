@@ -86,16 +86,23 @@ export const downloadPDF = (base64: string, fileName: string = 'documento.pdf') 
  * Inclui fallback para quando pop-ups são bloqueados
  */
 export const printPDF = (base64: string, fileName: string = 'documento.pdf') => {
+    console.log('🖨️ [printPDF] Iniciando impressão');
+    console.log('📄 [printPDF] Nome do arquivo:', fileName);
+    console.log('📄 [printPDF] Base64 length:', base64?.length);
+    
     if (!base64 || base64.trim() === '') {
-        console.error('Base64 do PDF está vazio');
+        console.error('❌ [printPDF] Base64 do PDF está vazio');
+        alert('Erro: PDF vazio. Não é possível imprimir.');
         return;
     }
 
+    console.log('🔄 [printPDF] Tentando abrir janela...');
     // Tenta abrir em nova janela primeiro
     const windowFeatures = getCenteredWindowFeatures(800, 600);
     const printWindow = window.open('', '_blank', windowFeatures);
     
     if (printWindow && !printWindow.closed) {
+        console.log('✅ [printPDF] Janela aberta com sucesso');
         // Pop-up permitido - usa janela normal
         printWindow.document.write(`
             <html>
