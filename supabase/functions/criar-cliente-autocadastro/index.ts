@@ -132,7 +132,7 @@ serve(async (req: Request) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        email: 'financeiro@brhubb.com.br',
+        login: 'financeiro@brhubb.com.br',
         senha: 'Senh@de16letras'
       }),
     })
