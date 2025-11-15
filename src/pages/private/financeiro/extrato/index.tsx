@@ -95,7 +95,7 @@ export default function ExtratoCreditos() {
             
             // Carregar transações e resumo
             console.log('📞 Chamando obterExtrato...');
-            const extratoData = await service.obterExtrato(user.clienteId, 100);
+            const extratoData = await service.obterExtrato(user.clienteId);
             console.log('✅ Extrato retornado:', extratoData?.length || 0, 'itens');
             
             console.log('📞 Chamando obterResumo...');
