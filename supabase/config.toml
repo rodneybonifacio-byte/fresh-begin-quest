@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.banco-inter-configure-webhook]
 verify_jwt = true
+
+[functions.buscar-extrato]
+verify_jwt = false

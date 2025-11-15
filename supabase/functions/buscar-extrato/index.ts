@@ -1,4 +1,6 @@
+// @ts-ignore: Deno types
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// @ts-ignore: Deno types
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -6,7 +8,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
+serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -35,7 +37,9 @@ serve(async (req) => {
     console.log('📝 Buscando extrato para cliente:', clienteId);
 
     // Criar cliente Supabase com service role (bypassa RLS)
+    // @ts-ignore: Deno.env
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    // @ts-ignore: Deno.env
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -55,11 +59,11 @@ serve(async (req) => {
     console.log('✅ Transações encontradas:', transacoes?.length || 0);
 
     // Calcular resumo
-    const recargas = transacoes?.filter(t => t.tipo === 'recarga') || [];
-    const consumos = transacoes?.filter(t => t.tipo === 'consumo') || [];
+    const recargas = transacoes?.filter((t: any) => t.tipo === 'recarga') || [];
+    const consumos = transacoes?.filter((t: any) => t.tipo === 'consumo') || [];
 
-    const totalRecargas = recargas.reduce((sum, t) => sum + Number(t.valor), 0);
-    const totalConsumos = consumos.reduce((sum, t) => sum + Math.abs(Number(t.valor)), 0);
+    const totalRecargas = recargas.reduce((sum: number, t: any) => sum + Number(t.valor), 0);
+    const totalConsumos = consumos.reduce((sum: number, t: any) => sum + Math.abs(Number(t.valor)), 0);
 
     const resumo = {
       totalRecargas,
