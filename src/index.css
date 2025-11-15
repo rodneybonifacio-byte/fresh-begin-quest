@@ -200,6 +200,38 @@
     transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
 }
 
+/* Correções automáticas de contraste para dark mode */
+.dark .text-black:not(.force-black):not([class*="bg-green"]):not([class*="bg-blue"]):not([class*="bg-red"]):not([class*="bg-yellow"]) {
+    color: #f9fafb !important; /* Força texto claro no dark mode */
+}
+
+.dark .bg-white:not(.force-white):not(.method-badge):not(.status-badge):not([class*="shadow"]) {
+    background-color: #334155 !important; /* Fundo escuro no dark mode */
+    color: #f9fafb !important;
+}
+
+/* Preservar contraste em badges e alertas coloridos */
+.dark .bg-green-500, .dark .bg-green-600,
+.dark .bg-blue-500, .dark .bg-blue-600,
+.dark .bg-red-500, .dark .bg-red-600,
+.dark .bg-yellow-400, .dark .bg-yellow-500,
+.dark .bg-purple-500, .dark .bg-purple-600,
+.dark .bg-orange-500, .dark .bg-orange-600 {
+    color: white !important; /* Manter texto branco em fundos coloridos */
+}
+
+.dark .text-gray-900 {
+    color: #f9fafb !important;
+}
+
+.dark .text-gray-800 {
+    color: #f3f4f6 !important;
+}
+
+.dark .text-gray-700 {
+    color: #e5e7eb !important;
+}
+
 /* Classes personalizadas para componentes principais */
 .bg-surface {
     background-color: white;
@@ -242,6 +274,51 @@
 }
 
 /* Customizações específicas para melhor UX no dark mode */
+
+/* Garantir visibilidade de texto em todos os elementos */
+.dark label:not(.force-original-color),
+.dark p:not(.force-original-color),
+.dark span:not(.force-original-color),
+.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+    color: inherit;
+}
+
+.dark div:not([class*="bg-"]):not([class*="text-"]) {
+    color: #f9fafb;
+}
+
+/* Dropdowns e Popovers - garantir fundo e texto visível */
+.dark select,
+.dark input:not([type="checkbox"]):not([type="radio"]),
+.dark textarea {
+    background-color: #1f2937 !important;
+    color: #f9fafb !important;
+    border-color: #4b5563 !important;
+}
+
+.dark select option {
+    background-color: #1f2937;
+    color: #f9fafb;
+}
+
+/* Tabelas */
+.dark table {
+    color: #f9fafb;
+}
+
+.dark thead {
+    background-color: #1e293b;
+    color: #f9fafb;
+}
+
+.dark tbody tr {
+    border-color: #4b5563;
+}
+
+.dark tbody tr:hover {
+    background-color: #1e293b;
+}
+
 .hover-surface:hover {
     background-color: #f9fafb; /* gray-50 */
 }
