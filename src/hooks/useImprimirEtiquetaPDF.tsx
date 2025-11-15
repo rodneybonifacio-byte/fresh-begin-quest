@@ -4,7 +4,7 @@ import { EmissaoService } from "../services/EmissaoService";
 import type { IResponse } from "../types/IResponse";
 import { useEffect, useState } from "react";
 import type { IEmissao } from "../types/IEmissao";
-import { printPDF } from "../utils/pdfUtils";
+import { openPDFInNewTab } from "../utils/pdfUtils";
 
 type TipoEtiqueta = 'etiqueta' | 'declaracao' | 'merge';
 
@@ -150,11 +150,11 @@ export const useImprimirEtiquetaPDF = () => {
                 return;
             }
 
-            // Abre o PDF automaticamente para impressão
-            console.log('🖨️ [IMPRESSÃO] Abrindo janela de impressão...');
+            // Abre o PDF em nova aba para visualização
+            console.log('📄 [VISUALIZAR] Abrindo PDF em nova aba...');
             const fileName = etiquetaResponse.data.nome || `${typeEtiqueta}.pdf`;
-            printPDF(etiquetaResponse.data.dados, fileName);
-            console.log('✅ [IMPRESSÃO] Janela de impressão aberta!');
+            openPDFInNewTab(etiquetaResponse.data.dados, fileName);
+            console.log('✅ [VISUALIZAR] PDF aberto em nova aba!');
 
             onIsLoadingCadastro(false);
         } catch (error) {
