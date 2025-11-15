@@ -110,13 +110,13 @@ export const EmissaoInfo = ({ emissao, handleOnPDF, handleOnViewErroPostagem }: 
                         <ReceiptText size={16} />
                     </Link>
 
-                    <Link to={``} onClick={() => handleOnPDF(emissao, false)} className="text-slate-600 hover:text-slate-700 transition flex items-center py-2 px-3 rounded border border-slate-400 hover:bg-slate-100">
+                    <button onClick={(e) => { e.preventDefault(); handleOnPDF(emissao, false); }} className="text-slate-600 hover:text-slate-700 transition flex items-center py-2 px-3 rounded border border-slate-400 hover:bg-slate-100">
                         <Printer size={16} />
-                    </Link>
+                    </button>
 
-                    <Link to={``} onClick={() => handleOnPDF(emissao, true)} className="text-slate-600 hover:text-slate-700 transition flex items-center py-2 px-3 rounded border border-slate-400 hover:bg-slate-100">
+                    <button onClick={(e) => { e.preventDefault(); handleOnPDF(emissao, true); }} className="text-slate-600 hover:text-slate-700 transition flex items-center py-2 px-3 rounded border border-slate-400 hover:bg-slate-100">
                         <Tag size={16} />
-                    </Link>
+                    </button>
                 </div>
             </div>
         </div>
