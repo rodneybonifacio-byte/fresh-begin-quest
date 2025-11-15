@@ -137,14 +137,23 @@ serve(async (req: Request) => {
       }),
     })
 
+    console.log('Status da autenticação:', loginResponse.status)
+    const loginText = await loginResponse.text()
+    console.log('Resposta da autenticação:', loginText)
+
     if (!loginResponse.ok) {
-      const errorText = await loginResponse.text()
-      console.error('Erro na autenticação:', errorText)
-      throw new Error(`Erro ao autenticar: ${errorText}`)
+      console.error('Erro na autenticação:', loginText)
+      throw new Error(`Erro ao autenticar: ${loginText}`)
     }
 
-    const loginData = await loginResponse.json()
+    const loginData = JSON.parse(loginText)
     const token = loginData.token
+    
+    if (!token) {
+      console.error('Token não encontrado na resposta:', loginData)
+      throw new Error('Token de autenticação não encontrado na resposta')
+    }
+    
     console.log('Autenticação realizada com sucesso')
 
     // Criar cliente na API externa com o token de autenticação
