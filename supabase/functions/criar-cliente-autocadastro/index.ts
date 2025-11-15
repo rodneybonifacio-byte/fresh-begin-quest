@@ -46,9 +46,9 @@ serve(async (req: Request) => {
     }
 
     // @ts-ignore: Deno types
-    const baseApiUrl = Deno.env.get('VITE_BASE_API_URL')
+    const baseApiUrl = Deno.env.get('BASE_API_URL')
     if (!baseApiUrl) {
-      throw new Error('VITE_BASE_API_URL não configurada')
+      throw new Error('BASE_API_URL não configurada')
     }
 
     // Preparar dados do cliente com todas as configurações padrão
