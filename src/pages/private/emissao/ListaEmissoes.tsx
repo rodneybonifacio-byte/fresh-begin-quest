@@ -41,6 +41,8 @@ export const ListaEmissoes = () => {
     const [page, setPage] = useState<number>(1);
 
     const [etiqueta, setEtiqueta] = useState<{ nome: string; dados: string }>();
+    void setEtiqueta; // Mantido para compatibilidade com modais existentes
+    const { onEmissaoVisualizarPDF } = useImprimirEtiquetaPDF();
 
     const {
         data: emissoes,
@@ -80,15 +82,9 @@ export const ListaEmissoes = () => {
         setSearchParams(params);
     }, [emissoes]);
 
-    const { onEmissaoImprimir } = useImprimirEtiquetaPDF();
     const handleOnPDF = async (emissao: IEmissao, mergePdf: boolean = false) => {
-        let novaEtiqueta: IResponse<{ nome: string; dados: string }>;
-        if (mergePdf) {
-            novaEtiqueta = await onEmissaoImprimir(emissao, 'merge', setIsLoading, setIsModalViewPDF);
-        } else {
-            novaEtiqueta = await onEmissaoImprimir(emissao, 'etiqueta', setIsLoading, setIsModalViewPDF);
-        }
-        setEtiqueta(novaEtiqueta.data);
+        const tipoEtiqueta = mergePdf ? 'merge' : 'etiqueta';
+        await onEmissaoVisualizarPDF(emissao, tipoEtiqueta, setIsLoading);
     };
 
     const handleOnViewErroPostagem = async (jsonContent?: string) => {
