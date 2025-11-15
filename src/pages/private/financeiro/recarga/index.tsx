@@ -55,6 +55,23 @@ export default function Recarga() {
         }
     );
 
+    const { data: totalRecarregado } = useFetchQuery(
+        ['total-recarregado'],
+        async () => {
+            console.log('💰 Calculando total recarregado...');
+            const recargas = await RecargaPixService.buscarRecargas(1000);
+            const total = recargas
+                .filter(r => r.status === 'pago')
+                .reduce((sum, r) => sum + Number(r.valor), 0);
+            console.log('✅ Total recarregado:', total);
+            return total;
+        },
+        {
+            refetchOnWindowFocus: true,
+            staleTime: 0
+        }
+    );
+
     // Listener de notificações em tempo real para pagamentos PIX
     useRecargaPixRealtime({
         enabled: true,
@@ -64,8 +81,10 @@ export default function Recarga() {
             setShowPixModal(false);
             setPixChargeData(undefined);
             
-            // Forçar atualização imediata do saldo
+            // Forçar atualização imediata do saldo e totais
             refetchSaldo();
+            queryClient.invalidateQueries({ queryKey: ['ultima-recarga'] });
+            queryClient.invalidateQueries({ queryKey: ['total-recarregado'] });
         }
     });
 
@@ -193,7 +212,9 @@ export default function Recarga() {
                             </div>
                             <span className="text-sm font-medium text-muted-foreground">Total Recarregado</span>
                         </div>
-                        <p className="text-3xl font-bold text-foreground">R$ 0,00</p>
+                        <p className="text-3xl font-bold text-foreground">
+                            {formatCurrencyWithCents((totalRecarregado || 0).toString())}
+                        </p>
                     </div>
 
                     {/* Última Recarga */}
