@@ -115,17 +115,20 @@ export const printPDF = (base64: string, fileName: string = 'documento.pdf') => 
     if (printWindow && !printWindow.closed) {
         console.log('✅ [printPDF] Janela aberta com sucesso');
         
-        // Espera carregar e abre o diálogo de impressão
-        printWindow.addEventListener('load', () => {
-            setTimeout(() => {
+        // Aguarda e dispara impressão
+        setTimeout(() => {
+            try {
                 printWindow.print();
                 
-                // Limpa o blob URL após impressão
-                printWindow.addEventListener('afterprint', () => {
+                // Limpa o blob URL após um tempo
+                setTimeout(() => {
                     URL.revokeObjectURL(blobUrl);
-                });
-            }, 500);
-        });
+                }, 2000);
+            } catch (e) {
+                console.error('Erro ao imprimir:', e);
+                URL.revokeObjectURL(blobUrl);
+            }
+        }, 1000);
     } else {
         // Pop-up bloqueado - usa iframe invisível
         console.warn('⚠️ [printPDF] Pop-up bloqueado, usando iframe');
@@ -143,12 +146,18 @@ export const printPDF = (base64: string, fileName: string = 'documento.pdf') => 
         
         iframe.onload = () => {
             setTimeout(() => {
-                iframe.contentWindow?.focus();
-                iframe.contentWindow?.print();
+                try {
+                    iframe.contentWindow?.focus();
+                    iframe.contentWindow?.print();
+                } catch (e) {
+                    console.error('Erro ao imprimir via iframe:', e);
+                }
                 
                 // Remove iframe e limpa blob após impressão
                 setTimeout(() => {
-                    document.body.removeChild(iframe);
+                    if (document.body.contains(iframe)) {
+                        document.body.removeChild(iframe);
+                    }
                     URL.revokeObjectURL(blobUrl);
                 }, 1000);
             }, 500);
