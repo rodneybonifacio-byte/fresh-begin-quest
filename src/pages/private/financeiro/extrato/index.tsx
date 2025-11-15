@@ -14,13 +14,15 @@ export default function ExtratoCreditos() {
     const [transacoes, setTransacoes] = useState<ITransacaoCredito[]>([]);
     const [loading, setLoading] = useState(true);
     const [filtroTipo, setFiltroTipo] = useState<'todos' | 'recarga' | 'consumo'>('todos');
+    const [paginaAtual, setPaginaAtual] = useState(1);
+    const itensPorPagina = 15;
     const [resumo, setResumo] = useState({
         totalRecargas: 0,
         totalConsumos: 0,
-        totalEtiquetasGeradas: 0, // Novo: total de etiquetas com status != pré-postado
+        totalEtiquetasGeradas: 0,
         quantidadeRecargas: 0,
         quantidadeConsumos: 0,
-        quantidadeEtiquetas: 0 // Novo: quantidade de etiquetas com status != pré-postado
+        quantidadeEtiquetas: 0
     });
 
     const service = new CreditoService();
@@ -126,6 +128,17 @@ export default function ExtratoCreditos() {
         if (filtroTipo === 'todos') return true;
         return t.tipo === filtroTipo;
     });
+
+    // Cálculos de paginação
+    const totalPaginas = Math.ceil(transacoesFiltradas.length / itensPorPagina);
+    const indiceInicio = (paginaAtual - 1) * itensPorPagina;
+    const indiceFim = indiceInicio + itensPorPagina;
+    const transacoesPaginadas = transacoesFiltradas.slice(indiceInicio, indiceFim);
+
+    // Reset página ao mudar filtro
+    useEffect(() => {
+        setPaginaAtual(1);
+    }, [filtroTipo]);
 
     const formatarData = (data: string) => {
         return format(new Date(data), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
@@ -238,7 +251,7 @@ export default function ExtratoCreditos() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border">
-                                    {transacoesFiltradas.map((transacao) => (
+                                    {transacoesPaginadas.map((transacao) => (
                                         <tr key={transacao.id} className="hover:bg-muted/30 transition-colors">
                                             <td className="px-6 py-4 text-sm text-muted-foreground">
                                                 {formatarData(transacao.created_at)}
@@ -283,6 +296,46 @@ export default function ExtratoCreditos() {
                                     ))}
                                 </tbody>
                             </table>
+
+                            {/* Paginação */}
+                            {totalPaginas > 1 && (
+                                <div className="flex items-center justify-between px-6 py-4 border-t border-border">
+                                    <div className="text-sm text-muted-foreground">
+                                        Mostrando {indiceInicio + 1} a {Math.min(indiceFim, transacoesFiltradas.length)} de {transacoesFiltradas.length} transações
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => setPaginaAtual(prev => Math.max(1, prev - 1))}
+                                            disabled={paginaAtual === 1}
+                                            className="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                        >
+                                            Anterior
+                                        </button>
+                                        <div className="flex items-center gap-1">
+                                            {Array.from({ length: totalPaginas }, (_, i) => i + 1).map(pagina => (
+                                                <button
+                                                    key={pagina}
+                                                    onClick={() => setPaginaAtual(pagina)}
+                                                    className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                                                        paginaAtual === pagina
+                                                            ? 'bg-primary text-primary-foreground'
+                                                            : 'border border-border hover:bg-accent'
+                                                    }`}
+                                                >
+                                                    {pagina}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <button
+                                            onClick={() => setPaginaAtual(prev => Math.min(totalPaginas, prev + 1))}
+                                            disabled={paginaAtual === totalPaginas}
+                                            className="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                        >
+                                            Próxima
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
