@@ -50,36 +50,41 @@ export class RecargaPixService {
   }
 
   /**
-   * Buscar recargas do usuário autenticado
+   * Buscar recargas do usuário autenticado via Edge Function
    */
   static async buscarRecargas(limit: number = 100): Promise<IRecargaPix[]> {
     try {
-      // Usar o token JWT customizado do sistema
+      console.log('🔍 RecargaPixService.buscarRecargas - Iniciando...');
+      
       const token = localStorage.getItem('token');
       if (!token) {
-        console.error('Usuário não autenticado');
+        console.error('❌ Usuário não autenticado - sem token');
         return [];
       }
 
-      // Decodificar token para pegar cliente_id
       const payload = JSON.parse(atob(token.split('.')[1]));
       const clienteId = payload.clienteId;
+      console.log('👤 Cliente ID extraído do token:', clienteId);
 
-      const { data, error } = await supabase
-        .from('recargas_pix')
-        .select('*')
-        .eq('cliente_id', clienteId)
-        .order('data_criacao', { ascending: false })
-        .limit(limit);
+      console.log('📡 Chamando Edge Function buscar-recargas...');
+      const { data, error } = await supabase.functions.invoke('buscar-recargas', {
+        body: { clienteId, limit }
+      });
 
       if (error) {
-        console.error('Erro ao buscar recargas:', error);
+        console.error('❌ Erro Edge Function:', error);
         return [];
       }
 
-      return data as IRecargaPix[];
+      if (!data?.success) {
+        console.error('❌ Edge Function retornou erro:', data?.error);
+        return [];
+      }
+
+      console.log('✅ Recargas retornadas:', data.data?.length || 0);
+      return data.data as IRecargaPix[];
     } catch (error) {
-      console.error('Erro ao buscar recargas:', error);
+      console.error('💥 Erro ao buscar recargas:', error);
       return [];
     }
   }
