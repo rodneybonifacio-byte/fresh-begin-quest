@@ -83,6 +83,7 @@ export const downloadPDF = (base64: string, fileName: string = 'documento.pdf') 
 
 /**
  * Abre janela de impressão centralizada para o PDF
+ * Inclui fallback para quando pop-ups são bloqueados
  */
 export const printPDF = (base64: string, fileName: string = 'documento.pdf') => {
     if (!base64 || base64.trim() === '') {
@@ -90,11 +91,12 @@ export const printPDF = (base64: string, fileName: string = 'documento.pdf') => 
         return;
     }
 
-    // Configurações da janela centralizada para impressão
+    // Tenta abrir em nova janela primeiro
     const windowFeatures = getCenteredWindowFeatures(800, 600);
-
     const printWindow = window.open('', '_blank', windowFeatures);
-    if (printWindow) {
+    
+    if (printWindow && !printWindow.closed) {
+        // Pop-up permitido - usa janela normal
         printWindow.document.write(`
             <html>
                 <head>
@@ -134,14 +136,51 @@ export const printPDF = (base64: string, fileName: string = 'documento.pdf') => 
             </html>
         `);
         printWindow.document.close();
-        
-        // Foca na janela de impressão
         printWindow.focus();
+    } else {
+        // Pop-up bloqueado - usa iframe invisível
+        console.warn('Pop-up bloqueado, usando método alternativo');
+        
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = 'none';
+        
+        document.body.appendChild(iframe);
+        
+        const iframeDoc = iframe.contentWindow?.document;
+        if (iframeDoc) {
+            iframeDoc.open();
+            iframeDoc.write(`
+                <html>
+                    <head><title>Imprimir ${fileName}</title></head>
+                    <body style="margin: 0;">
+                        <embed src="data:application/pdf;base64,${base64}" type="application/pdf" width="100%" height="100%">
+                    </body>
+                </html>
+            `);
+            iframeDoc.close();
+            
+            iframe.onload = () => {
+                setTimeout(() => {
+                    iframe.contentWindow?.focus();
+                    iframe.contentWindow?.print();
+                    
+                    setTimeout(() => {
+                        document.body.removeChild(iframe);
+                    }, 1000);
+                }, 500);
+            };
+        }
     }
 };
 
 /**
- * Abre PDF para visualização em nova janela/aba centralizada (igual ao imprimir, mas sem o print())
+ * Abre uma janela centralizada para visualizar o PDF
+ * Inclui fallback para quando pop-ups são bloqueados
  */
 export const viewPDF = (base64: string, fileName: string = 'documento.pdf') => {
     if (!base64 || base64.trim() === '') {
@@ -149,11 +188,12 @@ export const viewPDF = (base64: string, fileName: string = 'documento.pdf') => {
         return;
     }
 
-    // Configurações da janela centralizada para visualização
-    const windowFeatures = getCenteredWindowFeatures(1000, 700);
-
+    // Tenta abrir em nova janela
+    const windowFeatures = getCenteredWindowFeatures(1000, 800);
     const viewWindow = window.open('', '_blank', windowFeatures);
-    if (viewWindow) {
+    
+    if (viewWindow && !viewWindow.closed) {
+        // Pop-up permitido
         viewWindow.document.write(`
             <html>
                 <head>
@@ -166,13 +206,13 @@ export const viewPDF = (base64: string, fileName: string = 'documento.pdf') => {
                             justify-content: center;
                             align-items: center;
                             height: 100vh;
-                            background: #f0f0f0;
+                            background: #2d3748;
                         }
                         iframe { 
                             width: 100%; 
                             height: 100%; 
                             border: none;
-                            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
                         }
                     </style>
                 </head>
@@ -182,8 +222,17 @@ export const viewPDF = (base64: string, fileName: string = 'documento.pdf') => {
             </html>
         `);
         viewWindow.document.close();
-        
-        // Foca na nova janela
         viewWindow.focus();
+    } else {
+        // Pop-up bloqueado - abre em nova aba simples
+        console.warn('Pop-up bloqueado, abrindo em nova aba');
+        const pdfUrl = `data:application/pdf;base64,${base64}`;
+        const newTab = window.open(pdfUrl, '_blank');
+        
+        if (!newTab) {
+            // Completamente bloqueado - mostra alerta e faz download
+            alert('Pop-ups estão bloqueados. Baixando o PDF automaticamente.');
+            downloadPDF(base64, fileName);
+        }
     }
 };
