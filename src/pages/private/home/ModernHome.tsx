@@ -319,11 +319,9 @@ export const ModernHome = () => {
                                         </div>
                                         <div>
                                             <p className="font-semibold text-green-900 dark:text-green-100">
-                                                Receba Fatura Semanal dos objetos postados
+                                                Pós Venda sem complicação          
                                             </p>
-                                            <p className="text-sm text-green-700 dark:text-green-300">
-                                                Controle total do seu fluxo de caixa
-                                            </p>
+                                            <p className="text-sm text-green-700 dark:text-green-300">Atualizamos o destinatário do status da encomenda                  </p>
                                         </div>
                                     </div>
                                     <div className="flex items-start gap-3">
@@ -345,24 +343,16 @@ export const ModernHome = () => {
                                         </div>
                                         <div>
                                             <p className="font-semibold text-green-900 dark:text-green-100">
-                                                Sem custos adicionais
+                                                Suporte 24x7   
                                             </p>
-                                            <p className="text-sm text-green-700 dark:text-green-300">
-                                                Transparência total nos valores
-                                            </p>
+                                            <p className="text-sm text-green-700 dark:text-green-300">Realizamos suporte completo para o destinatárioe remetente                  </p>
                                         </div>
                                     </div>
                                     <div className="flex items-start gap-3">
-                                        <div className="p-1 bg-green-600 rounded-full mt-1">
-                                            <Clock className="h-4 w-4 text-white" />
-                                        </div>
+                                        
                                         <div>
-                                            <p className="font-semibold text-green-900 dark:text-green-100">
-                                                Pague semanalmente apenas pelos objetos postados
-                                            </p>
-                                            <p className="text-sm text-green-700 dark:text-green-300">
-                                                Flexibilidade no pagamento
-                                            </p>
+                                            
+                                            
                                         </div>
                                     </div>
                                 </div>
