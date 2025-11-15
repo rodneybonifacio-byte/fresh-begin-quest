@@ -47,14 +47,13 @@ serve(async (req) => {
 
     console.log('Recarga encontrada:', recarga.id, 'valor:', recarga.valor);
 
-    // 2. Atualizar status da recarga para pago
+    // 2. Atualizar status da recarga para pago usando função segura
     const { error: updateError } = await supabase
-      .from('recargas_pix')
-      .update({
-        status: 'pago',
-        data_pagamento: horario || new Date().toISOString()
-      })
-      .eq('id', recarga.id);
+      .rpc('atualizar_status_recarga', {
+        p_recarga_id: recarga.id,
+        p_novo_status: 'pago',
+        p_data_pagamento: horario || new Date().toISOString()
+      });
 
     if (updateError) {
       console.error('Erro ao atualizar recarga:', updateError);
