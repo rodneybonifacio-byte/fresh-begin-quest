@@ -1,9 +1,9 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { LogoApp } from "../../../components/logo";
-import * as yup from 'yup'
+import * as yup from 'yup';
 import { useForm } from "react-hook-form";
-import { yupResolver } from '@hookform/resolvers/yup'
+import { yupResolver } from '@hookform/resolvers/yup';
 import { CustomHttpClient } from "../../../utils/http-axios-client";
 import { ResponseLogin } from "../../../types/responseLogin";
 import { toast } from "sonner";
@@ -13,54 +13,59 @@ import { ButtonComponent } from "../../../components/button";
 import { InputLabel } from "../../../components/input-label";
 import { getRedirectPathByRole } from "../../../utils/auth.utils";
 import { ThemeToggle } from "../../../components/theme/ThemeToggle";
-
 const loginSchame = yup.object({
-    email: yup.string().required("Informe seu email."),
-    password: yup.string().required("Informa sua password.")
-})
-
+  email: yup.string().required("Informe seu email."),
+  password: yup.string().required("Informa sua password.")
+});
 type LoginFormData = yup.InferType<typeof loginSchame>;
-
 export const Login = () => {
-    const location = useLocation();
-    const navigate = useNavigate();
-    const [isLoading, setIsLoading] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+  const clientHttp = new CustomHttpClient();
+  const {
+    register,
+    handleSubmit,
+    formState: {
+      errors
+    },
+    reset
+  } = useForm<LoginFormData>({
+    resolver: yupResolver(loginSchame)
+  });
+  const onSubmit = async (data: LoginFormData) => {
+    try {
+      setIsLoading(true);
+      const response = await clientHttp.post<ResponseLogin>(`login`, {
+        email: data.email,
+        password: data.password
+      });
 
-    const clientHttp = new CustomHttpClient();
-
-    const { register, handleSubmit, formState: { errors }, reset } = useForm<LoginFormData>({
-        resolver: yupResolver(loginSchame)
-    });
-    const onSubmit = async (data: LoginFormData) => {
-        try {
-            setIsLoading(true);
-            const response = await clientHttp.post<ResponseLogin>(`login`, {
-                email: data.email,
-                password: data.password,
-            });
-
-            // Exemplo: Armazenar o token no localStorage
-            if (response.token) {
-                localStorage.setItem("token", response.token);
-                authStore.login({ email: data.email, token: response.token })
-                reset()
-
-                const from = location.state?.from?.pathname + location.state?.from?.search || getRedirectPathByRole();
-                navigate(from, { replace: true });
-            } else {
-                toast.error("Login falhou. Verifique suas credenciais.", { position: "top-center" });
-            }
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    if (isLoading) {
-        return <LoadSpinner mensagem="Aguarde, Autenticando suas credenciais..." />
+      // Exemplo: Armazenar o token no localStorage
+      if (response.token) {
+        localStorage.setItem("token", response.token);
+        authStore.login({
+          email: data.email,
+          token: response.token
+        });
+        reset();
+        const from = location.state?.from?.pathname + location.state?.from?.search || getRedirectPathByRole();
+        navigate(from, {
+          replace: true
+        });
+      } else {
+        toast.error("Login falhou. Verifique suas credenciais.", {
+          position: "top-center"
+        });
+      }
+    } finally {
+      setIsLoading(false);
     }
-
-    return (
-        <div className="w-full min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-background via-background to-accent/10 relative overflow-hidden">
+  };
+  if (isLoading) {
+    return <LoadSpinner mensagem="Aguarde, Autenticando suas credenciais..." />;
+  }
+  return <div className="w-full min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-background via-background to-accent/10 relative overflow-hidden">
             {/* Decorative circles */}
             <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
             <div className="absolute bottom-0 left-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
@@ -75,7 +80,7 @@ export const Login = () => {
                 {/* Logo Section */}
                 <div className="flex flex-col items-center gap-3 mb-8">
                     <div className="p-4 bg-primary/10 rounded-2xl">
-                        <LogoApp light/>
+                        <LogoApp light />
                     </div>
                     <div className="text-center">
                         <h1 className="text-2xl font-bold text-foreground mb-2">Bem-vindo de volta</h1>
@@ -87,62 +92,30 @@ export const Login = () => {
                 <div className="bg-card border border-border rounded-2xl shadow-xl p-6 sm:p-8 backdrop-blur-sm">
                     <form method="POST" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
                         <div className="space-y-4">
-                            <InputLabel 
-                                labelTitulo="Email" 
-                                type="email" 
-                                autoComplete="username" 
-                                fieldError={errors.email?.message}
-                                {...register("email")}
-                            />
+                            <InputLabel labelTitulo="Email" type="email" autoComplete="username" fieldError={errors.email?.message} {...register("email")} />
                             
-                            <InputLabel 
-                                labelTitulo="Senha" 
-                                type="password" 
-                                autoComplete="current-password" 
-                                fieldError={errors.password?.message}
-                                isPassword={true}
-                                {...register("password")}
-                            />
+                            <InputLabel labelTitulo="Senha" type="password" autoComplete="current-password" fieldError={errors.password?.message} isPassword={true} {...register("password")} />
                         </div>
 
                         <div className="flex items-center justify-between text-sm">
                             <label className="flex items-center gap-2 cursor-pointer group">
-                                <input 
-                                    type="checkbox" 
-                                    className="w-4 h-4 rounded border-input bg-background text-primary focus:ring-2 focus:ring-primary focus:ring-offset-0 transition-colors" 
-                                    id="rememberMe"
-                                />
+                                <input type="checkbox" className="w-4 h-4 rounded border-input bg-background text-primary focus:ring-2 focus:ring-primary focus:ring-offset-0 transition-colors" id="rememberMe" />
                                 <span className="text-muted-foreground group-hover:text-foreground transition-colors">Lembrar-me</span>
                             </label>
-                            <Link 
-                                to="/recuperar-senha" 
-                                className="text-primary hover:text-primary/80 font-medium transition-colors"
-                            >
+                            <Link to="/recuperar-senha" className="text-primary hover:text-primary/80 font-medium transition-colors">
                                 Esqueceu a senha?
                             </Link>
                         </div>
 
-                        <ButtonComponent 
-                            type="submit" 
-                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-3 rounded-xl font-semibold shadow-lg shadow-primary/20 transition-all hover:shadow-xl hover:shadow-primary/30 hover:-translate-y-0.5"
-                        >
+                        <ButtonComponent type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-3 rounded-xl font-semibold shadow-lg shadow-primary/20 transition-all hover:shadow-xl hover:shadow-primary/30 hover:-translate-y-0.5">
                             Entrar
                         </ButtonComponent>
                     </form>
 
                     <div className="mt-6 pt-6 border-t border-border text-center">
-                        <p className="text-sm text-muted-foreground">
-                            Não tem uma conta?{' '}
-                            <Link 
-                                to="/cadastro" 
-                                className="text-primary hover:text-primary/80 font-semibold transition-colors"
-                            >
-                                Criar conta
-                            </Link>
-                        </p>
+                        
                     </div>
                 </div>
             </div>
-        </div>
-    )
-}
+        </div>;
+};
