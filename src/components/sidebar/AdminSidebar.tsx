@@ -1,6 +1,5 @@
 import { Archive, ClipboardList, FileBarChart, FilePen, FileStack, Home, Package, Settings, Truck, UsersRound, Wallet } from 'lucide-react';
 import { observer } from 'mobx-react-lite';
-import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { SidebarLayout } from './SidebarLayout';
 
@@ -13,11 +12,7 @@ const AdminSidebar = observer(({
     onClose?: () => void;
     onNavigate?: (page: string) => void;
 }) => {
-    const [isSidebarOpen, _setIsSidebarOpen] = useState(true);
     const location = useLocation();
-
-    // Em mobile, usa o estado passado como prop, em desktop usa o estado interno
-    const sidebarOpen = typeof isOpen !== 'undefined' ? isOpen : isSidebarOpen;
 
     // Determinar qual item está ativo baseado na rota atual
     const isPathActive = (path: string) => {
@@ -126,15 +121,6 @@ const AdminSidebar = observer(({
 
     return (
         <>
-            {/* Overlay para mobile - só aparece quando sidebar está aberto */}
-            {sidebarOpen && (
-                <div
-                    className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-                    onClick={onClose}
-                />
-            )}
-
-            {/* Sidebar */}
             <SidebarLayout navItems={navItems} isOpen={isOpen} onClose={onClose} onNavigate={onNavigate} title="BRHUB" />
         </>
     );

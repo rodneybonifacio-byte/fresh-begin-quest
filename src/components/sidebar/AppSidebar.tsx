@@ -2,7 +2,6 @@ import {
     Archive, CloudDownload, FileBarChart, FileSpreadsheet, FileStack, Home,
     PlugZap, Printer, Receipt, ReceiptText, Settings, Truck, UsersRound, Wallet, DollarSign
 } from 'lucide-react';
-import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { observer } from 'mobx-react-lite';
 import { SidebarLayout } from './SidebarLayout';
@@ -16,11 +15,7 @@ const AppSidebar = observer(({
     onClose?: () => void;
     onNavigate?: (page: string) => void;
 }) => {
-    const [isSidebarOpen, _setIsSidebarOpen] = useState(true);
     const location = useLocation();
-
-    // Em mobile, usa o estado passado como prop, em desktop usa o estado interno
-    const sidebarOpen = typeof isOpen !== 'undefined' ? isOpen : isSidebarOpen;
 
     // Determinar qual item está ativo baseado na rota atual
     const isPathActive = (path: string) => {
@@ -134,15 +129,6 @@ const AppSidebar = observer(({
 
     return (
         <>
-            {/* Overlay para mobile - só aparece quando sidebar está aberto */}
-            {sidebarOpen && (
-                <div
-                    className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-                    onClick={onClose}
-                />
-            )}
-
-            {/* Sidebar */}
             <SidebarLayout navItems={navItems} isOpen={isOpen} onClose={onClose} onNavigate={onNavigate} title="BRHUB" />
         </>
     );
