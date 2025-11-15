@@ -100,6 +100,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      atualizar_status_recarga: {
+        Args: {
+          p_data_pagamento?: string
+          p_novo_status: string
+          p_recarga_id: string
+        }
+        Returns: boolean
+      }
       buscar_resumo_transacoes: {
         Args: {
           p_cliente_id: string
