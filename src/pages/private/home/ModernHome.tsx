@@ -77,7 +77,7 @@ export const ModernHome = () => {
                 <div className="grid lg:grid-cols-2 gap-12 items-center mb-16">
                     {/* Left Column - Text */}
                     <div className="space-y-6 animate-fade-in">
-                        <h1 className="text-5xl lg:text-6xl font-bold leading-tight">
+                        <h1 className="text-3xl sm:text-4xl lg:text-6xl font-bold leading-tight">
                             Calcular frete e emitir com{" "}
                             <span className="text-primary">desconto</span>
                         </h1>

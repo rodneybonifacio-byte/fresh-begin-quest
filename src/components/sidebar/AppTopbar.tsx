@@ -5,7 +5,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { observer } from 'mobx-react-lite';
 import authStore from '../../authentica/authentication.store';
 import { useTheme } from '../../providers/ThemeContext';
-import { LogoApp } from '../logo';
 const AppTopbar = observer(({
   toggleSidebar
 }: {
