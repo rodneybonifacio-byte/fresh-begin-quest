@@ -124,51 +124,11 @@ serve(async (req: Request) => {
       senha: '***'
     }))
 
-    // Autenticar na API para obter o token
-    console.log('Autenticando na API...')
-    console.log('URL de autenticação:', `${baseApiUrl}/login`)
-    
-    const loginPayload = {
-      login: 'financeiro@brhubb.com.br',
-      senha: 'Senh@de16letras'
-    }
-    console.log('Payload de autenticação:', JSON.stringify({...loginPayload, senha: '***'}))
-    
-    const loginResponse = await fetch(`${baseApiUrl}/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(loginPayload),
-    })
-
-    console.log('Status da autenticação:', loginResponse.status)
-    console.log('Headers da resposta:', Object.fromEntries(loginResponse.headers.entries()))
-    
-    const loginText = await loginResponse.text()
-    console.log('Resposta da autenticação:', loginText)
-
-    if (!loginResponse.ok) {
-      console.error('Erro na autenticação - Status:', loginResponse.status, '- Resposta:', loginText)
-      throw new Error(`Erro ao autenticar (${loginResponse.status}): ${loginText}`)
-    }
-
-    const loginData = JSON.parse(loginText)
-    const token = loginData.token
-    
-    if (!token) {
-      console.error('Token não encontrado na resposta:', loginData)
-      throw new Error('Token de autenticação não encontrado na resposta')
-    }
-    
-    console.log('Autenticação realizada com sucesso, token obtido')
-
-    // Criar cliente na API externa com o token de autenticação
+    // Criar cliente na API externa
     const response = await fetch(`${baseApiUrl}/clientes`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify(clienteData),
     })
