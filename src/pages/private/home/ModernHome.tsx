@@ -227,21 +227,7 @@ export const ModernHome = () => {
                         </div>
 
                         {/* Tabela de Frete Exclusiva */}
-                        <div className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950/30 dark:to-orange-900/20 border-2 border-orange-200 dark:border-orange-800 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 hover:scale-105">
-                            <div className="flex items-start gap-4">
-                                <div className="p-3 bg-orange-600 rounded-xl">
-                                    <DollarSign className="h-6 w-6 text-white" />
-                                </div>
-                                <div className="flex-1">
-                                    <h3 className="text-lg font-bold mb-2 text-orange-900 dark:text-orange-100">
-                                        Tabela de Frete Exclusiva
-                                    </h3>
-                                    <p className="text-sm text-orange-700 dark:text-orange-300">
-                                        Tabela competitiva para lojistas VESTI sem custos extras
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
+                        
 
                         {/* Coleta na Loja */}
                         <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-950/30 dark:to-indigo-900/20 border-2 border-indigo-200 dark:border-indigo-800 rounded-2xl p-6 hover:shadow-xl transition-all duration-300 hover:scale-105">
