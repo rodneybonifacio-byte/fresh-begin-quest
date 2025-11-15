@@ -54,7 +54,7 @@ serve(async (req: Request) => {
     // Preparar dados do cliente com todas as configurações padrão
     const clienteData = {
       nomeEmpresa: body.nomeEmpresa,
-      nomResponsavel: body.nomeResponsavel,
+      nomeResponsavel: body.nomeResponsavel,
       cpfCnpj: body.cpfCnpj,
       email: body.email,
       senha: body.senha,
