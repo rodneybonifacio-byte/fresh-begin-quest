@@ -4,7 +4,7 @@ import { EmissaoService } from "../services/EmissaoService";
 import type { IResponse } from "../types/IResponse";
 import { useEffect, useState } from "react";
 import type { IEmissao } from "../types/IEmissao";
-import { viewPDF } from "../utils/pdfUtils";
+import { printPDF } from "../utils/pdfUtils";
 
 type TipoEtiqueta = 'etiqueta' | 'declaracao' | 'merge';
 
@@ -103,7 +103,7 @@ export const useImprimirEtiquetaPDF = () => {
         }
     };
 
-    // Nova função simplificada que abre automaticamente
+    // Função que abre automaticamente para impressão
     const onEmissaoVisualizarPDF = async (
         data: IEmissao,
         typeEtiqueta: TipoEtiqueta,
@@ -120,10 +120,10 @@ export const useImprimirEtiquetaPDF = () => {
             if (typeEtiqueta === 'merge')
                 etiquetaResponse = await mutationMerge.mutateAsync(data);
 
-            // Abre o PDF automaticamente em nova janela
+            // Abre o PDF automaticamente para impressão
             if (etiquetaResponse.data?.dados) {
                 const fileName = etiquetaResponse.data.nome || `${typeEtiqueta}.pdf`;
-                viewPDF(etiquetaResponse.data.dados, fileName);
+                printPDF(etiquetaResponse.data.dados, fileName);
             }
 
             onIsLoadingCadastro(false);
