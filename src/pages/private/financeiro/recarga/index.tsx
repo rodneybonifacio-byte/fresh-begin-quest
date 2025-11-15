@@ -39,8 +39,15 @@ export default function Recarga() {
     const { data: ultimaRecarga } = useFetchQuery(
         ['ultima-recarga'],
         async () => {
-            const recargas = await RecargaPixService.buscarRecargas(1);
-            return recargas.find(r => r.status === 'pago');
+            console.log('🔍 Buscando última recarga...');
+            const recargas = await RecargaPixService.buscarRecargas(10);
+            console.log('📊 Recargas encontradas:', recargas?.length || 0);
+            console.log('📋 Recargas:', recargas);
+            
+            const ultimaPaga = recargas.find(r => r.status === 'pago');
+            console.log('💳 Última recarga paga:', ultimaPaga);
+            
+            return ultimaPaga || null;
         },
         {
             refetchOnWindowFocus: true,
