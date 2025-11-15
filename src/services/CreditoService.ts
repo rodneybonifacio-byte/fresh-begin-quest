@@ -86,30 +86,29 @@ export class CreditoService extends BaseService<ITransacaoCredito> {
     }
 
     /**
-     * Obtém o extrato de transações do cliente
+     * Obtém o extrato de transações do cliente usando Edge Function
      */
-    async obterExtrato(clienteId: string, limit: number = 50): Promise<ITransacaoCredito[]> {
+    async obterExtrato(clienteId: string): Promise<ITransacaoCredito[]> {
         try {
-            console.log('🔍 Buscando extrato para cliente:', clienteId);
+            console.log('🔍 Buscando extrato via Edge Function para:', clienteId);
             
-            // Usar cliente Supabase padrão (não precisa de autenticação para RPC com SECURITY DEFINER)
             const supabase = getSupabaseWithAuth();
-            const { data, error } = await supabase.rpc('buscar_transacoes_cliente', {
-                p_cliente_id: clienteId,
-                p_limit: limit
+            const { data, error } = await supabase.functions.invoke('buscar-extrato', {
+                body: { clienteId }
             });
 
             if (error) {
-                console.error('❌ Erro RPC:', error);
+                console.error('❌ Erro Edge Function:', error);
                 return [];
             }
             
-            console.log('✅ RPC retornou:', data?.length || 0, 'transações');
-            if (data && data.length > 0) {
-                console.log('📄 Primeira transação do RPC:', data[0]);
+            if (!data?.success) {
+                console.error('❌ Edge Function retornou erro:', data?.error);
+                return [];
             }
-            
-            return (data || []) as ITransacaoCredito[];
+
+            console.log('✅ Edge Function retornou:', data.transacoes?.length || 0, 'transações');
+            return (data.transacoes || []) as ITransacaoCredito[];
         } catch (error) {
             console.error('💥 Erro ao buscar extrato:', error);
             return [];
@@ -117,21 +116,19 @@ export class CreditoService extends BaseService<ITransacaoCredito> {
     }
 
     /**
-     * Obtém o resumo de transações por período
+     * Obtém o resumo de transações usando Edge Function
      */
-    async obterResumo(clienteId: string, dataInicio?: string, dataFim?: string) {
+    async obterResumo(clienteId: string) {
         try {
-            console.log('🔍 Buscando resumo para cliente:', clienteId);
+            console.log('🔍 Buscando resumo via Edge Function para:', clienteId);
             
             const supabase = getSupabaseWithAuth();
-            const { data, error } = await supabase.rpc('buscar_resumo_transacoes', {
-                p_cliente_id: clienteId,
-                p_data_inicio: dataInicio,
-                p_data_fim: dataFim
+            const { data, error } = await supabase.functions.invoke('buscar-extrato', {
+                body: { clienteId }
             });
 
-            if (error) {
-                console.error('❌ Erro RPC resumo:', error);
+            if (error || !data?.success) {
+                console.error('❌ Erro ao buscar resumo:', error || data?.error);
                 return {
                     totalRecargas: 0,
                     totalConsumos: 0,
@@ -141,28 +138,11 @@ export class CreditoService extends BaseService<ITransacaoCredito> {
                 };
             }
 
-            console.log('✅ RPC resumo retornou:', data?.length || 0, 'registros');
-
-            // Calcular totais
-            const recargas = data?.filter((t: any) => t.tipo === 'recarga') || [];
-            const consumos = data?.filter((t: any) => t.tipo === 'consumo') || [];
-
-            const totalRecargas = recargas.reduce((sum: number, t: any) => sum + Number(t.valor), 0);
-            const totalConsumos = consumos.reduce((sum: number, t: any) => sum + Math.abs(Number(t.valor)), 0);
-
-            console.log('📈 Resumo:', { 
-                totalRecargas, 
-                totalConsumos, 
-                qtdRecargas: recargas.length, 
-                qtdConsumos: consumos.length 
-            });
-
+            console.log('✅ Resumo retornado:', data.resumo);
+            
             return {
-                totalRecargas,
-                totalConsumos,
-                quantidadeRecargas: recargas.length,
-                quantidadeConsumos: consumos.length,
-                transacoes: data
+                ...data.resumo,
+                transacoes: data.transacoes || []
             };
         } catch (error) {
             console.error('💥 Erro ao obter resumo:', error);
