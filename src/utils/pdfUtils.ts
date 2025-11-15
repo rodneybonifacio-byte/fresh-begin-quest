@@ -96,57 +96,39 @@ export const printPDF = (base64: string, fileName: string = 'documento.pdf') => 
         return;
     }
 
-    console.log('🔄 [printPDF] Tentando abrir janela...');
+    // Converte base64 para Blob
+    const byteCharacters = atob(base64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: 'application/pdf' });
+    const blobUrl = URL.createObjectURL(blob);
+
+    console.log('🔄 [printPDF] Blob URL criado:', blobUrl);
+
     // Tenta abrir em nova janela primeiro
     const windowFeatures = getCenteredWindowFeatures(800, 600);
-    const printWindow = window.open('', '_blank', windowFeatures);
+    const printWindow = window.open(blobUrl, '_blank', windowFeatures);
     
     if (printWindow && !printWindow.closed) {
         console.log('✅ [printPDF] Janela aberta com sucesso');
-        // Pop-up permitido - usa janela normal
-        printWindow.document.write(`
-            <html>
-                <head>
-                    <title>Imprimir ${fileName}</title>
-                    <style>
-                        body { 
-                            margin: 0; 
-                            padding: 0; 
-                            display: flex;
-                            justify-content: center;
-                            align-items: center;
-                            height: 100vh;
-                            background: #f0f0f0;
-                        }
-                        iframe { 
-                            width: 100%; 
-                            height: 100%; 
-                            border: none;
-                            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                        }
-                        @media print {
-                            body { background: white; }
-                            iframe { box-shadow: none; }
-                        }
-                    </style>
-                </head>
-                <body>
-                    <iframe src="data:application/pdf;base64,${base64}"></iframe>
-                    <script>
-                        window.addEventListener('load', function() {
-                            setTimeout(function() {
-                                window.print();
-                            }, 1000);
-                        });
-                    </script>
-                </body>
-            </html>
-        `);
-        printWindow.document.close();
-        printWindow.focus();
+        
+        // Espera carregar e abre o diálogo de impressão
+        printWindow.addEventListener('load', () => {
+            setTimeout(() => {
+                printWindow.print();
+                
+                // Limpa o blob URL após impressão
+                printWindow.addEventListener('afterprint', () => {
+                    URL.revokeObjectURL(blobUrl);
+                });
+            }, 500);
+        });
     } else {
         // Pop-up bloqueado - usa iframe invisível
-        console.warn('Pop-up bloqueado, usando método alternativo');
+        console.warn('⚠️ [printPDF] Pop-up bloqueado, usando iframe');
         
         const iframe = document.createElement('iframe');
         iframe.style.position = 'fixed';
@@ -155,33 +137,22 @@ export const printPDF = (base64: string, fileName: string = 'documento.pdf') => 
         iframe.style.width = '0';
         iframe.style.height = '0';
         iframe.style.border = 'none';
+        iframe.src = blobUrl;
         
         document.body.appendChild(iframe);
         
-        const iframeDoc = iframe.contentWindow?.document;
-        if (iframeDoc) {
-            iframeDoc.open();
-            iframeDoc.write(`
-                <html>
-                    <head><title>Imprimir ${fileName}</title></head>
-                    <body style="margin: 0;">
-                        <embed src="data:application/pdf;base64,${base64}" type="application/pdf" width="100%" height="100%">
-                    </body>
-                </html>
-            `);
-            iframeDoc.close();
-            
-            iframe.onload = () => {
+        iframe.onload = () => {
+            setTimeout(() => {
+                iframe.contentWindow?.focus();
+                iframe.contentWindow?.print();
+                
+                // Remove iframe e limpa blob após impressão
                 setTimeout(() => {
-                    iframe.contentWindow?.focus();
-                    iframe.contentWindow?.print();
-                    
-                    setTimeout(() => {
-                        document.body.removeChild(iframe);
-                    }, 1000);
-                }, 500);
-            };
-        }
+                    document.body.removeChild(iframe);
+                    URL.revokeObjectURL(blobUrl);
+                }, 1000);
+            }, 500);
+        };
     }
 };
 
