@@ -20,7 +20,7 @@ export const LayoutBase = () => {
             <AppSidebar isOpen={sidebarOpen} onClose={closeSidebar} />
 
             {/* Main content area */}
-            <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-1 flex flex-col overflow-hidden relative z-10">
                 {/* Topbar - apenas mobile */}
                 <div className="lg:hidden">
                     <AppTopbar toggleSidebar={toggleSidebar} />
