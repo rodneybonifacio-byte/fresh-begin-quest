@@ -17,6 +17,7 @@ import { NovaSenhaPage } from '../pages/site/login/nova-senha';
 import { RelatorioDesempenho } from '../pages/site/RelatorioDesempenho';
 import FaturaSimple from '../pages/site/FaturaSimple';
 import VisualizarPdf from '../pages/site/VisualizarPdf';
+import { CadastroCliente } from '../pages/site/cadastro/cadastro-cliente';
 import authStore from '../authentica/authentication.store';
 import { getRedirectPathByRole } from '../utils/auth.utils';
 
@@ -48,6 +49,7 @@ export const RouterBase = () => {
                 <Route element={<RotaPublica />}>
                     <Route path="/login" element={<Login />} />
                     <Route path="/recuperar-senha" element={<RecuperarSenha />} />
+                    <Route path="/cadastro-cliente" element={<CadastroCliente />} />
                 </Route>
 
                 {/* Grupo /app */}

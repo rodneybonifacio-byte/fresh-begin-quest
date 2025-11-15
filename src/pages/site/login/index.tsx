@@ -112,8 +112,17 @@ export const Login = () => {
                         </ButtonComponent>
                     </form>
 
-                    <div className="mt-6 pt-6 border-t border-border text-center">
-                        
+                    <div className="mt-6 pt-6 border-t border-border">
+                        <div className="text-center mb-4">
+                            <span className="text-sm text-muted-foreground">Novo por aqui?</span>
+                        </div>
+                        <ButtonComponent 
+                            type="button"
+                            onClick={() => navigate('/cadastro-cliente')}
+                            className="w-full bg-secondary hover:bg-secondary/80 text-secondary-foreground py-3 rounded-xl font-semibold transition-all hover:-translate-y-0.5"
+                        >
+                            Criar Conta
+                        </ButtonComponent>
                     </div>
                 </div>
             </div>
