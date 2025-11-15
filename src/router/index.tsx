@@ -1,9 +1,8 @@
-import { Routes, Route } from 'react-router-dom';
-import { Home } from '../pages/site/home';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { Login } from '../pages/site/login';
 import { RotaPublica } from '../RotaPublica';
 import { RotaPrivada } from '../RotaPrivada';
-import { AppRoutes } from './app.routes'; // ⬅ importado aqui
+import { AppRoutes } from './app.routes';
 import { AdminRoutes } from './admin.routes';
 import { ErrorPage } from '../components/Error';
 import { RastreioPublica } from '../pages/site/rastreio';
@@ -18,13 +17,22 @@ import { NovaSenhaPage } from '../pages/site/login/nova-senha';
 import { RelatorioDesempenho } from '../pages/site/RelatorioDesempenho';
 import FaturaSimple from '../pages/site/FaturaSimple';
 import VisualizarPdf from '../pages/site/VisualizarPdf';
+import authStore from '../authentica/authentication.store';
+import { getRedirectPathByRole } from '../utils/auth.utils';
+
+const RootRedirect = () => {
+    if (authStore.isLoggedIn()) {
+        return <Navigate to={getRedirectPathByRole()} replace />;
+    }
+    return <Navigate to="/login" replace />;
+};
 
 export const RouterBase = () => {
     return (
         <div className="bg-gray-50 dark:bg-slate-900">
             <Routes>
                 {/* Público */}
-                <Route index element={<Home />} />
+                <Route index element={<RootRedirect />} />
                 <Route path="/error" element={<ErrorPage id={404} />} />
                 <Route path="*" element={<ErrorPage id={404} />} />
                 <Route path="/relatorio-desempenho" element={<RelatorioDesempenho />} />
