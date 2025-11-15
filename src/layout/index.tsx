@@ -15,12 +15,20 @@ export const LayoutBase = () => {
     };
 
     return (
-        <div className="flex h-screen w-full bg-background">
+        <div className="flex h-screen w-full bg-background relative">
+            {/* Overlay - apenas mobile */}
+            {sidebarOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+                    onClick={closeSidebar}
+                />
+            )}
+
             {/* Sidebar */}
             <AppSidebar isOpen={sidebarOpen} onClose={closeSidebar} />
 
             {/* Main content area */}
-            <div className="flex-1 flex flex-col overflow-hidden relative z-10">
+            <div className="flex-1 flex flex-col overflow-hidden">
                 {/* Topbar - apenas mobile */}
                 <div className="lg:hidden">
                     <AppTopbar toggleSidebar={toggleSidebar} />

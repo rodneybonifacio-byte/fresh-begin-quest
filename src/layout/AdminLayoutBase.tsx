@@ -15,7 +15,15 @@ export const AdminLayoutBase = () => {
     };
 
     return (
-        <div className="flex h-screen bg-background">
+        <div className="flex h-screen w-full bg-background relative">
+            {/* Overlay - apenas mobile */}
+            {sidebarOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+                    onClick={closeSidebar}
+                />
+            )}
+
             {/* Admin Sidebar */}
             <AdminSidebar isOpen={sidebarOpen} onClose={closeSidebar} />
 
