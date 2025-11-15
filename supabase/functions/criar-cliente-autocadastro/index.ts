@@ -124,11 +124,35 @@ serve(async (req: Request) => {
       senha: '***'
     }))
 
-    // Criar cliente na API externa
+    // Autenticar na API para obter o token
+    console.log('Autenticando na API...')
+    const loginResponse = await fetch(`${baseApiUrl}/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: 'financeiro@brhubb.com.br',
+        senha: 'Senh@de16letras'
+      }),
+    })
+
+    if (!loginResponse.ok) {
+      const errorText = await loginResponse.text()
+      console.error('Erro na autenticação:', errorText)
+      throw new Error(`Erro ao autenticar: ${errorText}`)
+    }
+
+    const loginData = await loginResponse.json()
+    const token = loginData.token
+    console.log('Autenticação realizada com sucesso')
+
+    // Criar cliente na API externa com o token de autenticação
     const response = await fetch(`${baseApiUrl}/clientes`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify(clienteData),
     })
