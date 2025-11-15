@@ -128,7 +128,7 @@ export const ModernHome = () => {
                 })} className="w-full px-3 py-2 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary text-sm" />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium mb-2">Comprim. (cm)</label>
+                                    <label className="block text-xs font-medium mb-2">Comp. (cm)</label>
                                     <input type="number" placeholder="16" value={freteData.comprimento} onChange={e => setFreteData({
                   ...freteData,
                   comprimento: e.target.value
