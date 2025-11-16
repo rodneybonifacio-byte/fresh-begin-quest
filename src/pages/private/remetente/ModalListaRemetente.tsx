@@ -21,16 +21,29 @@ export const ModalListaRemetente: React.FC<{ isOpen: boolean; onCancel: () => vo
     const [busca, setBusca] = useState('');
     const service = new RemetenteService();
 
-    const { data: remetentes, isLoading: isLoadingRemetentes } = useFetchQuery<IRemetente[]>(
+    console.log('🔍 Modal Remetente - User:', user);
+    console.log('🔍 Modal Remetente - ClienteId:', user?.clienteId);
+    console.log('🔍 Modal Remetente - isOpen:', isOpen);
+
+    const { data: remetentes, isLoading: isLoadingRemetentes, error } = useFetchQuery<IRemetente[]>(
         ['remetentes', user?.clienteId],
         async () => {
-            if (!user?.clienteId) return [];
+            console.log('🚀 Buscando remetentes para clienteId:', user?.clienteId);
+            if (!user?.clienteId) {
+                console.log('❌ ClienteId não disponível');
+                return [];
+            }
             const response = await service.getAll({ clienteId: user.clienteId });
+            console.log('✅ Resposta da API:', response);
             return response.data ?? [];
         },
         {
-            enabled: !!user?.clienteId
+            enabled: !!user?.clienteId && isOpen
         });
+
+    console.log('📊 Remetentes carregados:', remetentes);
+    console.log('⏳ Loading:', isLoadingRemetentes);
+    console.log('❌ Error:', error);
 
     useEffect(() => {
         if (remetentes) {
