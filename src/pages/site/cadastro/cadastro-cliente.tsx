@@ -135,14 +135,17 @@ export const CadastroCliente = () => {
                 }),
             });
 
+            let responseData: any = {};
+            try {
+                responseData = await response.json();
+            } catch (e) {
+                console.error('Erro ao fazer parse do JSON:', e);
+            }
+
             if (!response.ok) {
-                const responseData = await response.json().catch(() => ({}));
-                
                 // Verificar se é erro de CPF/CNPJ duplicado
                 const errorText = JSON.stringify(responseData).toLowerCase();
-                const isCpfCnpjDuplicado = errorText.includes('cpf') || errorText.includes('cnpj') || errorText.includes('já existe');
-                
-                setIsLoading(false); // Desligar loading antes de mostrar modal
+                const isCpfCnpjDuplicado = errorText.includes('cpf') || errorText.includes('cnpj') || errorText.includes('já existe') || errorText.includes('duplicado');
                 
                 if (isCpfCnpjDuplicado) {
                     setErrorModalMessage('Este CPF/CNPJ já está cadastrado em nosso sistema.');
@@ -166,7 +169,7 @@ export const CadastroCliente = () => {
             }, 2000);
 
         } catch (error) {
-            setIsLoading(false);
+            console.error('Erro ao criar cliente:', error);
             toast.error('Erro ao criar conta. Tente novamente.');
         } finally {
             setIsLoading(false);
