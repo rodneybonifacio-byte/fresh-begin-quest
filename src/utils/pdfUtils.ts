@@ -109,13 +109,11 @@ export const downloadPDF = (base64: string, fileName: string = 'documento.pdf') 
 };
 
 /**
- * Abre janela de impressão centralizada para o PDF
- * Inclui fallback para quando pop-ups são bloqueados
+ * Abre janela de impressão para o PDF
+ * Solução robusta que evita problemas de cross-origin
  */
 export const printPDF = (base64: string, fileName: string = 'documento.pdf') => {
     console.log('🖨️ [printPDF] Iniciando impressão');
-    console.log('📄 [printPDF] Nome do arquivo:', fileName);
-    console.log('📄 [printPDF] Base64 length:', base64?.length);
     
     if (!base64 || base64.trim() === '') {
         console.error('❌ [printPDF] Base64 do PDF está vazio');
@@ -123,72 +121,67 @@ export const printPDF = (base64: string, fileName: string = 'documento.pdf') => 
         return;
     }
 
-    // Converte base64 para Blob
-    const byteCharacters = atob(base64);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-    const blob = new Blob([byteArray], { type: 'application/pdf' });
-    const blobUrl = URL.createObjectURL(blob);
+    try {
+        // Converte base64 para Blob
+        const byteCharacters = atob(base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'application/pdf' });
+        const blobUrl = URL.createObjectURL(blob);
 
-    console.log('🔄 [printPDF] Blob URL criado:', blobUrl);
+        // Cria HTML para abrir em nova janela
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>${fileName}</title>
+                <style>
+                    body { margin: 0; padding: 0; }
+                    iframe { border: none; width: 100%; height: 100vh; }
+                </style>
+            </head>
+            <body>
+                <iframe src="${blobUrl}" onload="setTimeout(() => window.print(), 500)"></iframe>
+            </body>
+            </html>
+        `;
 
-    // Tenta abrir em nova janela primeiro
-    const windowFeatures = getCenteredWindowFeatures(800, 600);
-    const printWindow = window.open(blobUrl, '_blank', windowFeatures);
-    
-    if (printWindow && !printWindow.closed) {
-        console.log('✅ [printPDF] Janela aberta com sucesso');
-        
-        // Aguarda e dispara impressão
-        setTimeout(() => {
-            try {
-                printWindow.print();
-                
-                // Limpa o blob URL após um tempo
-                setTimeout(() => {
-                    URL.revokeObjectURL(blobUrl);
-                }, 2000);
-            } catch (e) {
-                console.error('Erro ao imprimir:', e);
-                URL.revokeObjectURL(blobUrl);
-            }
-        }, 1000);
-    } else {
-        // Pop-up bloqueado - usa iframe invisível
-        console.warn('⚠️ [printPDF] Pop-up bloqueado, usando iframe');
-        
-        const iframe = document.createElement('iframe');
-        iframe.style.position = 'fixed';
-        iframe.style.right = '0';
-        iframe.style.bottom = '0';
-        iframe.style.width = '0';
-        iframe.style.height = '0';
-        iframe.style.border = 'none';
-        iframe.src = blobUrl;
-        
-        document.body.appendChild(iframe);
-        
-        iframe.onload = () => {
+        const printBlob = new Blob([htmlContent], { type: 'text/html' });
+        const printUrl = URL.createObjectURL(printBlob);
+
+        // Abre em nova janela
+        const windowFeatures = getCenteredWindowFeatures(800, 600);
+        const printWindow = window.open(printUrl, '_blank', windowFeatures);
+
+        if (printWindow) {
+            console.log('✅ [printPDF] Janela de impressão aberta');
+            
+            // Limpa URLs após um tempo
             setTimeout(() => {
-                try {
-                    iframe.contentWindow?.focus();
-                    iframe.contentWindow?.print();
-                } catch (e) {
-                    console.error('Erro ao imprimir via iframe:', e);
-                }
-                
-                // Remove iframe e limpa blob após impressão
-                setTimeout(() => {
-                    if (document.body.contains(iframe)) {
-                        document.body.removeChild(iframe);
-                    }
-                    URL.revokeObjectURL(blobUrl);
-                }, 1000);
-            }, 500);
-        };
+                URL.revokeObjectURL(blobUrl);
+                URL.revokeObjectURL(printUrl);
+            }, 5000);
+        } else {
+            console.warn('⚠️ [printPDF] Pop-up bloqueado');
+            
+            // Fallback: faz download
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            alert('Bloqueador de pop-ups ativo. O arquivo foi baixado - abra e imprima manualmente.');
+            
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+        }
+    } catch (error) {
+        console.error('❌ [printPDF] Erro:', error);
+        alert('Erro ao preparar impressão. Tente novamente.');
     }
 };
 
