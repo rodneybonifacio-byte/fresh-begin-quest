@@ -59,6 +59,69 @@ export type Database = {
         }
         Relationships: []
       }
+      remetentes: {
+        Row: {
+          atualizado_em: string | null
+          bairro: string | null
+          celular: string | null
+          cep: string | null
+          cliente_id: string
+          complemento: string | null
+          cpf_cnpj: string
+          criado_em: string | null
+          documento_estrangeiro: string | null
+          email: string | null
+          id: string
+          localidade: string | null
+          logradouro: string | null
+          nome: string
+          numero: string | null
+          sincronizado_em: string | null
+          telefone: string | null
+          uf: string | null
+        }
+        Insert: {
+          atualizado_em?: string | null
+          bairro?: string | null
+          celular?: string | null
+          cep?: string | null
+          cliente_id: string
+          complemento?: string | null
+          cpf_cnpj: string
+          criado_em?: string | null
+          documento_estrangeiro?: string | null
+          email?: string | null
+          id: string
+          localidade?: string | null
+          logradouro?: string | null
+          nome: string
+          numero?: string | null
+          sincronizado_em?: string | null
+          telefone?: string | null
+          uf?: string | null
+        }
+        Update: {
+          atualizado_em?: string | null
+          bairro?: string | null
+          celular?: string | null
+          cep?: string | null
+          cliente_id?: string
+          complemento?: string | null
+          cpf_cnpj?: string
+          criado_em?: string | null
+          documento_estrangeiro?: string | null
+          email?: string | null
+          id?: string
+          localidade?: string | null
+          logradouro?: string | null
+          nome?: string
+          numero?: string | null
+          sincronizado_em?: string | null
+          telefone?: string | null
+          uf?: string | null
+        }
+        Relationships: []
+      }
       transacoes_credito: {
         Row: {
           blocked_until: string | null
