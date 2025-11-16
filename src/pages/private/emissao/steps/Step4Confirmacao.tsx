@@ -36,10 +36,79 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
   const [showPixModal, setShowPixModal] = useState(false);
   const [pixChargeData, setPixChargeData] = useState<ICreatePixChargeResponse['data']>();
   const [saldoAtual, setSaldoAtual] = useState(0);
+  const [emissaoPendente, setEmissaoPendente] = useState<any>(null);
 
   const formData = getValues();
   const destinatarioData = formData.destinatario;
   const embalagemData = formData.embalagem;
+
+  // Função para processar emissão (extraída para reutilização)
+  const processarEmissao = async (dadosEmissao: any) => {
+    if (!user?.clienteId) return;
+
+    try {
+      setIsSubmitting(true);
+      const valorEtiqueta = Number(cotacaoSelecionado?.preco) || 0;
+      
+      console.log('🎯 Iniciando processo de emissão...');
+      console.log('💰 Valor da etiqueta:', valorEtiqueta);
+
+      // Verificar saldo novamente
+      const saldoAtualizado = await creditoService.calcularSaldo(user.clienteId);
+      console.log('💳 Saldo atualizado:', saldoAtualizado);
+
+      if (saldoAtualizado < valorEtiqueta) {
+        toast.error('Saldo ainda insuficiente. Aguarde a confirmação do pagamento.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // BLOQUEAR CRÉDITO ANTES DE CRIAR A EMISSÃO
+      console.log('🔒 Bloqueando crédito...');
+      try {
+        const transacaoId = await creditoService.bloquearCreditoEtiqueta(
+          user.clienteId,
+          'temp-' + Date.now(), // ID temporário, será substituído pelo ID real da emissão
+          valorEtiqueta
+        );
+        console.log('✅ Crédito bloqueado. ID da transação:', transacaoId);
+      } catch (errorBloquear: any) {
+        console.error('❌ Erro ao bloquear crédito:', errorBloquear);
+        toast.error(errorBloquear.message || 'Erro ao bloquear crédito');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Criar emissão
+      console.log('📦 Criando emissão...');
+      const response = await onEmissaoCadastro(dadosEmissao, (loading) => {
+        console.log('Loading status:', loading);
+      });
+
+      if (!response?.data?.id) {
+        toast.error('Erro ao criar emissão');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const emissaoId = response.data.id;
+      console.log('✅ Emissão criada. ID:', emissaoId);
+
+      // Imprimir etiqueta
+      console.log('🖨️ Gerando PDF da etiqueta...');
+      const pdfData = await onEmissaoImprimir(response.data);
+      console.log('✅ PDF gerado com sucesso');
+
+      toast.success('Etiqueta gerada com sucesso! Créditos bloqueados.');
+      onSuccess(response.data, pdfData);
+    } catch (error: any) {
+      console.error('❌ Erro no processo de emissão:', error);
+      toast.error(error.message || 'Erro ao gerar etiqueta');
+    } finally {
+      setIsSubmitting(false);
+      setEmissaoPendente(null);
+    }
+  };
 
   const onSubmit = async (data: any) => {
     try {
@@ -66,7 +135,10 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
         setIsSubmitting(false);
         toast.error('Saldo insuficiente. Realize uma recarga para continuar.');
         
-        // Valor da recarga = valor exato da etiqueta (o que falta será descontado do saldo)
+        // Guardar dados da emissão para processar após pagamento
+        setEmissaoPendente(emissaoData);
+        
+        // Valor da recarga = valor exato da etiqueta
         const valorRecarga = valorEtiqueta;
         
         console.log(`💰 Gerando PIX de R$ ${valorRecarga.toFixed(2)} (valor da etiqueta)`);
@@ -81,7 +153,7 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
           if (response.success && response.data) {
             setPixChargeData(response.data);
             setShowPixModal(true);
-            toast.success(`Cobrança PIX de R$ ${valorRecarga.toFixed(2)} gerada. Complete o pagamento para continuar.`);
+            toast.success(`Cobrança PIX de R$ ${valorRecarga.toFixed(2)} gerada. Após o pagamento, a etiqueta será gerada automaticamente.`);
           } else {
             toast.error('Erro ao gerar cobrança PIX. Tente novamente.');
           }

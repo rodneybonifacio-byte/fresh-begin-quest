@@ -10,9 +10,10 @@ interface ModalRecargaPixProps {
   chargeData?: ICreatePixChargeResponse['data'];
   saldoInicial: number;
   clienteId: string;
+  onPaymentConfirmed?: () => void;
 }
 
-export function ModalRecargaPix({ isOpen, onClose, chargeData, saldoInicial, clienteId }: ModalRecargaPixProps) {
+export function ModalRecargaPix({ isOpen, onClose, chargeData, saldoInicial, clienteId, onPaymentConfirmed }: ModalRecargaPixProps) {
   const [copied, setCopied] = useState(false);
 
   // Polling simples: verifica se o saldo mudou
@@ -36,9 +37,18 @@ export function ModalRecargaPix({ isOpen, onClose, chargeData, saldoInicial, cli
         console.log('💰 Saldo atual:', saldoAtual);
         
         if (saldoAtual > saldoInicial) {
-          console.log('✅ Saldo aumentou! Pagamento confirmado. Fechando modal...');
-          toastSuccess('Pagamento confirmado! Créditos adicionados à sua conta.');
-          onClose();
+          console.log('✅ Saldo aumentou! Pagamento confirmado.');
+          toastSuccess('Pagamento confirmado! Processando sua emissão...');
+          
+          // Chamar callback antes de fechar
+          if (onPaymentConfirmed) {
+            onPaymentConfirmed();
+          }
+          
+          // Aguardar um pouco antes de fechar para o callback executar
+          setTimeout(() => {
+            onClose();
+          }, 500);
         }
       } catch (error) {
         console.error('❌ Erro ao verificar pagamento:', error);
@@ -52,7 +62,7 @@ export function ModalRecargaPix({ isOpen, onClose, chargeData, saldoInicial, cli
       console.log('🛑 Parando polling');
       clearInterval(interval);
     };
-  }, [isOpen, saldoInicial, clienteId, onClose]);
+  }, [isOpen, saldoInicial, clienteId, onClose, onPaymentConfirmed]);
 
   if (!isOpen || !chargeData) return null;
 
