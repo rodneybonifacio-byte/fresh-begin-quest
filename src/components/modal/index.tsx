@@ -12,7 +12,7 @@ type ModalProps = {
 
 // Variantes de tamanho
 const modalVariants = tv({
-    base: "relative w-full max-h-[85vh] rounded-xl bg-[#FEFEFE] dark:bg-slate-800 shadow-shape p-6 overflow-y-auto",
+    base: "relative w-full max-h-[85vh] rounded-xl bg-white shadow-shape p-6 overflow-y-auto",
     variants: {
         size: {
             small: "sm:w-[90%] md:w-[50%] lg:w-[30%]",
@@ -45,13 +45,13 @@ export const ModalCustom = ({
             <div className={modalVariants({ size })}>
                 <div className="flex flex-col gap-4">
                     <div className="flex flex-row items-center justify-between">
-                        <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-100 flex flex-col">
+                        <h1 className="text-2xl font-semibold text-slate-800 flex flex-col">
                             {title}
                             {description && (
-                                <span className="text-xs text-slate-500 dark:text-slate-400">{description}</span>
+                                <span className="text-xs text-slate-500">{description}</span>
                             )}
                         </h1>
-                        <X className="cursor-pointer text-slate-500 dark:text-slate-400" onClick={onCancel} />
+                        <X className="cursor-pointer text-slate-500 hover:text-slate-700" onClick={onCancel} />
                     </div>
                     <div className="overflow-y-auto">
                         {children}
