@@ -216,7 +216,7 @@ export const CadastroCliente = () => {
             {/* Modal de Erro */}
             {showErrorModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-                    <div className="bg-background border border-border rounded-lg shadow-lg max-w-md w-full p-6 animate-in fade-in-0 zoom-in-95">
+                    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-w-md w-full p-6 animate-in fade-in-0 zoom-in-95">
                         <div className="flex items-start gap-4">
                             <div className="flex-shrink-0 w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
                                 <svg className="w-6 h-6 text-destructive" fill="none" viewBox="0 0 24 24" stroke="currentColor">
