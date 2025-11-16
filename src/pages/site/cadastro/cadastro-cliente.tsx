@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -52,11 +52,6 @@ export const CadastroCliente = () => {
         resolver: yupResolver(schemaCadastroCliente),
     });
 
-    // Monitorar mudanças no estado do modal
-    useEffect(() => {
-        console.log('🔔 showErrorModal mudou para:', showErrorModal);
-        console.log('📝 errorModalMessage:', errorModalMessage);
-    }, [showErrorModal, errorModalMessage]);
 
     const handleCepChange = async (cep: string) => {
         const cepFormatado = cep.replace(/\D/g, '');
@@ -104,13 +99,13 @@ export const CadastroCliente = () => {
     };
 
     const onSubmit = async (data: CadastroClienteFormData) => {
+        setIsLoading(true);
+        
         try {
-            setIsLoading(true);
-
             // Remover formatação do CPF/CNPJ antes de enviar
             const cpfCnpjLimpo = data.cpfCnpj.replace(/\D/g, '');
 
-            // Chamar edge function diretamente via fetch para ter acesso ao corpo da resposta
+            // Chamar edge function
             const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
             const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
             
@@ -141,58 +136,27 @@ export const CadastroCliente = () => {
             });
 
             const responseData = await response.json();
-            console.log('📦 Response completo:', responseData);
-            console.log('📊 Response status:', response.status);
 
             if (!response.ok) {
-                console.error('❌ Erro ao criar cliente. Status:', response.status);
-                
-                // Tentar extrair mensagem de erro mais específica
-                let errorMessage = 'Erro ao criar conta. Tente novamente.';
-                let isCpfCnpjDuplicado = false;
-                
-                // Verificar se temos responseData com informação de erro
-                if (responseData) {
-                    const errorText = JSON.stringify(responseData).toLowerCase();
-                    console.log('📋 Response data em lowercase:', errorText);
-                    console.log('🔍 Verificando se contém cpf/cnpj:', errorText.includes('cpf/cnpj'));
-                    console.log('🔍 Verificando se contém já existe:', errorText.includes('já existe'));
-                    
-                    if (errorText.includes('cpf/cnpj') || errorText.includes('já existe')) {
-                        console.log('✅ Entrou na condição de CPF/CNPJ duplicado');
-                        errorMessage = 'Este CPF/CNPJ já está cadastrado em nosso sistema.';
-                        isCpfCnpjDuplicado = true;
-                        console.log('✅ setUserEmail sendo chamado com:', data.email);
-                        setUserEmail(data.email);
-                        console.log('✅ Detectado erro de CPF/CNPJ duplicado');
-                    } else {
-                        console.log('❌ NÃO entrou na condição de CPF/CNPJ duplicado');
-                    }
-                }
-                
-                console.log('🎯 isCpfCnpjDuplicado:', isCpfCnpjDuplicado);
-                console.log('📝 errorMessage:', errorMessage);
-                console.log('📧 userEmail:', data.email);
+                // Verificar se é erro de CPF/CNPJ duplicado
+                const errorText = JSON.stringify(responseData).toLowerCase();
+                const isCpfCnpjDuplicado = errorText.includes('cpf/cnpj') || errorText.includes('já existe');
                 
                 if (isCpfCnpjDuplicado) {
-                    console.log('🚀 Tentando abrir modal de erro');
-                    console.log('🚀 setErrorModalMessage sendo chamado com:', errorMessage);
-                    setErrorModalMessage(errorMessage);
-                    console.log('🚀 setShowErrorModal sendo chamado com: true');
+                    setErrorModalMessage('Este CPF/CNPJ já está cadastrado em nosso sistema.');
+                    setUserEmail(data.email);
                     setShowErrorModal(true);
-                    console.log('✅ Modal de erro deveria estar visível agora');
                 } else {
-                    console.log('📢 Mostrando toast de erro');
-                    toast.error(errorMessage);
+                    toast.error('Erro ao criar conta. Tente novamente.');
                 }
                 return;
             }
 
+            // Sucesso
             toast.success('Conta criada com sucesso! Redirecionando para o login...', {
                 duration: 3000,
             });
 
-            // Redirecionar para login após 2 segundos
             setTimeout(() => {
                 navigate('/login', {
                     state: { email: data.email, mensagem: 'Conta criada com sucesso! Faça login para continuar.' }
