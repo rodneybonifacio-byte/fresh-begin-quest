@@ -37,6 +37,9 @@ type CadastroClienteFormData = yup.InferType<typeof schemaCadastroCliente>;
 export const CadastroCliente = () => {
     const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(false);
+    const [showErrorModal, setShowErrorModal] = useState(false);
+    const [errorModalMessage, setErrorModalMessage] = useState('');
+    const [userEmail, setUserEmail] = useState('');
     const { onBuscaCep } = useAddress();
 
     const {
@@ -103,6 +106,7 @@ export const CadastroCliente = () => {
                 
                 // Tentar extrair mensagem de erro mais específica
                 let errorMessage = 'Erro ao criar conta. Tente novamente.';
+                let isCpfCnpjDuplicado = false;
                 
                 try {
                     // O erro pode vir com a mensagem completa ou dentro de uma propriedade
@@ -111,26 +115,18 @@ export const CadastroCliente = () => {
                     // Verificar se é erro de CPF/CNPJ duplicado
                     if (errorText.includes('Já existe um cliente cadastrado com o mesmo CPF/CNPJ') || 
                         errorText.includes('ERR-MZJZG9')) {
-                        errorMessage = 'Este CPF/CNPJ já está cadastrado. Se você já tem uma conta, faça login.';
-                        
-                        // Mostrar toast com link para login
-                        toast.error(errorMessage, {
-                            duration: 5000,
-                            action: {
-                                label: 'Ir para Login',
-                                onClick: () => navigate('/login', { state: { email: data.email } })
-                            }
-                        });
-                        return;
-                    }
-                    
-                    // Tentar parsear JSON se houver
-                    if (errorText.includes('{')) {
-                        const match = errorText.match(/\{[^}]+\}/);
-                        if (match) {
-                            const parsed = JSON.parse(match[0]);
-                            if (parsed.error) {
-                                errorMessage = parsed.error;
+                        errorMessage = 'Este CPF/CNPJ já está cadastrado em nosso sistema.';
+                        isCpfCnpjDuplicado = true;
+                        setUserEmail(data.email);
+                    } else {
+                        // Tentar parsear JSON se houver
+                        if (errorText.includes('{')) {
+                            const match = errorText.match(/\{[^}]+\}/);
+                            if (match) {
+                                const parsed = JSON.parse(match[0]);
+                                if (parsed.error) {
+                                    errorMessage = parsed.error;
+                                }
                             }
                         }
                     }
@@ -138,7 +134,12 @@ export const CadastroCliente = () => {
                     console.error('Erro ao processar mensagem de erro:', e);
                 }
                 
-                toast.error(errorMessage);
+                if (isCpfCnpjDuplicado) {
+                    setErrorModalMessage(errorMessage);
+                    setShowErrorModal(true);
+                } else {
+                    toast.error(errorMessage);
+                }
                 return;
             }
 
@@ -166,6 +167,52 @@ export const CadastroCliente = () => {
     }
 
     return (
+        <>
+            {/* Modal de Erro */}
+            {showErrorModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+                    <div className="bg-background border border-border rounded-lg shadow-lg max-w-md w-full p-6 animate-in fade-in-0 zoom-in-95">
+                        <div className="flex items-start gap-4">
+                            <div className="flex-shrink-0 w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
+                                <svg className="w-6 h-6 text-destructive" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="text-lg font-semibold text-foreground mb-2">
+                                    CPF/CNPJ já cadastrado
+                                </h3>
+                                <p className="text-sm text-muted-foreground mb-4">
+                                    {errorModalMessage}
+                                </p>
+                                <p className="text-sm text-muted-foreground mb-6">
+                                    Se você já possui uma conta, faça login para acessar o sistema.
+                                </p>
+                                <div className="flex gap-3">
+                                    <ButtonComponent
+                                        onClick={() => {
+                                            setShowErrorModal(false);
+                                            navigate('/login', { state: { email: userEmail } });
+                                        }}
+                                        variant="primary"
+                                        className="flex-1"
+                                    >
+                                        Ir para Login
+                                    </ButtonComponent>
+                                    <ButtonComponent
+                                        onClick={() => setShowErrorModal(false)}
+                                        variant="ghost"
+                                        className="flex-1"
+                                    >
+                                        Fechar
+                                    </ButtonComponent>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
         <div className="w-full min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-background via-background to-accent/10 relative overflow-hidden">
             {/* Decorative circles */}
             <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
@@ -376,5 +423,6 @@ export const CadastroCliente = () => {
                 </div>
             </div>
         </div>
+        </>
     );
 };
