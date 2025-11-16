@@ -86,6 +86,10 @@ export const appRoutesConfig: ProtectedRouteItem[] = [
         path: "profile",
         component: () => import("../pages/private/profile/Profile")
     },
+    {
+        path: "test-dados",
+        component: () => import("../pages/private/test/TestarBuscaDados")
+    },
 ];
 
 export const AppRoutes = generateProtectedRoutes(appRoutesConfig);
