@@ -15,5 +15,8 @@ verify_jwt = false
 [functions.buscar-recargas]
 verify_jwt = false
 
+[functions.buscar-remetentes]
+verify_jwt = true
+
 [functions.criar-cliente-autocadastro]
 verify_jwt = false
