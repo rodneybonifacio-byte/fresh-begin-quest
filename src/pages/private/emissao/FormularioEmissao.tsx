@@ -190,6 +190,17 @@ const FormularioEmissao = ({ onCancel }: FormularioProdutoProps) => {
                 valorDeclarado: Number(formatNumberString(valorDeclarado || '0')),
                 valorNotaFiscal: Number(formatNumberString(valorNotaFiscal || '0')),
                 destinatario: destinatario,
+                // Envia o remetente completo com endereço para replicar comportamento da API
+                remetente: clienteSelecionado ? {
+                    id: clienteSelecionado.id,
+                    nome: clienteSelecionado.nome,
+                    cpfCnpj: clienteSelecionado.cpfCnpj,
+                    documentoEstrangeiro: clienteSelecionado.documentoEstrangeiro || '',
+                    celular: clienteSelecionado.celular || '',
+                    telefone: clienteSelecionado.telefone || '',
+                    email: clienteSelecionado.email || '',
+                    endereco: clienteSelecionado.endereco,
+                } : undefined,
             };
             await onEmissaoCadastro(dataSend, setIsLoading);
 
