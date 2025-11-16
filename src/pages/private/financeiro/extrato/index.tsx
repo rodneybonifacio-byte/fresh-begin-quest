@@ -2,12 +2,13 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../../../../providers/AuthContext";
 import { CreditoService, ITransacaoCredito } from "../../../../services/CreditoService";
 import { formatCurrencyWithCents } from "../../../../utils/formatCurrency";
-import { Receipt, TrendingUp, TrendingDown, Calendar, Filter } from "lucide-react";
+import { Receipt, ArrowUpCircle, ArrowDownCircle, Clock, AlertCircle, Filter } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "../../../../integrations/supabase/client";
 import { useRecargaPixRealtime } from "../../../../hooks/useRecargaPixRealtime";
 import { toast } from "sonner";
+import { ExplicacaoRegraBloqueio } from "../../../../components/ExplicacaoRegraBloqueio";
 
 export default function ExtratoCreditos() {
     const { user } = useAuth();
@@ -19,58 +20,41 @@ export default function ExtratoCreditos() {
     const [resumo, setResumo] = useState({
         totalRecargas: 0,
         totalConsumos: 0,
-        totalEtiquetasGeradas: 0,
+        totalBloqueados: 0,
         quantidadeRecargas: 0,
         quantidadeConsumos: 0,
-        quantidadeEtiquetas: 0
+        quantidadeBloqueados: 0
     });
 
     const service = new CreditoService();
 
-    // Listener de notificações em tempo real para pagamentos PIX e transações
     useRecargaPixRealtime({
         enabled: true,
         onPaymentConfirmed: () => {
-            console.log('🎉 Pagamento confirmado! Atualizando extrato...');
             carregarDados();
         }
     });
 
-    // Listener para atualizações em tempo real na tabela transacoes_credito
     useEffect(() => {
         if (!user?.clienteId) return;
-
-        console.log('🔔 Iniciando listener de transações em tempo real...');
 
         const channel = supabase
             .channel('transacoes-credito-changes')
             .on(
                 'postgres_changes',
                 {
-                    event: '*', // Escuta INSERT, UPDATE, DELETE
+                    event: '*',
                     schema: 'public',
                     table: 'transacoes_credito',
                     filter: `cliente_id=eq.${user.clienteId}`
                 },
-                (payload) => {
-                    console.log('📥 Mudança detectada em transações:', payload);
-                    
-                    if (payload.eventType === 'INSERT') {
-                        const novaTransacao = payload.new as ITransacaoCredito;
-                        const tipo = novaTransacao.tipo === 'recarga' ? 'Recarga' : 'Consumo';
-                        toast.success(`${tipo} registrada: ${formatCurrencyWithCents(novaTransacao.valor.toString())}`);
-                    }
-                    
-                    // Atualizar dados
+                () => {
                     carregarDados();
                 }
             )
-            .subscribe((status) => {
-                console.log('Status do canal de transações:', status);
-            });
+            .subscribe();
 
         return () => {
-            console.log('🔕 Removendo listener de transações');
             supabase.removeChannel(channel);
         };
     }, [user?.clienteId]);
@@ -85,60 +69,57 @@ export default function ExtratoCreditos() {
         try {
             setLoading(true);
             
-            console.log('🚀 Iniciando carregamento...');
-            console.log('👤 User:', user);
-            console.log('🆔 Cliente ID:', user?.clienteId);
-            
             if (!user?.clienteId) {
-                console.error('❌ Cliente ID não encontrado!');
                 setLoading(false);
                 return;
             }
             
-            // Carregar transações e resumo
-            console.log('📞 Chamando obterExtrato...');
             const extratoData = await service.obterExtrato(user.clienteId);
-            console.log('✅ Extrato retornado:', extratoData?.length || 0, 'itens');
             
-            console.log('📞 Chamando obterResumo...');
-            const resumoData = await service.obterResumo(user.clienteId);
-            console.log('✅ Resumo retornado:', resumoData);
+            const [bloqueados, consumidos] = await Promise.all([
+                service.calcularCreditosBloqueados(user.clienteId),
+                service.calcularCreditosConsumidos(user.clienteId)
+            ]);
+            
+            const totalRecargas = extratoData
+                .filter(t => t.tipo === 'recarga')
+                .reduce((acc, t) => acc + Number(t.valor), 0);
+            
+            const quantidadeRecargas = extratoData.filter(t => t.tipo === 'recarga').length;
+            const quantidadeBloqueados = extratoData.filter(t => t.status === 'bloqueado').length;
+            const quantidadeConsumos = extratoData.filter(t => t.tipo === 'consumo' && t.status === 'consumido').length;
             
             setTransacoes(extratoData);
-            console.log('💾 Transações salvas no estado');
-            
             setResumo({
-                totalRecargas: resumoData.totalRecargas,
-                totalConsumos: resumoData.totalConsumos,
-                totalEtiquetasGeradas: resumoData.totalConsumos,
-                quantidadeRecargas: resumoData.quantidadeRecargas,
-                quantidadeConsumos: resumoData.quantidadeConsumos,
-                quantidadeEtiquetas: resumoData.quantidadeConsumos
+                totalRecargas,
+                totalConsumos: consumidos,
+                totalBloqueados: bloqueados,
+                quantidadeRecargas,
+                quantidadeConsumos,
+                quantidadeBloqueados
             });
-            console.log('💾 Resumo salvo no estado');
+            
         } catch (error) {
-            console.error('💥 Erro fatal:', error);
+            console.error('Erro ao carregar extrato:', error);
+            toast.error('Erro ao carregar extrato de créditos');
         } finally {
             setLoading(false);
-            console.log('✅ Carregamento concluído');
         }
     };
 
     const transacoesFiltradas = transacoes.filter(t => {
         if (filtroTipo === 'todos') return true;
         if (filtroTipo === 'bloqueado') {
-            return (t as ITransacaoCredito & { status?: string }).status === 'bloqueado';
+            return t.status === 'bloqueado';
         }
         return t.tipo === filtroTipo;
     });
 
-    // Cálculos de paginação
     const totalPaginas = Math.ceil(transacoesFiltradas.length / itensPorPagina);
     const indiceInicio = (paginaAtual - 1) * itensPorPagina;
     const indiceFim = indiceInicio + itensPorPagina;
     const transacoesPaginadas = transacoesFiltradas.slice(indiceInicio, indiceFim);
 
-    // Reset página ao mudar filtro
     useEffect(() => {
         setPaginaAtual(1);
     }, [filtroTipo]);
@@ -150,7 +131,6 @@ export default function ExtratoCreditos() {
     return (
         <div className="min-h-screen bg-background p-6">
             <div className="max-w-7xl mx-auto space-y-6">
-                {/* Header */}
                 <div className="flex items-center gap-3 mb-8">
                     <div className="p-3 bg-primary/10 rounded-lg">
                         <Receipt className="w-8 h-8 text-primary" />
@@ -161,216 +141,174 @@ export default function ExtratoCreditos() {
                     </div>
                 </div>
 
-                {/* Resumo */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div className="bg-card border border-border rounded-lg p-6">
                         <div className="flex items-center gap-3 mb-3">
                             <div className="p-2 bg-green-500/10 rounded-lg">
-                                <TrendingUp className="w-5 h-5 text-green-500" />
+                                <ArrowUpCircle className="w-5 h-5 text-green-500" />
                             </div>
-                            <span className="text-sm font-medium text-muted-foreground">Total Recargas</span>
+                            <span className="text-sm font-medium text-muted-foreground">Recargas</span>
                         </div>
                         <p className="text-2xl font-bold text-foreground">
                             {formatCurrencyWithCents(resumo.totalRecargas.toString())}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                            {resumo.quantidadeRecargas} transações
+                            {resumo.quantidadeRecargas} {resumo.quantidadeRecargas === 1 ? 'transação' : 'transações'}
+                        </p>
+                    </div>
+
+                    <div className="bg-card border border-border rounded-lg p-6">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="p-2 bg-yellow-500/10 rounded-lg">
+                                <Clock className="w-5 h-5 text-yellow-500" />
+                            </div>
+                            <span className="text-sm font-medium text-muted-foreground">Bloqueados</span>
+                        </div>
+                        <p className="text-2xl font-bold text-foreground">
+                            {formatCurrencyWithCents(resumo.totalBloqueados.toString())}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                            {resumo.quantidadeBloqueados} {resumo.quantidadeBloqueados === 1 ? 'etiqueta' : 'etiquetas'}
                         </p>
                     </div>
 
                     <div className="bg-card border border-border rounded-lg p-6">
                         <div className="flex items-center gap-3 mb-3">
                             <div className="p-2 bg-red-500/10 rounded-lg">
-                                <TrendingDown className="w-5 h-5 text-red-500" />
+                                <ArrowDownCircle className="w-5 h-5 text-red-500" />
                             </div>
-                            <span className="text-sm font-medium text-muted-foreground">Total Consumos</span>
+                            <span className="text-sm font-medium text-muted-foreground">Consumidos</span>
                         </div>
                         <p className="text-2xl font-bold text-foreground">
-                            {formatCurrencyWithCents(resumo.totalEtiquetasGeradas.toString())}
+                            {formatCurrencyWithCents(resumo.totalConsumos.toString())}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                            {resumo.quantidadeEtiquetas} etiquetas (status ≠ pré-postado)
+                            {resumo.quantidadeConsumos} {resumo.quantidadeConsumos === 1 ? 'transação' : 'transações'}
                         </p>
                     </div>
 
                     <div className="bg-card border border-border rounded-lg p-6">
                         <div className="flex items-center gap-3 mb-3">
                             <div className="p-2 bg-blue-500/10 rounded-lg">
-                                <Calendar className="w-5 h-5 text-blue-500" />
+                                <AlertCircle className="w-5 h-5 text-blue-500" />
                             </div>
-                            <span className="text-sm font-medium text-muted-foreground">Saldo Líquido</span>
+                            <span className="text-sm font-medium text-muted-foreground">Disponível</span>
                         </div>
                         <p className="text-2xl font-bold text-foreground">
-                            {formatCurrencyWithCents((resumo.totalRecargas - resumo.totalEtiquetasGeradas).toString())}
+                            {formatCurrencyWithCents((resumo.totalRecargas - resumo.totalBloqueados - resumo.totalConsumos).toString())}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                            Recargas - Etiquetas geradas
+                            Saldo livre
                         </p>
-                    </div>
-
-                    <div className="bg-card border border-border rounded-lg p-6">
-                        <div className="flex items-center gap-3 mb-3">
-                            <div className="p-2 bg-purple-500/10 rounded-lg">
-                                <Filter className="w-5 h-5 text-purple-500" />
-                            </div>
-                            <span className="text-sm font-medium text-muted-foreground">Filtrar</span>
-                        </div>
-                        <select
-                            value={filtroTipo}
-                            onChange={(e) => setFiltroTipo(e.target.value as any)}
-                            className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm"
-                        >
-                            <option value="todos">Todas</option>
-                            <option value="recarga">Recargas</option>
-                            <option value="consumo">Consumos</option>
-                        </select>
                     </div>
                 </div>
 
-                {/* Tabela de Transações */}
-                <div className="bg-card border border-border rounded-lg overflow-hidden">
-                    <div className="p-6 border-b border-border">
-                        <h2 className="text-xl font-bold text-foreground">Histórico de Transações</h2>
+                <ExplicacaoRegraBloqueio />
+
+                <div className="bg-card border border-border rounded-lg">
+                    <div className="p-6 border-b border-border flex items-center justify-between">
+                        <h2 className="text-xl font-semibold text-foreground">Histórico de Transações</h2>
+                        <div className="flex items-center gap-2">
+                            <Filter className="w-4 h-4 text-muted-foreground" />
+                            <select
+                                value={filtroTipo}
+                                onChange={(e) => {
+                                    setFiltroTipo(e.target.value as any);
+                                }}
+                                className="px-3 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                            >
+                                <option value="todos">Todas</option>
+                                <option value="recarga">Recargas</option>
+                                <option value="bloqueado">Bloqueados</option>
+                                <option value="consumo">Consumidos</option>
+                            </select>
+                        </div>
                     </div>
 
                     {loading ? (
                         <div className="p-12 text-center">
-                            <p className="text-muted-foreground">Carregando transações...</p>
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+                            <p className="mt-4 text-muted-foreground">Carregando...</p>
                         </div>
-                    ) : transacoesFiltradas.length === 0 ? (
+                    ) : transacoesPaginadas.length === 0 ? (
                         <div className="p-12 text-center">
-                            <Receipt className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
-                            <p className="text-muted-foreground">Nenhuma transação encontrada</p>
+                            <Receipt className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
+                            <p className="text-lg font-medium text-muted-foreground">
+                                Nenhuma transação encontrada
+                            </p>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead className="bg-muted/50">
-                                    <tr>
-                                        <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Data</th>
-                                        <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Tipo</th>
-                                        <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Descrição</th>
-                                        <th className="px-6 py-4 text-right text-sm font-semibold text-foreground">Valor</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-border">
-                                    {transacoesPaginadas.map((transacao) => (
-                                        <tr key={transacao.id} className="hover:bg-muted/30 transition-colors">
-                                            <td className="px-6 py-4 text-sm text-muted-foreground">
-                                                {formatarData(transacao.created_at)}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span
-                                                    className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${
-                                                        transacao.tipo === 'recarga'
-                                                            ? 'bg-green-500/10 text-green-600 dark:text-green-400'
-                                                            : 'bg-red-500/10 text-red-600 dark:text-red-400'
-                                                    }`}
-                                                >
-                                                    {transacao.tipo === 'recarga' ? (
-                                                        <>
-                                                            <TrendingUp className="w-3 h-3" />
-                                                            Recarga
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <TrendingDown className="w-3 h-3" />
-                                                            Consumo
-                                                        </>
-                                                    )}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-foreground">
-                                                {transacao.descricao || '-'}
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <span
-                                                    className={`text-sm font-semibold ${
-                                                        transacao.tipo === 'recarga'
-                                                            ? 'text-green-600 dark:text-green-400'
-                                                            : 'text-red-600 dark:text-red-400'
-                                                    }`}
-                                                >
-                                                    {transacao.tipo === 'recarga' ? '+' : '-'}
-                                                    {formatCurrencyWithCents(Math.abs(transacao.valor).toString())}
-                                                </span>
-                                            </td>
+                        <>
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="bg-muted/50">
+                                        <tr>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Data</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Tipo</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Descrição</th>
+                                            <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">Valor</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="divide-y divide-border">
+                                        {transacoesPaginadas.map((transacao) => (
+                                            <tr key={transacao.id} className="hover:bg-muted/30">
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm">{formatarData(transacao.created_at)}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    {transacao.status === 'bloqueado' ? (
+                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300">
+                                                            <Clock className="w-3 h-3 mr-1" />
+                                                            Bloqueado
+                                                        </span>
+                                                    ) : transacao.tipo === 'recarga' ? (
+                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
+                                                            <ArrowUpCircle className="w-3 h-3 mr-1" />
+                                                            Recarga
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300">
+                                                            <ArrowDownCircle className="w-3 h-3 mr-1" />
+                                                            Consumido
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4 text-sm">{transacao.descricao || '-'}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                    <span className={transacao.tipo === 'recarga' ? 'text-green-600' : 'text-red-600'}>
+                                                        {transacao.tipo === 'recarga' ? '+' : ''}
+                                                        {formatCurrencyWithCents(transacao.valor.toString())}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
 
-                            {/* Paginação */}
                             {totalPaginas > 1 && (
-                                <div className="flex items-center justify-between px-6 py-4 border-t border-border">
+                                <div className="px-6 py-4 border-t flex items-center justify-between">
                                     <div className="text-sm text-muted-foreground">
-                                        Mostrando {indiceInicio + 1} a {Math.min(indiceFim, transacoesFiltradas.length)} de {transacoesFiltradas.length} transações
+                                        {indiceInicio + 1} a {Math.min(indiceFim, transacoesFiltradas.length)} de {transacoesFiltradas.length}
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex gap-2">
                                         <button
-                                            onClick={() => setPaginaAtual(prev => Math.max(1, prev - 1))}
+                                            onClick={() => setPaginaAtual(p => Math.max(1, p - 1))}
                                             disabled={paginaAtual === 1}
-                                            className="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                            className="px-3 py-1 text-sm border rounded-lg hover:bg-muted disabled:opacity-50"
                                         >
                                             Anterior
                                         </button>
-                                        <div className="flex items-center gap-1">
-                                            {Array.from({ length: totalPaginas }, (_, i) => i + 1).map(pagina => (
-                                                <button
-                                                    key={pagina}
-                                                    onClick={() => setPaginaAtual(pagina)}
-                                                    className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                                                        paginaAtual === pagina
-                                                            ? 'bg-primary text-primary-foreground'
-                                                            : 'border border-border hover:bg-accent'
-                                                    }`}
-                                                >
-                                                    {pagina}
-                                                </button>
-                                            ))}
-                                        </div>
                                         <button
-                                            onClick={() => setPaginaAtual(prev => Math.min(totalPaginas, prev + 1))}
+                                            onClick={() => setPaginaAtual(p => Math.min(totalPaginas, p + 1))}
                                             disabled={paginaAtual === totalPaginas}
-                                            className="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                            className="px-3 py-1 text-sm border rounded-lg hover:bg-muted disabled:opacity-50"
                                         >
                                             Próxima
                                         </button>
                                     </div>
                                 </div>
                             )}
-                        </div>
+                        </>
                     )}
-                </div>
-
-                {/* Informações */}
-                <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
-                    <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                        <Receipt className="w-5 h-5" />
-                        Sobre o Extrato
-                    </h3>
-                    <ul className="space-y-2 text-sm text-muted-foreground">
-                        <li className="flex items-start gap-2">
-                            <span className="text-green-500 font-bold">•</span>
-                            <span><strong>Recargas:</strong> Créditos adicionados à sua conta via PIX</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                            <span className="text-red-500 font-bold">•</span>
-                            <span><strong>Consumos:</strong> Calculado pela soma dos valores de todas as etiquetas geradas com status diferente de "pré-postado"</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                            <span className="text-blue-500 font-bold">•</span>
-                            <span><strong>Status pré-postado:</strong> Etiquetas neste status não consomem créditos</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                            <span className="text-orange-500 font-bold">•</span>
-                            <span><strong>Cobrança única:</strong> Cada etiqueta é cobrada apenas uma vez, mesmo que o status mude novamente</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                            <span className="text-purple-500 font-bold">•</span>
-                            <span><strong>Saldo líquido:</strong> Diferença entre total de recargas e total de etiquetas geradas</span>
-                        </li>
-                    </ul>
                 </div>
             </div>
         </div>
