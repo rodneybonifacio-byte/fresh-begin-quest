@@ -61,18 +61,20 @@ serve(async (req) => {
     }
 
     // 3. Registrar transação de crédito (recarga)
-    const { error: creditError } = await supabase.rpc('registrar_recarga', {
+    console.log('📝 Registrando transação de crédito...');
+    const { data: creditData, error: creditError } = await supabase.rpc('registrar_recarga', {
       p_cliente_id: recarga.cliente_id,
       p_valor: recarga.valor,
       p_descricao: `Recarga PIX - txid: ${txid}`
     });
 
     if (creditError) {
-      console.error('Erro ao registrar crédito:', creditError);
+      console.error('❌ Erro ao registrar crédito:', creditError);
       return new Response('Credit error', { status: 500 });
     }
 
-    console.log('Recarga processada com sucesso:', txid);
+    console.log('✅ Transação de crédito registrada:', creditData);
+    console.log('✅ Recarga processada com sucesso:', txid);
 
     return new Response(
       JSON.stringify({ success: true, message: 'Pagamento processado' }),

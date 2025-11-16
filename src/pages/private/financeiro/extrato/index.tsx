@@ -38,6 +38,7 @@ export default function ExtratoCreditos() {
     useEffect(() => {
         if (!user?.clienteId) return;
 
+        console.log('🔔 Configurando listener realtime para transacoes_credito...');
         const channel = supabase
             .channel('transacoes-credito-changes')
             .on(
@@ -48,13 +49,18 @@ export default function ExtratoCreditos() {
                     table: 'transacoes_credito',
                     filter: `cliente_id=eq.${user.clienteId}`
                 },
-                () => {
+                (payload) => {
+                    console.log('📥 Mudança detectada em transacoes_credito:', payload);
+                    console.log('🔄 Recarregando dados do extrato...');
                     carregarDados();
                 }
             )
-            .subscribe();
+            .subscribe((status) => {
+                console.log('📡 Status do canal transacoes_credito:', status);
+            });
 
         return () => {
+            console.log('🔕 Removendo listener de transacoes_credito');
             supabase.removeChannel(channel);
         };
     }, [user?.clienteId]);
