@@ -112,9 +112,9 @@ export const CadastroCliente = () => {
                     // O erro pode vir com a mensagem completa ou dentro de uma propriedade
                     const errorText = error.message || JSON.stringify(error);
                     
-                    // Verificar se é erro de CPF/CNPJ duplicado
+                    // Verificar se é erro de CPF/CNPJ duplicado (não depende do código de erro específico)
                     if (errorText.includes('Já existe um cliente cadastrado com o mesmo CPF/CNPJ') || 
-                        errorText.includes('ERR-MZJZG9')) {
+                        errorText.toLowerCase().includes('cpf/cnpj')) {
                         errorMessage = 'Este CPF/CNPJ já está cadastrado em nosso sistema.';
                         isCpfCnpjDuplicado = true;
                         setUserEmail(data.email);
@@ -126,6 +126,11 @@ export const CadastroCliente = () => {
                                 const parsed = JSON.parse(match[0]);
                                 if (parsed.error) {
                                     errorMessage = parsed.error;
+                                    // Verificar novamente se a mensagem parseada contém CPF/CNPJ
+                                    if (errorMessage.toLowerCase().includes('cpf/cnpj')) {
+                                        isCpfCnpjDuplicado = true;
+                                        setUserEmail(data.email);
+                                    }
                                 }
                             }
                         }
