@@ -96,11 +96,11 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
 
       // Imprimir etiqueta
       console.log('🖨️ Gerando PDF da etiqueta...');
-      const pdfData = await onEmissaoImprimir(response.data);
+      const pdfResponse = await onEmissaoImprimir(response.data, 'etiqueta', setIsSubmitting);
       console.log('✅ PDF gerado com sucesso');
 
       toast.success('Etiqueta gerada com sucesso! Créditos bloqueados.');
-      onSuccess(response.data, pdfData);
+      onSuccess(response.data, pdfResponse.data);
     } catch (error: any) {
       console.error('❌ Erro no processo de emissão:', error);
       toast.error(error.message || 'Erro ao gerar etiqueta');
@@ -124,6 +124,28 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
       const valorEtiqueta = Number(cotacaoSelecionado?.preco) || 0;
       console.log('💰 Valor da etiqueta:', valorEtiqueta);
       
+      // Criar objeto emissão ANTES de verificar saldo
+      const embalagem: IEmbalagem = {
+        ...selectedEmbalagem,
+        altura: Number(data.embalagem.altura),
+        largura: Number(data.embalagem.largura),
+        comprimento: Number(data.embalagem.comprimento),
+        peso: Number(data.embalagem.peso),
+        diametro: 0,
+      };
+
+      const emissao: IEmissao = {
+        remetenteId: data.remetenteId,
+        cienteObjetoNaoProibido: true,
+        embalagem: embalagem,
+        cotacao: cotacaoSelecionado,
+        logisticaReversa: 'N',
+        valorDeclarado: Number(formatNumberString('0')),
+        valorNotaFiscal: Number(formatNumberString('0')),
+        itensDeclaracaoConteudo: [],
+        destinatario: data.destinatario,
+      };
+      
       // Buscar saldo atual
       const saldoCliente = await creditoService.calcularSaldo(user.clienteId);
       console.log('💳 Saldo atual do cliente:', saldoCliente);
@@ -136,7 +158,7 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
         toast.error('Saldo insuficiente. Realize uma recarga para continuar.');
         
         // Guardar dados da emissão para processar após pagamento
-        setEmissaoPendente(emissaoData);
+        setEmissaoPendente(emissao);
         
         // Valor da recarga = valor exato da etiqueta
         const valorRecarga = valorEtiqueta;
@@ -165,28 +187,6 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
       }
       
       console.log('✅ Saldo suficiente. Prosseguindo com geração da etiqueta...');
-      
-      const embalagem: IEmbalagem = {
-        ...selectedEmbalagem,
-        altura: Number(data.embalagem.altura),
-        largura: Number(data.embalagem.largura),
-        comprimento: Number(data.embalagem.comprimento),
-        peso: Number(data.embalagem.peso),
-        diametro: 0,
-      };
-
-      const emissao: IEmissao = {
-        remetenteId: data.remetenteId,
-        cienteObjetoNaoProibido: true,
-        embalagem: embalagem,
-        cotacao: cotacaoSelecionado,
-        logisticaReversa: 'N',
-        valorDeclarado: Number(formatNumberString('0')),
-        valorNotaFiscal: Number(formatNumberString('0')),
-        itensDeclaracaoConteudo: [],
-        destinatario: data.destinatario,
-      };
-      
       console.log('📤 Enviando emissão:', emissao);
       
       // Primeiro gera a emissão - backend retorna { id, frete, link_etiqueta }
@@ -492,10 +492,26 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
       onClose={() => {
         setShowPixModal(false);
         setPixChargeData(undefined);
+        // Se há emissão pendente e modal está fechando, tentar processar
+        if (emissaoPendente) {
+          console.log('🔄 Tentando processar emissão pendente após fechamento do modal...');
+          setTimeout(() => {
+            processarEmissao(emissaoPendente);
+          }, 500);
+        }
       }}
       chargeData={pixChargeData}
       saldoInicial={saldoAtual}
       clienteId={user?.clienteId || ''}
+      onPaymentConfirmed={() => {
+        console.log('💰 Pagamento confirmado! Processando emissão...');
+        setShowPixModal(false);
+        if (emissaoPendente) {
+          setTimeout(() => {
+            processarEmissao(emissaoPendente);
+          }, 500);
+        }
+      }}
     />
     </>
   );
