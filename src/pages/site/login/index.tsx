@@ -140,6 +140,7 @@ export const Login = () => {
                         </div>
                         <ButtonComponent 
                             type="button"
+                            disabled={true}
                             onClick={() => navigate('/cadastro-cliente')}
                             className="w-full bg-secondary hover:bg-secondary/80 text-secondary-foreground py-3 rounded-xl font-semibold transition-all hover:-translate-y-0.5"
                         >
