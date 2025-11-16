@@ -14,7 +14,6 @@ serve(async (req) => {
   }
 
   try {
-    // Obter o token JWT da API externa do corpo da requisição
     const { apiToken } = await req.json();
     
     if (!apiToken) {
@@ -35,28 +34,52 @@ serve(async (req) => {
 
     const baseUrl = Deno.env.get('BASE_API_URL');
 
-    // Buscar dados do cliente usando o próprio token
+    // Fazer login como admin para acessar os dados
+    const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
+    const adminPassword = Deno.env.get('API_ADMIN_PASSWORD');
+
+    console.log('🔐 Fazendo login como admin...');
+    const loginResponse = await fetch(`${baseUrl}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: adminEmail,
+        password: adminPassword,
+      }),
+    });
+
+    if (!loginResponse.ok) {
+      const errorText = await loginResponse.text();
+      console.error('❌ Erro no login admin:', errorText);
+      throw new Error('Falha ao autenticar como admin');
+    }
+
+    const loginData = await loginResponse.json();
+    const adminToken = loginData.token;
+    console.log('✅ Login admin realizado com sucesso');
+
+    // Buscar dados do cliente usando token admin
     const clienteResponse = await fetch(`${baseUrl}/clientes/${clienteId}`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${apiToken}`,
+        'Authorization': `Bearer ${adminToken}`,
         'Content-Type': 'application/json',
       },
     });
 
-    if (!clienteResponse.ok) {
-      console.error('❌ Erro ao buscar cliente:', await clienteResponse.text());
-      throw new Error('Falha ao buscar dados do cliente');
+    let clienteData = { data: null };
+    if (clienteResponse.ok) {
+      clienteData = await clienteResponse.json();
+      console.log('✅ Dados do cliente encontrados');
+    } else {
+      console.warn('⚠️ Não foi possível buscar dados do cliente');
     }
 
-    const clienteData = await clienteResponse.json();
-    console.log('✅ Dados do cliente encontrados');
-
-    // Buscar remetentes do cliente
+    // Buscar remetentes do cliente usando token admin
     const remetentesResponse = await fetch(`${baseUrl}/remetentes?clienteId=${clienteId}`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${apiToken}`,
+        'Authorization': `Bearer ${adminToken}`,
         'Content-Type': 'application/json',
       },
     });
@@ -69,11 +92,11 @@ serve(async (req) => {
       console.warn('⚠️ Não foi possível buscar remetentes');
     }
 
-    // Buscar destinatários do cliente
+    // Buscar destinatários do cliente usando token admin
     const destinatariosResponse = await fetch(`${baseUrl}/destinatarios?clienteId=${clienteId}`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${apiToken}`,
+        'Authorization': `Bearer ${adminToken}`,
         'Content-Type': 'application/json',
       },
     });
