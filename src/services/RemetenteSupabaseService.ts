@@ -5,21 +5,25 @@ import type { IResponse } from '../types/IResponse';
 export class RemetenteSupabaseService {
     async getAll(): Promise<IResponse<IRemetente[]>> {
         try {
-            console.log('🔍 Buscando remetentes do Supabase...');
+            console.log('🔍 Buscando remetentes via edge function...');
+            
+            const apiToken = localStorage.getItem('token');
+            if (!apiToken) {
+                throw new Error('Token não encontrado');
+            }
 
-            // Buscar direto do Supabase
-            const { data, error } = await supabase
-                .from('remetentes')
-                .select('*')
-                .order('nome', { ascending: true });
+            // Buscar via edge function que usa o service role
+            const { data, error } = await supabase.functions.invoke('buscar-remetentes', {
+                body: { apiToken },
+            });
 
             if (error) {
-                console.error('❌ Erro ao buscar do Supabase:', error);
+                console.error('❌ Erro ao buscar remetentes:', error);
                 throw new Error(error.message);
             }
 
             // Mapear para o formato esperado
-            const remetentes: IRemetente[] = (data || []).map(rem => ({
+            const remetentes: IRemetente[] = (data.remetentes || []).map((rem: any) => ({
                 id: rem.id,
                 nome: rem.nome,
                 cpfCnpj: rem.cpf_cnpj,
