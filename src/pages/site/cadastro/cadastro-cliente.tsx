@@ -135,12 +135,14 @@ export const CadastroCliente = () => {
                 }),
             });
 
-            const responseData = await response.json();
-
             if (!response.ok) {
+                const responseData = await response.json().catch(() => ({}));
+                
                 // Verificar se é erro de CPF/CNPJ duplicado
                 const errorText = JSON.stringify(responseData).toLowerCase();
-                const isCpfCnpjDuplicado = errorText.includes('cpf/cnpj') || errorText.includes('já existe');
+                const isCpfCnpjDuplicado = errorText.includes('cpf') || errorText.includes('cnpj') || errorText.includes('já existe');
+                
+                setIsLoading(false); // Desligar loading antes de mostrar modal
                 
                 if (isCpfCnpjDuplicado) {
                     setErrorModalMessage('Este CPF/CNPJ já está cadastrado em nosso sistema.');
@@ -164,7 +166,7 @@ export const CadastroCliente = () => {
             }, 2000);
 
         } catch (error) {
-            console.error('Erro ao criar cliente:', error);
+            setIsLoading(false);
             toast.error('Erro ao criar conta. Tente novamente.');
         } finally {
             setIsLoading(false);
@@ -177,45 +179,57 @@ export const CadastroCliente = () => {
 
     return (
         <>
-            {/* Modal de Erro */}
+            {/* Modal de Erro - CPF/CNPJ Duplicado */}
             {showErrorModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-                    <div className="bg-background border border-border rounded-lg shadow-lg max-w-md w-full p-6 animate-in fade-in-0 zoom-in-95">
-                        <div className="flex items-start gap-4">
-                            <div className="flex-shrink-0 w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
-                                <svg className="w-6 h-6 text-destructive" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in-0">
+                    <div className="bg-white dark:bg-slate-900 border-2 border-red-100 dark:border-red-900/30 rounded-2xl shadow-2xl max-w-md w-full p-8 animate-in fade-in-0 zoom-in-95 duration-300">
+                        <div className="flex flex-col items-center text-center gap-4">
+                            {/* Ícone de Alerta */}
+                            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg shadow-red-500/30 animate-in zoom-in-50 duration-500">
+                                <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                 </svg>
                             </div>
-                            <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-foreground mb-2">
+                            
+                            {/* Título */}
+                            <div className="space-y-2">
+                                <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-50">
                                     CPF/CNPJ já cadastrado
                                 </h3>
-                                <p className="text-sm text-muted-foreground mb-4">
+                                <p className="text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                                     {errorModalMessage}
                                 </p>
-                                <p className="text-sm text-muted-foreground mb-6">
-                                    Se você já possui uma conta, faça login para acessar o sistema.
+                            </div>
+
+                            {/* Informação adicional */}
+                            <div className="w-full bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                                <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                                    ℹ️ Se você já possui uma conta, faça login para acessar o sistema. Caso tenha esquecido sua senha, você pode recuperá-la na tela de login.
                                 </p>
-                                <div className="flex gap-3">
-                                    <ButtonComponent
-                                        onClick={() => {
-                                            setShowErrorModal(false);
-                                            navigate('/login', { state: { email: userEmail } });
-                                        }}
-                                        variant="primary"
-                                        className="flex-1"
-                                    >
-                                        Ir para Login
-                                    </ButtonComponent>
-                                    <ButtonComponent
-                                        onClick={() => setShowErrorModal(false)}
-                                        variant="ghost"
-                                        className="flex-1"
-                                    >
-                                        Fechar
-                                    </ButtonComponent>
-                                </div>
+                            </div>
+                            
+                            {/* Botões */}
+                            <div className="flex flex-col sm:flex-row gap-3 w-full mt-2">
+                                <ButtonComponent
+                                    onClick={() => {
+                                        setShowErrorModal(false);
+                                        navigate('/login', { state: { email: userEmail } });
+                                    }}
+                                    variant="primary"
+                                    className="flex-1 h-12 font-semibold shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-all duration-300"
+                                >
+                                    <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                                    </svg>
+                                    Fazer Login
+                                </ButtonComponent>
+                                <ButtonComponent
+                                    onClick={() => setShowErrorModal(false)}
+                                    variant="ghost"
+                                    className="flex-1 h-12 font-medium border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                >
+                                    Fechar
+                                </ButtonComponent>
                             </div>
                         </div>
                     </div>
