@@ -10,12 +10,12 @@ interface CotacaoCardProps {
 }
 
 export const CotacaoCard = ({ cotacao, onSelect, isSelected = false, showSelectButton = false }: CotacaoCardProps) => {
-    // O valor da API já vem com desconto aplicado
-    // Se pagamos X, o valor de tabela é X + 50% de X = 1.5X
+    // O valor da API é o valor real que o cliente paga
+    // Valor de tabela calculado somando 80% ao valor real
     const precoNumerico = parseFloat(cotacao.preco.replace('R$', '').replace(',', '.').trim());
-    const valorTabela = precoNumerico * 1.5; // Valor original sem desconto
-    const economia = valorTabela - precoNumerico; // Quanto economizou
-    const percentualDesconto = ((economia / valorTabela) * 100).toFixed(0); // Porcentagem real de desconto
+    const valorTabela = precoNumerico * 1.80; // Valor de tabela = valor_api * 1.80
+    const economia = valorTabela - precoNumerico; // Economia = valor_tabela - valor_api
+    const percentualDesconto = 80; // Sempre exibir 80% OFF
     
     const valorTabelaFormatado = new Intl.NumberFormat('pt-BR', {
         style: 'currency',
@@ -90,7 +90,7 @@ export const CotacaoCard = ({ cotacao, onSelect, isSelected = false, showSelectB
                 </div>
                 <div className="text-center mt-1">
                     <span className="text-xs font-medium text-green-600 dark:text-green-400">
-                        💰 Economize {economiaFormatada} ({percentualDesconto}% de desconto)
+                        💰 Economize {economiaFormatada} (80% de desconto)
                     </span>
                 </div>
             </div>
