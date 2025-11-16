@@ -18,9 +18,10 @@ export const CotacaoCard = ({ cotacao, onSelect, isSelected = false, showSelectB
     
     const precoNumerico = parseFloat(cotacao.preco.replace('R$', '').replace(',', '.').trim());
     
-    // Rodonaves: 50% OFF (1.50) | Correios: 76.57% OFF (1.7657)
+    // Rodonaves: 50% OFF (1.50) | Correios: 43.36% OFF (1.7657)
+    // Se valor_tabela = valor_paga * 1.7657, então desconto = 0.7657 / 1.7657 = 43.36%
     const multiplicador = isRodonaves ? 1.50 : 1.7657;
-    const percentualDesconto = isRodonaves ? 50 : 76.57;
+    const percentualDesconto = isRodonaves ? 50 : 43.36;
     
     const valorTabela = precoNumerico * multiplicador;
     const economia = valorTabela - precoNumerico;
