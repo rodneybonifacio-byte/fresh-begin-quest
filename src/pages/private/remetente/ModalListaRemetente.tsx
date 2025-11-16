@@ -21,15 +21,21 @@ export const ModalListaRemetente: React.FC<{ isOpen: boolean; onCancel: () => vo
     const [busca, setBusca] = useState('');
     const service = new RemetenteEdgeService();
 
+    console.log('🔄 Modal aberto:', isOpen, 'User:', user?.email);
+
     const { data: remetentes, isLoading: isLoadingRemetentes, error } = useFetchQuery<IRemetente[]>(
-        ['remetentes-edge', user?.clienteId],
+        ['remetentes-edge', user?.clienteId, isOpen],
         async () => {
+            console.log('🎯 Executando query para buscar remetentes...');
             const response = await service.getAll();
+            console.log('✅ Resposta recebida:', response);
             return response.data ?? [];
         },
         {
             enabled: !!user?.clienteId && isOpen
         });
+
+    console.log('📊 Estado atual:', { remetentes, isLoadingRemetentes, error });
 
     useEffect(() => {
         if (remetentes) {
