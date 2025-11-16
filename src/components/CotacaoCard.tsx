@@ -26,6 +26,17 @@ export const CotacaoCard = ({ cotacao, onSelect, isSelected = false, showSelectB
     const valorTabela = precoNumerico * multiplicador;
     const economia = valorTabela - precoNumerico;
     
+    // Debug log
+    console.log('🔍 Cálculo de frete:', {
+        servico: cotacao.nomeServico,
+        isRodonaves,
+        precoAPI: precoNumerico,
+        multiplicador,
+        valorTabela,
+        economia,
+        percentualDesconto
+    });
+    
     const valorTabelaFormatado = new Intl.NumberFormat('pt-BR', {
         style: 'currency',
         currency: 'BRL'
