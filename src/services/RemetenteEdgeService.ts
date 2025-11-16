@@ -7,8 +7,15 @@ export class RemetenteEdgeService {
         try {
             console.log('🚀 Chamando Edge Function buscar-remetentes...');
             
+            // Pegar o token da API externa do localStorage
+            const apiToken = localStorage.getItem('token');
+            
+            if (!apiToken) {
+                throw new Error('Token de autenticação não encontrado');
+            }
+
             const { data, error } = await supabase.functions.invoke('buscar-remetentes', {
-                method: 'GET',
+                body: { apiToken },
             });
 
             console.log('📊 Resposta da Edge Function:', { data, error });
