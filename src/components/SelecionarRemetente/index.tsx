@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { ArrowRightLeft, User, MapPin } from 'lucide-react';
+import { ArrowRightLeft, User, MapPin, RefreshCw } from 'lucide-react';
 import { ButtonComponent } from '../button';
 import { ModalListaRemetente } from '../../pages/private/remetente/ModalListaRemetente';
+import { useUsuarioDados } from '../../hooks/useUsuarioDados';
+import { toast } from 'sonner';
 
 interface Remetente {
     id: string;
@@ -35,6 +37,18 @@ export const SelecionarRemetente = ({
     className = ""
 }: SelecionarRemetenteProps) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const { refetch, isLoading } = useUsuarioDados(false);
+
+    const handleSyncData = async () => {
+        try {
+            toast.info('Sincronizando dados do backend...');
+            await refetch();
+            toast.success('Dados sincronizados com sucesso!');
+        } catch (error) {
+            console.error('Erro ao sincronizar:', error);
+            toast.error('Erro ao sincronizar dados');
+        }
+    };
 
     const handleSelectRemetente = (remetente: Remetente) => {
         onSelect(remetente);
@@ -115,10 +129,22 @@ export const SelecionarRemetente = ({
     return (
         <div className={`flex flex-row w-full gap-2 ${className}`}>
             <div className="flex flex-col w-full gap-2">
-                <h1 className="font-semibold text-2xl text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                    <User size={24} className="text-blue-600 dark:text-blue-400" />
-                    {titulo}
-                </h1>
+                <div className="flex items-center justify-between">
+                    <h1 className="font-semibold text-2xl text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                        <User size={24} className="text-blue-600 dark:text-blue-400" />
+                        {titulo}
+                    </h1>
+                    <ButtonComponent
+                        variant="ghost"
+                        type="button"
+                        onClick={handleSyncData}
+                        disabled={isLoading}
+                        className="text-xs px-2 py-1 flex items-center gap-1"
+                    >
+                        <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+                        {isLoading ? 'Sincronizando...' : 'Atualizar'}
+                    </ButtonComponent>
+                </div>
                 
                 {remetenteSelecionado ? (
                     <div className="flex flex-col w-full p-4 bg-gray-50 dark:bg-slate-700 rounded-lg border border-gray-200 dark:border-slate-600">
