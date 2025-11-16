@@ -1,7 +1,6 @@
 // @ts-nocheck
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,34 +13,17 @@ serve(async (req) => {
   }
 
   try {
-    // Verificar autenticação do usuário
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      throw new Error('Authorization header missing');
-    }
-
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-      }
-    );
-
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    // Obter o token JWT da API externa do corpo da requisição
+    const { apiToken } = await req.json();
     
-    if (userError || !user) {
-      console.error('Erro ao obter usuário:', userError);
-      throw new Error('Usuário não autenticado');
+    if (!apiToken) {
+      throw new Error('Token de autenticação não fornecido');
     }
 
-    console.log('✅ Usuário autenticado:', user.email);
+    console.log('✅ Token recebido');
 
-    // Obter clienteId do JWT do usuário
-    const token = authHeader.replace('Bearer ', '');
-    const payload = JSON.parse(atob(token.split('.')[1]));
+    // Decodificar o JWT para extrair o clienteId
+    const payload = JSON.parse(atob(apiToken.split('.')[1]));
     const clienteId = payload.clienteId;
 
     if (!clienteId) {
@@ -117,3 +99,4 @@ serve(async (req) => {
     );
   }
 });
+
