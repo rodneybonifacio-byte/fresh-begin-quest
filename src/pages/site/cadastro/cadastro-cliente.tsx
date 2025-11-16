@@ -100,7 +100,45 @@ export const CadastroCliente = () => {
 
             if (error) {
                 console.error('Erro ao criar cliente:', error);
-                toast.error(error.message || 'Erro ao criar conta. Tente novamente.');
+                
+                // Tentar extrair mensagem de erro mais específica
+                let errorMessage = 'Erro ao criar conta. Tente novamente.';
+                
+                try {
+                    // O erro pode vir com a mensagem completa ou dentro de uma propriedade
+                    const errorText = error.message || JSON.stringify(error);
+                    
+                    // Verificar se é erro de CPF/CNPJ duplicado
+                    if (errorText.includes('Já existe um cliente cadastrado com o mesmo CPF/CNPJ') || 
+                        errorText.includes('ERR-MZJZG9')) {
+                        errorMessage = 'Este CPF/CNPJ já está cadastrado. Se você já tem uma conta, faça login.';
+                        
+                        // Mostrar toast com link para login
+                        toast.error(errorMessage, {
+                            duration: 5000,
+                            action: {
+                                label: 'Ir para Login',
+                                onClick: () => navigate('/login', { state: { email: data.email } })
+                            }
+                        });
+                        return;
+                    }
+                    
+                    // Tentar parsear JSON se houver
+                    if (errorText.includes('{')) {
+                        const match = errorText.match(/\{[^}]+\}/);
+                        if (match) {
+                            const parsed = JSON.parse(match[0]);
+                            if (parsed.error) {
+                                errorMessage = parsed.error;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error('Erro ao processar mensagem de erro:', e);
+                }
+                
+                toast.error(errorMessage);
                 return;
             }
 
