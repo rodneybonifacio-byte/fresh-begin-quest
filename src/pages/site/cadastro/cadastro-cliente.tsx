@@ -155,22 +155,32 @@ export const CadastroCliente = () => {
                 if (responseData) {
                     const errorText = JSON.stringify(responseData).toLowerCase();
                     console.log('📋 Response data em lowercase:', errorText);
+                    console.log('🔍 Verificando se contém cpf/cnpj:', errorText.includes('cpf/cnpj'));
+                    console.log('🔍 Verificando se contém já existe:', errorText.includes('já existe'));
                     
                     if (errorText.includes('cpf/cnpj') || errorText.includes('já existe')) {
+                        console.log('✅ Entrou na condição de CPF/CNPJ duplicado');
                         errorMessage = 'Este CPF/CNPJ já está cadastrado em nosso sistema.';
                         isCpfCnpjDuplicado = true;
+                        console.log('✅ setUserEmail sendo chamado com:', data.email);
                         setUserEmail(data.email);
                         console.log('✅ Detectado erro de CPF/CNPJ duplicado');
+                    } else {
+                        console.log('❌ NÃO entrou na condição de CPF/CNPJ duplicado');
                     }
                 }
                 
                 console.log('🎯 isCpfCnpjDuplicado:', isCpfCnpjDuplicado);
                 console.log('📝 errorMessage:', errorMessage);
+                console.log('📧 userEmail:', data.email);
                 
                 if (isCpfCnpjDuplicado) {
-                    console.log('🚀 Abrindo modal de erro');
+                    console.log('🚀 Tentando abrir modal de erro');
+                    console.log('🚀 setErrorModalMessage sendo chamado com:', errorMessage);
                     setErrorModalMessage(errorMessage);
+                    console.log('🚀 setShowErrorModal sendo chamado com: true');
                     setShowErrorModal(true);
+                    console.log('✅ Modal de erro deveria estar visível agora');
                 } else {
                     console.log('📢 Mostrando toast de erro');
                     toast.error(errorMessage);
