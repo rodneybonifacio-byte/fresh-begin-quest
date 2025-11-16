@@ -1,6 +1,7 @@
 // @ts-nocheck
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -80,23 +81,62 @@ serve(async (req) => {
     let destinatariosData = { data: [] };
     if (destinatariosResponse.ok) {
       destinatariosData = await destinatariosResponse.json();
-      console.log('✅ Destinatários encontrados:', destinatariosData.data?.length || 0);
-    } else {
-      console.warn('⚠️ Não foi possível buscar destinatários');
-    }
+    console.log('✅ Destinatários encontrados:', destinatariosData.data?.length || 0);
+  } else {
+    console.warn('⚠️ Não foi possível buscar destinatários');
+  }
 
-    // Retornar todos os dados consolidados
-    return new Response(
-      JSON.stringify({
-        cliente: clienteData.data,
-        remetentes: remetentesData.data || [],
-        destinatarios: destinatariosData.data || [],
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
+  // Sincronizar remetentes no Supabase
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  console.log('💾 Sincronizando remetentes no Supabase...');
+  
+  if (remetentesData.data && remetentesData.data.length > 0) {
+    for (const remetente of remetentesData.data) {
+      const { error: upsertError } = await supabase
+        .from('remetentes')
+        .upsert({
+          id: remetente.id,
+          cliente_id: clienteId,
+          nome: remetente.nome,
+          cpf_cnpj: remetente.cpfCnpj,
+          documento_estrangeiro: remetente.documentoEstrangeiro,
+          celular: remetente.celular,
+          telefone: remetente.telefone,
+          email: remetente.email,
+          cep: remetente.endereco?.cep,
+          logradouro: remetente.endereco?.logradouro,
+          numero: remetente.endereco?.numero,
+          complemento: remetente.endereco?.complemento,
+          bairro: remetente.endereco?.bairro,
+          localidade: remetente.endereco?.localidade,
+          uf: remetente.endereco?.uf,
+          sincronizado_em: new Date().toISOString(),
+        }, {
+          onConflict: 'id'
+        });
+
+      if (upsertError) {
+        console.error('❌ Erro ao sincronizar remetente:', upsertError);
       }
-    );
+    }
+    console.log('✅ Remetentes sincronizados no Supabase');
+  }
+
+  // Retornar todos os dados consolidados
+  return new Response(
+    JSON.stringify({
+      cliente: clienteData.data,
+      remetentes: remetentesData.data || [],
+      destinatarios: destinatariosData.data || [],
+    }),
+    {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200,
+    }
+  );
 
   } catch (error) {
     console.error('❌ Erro na Edge Function:', error);
