@@ -32,50 +32,30 @@ serve(async (req) => {
 
     console.log('🔍 Sincronizando remetentes para clienteId:', clienteId);
 
-    // Fazer login como admin no backend externo
+    // Usar o próprio token do usuário para buscar remetentes
     const baseUrl = Deno.env.get('BASE_API_URL');
-    const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
-    const adminPassword = Deno.env.get('API_ADMIN_PASSWORD');
 
-    console.log('🔐 Tentando login com admin...');
+    console.log('🔐 Buscando remetentes com token do usuário');
     console.log('📍 Base URL:', baseUrl);
-    console.log('📧 Email:', adminEmail ? 'Configurado' : 'NÃO CONFIGURADO');
-    console.log('🔑 Password:', adminPassword ? 'Configurado' : 'NÃO CONFIGURADO');
 
-    const loginPayload = { email: adminEmail, senha: adminPassword };
-    console.log('📤 Enviando payload de login');
-
-    const loginResponse = await fetch(`${baseUrl}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(loginPayload),
-    });
-
-    console.log('📥 Status da resposta:', loginResponse.status);
-    const loginText = await loginResponse.text();
-    console.log('📥 Resposta do servidor:', loginText);
-
-    if (!loginResponse.ok) {
-      throw new Error(`Falha ao autenticar como admin: ${loginText}`);
-    }
-
-    const loginData = JSON.parse(loginText);
-    const adminToken = loginData.data.token;
-
-    // Buscar remetentes do backend
+    // Buscar remetentes do backend usando o token do usuário
     const remetentesResponse = await fetch(`${baseUrl}/remetentes?clienteId=${clienteId}`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${adminToken}`,
+        'Authorization': `Bearer ${apiToken}`,
         'Content-Type': 'application/json',
       },
     });
 
+    console.log('📥 Status da resposta:', remetentesResponse.status);
+    const remetentesText = await remetentesResponse.text();
+    console.log('📥 Resposta do servidor:', remetentesText.substring(0, 200));
+
     if (!remetentesResponse.ok) {
-      throw new Error('Falha ao buscar remetentes do backend');
+      throw new Error(`Falha ao buscar remetentes: ${remetentesText}`);
     }
 
-    const remetentesData = await remetentesResponse.json();
+    const remetentesData = JSON.parse(remetentesText);
     const remetentes = remetentesData.data || [];
 
     console.log('📊 Remetentes obtidos do backend:', remetentes.length);
