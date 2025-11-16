@@ -112,7 +112,7 @@ export const CadastroCliente = () => {
             const cpfCnpjLimpo = data.cpfCnpj.replace(/\D/g, '');
 
             // Chamar edge function para criar o cliente com todas as configurações
-            const { error } = await supabase.functions.invoke('criar-cliente-autocadastro', {
+            const { data: responseData, error } = await supabase.functions.invoke('criar-cliente-autocadastro', {
                 body: {
                     nomeEmpresa: data.nomeEmpresa,
                     nomeResponsavel: data.nomeResponsavel,
@@ -135,27 +135,36 @@ export const CadastroCliente = () => {
 
             if (error) {
                 console.error('❌ Erro completo ao criar cliente:', error);
-                console.error('❌ Error message:', error.message);
-                console.error('❌ Error stringified:', JSON.stringify(error));
+                console.error('❌ Response data:', responseData);
                 
                 // Tentar extrair mensagem de erro mais específica
                 let errorMessage = 'Erro ao criar conta. Tente novamente.';
                 let isCpfCnpjDuplicado = false;
                 
-                try {
-                    // Converter tudo para string para analisar
-                    const errorText = JSON.stringify(error).toLowerCase();
-                    console.log('📋 Texto do erro (lowercase):', errorText);
+                // Verificar primeiro se temos responseData com informação de erro
+                if (responseData && typeof responseData === 'object') {
+                    const errorText = JSON.stringify(responseData).toLowerCase();
+                    console.log('📋 Response data em lowercase:', errorText);
                     
-                    // Verificar se é erro de CPF/CNPJ duplicado
                     if (errorText.includes('cpf/cnpj') || errorText.includes('já existe')) {
                         errorMessage = 'Este CPF/CNPJ já está cadastrado em nosso sistema.';
                         isCpfCnpjDuplicado = true;
                         setUserEmail(data.email);
-                        console.log('✅ Detectado erro de CPF/CNPJ duplicado');
+                        console.log('✅ Detectado erro de CPF/CNPJ duplicado via responseData');
                     }
-                } catch (e) {
-                    console.error('❌ Erro ao processar mensagem de erro:', e);
+                }
+                
+                // Se não encontrou no responseData, tentar no error object
+                if (!isCpfCnpjDuplicado) {
+                    const errorText = JSON.stringify(error).toLowerCase();
+                    console.log('📋 Error object em lowercase:', errorText);
+                    
+                    if (errorText.includes('cpf/cnpj') || errorText.includes('já existe')) {
+                        errorMessage = 'Este CPF/CNPJ já está cadastrado em nosso sistema.';
+                        isCpfCnpjDuplicado = true;
+                        setUserEmail(data.email);
+                        console.log('✅ Detectado erro de CPF/CNPJ duplicado via error object');
+                    }
                 }
                 
                 console.log('🎯 isCpfCnpjDuplicado:', isCpfCnpjDuplicado);
