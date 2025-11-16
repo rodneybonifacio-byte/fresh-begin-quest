@@ -1,4 +1,5 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+// @ts-ignore: Deno types
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,6 +19,7 @@ interface StatusEtiqueta {
   codigo_objeto: string | null
 }
 
+// @ts-ignore: Deno types
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -27,11 +29,15 @@ Deno.serve(async (req) => {
   try {
     console.log('🕐 [JOB] Iniciando processamento de créditos bloqueados...')
     
+    // @ts-ignore: Deno types
     const supabaseClient = createClient(
+      // @ts-ignore: Deno types
       Deno.env.get('SUPABASE_URL') ?? '',
+      // @ts-ignore: Deno types
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
+    // @ts-ignore: Deno types
     const baseApiUrl = Deno.env.get('BASE_API_URL')
     if (!baseApiUrl) {
       throw new Error('BASE_API_URL não configurada')

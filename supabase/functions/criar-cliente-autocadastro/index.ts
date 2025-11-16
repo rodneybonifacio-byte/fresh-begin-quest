@@ -119,6 +119,44 @@ serve(async (req: Request) => {
       ],
     }
 
+    // @ts-ignore: Deno types
+    const API_ADMIN_EMAIL = Deno.env.get('API_ADMIN_EMAIL')
+    // @ts-ignore: Deno types
+    const API_ADMIN_PASSWORD = Deno.env.get('API_ADMIN_PASSWORD')
+    
+    if (!API_ADMIN_EMAIL || !API_ADMIN_PASSWORD) {
+      throw new Error('Credenciais de admin não configuradas')
+    }
+
+    // 1. Fazer login para obter token
+    console.log('Fazendo login com credenciais de serviço...')
+    const loginResponse = await fetch(`${baseApiUrl}/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: API_ADMIN_EMAIL,
+        password: API_ADMIN_PASSWORD,
+      }),
+    })
+
+    if (!loginResponse.ok) {
+      const loginError = await loginResponse.text()
+      console.error('Erro ao fazer login:', loginError)
+      throw new Error(`Erro ao autenticar: ${loginError}`)
+    }
+
+    const loginData = await loginResponse.json()
+    const token = loginData.token
+    
+    if (!token) {
+      throw new Error('Token não retornado no login')
+    }
+    
+    console.log('✅ Login realizado com sucesso, token obtido')
+
+    // 2. Enviar dados do cliente usando o token
     console.log('Enviando dados para API:', JSON.stringify({
       ...clienteData,
       senha: '***'
@@ -129,6 +167,7 @@ serve(async (req: Request) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify(clienteData),
     })
