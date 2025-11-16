@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MessageComponent } from "../../../components/message";
 import { LoadSpinner } from "../../../components/loading";
 import { LogoApp } from "../../../components/logo";
@@ -6,9 +6,9 @@ import { ButtonComponent } from "../../../components/button";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useForm } from "react-hook-form";
-import axios from "axios";
-import { toastSuccess } from "../../../utils/toastNotify";
+import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../../../integrations/supabase/client";
 
 const schema = yup.object({
     password: yup.string().required("Nova senha obrigatória").min(8, "Mínimo 8 caracteres"),
@@ -23,42 +23,55 @@ export const NovaSenhaPage = () => {
     const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
+    const [hasValidSession, setHasValidSession] = useState(false);
 
     const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
         resolver: yupResolver(schema)
     });
 
+    useEffect(() => {
+        // Verifica se há uma sessão válida (usuário clicou no link do email)
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session) {
+                setHasValidSession(true);
+            } else {
+                toast.error("Link inválido ou expirado. Solicite um novo link de recuperação.");
+                setTimeout(() => navigate("/recuperar-senha"), 2000);
+            }
+        });
+    }, [navigate]);
+
     const handlerSubmit = async (data: FormData) => {
         try {
             setIsLoading(true);
 
-            const tokenReset = JSON.parse(sessionStorage.getItem('tokenReset') || '{}');
-
-            await axios.post(`${import.meta.env.VITE_BASE_API_URL}/recover/reset-password`, {
-                code: tokenReset.code,
-                password: data.password,
-                newPassword: data.confirmPassword
-            }, {
-                headers: {
-                    Authorization: `Bearer ${tokenReset.token}`
-                }
+            const { error } = await supabase.auth.updateUser({
+                password: data.password
             });
-            sessionStorage.removeItem('tokenReset');
-            sessionStorage.removeItem('emailRecovery');
-            toastSuccess("Senha alterada com sucesso!");
+
+            if (error) {
+                toast.error("Erro ao alterar senha: " + error.message);
+                return;
+            }
+
+            toast.success("Senha alterada com sucesso!");
             setIsSuccess(true);
+            
+            // Faz logout para forçar login com nova senha
+            await supabase.auth.signOut();
+            
             setTimeout(() => {
-                toastSuccess("Redirecionando para o login...");
                 navigate("/login");
             }, 2000);
         } catch (error) {
             console.error("Erro ao criar nova senha:", error);
+            toast.error("Erro ao processar solicitação");
         } finally {
             setIsLoading(false);
         }
     };
 
-    if (isLoading) {
+    if (isLoading || !hasValidSession) {
         return <LoadSpinner />
     }
 
