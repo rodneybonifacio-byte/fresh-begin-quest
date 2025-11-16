@@ -31,7 +31,6 @@ export const ModalViewPDF: React.FC<ModalViewPDFProps> = ({ isOpen, base64, file
         );
     }
 
-    const pdfUrl = `data:application/pdf;base64,${base64}`;
 
     const handleOpenInNewTab = () => {
         openPDFInNewTab(base64, fileName);
@@ -48,51 +47,40 @@ export const ModalViewPDF: React.FC<ModalViewPDFProps> = ({ isOpen, base64, file
     return (
         <ModalCustom
             title="Etiqueta de Envio"
-            description="Visualize, imprima ou baixe sua etiqueta"
+            description="Escolha como deseja visualizar sua etiqueta"
             onCancel={onCancel}
         >
-            <div className="flex flex-col gap-6 w-full max-w-[900px]">
-                {/* Preview do PDF em tamanho grande */}
-                <div className="w-full bg-muted rounded-lg overflow-hidden border border-border">
-                    <iframe
-                        src={pdfUrl}
-                        className="w-full h-[600px]"
-                        title={fileName}
-                    />
-                </div>
+            <div className="flex flex-col gap-4 w-full max-w-[500px]">
+                {/* Ações principais em cards */}
+                <ButtonComponent
+                    variant="secondary"
+                    border="outline"
+                    onClick={handleOpenInNewTab}
+                    className="flex items-center justify-center gap-3 h-16 text-lg"
+                >
+                    <ExternalLink size={24} />
+                    Visualizar em Nova Aba
+                </ButtonComponent>
 
-                {/* Ações principais */}
-                <div className="grid grid-cols-3 gap-3">
-                    <ButtonComponent
-                        variant="secondary"
-                        border="outline"
-                        onClick={handlePrint}
-                        className="flex items-center justify-center gap-2"
-                    >
-                        <Printer size={20} />
-                        Imprimir
-                    </ButtonComponent>
+                <ButtonComponent
+                    variant="secondary"
+                    border="outline"
+                    onClick={handlePrint}
+                    className="flex items-center justify-center gap-3 h-16 text-lg"
+                >
+                    <Printer size={24} />
+                    Imprimir Diretamente
+                </ButtonComponent>
 
-                    <ButtonComponent
-                        variant="secondary"
-                        border="outline"
-                        onClick={handleDownload}
-                        className="flex items-center justify-center gap-2"
-                    >
-                        <Download size={20} />
-                        Baixar
-                    </ButtonComponent>
-
-                    <ButtonComponent
-                        variant="secondary"
-                        border="outline"
-                        onClick={handleOpenInNewTab}
-                        className="flex items-center justify-center gap-2"
-                    >
-                        <ExternalLink size={20} />
-                        Nova Aba
-                    </ButtonComponent>
-                </div>
+                <ButtonComponent
+                    variant="secondary"
+                    border="outline"
+                    onClick={handleDownload}
+                    className="flex items-center justify-center gap-3 h-16 text-lg"
+                >
+                    <Download size={24} />
+                    Baixar PDF
+                </ButtonComponent>
             </div>
         </ModalCustom>
     );
