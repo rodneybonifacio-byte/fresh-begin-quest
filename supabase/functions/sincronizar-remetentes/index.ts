@@ -37,17 +37,29 @@ serve(async (req) => {
     const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
     const adminPassword = Deno.env.get('API_ADMIN_PASSWORD');
 
+    console.log('🔐 Tentando login com admin...');
+    console.log('📍 Base URL:', baseUrl);
+    console.log('📧 Email:', adminEmail ? 'Configurado' : 'NÃO CONFIGURADO');
+    console.log('🔑 Password:', adminPassword ? 'Configurado' : 'NÃO CONFIGURADO');
+
+    const loginPayload = { email: adminEmail, senha: adminPassword };
+    console.log('📤 Enviando payload de login');
+
     const loginResponse = await fetch(`${baseUrl}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: adminEmail, senha: adminPassword }),
+      body: JSON.stringify(loginPayload),
     });
 
+    console.log('📥 Status da resposta:', loginResponse.status);
+    const loginText = await loginResponse.text();
+    console.log('📥 Resposta do servidor:', loginText);
+
     if (!loginResponse.ok) {
-      throw new Error('Falha ao autenticar como admin');
+      throw new Error(`Falha ao autenticar como admin: ${loginText}`);
     }
 
-    const loginData = await loginResponse.json();
+    const loginData = JSON.parse(loginText);
     const adminToken = loginData.data.token;
 
     // Buscar remetentes do backend
