@@ -11,12 +11,12 @@ export const SaldoCliente = () => {
     const { user } = useAuth()
 
     const { data } = useFetchQuery<number>(
-        ['cliente-logado'],
+        ['cliente-saldo-disponivel'],
         async () => {
             if (!user?.clienteId) {
                 return 0;
             }
-            return await creditoService.calcularSaldo(user?.clienteId);
+            return await creditoService.calcularSaldoDisponivel(user?.clienteId);
         }
     );
 
