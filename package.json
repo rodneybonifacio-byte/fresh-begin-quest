@@ -13,6 +13,8 @@
         "start": "npx serve dist"
     },
     "dependencies": {
+        "@fnando/cnpj": "^2.0.0",
+        "@fnando/cpf": "^1.0.2",
         "@heroui/react": "2.8.5",
         "@heroui/system": "2.4.23",
         "@heroui/tabs": "2.2.24",

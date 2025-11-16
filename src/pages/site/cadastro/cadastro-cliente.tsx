@@ -4,6 +4,8 @@ import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { toast } from "sonner";
+import { isValid as isValidCPF } from "@fnando/cpf";
+import { isValid as isValidCNPJ } from "@fnando/cnpj";
 import { LogoApp } from "../../../components/logo";
 import { InputLabel } from "../../../components/input-label";
 import { ButtonComponent } from "../../../components/button";
@@ -14,7 +16,23 @@ import { useAddress } from "../../../hooks/useAddress";
 const schemaCadastroCliente = yup.object().shape({
     nomeEmpresa: yup.string().required("O nome da empresa é obrigatório").min(3, "O nome deve ter pelo menos 3 caracteres"),
     nomeResponsavel: yup.string().required("O nome do responsável é obrigatório").min(3, "O nome do responsável deve ter pelo menos 3 caracteres"),
-    cpfCnpj: yup.string().required("O CPF/CNPJ é obrigatório"),
+    cpfCnpj: yup.string()
+        .required("O CPF/CNPJ é obrigatório")
+        .test('cpf-cnpj-valido', 'CPF/CNPJ inválido', function(value) {
+            if (!value) return false;
+            
+            // Remove formatação
+            const numeros = value.replace(/\D/g, '');
+            
+            // Verifica se é CPF (11 dígitos) ou CNPJ (14 dígitos)
+            if (numeros.length === 11) {
+                return isValidCPF(numeros);
+            } else if (numeros.length === 14) {
+                return isValidCNPJ(numeros);
+            }
+            
+            return false;
+        }),
     telefone: yup.string(),
     celular: yup.string().required("O celular é obrigatório"),
     cep: yup.string().required("O CEP é obrigatório"),
