@@ -36,9 +36,6 @@ export const SelecionarRemetente = ({
 }: SelecionarRemetenteProps) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-console.log(remetenteSelecionado);
-
-
     const handleSelectRemetente = (remetente: Remetente) => {
         onSelect(remetente);
         setIsModalOpen(false);
