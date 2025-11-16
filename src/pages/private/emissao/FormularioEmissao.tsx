@@ -164,6 +164,17 @@ const FormularioEmissao = ({ onCancel }: FormularioProdutoProps) => {
     }, [cliente, remetentesResponse]);
 
     const handlerOnSubmit = async (data: FormDataProduto) => {
+        // Verificar se o remetente existe na API backend
+        const remetenteExisteNaAPI = remetentesResponse?.data?.some(r => r.id === clienteSelecionado?.id);
+        
+        if (!remetenteExisteNaAPI && clienteSelecionado) {
+            toast.error(
+                '⚠️ Este remetente não está sincronizado com a API. Remetentes cadastrados apenas localmente não podem gerar etiquetas. Use um remetente da sua conta principal.',
+                { duration: 8000, position: 'top-center' }
+            );
+            return;
+        }
+
         const destinatario: IDestinatario = {
             ...data.destinatario,
             id: destinatarioSelecionado?.id || '',
