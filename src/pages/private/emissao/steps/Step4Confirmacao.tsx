@@ -148,6 +148,22 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
       
       console.log('🏷️ Código de rastreio:', codigoObjeto);
       
+      // 3. BLOQUEAR CRÉDITO (reserva por 72h)
+      console.log('🔒 Bloqueando crédito da etiqueta...');
+      try {
+        await creditoService.bloquearCreditoEtiqueta(
+          user.clienteId,
+          backendResponse.id,
+          valorEtiqueta,
+          codigoObjeto !== 'Processando...' ? codigoObjeto : null
+        );
+        console.log('✅ Crédito bloqueado com sucesso por 72h');
+        toast.success('Crédito reservado por 72h', { duration: 3000 });
+      } catch (error) {
+        console.error('❌ Erro ao bloquear crédito:', error);
+        toast.warning('Etiqueta gerada mas erro ao bloquear crédito');
+      }
+      
       // Monta o objeto emissão completo com o ID e código de rastreio
       const emissaoCriada: IEmissao = {
         ...emissao,
