@@ -18,15 +18,15 @@ export const Home = () => {
                         </p>
                         <div className="mt-5 max-w-md mx-auto sm:flex sm:justify-center md:mt-8">
                             <div className="rounded-md shadow">
-                                <a href="#"
+                                <a href="/cadastro-cliente"
                                     className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-secondary hover:bg-secondary/90 dark:bg-secondary-dark dark:hover:bg-secondary-dark/90 md:py-4 md:text-lg md:px-10 transition duration-300">
-                                    Começar agora
+                                    Criar Conta
                                 </a>
                             </div>
                             <div className="mt-3 sm:mt-0 sm:ml-3">
-                                <a href="#"
+                                <a href="/login"
                                     className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-orange-700 dark:text-orange-300 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 md:py-4 md:text-lg md:px-10 transition duration-300">
-                                    Saiba mais
+                                    Fazer Login
                                 </a>
                             </div>
                         </div>
