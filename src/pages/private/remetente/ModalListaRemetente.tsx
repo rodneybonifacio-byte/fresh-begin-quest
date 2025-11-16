@@ -6,7 +6,7 @@ import { ButtonComponent } from "../../../components/button";
 import { ArrowRight, Plus } from "lucide-react";
 import { formatCpfCnpj } from "../../../utils/lib.formats";
 import { truncateText } from "../../../utils/funcoes";
-import { RemetenteSupabaseService } from "../../../services/RemetenteSupabaseService";
+import { RemetenteSupabaseDirectService } from "../../../services/RemetenteSupabaseDirectService";
 import { useFetchQuery } from "../../../hooks/useFetchQuery";
 import type { IRemetente } from "../../../types/IRemetente";
 
@@ -17,7 +17,7 @@ export const ModalListaRemetente: React.FC<{ isOpen: boolean; onCancel: () => vo
 }) => {
     const [data, setData] = useState<IRemetente[]>([]);
     const [busca, setBusca] = useState('');
-    const service = new RemetenteSupabaseService();
+    const service = new RemetenteSupabaseDirectService();
 
     const { data: remetentes, isLoading: isLoadingRemetentes, error } = useFetchQuery<IRemetente[]>(
         ['remetentes-supabase'],
