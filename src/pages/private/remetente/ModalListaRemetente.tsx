@@ -6,7 +6,7 @@ import { ButtonComponent } from "../../../components/button";
 import { ArrowRight } from "lucide-react";
 import { formatCpfCnpj } from "../../../utils/lib.formats";
 import { truncateText } from "../../../utils/funcoes";
-import { RemetenteService } from "../../../services/RemetenteService";
+import { RemetenteEdgeService } from "../../../services/RemetenteEdgeService";
 import { useFetchQuery } from "../../../hooks/useFetchQuery";
 import type { IRemetente } from "../../../types/IRemetente";
 import { useAuth } from "../../../providers/AuthContext";
@@ -19,13 +19,12 @@ export const ModalListaRemetente: React.FC<{ isOpen: boolean; onCancel: () => vo
     const { user } = useAuth();
     const [data, setData] = useState<IRemetente[]>([]);
     const [busca, setBusca] = useState('');
-    const service = new RemetenteService();
+    const service = new RemetenteEdgeService();
 
     const { data: remetentes, isLoading: isLoadingRemetentes, error } = useFetchQuery<IRemetente[]>(
-        ['remetentes', user?.clienteId],
+        ['remetentes-edge', user?.clienteId],
         async () => {
-            if (!user?.clienteId) return [];
-            const response = await service.getAll({ clienteId: user.clienteId });
+            const response = await service.getAll();
             return response.data ?? [];
         },
         {
