@@ -58,6 +58,28 @@ export const Login = () => {
           position: "top-center"
         });
       }
+    } catch (error: any) {
+      console.error('Erro no login:', error);
+      
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        toast.error("Tempo limite de conexão excedido. Verifique sua conexão ou tente novamente mais tarde.", {
+          position: "top-center",
+          duration: 5000
+        });
+      } else if (error.message?.includes('Network Error') || error.code === 'ERR_NETWORK') {
+        toast.error("Erro de conexão. Verifique sua internet ou se o servidor está acessível.", {
+          position: "top-center",
+          duration: 5000
+        });
+      } else if (error.response?.status === 401) {
+        toast.error("Email ou senha incorretos.", {
+          position: "top-center"
+        });
+      } else {
+        toast.error(error.message || "Erro ao fazer login. Tente novamente.", {
+          position: "top-center"
+        });
+      }
     } finally {
       setIsLoading(false);
     }
