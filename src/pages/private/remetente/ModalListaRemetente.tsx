@@ -21,29 +21,16 @@ export const ModalListaRemetente: React.FC<{ isOpen: boolean; onCancel: () => vo
     const [busca, setBusca] = useState('');
     const service = new RemetenteService();
 
-    console.log('🔍 Modal Remetente - User:', user);
-    console.log('🔍 Modal Remetente - ClienteId:', user?.clienteId);
-    console.log('🔍 Modal Remetente - isOpen:', isOpen);
-
     const { data: remetentes, isLoading: isLoadingRemetentes, error } = useFetchQuery<IRemetente[]>(
         ['remetentes', user?.clienteId],
         async () => {
-            console.log('🚀 Buscando remetentes para clienteId:', user?.clienteId);
-            if (!user?.clienteId) {
-                console.log('❌ ClienteId não disponível');
-                return [];
-            }
+            if (!user?.clienteId) return [];
             const response = await service.getAll({ clienteId: user.clienteId });
-            console.log('✅ Resposta da API:', response);
             return response.data ?? [];
         },
         {
             enabled: !!user?.clienteId && isOpen
         });
-
-    console.log('📊 Remetentes carregados:', remetentes);
-    console.log('⏳ Loading:', isLoadingRemetentes);
-    console.log('❌ Error:', error);
 
     useEffect(() => {
         if (remetentes) {
@@ -76,6 +63,14 @@ export const ModalListaRemetente: React.FC<{ isOpen: boolean; onCancel: () => vo
             <div className="flex flex-col gap-4">
                 {isLoadingRemetentes ? (
                     <p>Carregando remetentes...</p>
+                ) : error ? (
+                    <div className="flex flex-col gap-4 p-4 bg-destructive/10 border border-destructive rounded-lg">
+                        <p className="text-sm text-destructive font-medium">⚠️ Erro ao carregar remetentes</p>
+                        <p className="text-xs text-muted-foreground">
+                            Você não tem permissão para acessar os remetentes. 
+                            Entre em contato com o administrador do sistema.
+                        </p>
+                    </div>
                 ) : (
                     <div className="flex flex-col gap-2">
                         <InputLabel
