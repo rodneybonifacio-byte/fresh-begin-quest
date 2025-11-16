@@ -17,6 +17,7 @@ const getCenteredWindowFeatures = (width: number, height: number): string => {
 
 /**
  * Abre um PDF em uma nova aba do navegador
+ * Usa Blob URL para evitar limitações de data URLs e melhorar compatibilidade
  */
 export const openPDFInNewTab = (base64: string, fileName: string = 'documento.pdf') => {
     if (!base64 || base64.trim() === '') {
@@ -24,13 +25,39 @@ export const openPDFInNewTab = (base64: string, fileName: string = 'documento.pd
         return;
     }
 
-    const pdfUrl = `data:application/pdf;base64,${base64}`;
-    const newWindow = window.open(pdfUrl, '_blank');
-    
-    if (newWindow) {
-        newWindow.document.title = fileName;
-    } else {
-        console.error('Não foi possível abrir a nova aba. Verifique se o bloqueador de pop-ups está desabilitado.');
+    try {
+        // Converte base64 para Blob
+        const byteCharacters = atob(base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'application/pdf' });
+        const blobUrl = URL.createObjectURL(blob);
+
+        // Tenta abrir em nova aba
+        const newWindow = window.open(blobUrl, '_blank');
+        
+        if (newWindow) {
+            newWindow.document.title = fileName;
+            console.log('✅ PDF aberto em nova aba com sucesso');
+        } else {
+            // Se bloqueado, faz download automaticamente
+            console.warn('⚠️ Pop-up bloqueado, fazendo download do arquivo...');
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(blobUrl);
+            
+            alert('O bloqueador de pop-ups impediu a abertura. O PDF foi baixado automaticamente.');
+        }
+    } catch (error) {
+        console.error('❌ Erro ao abrir PDF:', error);
+        alert('Erro ao abrir o PDF. Tente novamente ou verifique o console para mais detalhes.');
     }
 };
 
