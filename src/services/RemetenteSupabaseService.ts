@@ -22,25 +22,30 @@ export class RemetenteSupabaseService {
                 throw new Error(error.message);
             }
 
+            console.log('📦 Resposta da edge function:', data);
+
+            // A edge function retorna o mesmo formato da API { data: [...] }
+            const remetentesData = data?.data || [];
+            
             // Mapear para o formato esperado
-            const remetentes: IRemetente[] = (data.remetentes || []).map((rem: any) => ({
+            const remetentes: IRemetente[] = remetentesData.map((rem: any) => ({
                 id: rem.id,
                 nome: rem.nome,
-                cpfCnpj: rem.cpf_cnpj,
-                documentoEstrangeiro: rem.documento_estrangeiro || '',
+                cpfCnpj: rem.cpfCnpj,
+                documentoEstrangeiro: rem.documentoEstrangeiro || '',
                 celular: rem.celular || '',
                 telefone: rem.telefone || '',
                 email: rem.email || '',
-                endereco: {
-                    cep: rem.cep || '',
-                    logradouro: rem.logradouro || '',
-                    numero: rem.numero || '',
-                    complemento: rem.complemento || '',
-                    bairro: rem.bairro || '',
-                    localidade: rem.localidade || '',
-                    uf: rem.uf || '',
+                endereco: rem.endereco || {
+                    cep: '',
+                    logradouro: '',
+                    numero: '',
+                    complemento: '',
+                    bairro: '',
+                    localidade: '',
+                    uf: '',
                 },
-                criadoEm: rem.criado_em ? new Date(rem.criado_em) : undefined,
+                criadoEm: rem.criadoEm ? new Date(rem.criadoEm) : undefined,
             }));
 
             console.log('✅ Remetentes encontrados:', remetentes.length);
