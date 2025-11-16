@@ -13,163 +13,147 @@ import { ICreatePixChargeResponse } from "../../../../types/IRecargaPix";
 import { useRecargaPixRealtime } from "../../../../hooks/useRecargaPixRealtime";
 import { useNavigate } from "react-router-dom";
 import { formatInTimeZone } from "date-fns-tz";
-
 export default function Recarga() {
-    const { user } = useAuth();
-    const navigate = useNavigate();
-    const creditoService = new CreditoService();
-    const queryClient = useQueryClient();
-    const { setIsLoading } = useLoadingSpinner();
-    const [valorRecarga, setValorRecarga] = useState("");
-    const [showPixModal, setShowPixModal] = useState(false);
-    const [pixChargeData, setPixChargeData] = useState<ICreatePixChargeResponse['data']>();
+  const {
+    user
+  } = useAuth();
+  const navigate = useNavigate();
+  const creditoService = new CreditoService();
+  const queryClient = useQueryClient();
+  const {
+    setIsLoading
+  } = useLoadingSpinner();
+  const [valorRecarga, setValorRecarga] = useState("");
+  const [showPixModal, setShowPixModal] = useState(false);
+  const [pixChargeData, setPixChargeData] = useState<ICreatePixChargeResponse['data']>();
+  const {
+    data: saldo,
+    refetch: refetchSaldo
+  } = useFetchQuery<number>(['cliente-saldo-recarga'], async () => {
+    if (!user?.clienteId) return 0;
+    return await creditoService.calcularSaldo(user?.clienteId);
+  }, {
+    refetchOnWindowFocus: true,
+    staleTime: 0 // Sempre buscar dados frescos
+  });
+  const {
+    data: ultimaRecarga
+  } = useFetchQuery(['ultima-recarga'], async () => {
+    console.log('🔍 Buscando última recarga...');
+    const recargas = await RecargaPixService.buscarRecargas(10);
+    console.log('📊 Recargas encontradas:', recargas?.length || 0);
+    console.log('📋 Recargas:', recargas);
+    const ultimaPaga = recargas.find(r => r.status === 'pago');
+    console.log('💳 Última recarga paga:', ultimaPaga);
+    return ultimaPaga || null;
+  }, {
+    refetchOnWindowFocus: true,
+    staleTime: 0
+  });
+  const {
+    data: totalRecarregado
+  } = useFetchQuery(['total-recarregado'], async () => {
+    console.log('💰 Calculando total recarregado...');
+    const recargas = await RecargaPixService.buscarRecargas(1000);
+    const total = recargas.filter(r => r.status === 'pago').reduce((sum, r) => sum + Number(r.valor), 0);
+    console.log('✅ Total recarregado:', total);
+    return total;
+  }, {
+    refetchOnWindowFocus: true,
+    staleTime: 0
+  });
 
-    const { data: saldo, refetch: refetchSaldo } = useFetchQuery<number>(
-        ['cliente-saldo-recarga'],
-        async () => {
-            if (!user?.clienteId) return 0;
-            return await creditoService.calcularSaldo(user?.clienteId);
-        },
-        {
-            refetchOnWindowFocus: true,
-            staleTime: 0 // Sempre buscar dados frescos
-        }
-    );
+  // Listener de notificações em tempo real para pagamentos PIX
+  useRecargaPixRealtime({
+    enabled: true,
+    onPaymentConfirmed: () => {
+      console.log('🎉 onPaymentConfirmed callback acionado pelo realtime!');
+      // Fechar modal
+      setShowPixModal(false);
+      setPixChargeData(undefined);
 
-    const { data: ultimaRecarga } = useFetchQuery(
-        ['ultima-recarga'],
-        async () => {
-            console.log('🔍 Buscando última recarga...');
-            const recargas = await RecargaPixService.buscarRecargas(10);
-            console.log('📊 Recargas encontradas:', recargas?.length || 0);
-            console.log('📋 Recargas:', recargas);
-            
-            const ultimaPaga = recargas.find(r => r.status === 'pago');
-            console.log('💳 Última recarga paga:', ultimaPaga);
-            
-            return ultimaPaga || null;
-        },
-        {
-            refetchOnWindowFocus: true,
-            staleTime: 0
+      // Forçar atualização imediata do saldo e totais
+      refetchSaldo();
+      queryClient.invalidateQueries({
+        queryKey: ['ultima-recarga']
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['total-recarregado']
+      });
+    }
+  });
+  const createPixChargeMutation = useMutation({
+    mutationFn: async (valor: number) => {
+      return await RecargaPixService.criarCobrancaPix({
+        valor,
+        expiracao: 3600
+      });
+    },
+    onSuccess: response => {
+      if (response.success && response.data) {
+        setPixChargeData(response.data);
+        setShowPixModal(true);
+        toastSuccess("Cobrança PIX gerada com sucesso!");
+      } else {
+        // Mensagens de erro mais amigáveis
+        let errorMessage = "Erro ao gerar cobrança PIX";
+        if (response.error?.includes('Certificados')) {
+          errorMessage = "Erro de configuração dos certificados. Contate o suporte.";
+        } else if (response.error?.includes('Configuração incompleta')) {
+          errorMessage = "Sistema não configurado corretamente. Contate o administrador.";
+        } else if (response.error?.includes('autenticação')) {
+          errorMessage = "Falha na autenticação com Banco Inter. Tente novamente.";
+        } else if (response.error?.includes('criar cobrança')) {
+          errorMessage = "Não foi possível gerar a cobrança PIX. Tente novamente.";
+        } else if (response.error) {
+          errorMessage = response.error;
         }
-    );
-
-    const { data: totalRecarregado } = useFetchQuery(
-        ['total-recarregado'],
-        async () => {
-            console.log('💰 Calculando total recarregado...');
-            const recargas = await RecargaPixService.buscarRecargas(1000);
-            const total = recargas
-                .filter(r => r.status === 'pago')
-                .reduce((sum, r) => sum + Number(r.valor), 0);
-            console.log('✅ Total recarregado:', total);
-            return total;
-        },
-        {
-            refetchOnWindowFocus: true,
-            staleTime: 0
-        }
-    );
-
-    // Listener de notificações em tempo real para pagamentos PIX
-    useRecargaPixRealtime({
-        enabled: true,
-        onPaymentConfirmed: () => {
-            console.log('🎉 onPaymentConfirmed callback acionado pelo realtime!');
-            // Fechar modal
-            setShowPixModal(false);
-            setPixChargeData(undefined);
-            
-            // Forçar atualização imediata do saldo e totais
-            refetchSaldo();
-            queryClient.invalidateQueries({ queryKey: ['ultima-recarga'] });
-            queryClient.invalidateQueries({ queryKey: ['total-recarregado'] });
-        }
+        toastError(errorMessage);
+        console.error('Erro detalhado:', response.error);
+      }
+      setIsLoading(false);
+    },
+    onError: (error: any) => {
+      console.error('Erro na requisição:', error);
+      let errorMessage = "Erro ao gerar cobrança PIX";
+      if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
+        errorMessage = "Erro de conexão. Verifique sua internet e tente novamente.";
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      toastError(errorMessage);
+      setIsLoading(false);
+    }
+  });
+  const handleGeneratePixCharge = () => {
+    const valor = parseFloat(valorRecarga.replace(/\D/g, "")) / 100;
+    if (valor <= 0) {
+      toastError("Valor inválido");
+      return;
+    }
+    if (valor < 1) {
+      toastError("Valor mínimo de R$ 1,00");
+      return;
+    }
+    setIsLoading(true);
+    createPixChargeMutation.mutate(valor);
+  };
+  const formatInputCurrency = (value: string) => {
+    const digits = value.replace(/\D/g, "");
+    const amount = parseFloat(digits) / 100;
+    return amount.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
     });
-
-    const createPixChargeMutation = useMutation({
-        mutationFn: async (valor: number) => {
-            return await RecargaPixService.criarCobrancaPix({
-                valor,
-                expiracao: 3600
-            });
-        },
-        onSuccess: (response) => {
-            if (response.success && response.data) {
-                setPixChargeData(response.data);
-                setShowPixModal(true);
-                toastSuccess("Cobrança PIX gerada com sucesso!");
-            } else {
-                // Mensagens de erro mais amigáveis
-                let errorMessage = "Erro ao gerar cobrança PIX";
-                
-                if (response.error?.includes('Certificados')) {
-                    errorMessage = "Erro de configuração dos certificados. Contate o suporte.";
-                } else if (response.error?.includes('Configuração incompleta')) {
-                    errorMessage = "Sistema não configurado corretamente. Contate o administrador.";
-                } else if (response.error?.includes('autenticação')) {
-                    errorMessage = "Falha na autenticação com Banco Inter. Tente novamente.";
-                } else if (response.error?.includes('criar cobrança')) {
-                    errorMessage = "Não foi possível gerar a cobrança PIX. Tente novamente.";
-                } else if (response.error) {
-                    errorMessage = response.error;
-                }
-                
-                toastError(errorMessage);
-                console.error('Erro detalhado:', response.error);
-            }
-            setIsLoading(false);
-        },
-        onError: (error: any) => {
-            console.error('Erro na requisição:', error);
-            let errorMessage = "Erro ao gerar cobrança PIX";
-            
-            if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
-                errorMessage = "Erro de conexão. Verifique sua internet e tente novamente.";
-            } else if (error?.message) {
-                errorMessage = error.message;
-            }
-            
-            toastError(errorMessage);
-            setIsLoading(false);
-        }
-    });
-
-    const handleGeneratePixCharge = () => {
-        const valor = parseFloat(valorRecarga.replace(/\D/g, "")) / 100;
-        if (valor <= 0) {
-            toastError("Valor inválido");
-            return;
-        }
-        if (valor < 1) {
-            toastError("Valor mínimo de R$ 1,00");
-            return;
-        }
-        setIsLoading(true);
-        createPixChargeMutation.mutate(valor);
-    };
-
-    const formatInputCurrency = (value: string) => {
-        const digits = value.replace(/\D/g, "");
-        const amount = parseFloat(digits) / 100;
-        return amount.toLocaleString("pt-BR", {
-            style: "currency",
-            currency: "BRL",
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        });
-    };
-
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value;
-        setValorRecarga(value);
-    };
-
-    const saldoAtual = formatCurrencyWithCents(saldo?.toString() || "0");
-
-    return (
-        <div className="min-h-screen bg-background p-6">
+  };
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setValorRecarga(value);
+  };
+  const saldoAtual = formatCurrencyWithCents(saldo?.toString() || "0");
+  return <div className="min-h-screen bg-background p-6">
             <div className="max-w-6xl mx-auto space-y-6">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
@@ -182,10 +166,7 @@ export default function Recarga() {
                             <p className="text-muted-foreground">Adicione créditos à sua carteira</p>
                         </div>
                     </div>
-                    <button
-                        onClick={() => navigate('/app/financeiro/recarga/historico')}
-                        className="flex items-center gap-2 px-4 py-2 bg-card hover:bg-muted border border-border rounded-lg transition-colors text-foreground"
-                    >
+                    <button onClick={() => navigate('/app/financeiro/recarga/historico')} className="flex items-center gap-2 px-4 py-2 bg-card hover:bg-muted border border-border rounded-lg transition-colors text-foreground">
                         <History className="w-5 h-5" />
                         Ver Histórico
                     </button>
@@ -201,7 +182,7 @@ export default function Recarga() {
                             </div>
                             <span className="text-sm font-medium text-muted-foreground">Saldo Atual</span>
                         </div>
-                        <p className="text-3xl font-bold text-foreground">{saldoAtual}</p>
+                        <p className="font-bold text-foreground text-xl">{saldoAtual}</p>
                     </div>
 
                     {/* Total Recarregado */}
@@ -212,7 +193,7 @@ export default function Recarga() {
                             </div>
                             <span className="text-sm font-medium text-muted-foreground">Total Recarregado</span>
                         </div>
-                        <p className="text-3xl font-bold text-foreground">
+                        <p className="font-bold text-foreground text-xl">
                             {formatCurrencyWithCents((totalRecarregado || 0).toString())}
                         </p>
                     </div>
@@ -225,11 +206,8 @@ export default function Recarga() {
                             </div>
                             <span className="text-sm font-medium text-muted-foreground">Última Recarga</span>
                         </div>
-                        <p className="text-3xl font-bold text-foreground">
-                            {ultimaRecarga?.data_pagamento 
-                                ? formatInTimeZone(new Date(ultimaRecarga.data_pagamento), "America/Sao_Paulo", "dd/MM/yyyy 'às' HH:mm")
-                                : "-"
-                            }
+                        <p className="font-bold text-foreground text-xl">
+                            {ultimaRecarga?.data_pagamento ? formatInTimeZone(new Date(ultimaRecarga.data_pagamento), "America/Sao_Paulo", "dd/MM/yyyy 'às' HH:mm") : "-"}
                         </p>
                     </div>
                 </div>
@@ -246,36 +224,20 @@ export default function Recarga() {
                             <label className="block text-sm font-medium text-foreground mb-2">
                                 Valor da Recarga
                             </label>
-                            <input
-                                type="text"
-                                value={valorRecarga ? formatInputCurrency(valorRecarga) : ""}
-                                onChange={handleInputChange}
-                                placeholder="R$ 0,00"
-                                className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-foreground text-lg"
-                            />
+                            <input type="text" value={valorRecarga ? formatInputCurrency(valorRecarga) : ""} onChange={handleInputChange} placeholder="R$ 0,00" className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-foreground text-lg" />
                         </div>
 
                         {/* Valores Sugeridos */}
                         <div>
                             <p className="text-sm font-medium text-muted-foreground mb-3">Valores Sugeridos</p>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                {[50, 100, 200, 500].map((valor) => (
-                                    <button
-                                        key={valor}
-                                        onClick={() => setValorRecarga((valor * 100).toString())}
-                                        className="px-4 py-3 bg-secondary hover:bg-secondary/80 border border-border rounded-lg text-foreground font-semibold transition-colors"
-                                    >
+                                {[50, 100, 200, 500].map(valor => <button key={valor} onClick={() => setValorRecarga((valor * 100).toString())} className="px-4 py-3 bg-secondary hover:bg-secondary/80 border border-border rounded-lg text-foreground font-semibold transition-colors">
                                         R$ {valor},00
-                                    </button>
-                                ))}
+                                    </button>)}
                             </div>
                         </div>
 
-                        <button
-                            onClick={handleGeneratePixCharge}
-                            disabled={!valorRecarga || parseFloat(valorRecarga.replace(/\D/g, "")) === 0}
-                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                        >
+                        <button onClick={handleGeneratePixCharge} disabled={!valorRecarga || parseFloat(valorRecarga.replace(/\D/g, "")) === 0} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                             <QrCode className="w-5 h-5" />
                             Gerar PIX
                         </button>
@@ -298,20 +260,17 @@ export default function Recarga() {
             </div>
 
             {/* Modal PIX */}
-            <ModalRecargaPix
-                isOpen={showPixModal}
-                onClose={() => {
-                    console.log('🚪 Modal fechando via onClose...');
-                    setShowPixModal(false);
-                    setValorRecarga("");
-                    queryClient.invalidateQueries({ queryKey: ['cliente-saldo-recarga'] });
-                    queryClient.invalidateQueries({ queryKey: ['recargas-historico'] });
-                    console.log('✅ Queries invalidadas');
-                }}
-                chargeData={pixChargeData}
-                saldoInicial={saldo || 0}
-                clienteId={user?.clienteId || ''}
-            />
-        </div>
-    );
+            <ModalRecargaPix isOpen={showPixModal} onClose={() => {
+      console.log('🚪 Modal fechando via onClose...');
+      setShowPixModal(false);
+      setValorRecarga("");
+      queryClient.invalidateQueries({
+        queryKey: ['cliente-saldo-recarga']
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['recargas-historico']
+      });
+      console.log('✅ Queries invalidadas');
+    }} chargeData={pixChargeData} saldoInicial={saldo || 0} clienteId={user?.clienteId || ''} />
+        </div>;
 }
