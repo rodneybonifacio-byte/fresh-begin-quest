@@ -41,8 +41,7 @@ export const ListaEmissoes = () => {
     const [page, setPage] = useState<number>(1);
 
     const [etiqueta, setEtiqueta] = useState<{ nome: string; dados: string }>();
-    void setEtiqueta; // Mantido para compatibilidade com modais existentes
-    const { onEmissaoVisualizarPDF } = useImprimirEtiquetaPDF();
+    const { onEmissaoImprimir } = useImprimirEtiquetaPDF();
 
     const {
         data: emissoes,
@@ -84,7 +83,17 @@ export const ListaEmissoes = () => {
 
     const handleOnPDF = async (emissao: IEmissao, mergePdf: boolean = false) => {
         const tipoEtiqueta = mergePdf ? 'merge' : 'etiqueta';
-        await onEmissaoVisualizarPDF(emissao, tipoEtiqueta, setIsLoading);
+        
+        try {
+            const response = await onEmissaoImprimir(emissao, tipoEtiqueta, setIsLoading);
+            
+            if (response?.data) {
+                setEtiqueta(response.data);
+                setIsModalViewPDF(true);
+            }
+        } catch (error) {
+            console.error('Erro ao gerar PDF:', error);
+        }
     };
 
     const handleOnViewErroPostagem = async (jsonContent?: string) => {
