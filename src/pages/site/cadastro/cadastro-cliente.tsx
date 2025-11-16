@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -52,6 +52,12 @@ export const CadastroCliente = () => {
     } = useForm<CadastroClienteFormData>({
         resolver: yupResolver(schemaCadastroCliente),
     });
+
+    // Monitorar mudanças no estado do modal
+    useEffect(() => {
+        console.log('🔔 showErrorModal mudou para:', showErrorModal);
+        console.log('📝 errorModalMessage:', errorModalMessage);
+    }, [showErrorModal, errorModalMessage]);
 
     const handleCepChange = async (cep: string) => {
         const cepFormatado = cep.replace(/\D/g, '');
@@ -128,47 +134,39 @@ export const CadastroCliente = () => {
             });
 
             if (error) {
-                console.error('Erro ao criar cliente:', error);
+                console.error('❌ Erro completo ao criar cliente:', error);
+                console.error('❌ Error message:', error.message);
+                console.error('❌ Error stringified:', JSON.stringify(error));
                 
                 // Tentar extrair mensagem de erro mais específica
                 let errorMessage = 'Erro ao criar conta. Tente novamente.';
                 let isCpfCnpjDuplicado = false;
                 
                 try {
-                    // O erro pode vir com a mensagem completa ou dentro de uma propriedade
-                    const errorText = error.message || JSON.stringify(error);
+                    // Converter tudo para string para analisar
+                    const errorText = JSON.stringify(error).toLowerCase();
+                    console.log('📋 Texto do erro (lowercase):', errorText);
                     
-                    // Verificar se é erro de CPF/CNPJ duplicado (não depende do código de erro específico)
-                    if (errorText.includes('Já existe um cliente cadastrado com o mesmo CPF/CNPJ') || 
-                        errorText.toLowerCase().includes('cpf/cnpj')) {
+                    // Verificar se é erro de CPF/CNPJ duplicado
+                    if (errorText.includes('cpf/cnpj') || errorText.includes('já existe')) {
                         errorMessage = 'Este CPF/CNPJ já está cadastrado em nosso sistema.';
                         isCpfCnpjDuplicado = true;
                         setUserEmail(data.email);
-                    } else {
-                        // Tentar parsear JSON se houver
-                        if (errorText.includes('{')) {
-                            const match = errorText.match(/\{[^}]+\}/);
-                            if (match) {
-                                const parsed = JSON.parse(match[0]);
-                                if (parsed.error) {
-                                    errorMessage = parsed.error;
-                                    // Verificar novamente se a mensagem parseada contém CPF/CNPJ
-                                    if (errorMessage.toLowerCase().includes('cpf/cnpj')) {
-                                        isCpfCnpjDuplicado = true;
-                                        setUserEmail(data.email);
-                                    }
-                                }
-                            }
-                        }
+                        console.log('✅ Detectado erro de CPF/CNPJ duplicado');
                     }
                 } catch (e) {
-                    console.error('Erro ao processar mensagem de erro:', e);
+                    console.error('❌ Erro ao processar mensagem de erro:', e);
                 }
                 
+                console.log('🎯 isCpfCnpjDuplicado:', isCpfCnpjDuplicado);
+                console.log('📝 errorMessage:', errorMessage);
+                
                 if (isCpfCnpjDuplicado) {
+                    console.log('🚀 Abrindo modal de erro');
                     setErrorModalMessage(errorMessage);
                     setShowErrorModal(true);
                 } else {
+                    console.log('📢 Mostrando toast de erro');
                     toast.error(errorMessage);
                 }
                 return;
