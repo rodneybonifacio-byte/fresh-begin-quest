@@ -18,24 +18,14 @@ export const CotacaoCard = ({ cotacao, onSelect, isSelected = false, showSelectB
     
     const precoNumerico = parseFloat(cotacao.preco.replace('R$', '').replace(',', '.').trim());
     
-    // Rodonaves: 50% OFF (1.50) | Correios: 43.36% OFF (1.7657)
-    // Se valor_tabela = valor_paga * 1.7657, então desconto = 0.7657 / 1.7657 = 43.36%
-    const multiplicador = isRodonaves ? 1.50 : 1.7657;
-    const percentualDesconto = isRodonaves ? 50 : 43.36;
+    // Rodonaves: 50% OFF (1.50) | Correios: 63.8% OFF (2.7657)
+    // Correios: valor_tabela = preço + 176,57% = preço * 2.7657
+    // Exemplo: R$ 8,75 * 2.7657 = R$ 24,20
+    const multiplicador = isRodonaves ? 1.50 : 2.7657;
+    const percentualDesconto = isRodonaves ? 50 : 63.8;
     
     const valorTabela = precoNumerico * multiplicador;
     const economia = valorTabela - precoNumerico;
-    
-    // Debug log
-    console.log('🔍 Cálculo de frete:', {
-        servico: cotacao.nomeServico,
-        isRodonaves,
-        precoAPI: precoNumerico,
-        multiplicador,
-        valorTabela,
-        economia,
-        percentualDesconto
-    });
     
     const valorTabelaFormatado = new Intl.NumberFormat('pt-BR', {
         style: 'currency',
