@@ -67,15 +67,23 @@ export const CotacaoList = ({
         );
     }
 
+    // Ordenar cotações por preço (menor primeiro)
+    const cotacoesOrdenadas = [...cotacoes].sort((a, b) => {
+        const precoA = parseFloat(a.preco.replace('R$', '').replace(',', '.').trim());
+        const precoB = parseFloat(b.preco.replace('R$', '').replace(',', '.').trim());
+        return precoA - precoB;
+    });
+
     return (
         <div className="w-full grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {cotacoes.map((cotacao: ICotacaoMinimaResponse, index: number) => (
+            {cotacoesOrdenadas.map((cotacao: ICotacaoMinimaResponse, index: number) => (
                 <CotacaoCard
                     key={index}
                     cotacao={cotacao}
                     onSelect={onSelectCotacao}
                     isSelected={selectedCotacao?.nomeServico === cotacao.nomeServico}
                     showSelectButton={showSelectButtons}
+                    isBestPrice={index === 0}
                 />
             ))}
         </div>

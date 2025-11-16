@@ -7,9 +7,10 @@ interface CotacaoCardProps {
     onSelect?: (cotacao: ICotacaoMinimaResponse) => void;
     isSelected?: boolean;
     showSelectButton?: boolean;
+    isBestPrice?: boolean;
 }
 
-export const CotacaoCard = ({ cotacao, onSelect, isSelected = false, showSelectButton = false }: CotacaoCardProps) => {
+export const CotacaoCard = ({ cotacao, onSelect, isSelected = false, showSelectButton = false, isBestPrice = false }: CotacaoCardProps) => {
     // O valor da API é o valor real que o cliente paga
     // Identifica se é Rodonaves ou Correios para aplicar o percentual correto
     const isRodonaves = cotacao.imagem?.toLowerCase().includes('rodonaves') || 
@@ -39,11 +40,22 @@ export const CotacaoCard = ({ cotacao, onSelect, isSelected = false, showSelectB
             className={`group bg-card rounded-xl shadow-lg p-5 gap-3 w-full flex flex-col relative border-2 transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] ${
                 isSelected
                     ? 'border-primary ring-4 ring-primary/20 bg-primary/5'
+                    : isBestPrice
+                    ? 'border-green-500 ring-4 ring-green-500/30 bg-green-50 dark:bg-green-950/20'
                     : 'border-border hover:border-primary/50'
             }`}
         >
+            {/* Badge de melhor preço */}
+            {isBestPrice && (
+                <div className="absolute -top-3 -left-3 z-20">
+                    <div className="bg-gradient-to-br from-green-600 to-green-700 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+                        <span className="text-xl">⭐</span>
+                        <span className="font-bold text-sm">MELHOR PREÇO</span>
+                    </div>
+                </div>
+            )}
             {/* Badge de desconto com porcentagem real */}
-            <div className="absolute -top-3 -right-3 z-10">
+            <div className={`absolute -top-3 z-10 ${isBestPrice ? 'right-3' : '-right-3'}`}>
                 <div className="bg-gradient-to-br from-green-500 to-green-600 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 animate-bounce">
                     <BadgePercent className="h-4 w-4" />
                     <span className="font-bold text-sm">{percentualDesconto}% OFF</span>
