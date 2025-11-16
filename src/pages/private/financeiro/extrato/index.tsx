@@ -13,7 +13,7 @@ export default function ExtratoCreditos() {
     const { user } = useAuth();
     const [transacoes, setTransacoes] = useState<ITransacaoCredito[]>([]);
     const [loading, setLoading] = useState(true);
-    const [filtroTipo, setFiltroTipo] = useState<'todos' | 'recarga' | 'consumo'>('todos');
+    const [filtroTipo, setFiltroTipo] = useState<'todos' | 'recarga' | 'consumo' | 'bloqueado'>('todos');
     const [paginaAtual, setPaginaAtual] = useState(1);
     const itensPorPagina = 15;
     const [resumo, setResumo] = useState({
@@ -126,6 +126,9 @@ export default function ExtratoCreditos() {
 
     const transacoesFiltradas = transacoes.filter(t => {
         if (filtroTipo === 'todos') return true;
+        if (filtroTipo === 'bloqueado') {
+            return (t as ITransacaoCredito & { status?: string }).status === 'bloqueado';
+        }
         return t.tipo === filtroTipo;
     });
 

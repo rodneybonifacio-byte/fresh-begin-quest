@@ -11,6 +11,10 @@ export interface ITransacaoCredito {
     emissao_id?: string;
     created_at: string;
     updated_at: string;
+    status?: 'bloqueado' | 'consumido' | 'liberado';
+    blocked_until?: string;
+    liberado_em?: string;
+    cobrada?: boolean;
 }
 
 export class CreditoService extends BaseService<ITransacaoCredito> {
@@ -18,6 +22,62 @@ export class CreditoService extends BaseService<ITransacaoCredito> {
 
     constructor() {
         super(new CustomHttpClient());
+    }
+
+    /**
+     * Bloqueia crédito ao gerar etiqueta (reserva por 72h)
+     */
+    async bloquearCreditoEtiqueta(
+        clienteId: string, 
+        emissaoId: string, 
+        valor: number, 
+        codigoObjeto?: string | null
+    ): Promise<string> {
+        const { data, error } = await supabase.rpc('bloquear_credito_etiqueta', {
+            p_cliente_id: clienteId,
+            p_emissao_id: emissaoId,
+            p_valor: valor,
+            p_codigo_objeto: (codigoObjeto || null) as any
+        });
+
+        if (error) throw error;
+        return data;
+    }
+
+    /**
+     * Calcula saldo disponível (recargas - bloqueados - consumidos)
+     */
+    async calcularSaldoDisponivel(clienteId: string): Promise<number> {
+        const { data, error } = await supabase.rpc('calcular_saldo_disponivel', {
+            p_cliente_id: clienteId
+        });
+
+        if (error) throw error;
+        return data || 0;
+    }
+
+    /**
+     * Calcula total de créditos bloqueados
+     */
+    async calcularCreditosBloqueados(clienteId: string): Promise<number> {
+        const { data, error } = await supabase.rpc('calcular_creditos_bloqueados', {
+            p_cliente_id: clienteId
+        });
+
+        if (error) throw error;
+        return data || 0;
+    }
+
+    /**
+     * Calcula total de créditos consumidos
+     */
+    async calcularCreditosConsumidos(clienteId: string): Promise<number> {
+        const { data, error } = await supabase.rpc('calcular_creditos_consumidos', {
+            p_cliente_id: clienteId
+        });
+
+        if (error) throw error;
+        return data || 0;
     }
 
     /**
