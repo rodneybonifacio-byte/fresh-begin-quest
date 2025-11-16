@@ -3,39 +3,47 @@ import Fuse from "fuse.js";
 import { ModalCustom } from "../../../components/modal";
 import { InputLabel } from "../../../components/input-label";
 import { ButtonComponent } from "../../../components/button";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, RefreshCw } from "lucide-react";
 import { formatCpfCnpj } from "../../../utils/lib.formats";
 import { truncateText } from "../../../utils/funcoes";
-import { RemetenteEdgeService } from "../../../services/RemetenteEdgeService";
+import { RemetenteSupabaseService } from "../../../services/RemetenteSupabaseService";
 import { useFetchQuery } from "../../../hooks/useFetchQuery";
 import type { IRemetente } from "../../../types/IRemetente";
-import { useAuth } from "../../../providers/AuthContext";
+import { toast } from "sonner";
 
 export const ModalListaRemetente: React.FC<{ isOpen: boolean; onCancel: () => void, onSelect: (remetente: any) => void; }> = ({
     isOpen,
     onCancel,
     onSelect
 }) => {
-    const { user } = useAuth();
     const [data, setData] = useState<IRemetente[]>([]);
     const [busca, setBusca] = useState('');
-    const service = new RemetenteEdgeService();
+    const [isSyncing, setIsSyncing] = useState(false);
+    const service = new RemetenteSupabaseService();
 
-    console.log('🔄 Modal aberto:', isOpen, 'User:', user?.email);
-
-    const { data: remetentes, isLoading: isLoadingRemetentes, error } = useFetchQuery<IRemetente[]>(
-        ['remetentes-edge', user?.clienteId, isOpen],
+    const { data: remetentes, isLoading: isLoadingRemetentes, error, refetch } = useFetchQuery<IRemetente[]>(
+        ['remetentes-supabase'],
         async () => {
-            console.log('🎯 Executando query para buscar remetentes...');
             const response = await service.getAll();
-            console.log('✅ Resposta recebida:', response);
             return response.data ?? [];
         },
         {
-            enabled: !!user?.clienteId && isOpen
+            enabled: isOpen
         });
 
-    console.log('📊 Estado atual:', { remetentes, isLoadingRemetentes, error });
+    const handleSincronizar = async () => {
+        setIsSyncing(true);
+        try {
+            await service.sincronizar();
+            await refetch();
+            toast.success('Remetentes sincronizados com sucesso!');
+        } catch (error) {
+            console.error('Erro na sincronização:', error);
+            toast.error('Erro ao sincronizar remetentes');
+        } finally {
+            setIsSyncing(false);
+        }
+    };
 
     useEffect(() => {
         if (remetentes) {
@@ -66,14 +74,29 @@ export const ModalListaRemetente: React.FC<{ isOpen: boolean; onCancel: () => vo
             description="Selecione um remetente existente ou crie um novo."
             onCancel={onCancel}>
             <div className="flex flex-col gap-4">
+                <div className="flex justify-between items-center mb-2">
+                    <p className="text-sm text-muted-foreground">
+                        {data.length} remetente(s) encontrado(s)
+                    </p>
+                    <ButtonComponent
+                        type="button"
+                        variant="secondary"
+                        size="small"
+                        onClick={handleSincronizar}
+                        disabled={isSyncing}
+                    >
+                        <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+                        Sincronizar
+                    </ButtonComponent>
+                </div>
+
                 {isLoadingRemetentes ? (
-                    <p>Carregando remetentes...</p>
+                    <p className="text-center py-4">Carregando remetentes...</p>
                 ) : error ? (
                     <div className="flex flex-col gap-4 p-4 bg-destructive/10 border border-destructive rounded-lg">
                         <p className="text-sm text-destructive font-medium">⚠️ Erro ao carregar remetentes</p>
                         <p className="text-xs text-muted-foreground">
-                            Você não tem permissão para acessar os remetentes. 
-                            Entre em contato com o administrador do sistema.
+                            Clique em "Sincronizar" para buscar os remetentes do backend.
                         </p>
                     </div>
                 ) : (
