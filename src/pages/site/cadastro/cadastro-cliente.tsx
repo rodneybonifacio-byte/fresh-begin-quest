@@ -75,16 +75,42 @@ export const CadastroCliente = () => {
         }
     };
 
+    const handleCpfCnpjChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value.replace(/\D/g, ''); // Remove tudo que não é número
+        let formatted = '';
+
+        if (value.length <= 11) {
+            // Formatar como CPF: ###.###.###-##
+            formatted = value
+                .replace(/(\d{3})(\d)/, '$1.$2')
+                .replace(/(\d{3})(\d)/, '$1.$2')
+                .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+        } else {
+            // Formatar como CNPJ: ##.###.###/####-##
+            formatted = value
+                .substring(0, 14) // Limita a 14 dígitos
+                .replace(/(\d{2})(\d)/, '$1.$2')
+                .replace(/(\d{3})(\d)/, '$1.$2')
+                .replace(/(\d{3})(\d)/, '$1/$2')
+                .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+        }
+
+        setValue('cpfCnpj', formatted);
+    };
+
     const onSubmit = async (data: CadastroClienteFormData) => {
         try {
             setIsLoading(true);
+
+            // Remover formatação do CPF/CNPJ antes de enviar
+            const cpfCnpjLimpo = data.cpfCnpj.replace(/\D/g, '');
 
             // Chamar edge function para criar o cliente com todas as configurações
             const { error } = await supabase.functions.invoke('criar-cliente-autocadastro', {
                 body: {
                     nomeEmpresa: data.nomeEmpresa,
                     nomeResponsavel: data.nomeResponsavel,
-                    cpfCnpj: data.cpfCnpj,
+                    cpfCnpj: cpfCnpjLimpo,
                     telefone: data.telefone || '',
                     celular: data.celular,
                     endereco: {
@@ -272,8 +298,11 @@ export const CadastroCliente = () => {
                                 <InputLabel
                                     labelTitulo="CPF/CNPJ"
                                     placeholder="Digite o CPF ou CNPJ"
-                                    {...register("cpfCnpj")}
+                                    {...register("cpfCnpj", {
+                                        onChange: handleCpfCnpjChange
+                                    })}
                                     fieldError={errors.cpfCnpj?.message}
+                                    maxLength={18}
                                 />
 
                                 <InputLabel
