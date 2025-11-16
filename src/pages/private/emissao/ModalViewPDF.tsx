@@ -1,8 +1,8 @@
 import React from "react";
-import { ExternalLink, Download, Printer } from "lucide-react";
+import { Download } from "lucide-react";
 import { ModalCustom } from "../../../components/modal";
 import { ButtonComponent } from "../../../components/button";
-import { openPDFInNewTab, downloadPDF, printPDF } from "../../../utils/pdfUtils";
+import { downloadPDF } from "../../../utils/pdfUtils";
 
 interface ModalViewPDFProps {
     isOpen: boolean;
@@ -32,51 +32,22 @@ export const ModalViewPDF: React.FC<ModalViewPDFProps> = ({ isOpen, base64, file
     }
 
 
-    const handleOpenInNewTab = () => {
-        openPDFInNewTab(base64, fileName);
-    };
-
     const handleDownload = () => {
         downloadPDF(base64, fileName);
-    };
-
-    const handlePrint = () => {
-        printPDF(base64, fileName);
+        onCancel(); // Fecha o modal após iniciar o download
     };
 
     return (
         <ModalCustom
-            title="Etiqueta de Envio"
-            description="Escolha como deseja visualizar sua etiqueta"
+            title="Baixar Etiqueta"
+            description="Sua etiqueta será baixada automaticamente"
             onCancel={onCancel}
         >
-            <div className="flex flex-col gap-4 w-full max-w-[500px]">
-                {/* Ações principais em cards */}
+            <div className="flex flex-col gap-4 w-full max-w-[400px]">
                 <ButtonComponent
-                    variant="secondary"
-                    border="outline"
-                    onClick={handleOpenInNewTab}
-                    className="flex items-center justify-center gap-3 h-16 text-lg"
-                >
-                    <ExternalLink size={24} />
-                    Visualizar em Nova Aba
-                </ButtonComponent>
-
-                <ButtonComponent
-                    variant="secondary"
-                    border="outline"
-                    onClick={handlePrint}
-                    className="flex items-center justify-center gap-3 h-16 text-lg"
-                >
-                    <Printer size={24} />
-                    Imprimir Diretamente
-                </ButtonComponent>
-
-                <ButtonComponent
-                    variant="secondary"
-                    border="outline"
+                    variant="primary"
                     onClick={handleDownload}
-                    className="flex items-center justify-center gap-3 h-16 text-lg"
+                    className="flex items-center justify-center gap-3 h-14 text-lg"
                 >
                     <Download size={24} />
                     Baixar PDF
