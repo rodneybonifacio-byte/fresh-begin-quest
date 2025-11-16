@@ -10,7 +10,6 @@ import { ButtonComponent } from "../../../components/button";
 import { LoadSpinner } from "../../../components/loading";
 import { ThemeToggle } from "../../../components/theme/ThemeToggle";
 import { useAddress } from "../../../hooks/useAddress";
-import { supabase } from "../../../integrations/supabase/client";
 
 const schemaCadastroCliente = yup.object().shape({
     nomeEmpresa: yup.string().required("O nome da empresa é obrigatório").min(3, "O nome deve ter pelo menos 3 caracteres"),
@@ -111,9 +110,17 @@ export const CadastroCliente = () => {
             // Remover formatação do CPF/CNPJ antes de enviar
             const cpfCnpjLimpo = data.cpfCnpj.replace(/\D/g, '');
 
-            // Chamar edge function para criar o cliente com todas as configurações
-            const { data: responseData, error } = await supabase.functions.invoke('criar-cliente-autocadastro', {
-                body: {
+            // Chamar edge function diretamente via fetch para ter acesso ao corpo da resposta
+            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+            const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+            
+            const response = await fetch(`${supabaseUrl}/functions/v1/criar-cliente-autocadastro`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${supabaseAnonKey}`,
+                },
+                body: JSON.stringify({
                     nomeEmpresa: data.nomeEmpresa,
                     nomeResponsavel: data.nomeResponsavel,
                     cpfCnpj: cpfCnpjLimpo,
@@ -130,19 +137,22 @@ export const CadastroCliente = () => {
                     },
                     email: data.email,
                     senha: data.senha,
-                },
+                }),
             });
 
-            if (error) {
-                console.error('❌ Erro completo ao criar cliente:', error);
-                console.error('❌ Response data:', responseData);
+            const responseData = await response.json();
+            console.log('📦 Response completo:', responseData);
+            console.log('📊 Response status:', response.status);
+
+            if (!response.ok) {
+                console.error('❌ Erro ao criar cliente. Status:', response.status);
                 
                 // Tentar extrair mensagem de erro mais específica
                 let errorMessage = 'Erro ao criar conta. Tente novamente.';
                 let isCpfCnpjDuplicado = false;
                 
-                // Verificar primeiro se temos responseData com informação de erro
-                if (responseData && typeof responseData === 'object') {
+                // Verificar se temos responseData com informação de erro
+                if (responseData) {
                     const errorText = JSON.stringify(responseData).toLowerCase();
                     console.log('📋 Response data em lowercase:', errorText);
                     
@@ -150,20 +160,7 @@ export const CadastroCliente = () => {
                         errorMessage = 'Este CPF/CNPJ já está cadastrado em nosso sistema.';
                         isCpfCnpjDuplicado = true;
                         setUserEmail(data.email);
-                        console.log('✅ Detectado erro de CPF/CNPJ duplicado via responseData');
-                    }
-                }
-                
-                // Se não encontrou no responseData, tentar no error object
-                if (!isCpfCnpjDuplicado) {
-                    const errorText = JSON.stringify(error).toLowerCase();
-                    console.log('📋 Error object em lowercase:', errorText);
-                    
-                    if (errorText.includes('cpf/cnpj') || errorText.includes('já existe')) {
-                        errorMessage = 'Este CPF/CNPJ já está cadastrado em nosso sistema.';
-                        isCpfCnpjDuplicado = true;
-                        setUserEmail(data.email);
-                        console.log('✅ Detectado erro de CPF/CNPJ duplicado via error object');
+                        console.log('✅ Detectado erro de CPF/CNPJ duplicado');
                     }
                 }
                 
