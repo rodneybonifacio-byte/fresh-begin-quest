@@ -9,21 +9,27 @@ import { truncateText } from "../../../utils/funcoes";
 import { RemetenteService } from "../../../services/RemetenteService";
 import { useFetchQuery } from "../../../hooks/useFetchQuery";
 import type { IRemetente } from "../../../types/IRemetente";
+import { useAuth } from "../../../providers/AuthContext";
 
 export const ModalListaRemetente: React.FC<{ isOpen: boolean; onCancel: () => void, onSelect: (remetente: any) => void; }> = ({
     isOpen,
     onCancel,
     onSelect
 }) => {
+    const { user } = useAuth();
     const [data, setData] = useState<IRemetente[]>([]);
     const [busca, setBusca] = useState('');
     const service = new RemetenteService();
 
     const { data: remetentes, isLoading: isLoadingRemetentes } = useFetchQuery<IRemetente[]>(
-        ['remetentes'],
+        ['remetentes', user?.clienteId],
         async () => {
-            const response = await service.getAll();
+            if (!user?.clienteId) return [];
+            const response = await service.getAll({ clienteId: user.clienteId });
             return response.data ?? [];
+        },
+        {
+            enabled: !!user?.clienteId
         });
 
     useEffect(() => {
