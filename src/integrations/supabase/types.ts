@@ -61,34 +61,43 @@ export type Database = {
       }
       transacoes_credito: {
         Row: {
+          blocked_until: string | null
           cliente_id: string
           cobrada: boolean | null
           created_at: string | null
           descricao: string | null
           emissao_id: string | null
           id: string
+          liberado_em: string | null
+          status: string | null
           tipo: string
           updated_at: string | null
           valor: number
         }
         Insert: {
+          blocked_until?: string | null
           cliente_id: string
           cobrada?: boolean | null
           created_at?: string | null
           descricao?: string | null
           emissao_id?: string | null
           id?: string
+          liberado_em?: string | null
+          status?: string | null
           tipo: string
           updated_at?: string | null
           valor: number
         }
         Update: {
+          blocked_until?: string | null
           cliente_id?: string
           cobrada?: boolean | null
           created_at?: string | null
           descricao?: string | null
           emissao_id?: string | null
           id?: string
+          liberado_em?: string | null
+          status?: string | null
           tipo?: string
           updated_at?: string | null
           valor?: number
@@ -107,6 +116,25 @@ export type Database = {
           p_recarga_id: string
         }
         Returns: boolean
+      }
+      bloquear_credito_etiqueta: {
+        Args: {
+          p_cliente_id: string
+          p_codigo_objeto?: string
+          p_emissao_id: string
+          p_valor: number
+        }
+        Returns: string
+      }
+      buscar_etiquetas_bloqueadas: {
+        Args: never
+        Returns: {
+          blocked_until: string
+          cliente_id: string
+          descricao: string
+          emissao_id: string
+          valor: number
+        }[]
       }
       buscar_resumo_transacoes: {
         Args: {
@@ -134,15 +162,35 @@ export type Database = {
           valor: number
         }[]
       }
+      calcular_creditos_bloqueados: {
+        Args: { p_cliente_id: string }
+        Returns: number
+      }
+      calcular_creditos_consumidos: {
+        Args: { p_cliente_id: string }
+        Returns: number
+      }
       calcular_saldo_cliente: {
         Args: { p_cliente_id: string }
         Returns: number
+      }
+      calcular_saldo_disponivel: {
+        Args: { p_cliente_id: string }
+        Returns: number
+      }
+      consumir_credito_bloqueado: {
+        Args: { p_codigo_objeto?: string; p_emissao_id: string }
+        Returns: boolean
       }
       consumir_creditos_etiqueta: {
         Args: { p_cliente_id: string; p_emissao_id: string; p_valor: number }
         Returns: boolean
       }
       get_cliente_id_from_jwt: { Args: never; Returns: string }
+      liberar_credito_bloqueado: {
+        Args: { p_codigo_objeto?: string; p_emissao_id: string }
+        Returns: boolean
+      }
       registrar_recarga: {
         Args: { p_cliente_id: string; p_descricao?: string; p_valor: number }
         Returns: string
