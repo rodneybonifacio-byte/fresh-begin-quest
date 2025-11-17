@@ -24,19 +24,14 @@ serve(async (req) => {
     const mcpBaseUrlEnv = Deno.env.get('MCP_URL');
     console.log('MCP_URL da variável de ambiente:', mcpBaseUrlEnv);
     
-    let mcpBaseUrl = mcpBaseUrlEnv || 'https://auth.srv762140.hstgr.cloud';
+    let mcpBaseUrl = mcpBaseUrlEnv || 'https://connectores.srv762140.hstgr.cloud/mcp';
     
     // Garantir que a URL base não termine com barra
     mcpBaseUrl = mcpBaseUrl.replace(/\/$/, '');
     console.log('MCP Base URL (após limpeza):', mcpBaseUrl);
     
-    // Construir a URL completa - verificar se já contém /mcp
-    let mcpUrl;
-    if (mcpBaseUrl.endsWith('/mcp')) {
-      mcpUrl = `${mcpBaseUrl}/fazer_faturamento_envios`;
-    } else {
-      mcpUrl = `${mcpBaseUrl}/mcp/fazer_faturamento_envios`;
-    }
+    // Construir a URL completa
+    const mcpUrl = `${mcpBaseUrl}/fazer_faturamento_envios`;
     
     const mcpAuthToken = Deno.env.get('MCP_AUTH_TOKEN');
     
