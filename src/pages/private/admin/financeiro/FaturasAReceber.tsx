@@ -20,6 +20,7 @@ import { useFaturasRealtime } from '../../../../hooks/useFaturasRealtime';
 import { RealtimeStatusIndicator } from '../../../../components/RealtimeStatusIndicator';
 import { showPagamentoToast } from '../../../../components/PagamentoRealtimeToast';
 import { formatCurrencyWithCents } from '../../../../utils/formatCurrency';
+import { ModalEmitirBoleto } from '../../../../components/ModalEmitirBoleto';
 
 const FinanceiroFaturasAReceber = () => {
     const { setIsLoading } = useLoadingSpinner();
@@ -30,6 +31,7 @@ const FinanceiroFaturasAReceber = () => {
     const [lastUpdate, setLastUpdate] = useState<Date>();
 
     const [isModalConfirmaPagamento, setIsModalConfirmaPagamento] = useState<{ isOpen: boolean; fatura: IFatura }>({ isOpen: false, fatura: {} as IFatura });
+    const [isModalBoleto, setIsModalBoleto] = useState<{ isOpen: boolean; fatura: IFatura }>({ isOpen: false, fatura: {} as IFatura });
     const [page, setPage] = useState<number>(1);
     const perPage = config.pagination.perPage;
 
@@ -160,6 +162,10 @@ const FinanceiroFaturasAReceber = () => {
         }
     };
 
+    const handleEmitirBoleto = (fatura: IFatura) => {
+        setIsModalBoleto({ isOpen: true, fatura });
+    };
+
     return (
         <Content
             titulo="Faturas a Receber"
@@ -195,6 +201,7 @@ const FinanceiroFaturasAReceber = () => {
                         }}
                         imprimirFaturaPdf={handleEnviarEImprimir}
                         realizarFechamento={handleRealizarFechamento}
+                        emitirBoleto={handleEmitirBoleto}
                     />
 
                     <div className="py-3">
@@ -205,6 +212,16 @@ const FinanceiroFaturasAReceber = () => {
                         isOpen={isModalConfirmaPagamento.isOpen}
                         onClose={() => setIsModalConfirmaPagamento({ isOpen: false, fatura: {} as IFatura })}
                     />
+                    {isModalBoleto.isOpen && (
+                        <ModalEmitirBoleto
+                            fatura={isModalBoleto.fatura}
+                            onClose={() => setIsModalBoleto({ isOpen: false, fatura: {} as IFatura })}
+                            onSuccess={() => {
+                                toastSuccess('Boleto emitido com sucesso!');
+                                setIsModalBoleto({ isOpen: false, fatura: {} as IFatura });
+                            }}
+                        />
+                    )}
                 </>
             )}
         </Content>

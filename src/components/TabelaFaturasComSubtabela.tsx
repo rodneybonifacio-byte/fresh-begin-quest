@@ -18,6 +18,7 @@ interface TabelaFaturasComSubtabelaProps {
     estaAtrasada: (fatura: IFatura) => boolean;
     imprimirFaturaPdf: (fatura: IFatura) => void;
     realizarFechamento: (fatura: IFatura) => void;
+    emitirBoleto: (fatura: IFatura) => void;
 }
 
 export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps> = ({
@@ -28,6 +29,7 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
     estaAtrasada,
     imprimirFaturaPdf,
     realizarFechamento,
+    emitirBoleto,
 }) => {
     const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
 
@@ -166,6 +168,12 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
                     label: '🔘 REALIZAR FECHAMENTO',
                     icon: <CheckCircle size={16} />,
                     onClick: (row) => realizarFechamento(row),
+                    show: (row) => !!(row.faturas && row.faturas.length === 0) && (row.status === 'PENDENTE' || row.status === 'PAGO_PARCIAL'),
+                },
+                {
+                    label: 'Emitir Boleto',
+                    icon: <FileText size={16} />,
+                    onClick: (row) => emitirBoleto(row),
                     show: (row) => !!(row.faturas && row.faturas.length === 0) && (row.status === 'PENDENTE' || row.status === 'PAGO_PARCIAL'),
                 },
                 {
