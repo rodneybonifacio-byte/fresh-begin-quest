@@ -115,12 +115,11 @@ const RltEnvios = () => {
             } = {
                 limit: 10000, // Limite alto para pegar todos os dados
                 offset: 0,
-                status: tab,
             };
 
             const dataIni = searchParams.get('dataIni') || undefined;
             const dataFim = searchParams.get('dataFim') || undefined;
-            const status = searchParams.get('status') || undefined;
+            const status = searchParams.get('status') || tab; // Usa o status dos filtros ou a aba ativa
             const clienteId = searchParams.get('clienteId') || undefined;
             const remetenteId = searchParams.get('remetenteId') || undefined;
             const transportadora = searchParams.get('transportadora') || undefined;
