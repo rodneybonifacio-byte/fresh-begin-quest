@@ -102,50 +102,59 @@ const RltEnvios = () => {
         try {
             setIsLoading(true);
             
-            console.log('Iniciando exportação...');
-            
-            // Buscar TODOS os dados com os filtros aplicados
-            const params: {
-                limit: number;
-                offset: number;
-                dataIni?: string;
-                dataFim?: string;
-                status?: string;
-                clienteId?: string;
-                remetenteId?: string;
-                transportadora?: string;
-            } = {
-                limit: 10000, // Limite alto para pegar todos os dados
-                offset: 0,
-            };
-
+            // Buscar filtros
             const dataIni = searchParams.get('dataIni') || undefined;
             const dataFim = searchParams.get('dataFim') || undefined;
-            const status = searchParams.get('status') || tab; // Usa o status dos filtros ou a aba ativa
+            const status = searchParams.get('status') || tab;
             const clienteId = searchParams.get('clienteId') || undefined;
             const remetenteId = searchParams.get('remetenteId') || undefined;
             const transportadora = searchParams.get('transportadora') || undefined;
 
-            if (dataIni) params.dataIni = dataIni;
-            if (dataFim) params.dataFim = dataFim;
-            if (status) params.status = status;
-            if (clienteId) params.clienteId = clienteId;
-            if (remetenteId) params.remetenteId = remetenteId;
-            if (transportadora) params.transportadora = transportadora;
+            // Buscar TODOS os registros em lotes
+            const batchSize = 100;
+            let offset = 0;
+            let allData: IEmissao[] = [];
+            let hasMore = true;
 
-            console.log('Params para buscar dados:', params);
+            while (hasMore) {
+                const params: {
+                    limit: number;
+                    offset: number;
+                    dataIni?: string;
+                    dataFim?: string;
+                    status?: string;
+                    clienteId?: string;
+                    remetenteId?: string;
+                    transportadora?: string;
+                } = {
+                    limit: batchSize,
+                    offset: offset,
+                };
 
-            const response = await service.getAll(params, 'admin');
+                if (dataIni) params.dataIni = dataIni;
+                if (dataFim) params.dataFim = dataFim;
+                if (status) params.status = status;
+                if (clienteId) params.clienteId = clienteId;
+                if (remetenteId) params.remetenteId = remetenteId;
+                if (transportadora) params.transportadora = transportadora;
+
+                const response = await service.getAll(params, 'admin');
+                
+                if (response?.data && response.data.length > 0) {
+                    allData = [...allData, ...response.data];
+                    offset += batchSize;
+                    
+                    // Se retornou menos que o batchSize, significa que não há mais dados
+                    if (response.data.length < batchSize) {
+                        hasMore = false;
+                    }
+                } else {
+                    hasMore = false;
+                }
+            }
             
-            console.log('Resposta da API:', response);
-            console.log('Total de registros:', response?.data?.length);
-            
-            if (response?.data && response.data.length > 0) {
-                console.log('Exportando para Excel...');
-                exportEmissoesToExcel(response.data, `relatorio-envios-${dataIni || 'todos'}-${dataFim || 'todos'}`);
-                console.log('Exportação concluída!');
-            } else {
-                console.warn('Nenhum dado encontrado para exportar');
+            if (allData.length > 0) {
+                exportEmissoesToExcel(allData, `relatorio-envios-${dataIni || 'todos'}-${dataFim || 'todos'}`);
             }
         } catch (error) {
             console.error('Erro ao exportar:', error);
