@@ -8,8 +8,9 @@ interface TabelaFaturasClienteProps {
     setIsModalConfirmaPagamento: (data: { isOpen: boolean; fatura: IFatura }) => void;
     notificaViaWhatsApp: (fatura: IFatura, tipoNotificacao: 'PADRAO' | 'ATRASADA') => void;
     estaAtrasada: (fatura: IFatura) => boolean;
-    faturaAgrupada?: boolean; // Indica se a fatura é agrupada
+    faturaAgrupada?: boolean;
     imprimirFaturaPdf: (fatura: IFatura) => void;
+    realizarFechamento: (fatura: IFatura) => void;
 }
 
 export const TabelaFaturasCliente: React.FC<TabelaFaturasClienteProps> = ({
@@ -19,6 +20,7 @@ export const TabelaFaturasCliente: React.FC<TabelaFaturasClienteProps> = ({
     notificaViaWhatsApp,
     estaAtrasada,
     imprimirFaturaPdf,
+    realizarFechamento,
 }) => {
     return (
         <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm overflow-visible">
@@ -29,6 +31,7 @@ export const TabelaFaturasCliente: React.FC<TabelaFaturasClienteProps> = ({
                 notificaViaWhatsApp={notificaViaWhatsApp}
                 estaAtrasada={estaAtrasada}
                 imprimirFaturaPdf={imprimirFaturaPdf}
+                realizarFechamento={realizarFechamento}
             />
         </div>
     );

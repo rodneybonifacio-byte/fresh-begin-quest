@@ -8,7 +8,7 @@ import { formatCpfCnpj } from '../utils/lib.formats';
 import { formatarDataVencimento } from '../utils/date-utils';
 import { StatusBadge } from './StatusBadge';
 import { CopiadorDeId } from './CopiadorDeId';
-import { Eye, FileText, CreditCard, MessageCircle } from 'lucide-react';
+import { Eye, FileText, CreditCard, MessageCircle, CheckCircle } from 'lucide-react';
 
 interface TabelaFaturasComSubtabelaProps {
     faturas: IFatura[];
@@ -17,6 +17,7 @@ interface TabelaFaturasComSubtabelaProps {
     notificaViaWhatsApp: (fatura: IFatura, tipoNotificacao: 'PADRAO' | 'ATRASADA') => void;
     estaAtrasada: (fatura: IFatura) => boolean;
     imprimirFaturaPdf: (fatura: IFatura) => void;
+    realizarFechamento: (fatura: IFatura) => void;
 }
 
 export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps> = ({
@@ -26,6 +27,7 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
     notificaViaWhatsApp,
     estaAtrasada,
     imprimirFaturaPdf,
+    realizarFechamento,
 }) => {
     const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
 
@@ -158,8 +160,14 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
                     accessor: (row) => <div className="px-4 py-3">{format(new Date(row.criadoEm || ''), 'dd/MM/yyyy')}</div>,
                 },
             ]}
-            actionTitle={(row) => row.cliente.nome}
+            actionTitle={(row) => `${row.nome ?? row.cliente.nome} - ${row.cpfCnpj ?? row.cliente.cpfCnpj}`}
             actions={[
+                {
+                    label: '🔘 REALIZAR FECHAMENTO',
+                    icon: <CheckCircle size={16} />,
+                    onClick: (row) => realizarFechamento(row),
+                    show: (row) => !!(row.faturas && row.faturas.length === 0) && (row.status === 'PENDENTE' || row.status === 'PAGO_PARCIAL'),
+                },
                 {
                     label: 'Ver Fatura',
                     icon: <Eye size={16} />,

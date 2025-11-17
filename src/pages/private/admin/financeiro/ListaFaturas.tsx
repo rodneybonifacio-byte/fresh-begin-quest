@@ -8,9 +8,10 @@ interface IListaFaturasProps {
     notificaViaWhatsApp: (fatura: IFatura, tipoNotificacao: 'PADRAO' | 'ATRASADA') => void;
     estaAtrasada: (fatura: IFatura) => boolean;
     imprimirFaturaPdf: (fatura: IFatura) => void;
+    realizarFechamento: (fatura: IFatura) => void;
 }
 
-export const ListaFaturas: React.FC<IListaFaturasProps> = ({ data, setIsModalConfirmaPagamento, notificaViaWhatsApp, estaAtrasada, imprimirFaturaPdf }) => {
+export const ListaFaturas: React.FC<IListaFaturasProps> = ({ data, setIsModalConfirmaPagamento, notificaViaWhatsApp, estaAtrasada, imprimirFaturaPdf, realizarFechamento }) => {
     const { layout } = useLayout();
     return (
         <TabelaFaturasCliente
@@ -20,6 +21,7 @@ export const ListaFaturas: React.FC<IListaFaturasProps> = ({ data, setIsModalCon
             notificaViaWhatsApp={notificaViaWhatsApp}
             estaAtrasada={estaAtrasada}
             imprimirFaturaPdf={imprimirFaturaPdf}
+            realizarFechamento={realizarFechamento}
         />
     );
 };
