@@ -102,6 +102,8 @@ const RltEnvios = () => {
         try {
             setIsLoading(true);
             
+            console.log('Iniciando exportação...');
+            
             // Buscar TODOS os dados com os filtros aplicados
             const params: {
                 limit: number;
@@ -131,10 +133,19 @@ const RltEnvios = () => {
             if (remetenteId) params.remetenteId = remetenteId;
             if (transportadora) params.transportadora = transportadora;
 
+            console.log('Params para buscar dados:', params);
+
             const response = await service.getAll(params);
             
+            console.log('Resposta da API:', response);
+            console.log('Total de registros:', response?.data?.length);
+            
             if (response?.data && response.data.length > 0) {
+                console.log('Exportando para Excel...');
                 exportEmissoesToExcel(response.data, `relatorio-envios-${dataIni || 'todos'}-${dataFim || 'todos'}`);
+                console.log('Exportação concluída!');
+            } else {
+                console.warn('Nenhum dado encontrado para exportar');
             }
         } catch (error) {
             console.error('Erro ao exportar:', error);
