@@ -1,6 +1,5 @@
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,65 +12,39 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
     const { dataInicio, dataFim } = await req.json();
 
-    console.log('Iniciando fechamento:', { dataInicio, dataFim });
+    console.log('Iniciando fechamento via MCP:', { dataInicio, dataFim });
 
     if (!dataInicio || !dataFim) {
       throw new Error('Datas de início e fim são obrigatórias');
     }
 
-    // Aqui você pode implementar a lógica de fechamento
-    // Por exemplo: buscar todas as transações do período, consolidar, gerar relatórios, etc.
+    // URL do MCP
+    const mcpUrl = Deno.env.get('MCP_URL') || 'https://auth.srv762140.hstgr.cloud/mcp';
     
-    // Exemplo básico: buscar transações do período
-    const { data: transacoes, error: transacoesError } = await supabase
-      .from('transacoes_credito')
-      .select('*')
-      .gte('created_at', dataInicio)
-      .lte('created_at', dataFim);
+    console.log('Chamando MCP:', `${mcpUrl}/fazer_faturamento_envios`);
 
-    if (transacoesError) {
-      console.error('Erro ao buscar transações:', transacoesError);
-      throw transacoesError;
+    // Chamar a função do MCP
+    const mcpResponse = await fetch(`${mcpUrl}/fazer_faturamento_envios`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        dataInicio,
+        dataFim,
+      }),
+    });
+
+    if (!mcpResponse.ok) {
+      const errorText = await mcpResponse.text();
+      console.error('Erro ao chamar MCP:', errorText);
+      throw new Error(`Erro ao processar fechamento: ${errorText}`);
     }
 
-    console.log(`Total de transações encontradas: ${transacoes?.length || 0}`);
-
-    // Calcular totais
-    const totalCreditos = transacoes?.reduce((sum, t) => {
-      if (t.tipo === 'CREDITO' || t.tipo === 'RECARGA') {
-        return sum + t.valor;
-      }
-      return sum;
-    }, 0) || 0;
-
-    const totalDebitos = transacoes?.reduce((sum, t) => {
-      if (t.tipo === 'DEBITO' || t.tipo === 'BLOQUEIO') {
-        return sum + t.valor;
-      }
-      return sum;
-    }, 0) || 0;
-
-    const resultado = {
-      periodo: {
-        inicio: dataInicio,
-        fim: dataFim,
-      },
-      totais: {
-        transacoes: transacoes?.length || 0,
-        creditos: totalCreditos,
-        debitos: totalDebitos,
-        saldo: totalCreditos - totalDebitos,
-      },
-      processado_em: new Date().toISOString(),
-    };
-
-    console.log('Fechamento concluído:', resultado);
+    const resultado = await mcpResponse.json();
+    console.log('Fechamento concluído via MCP:', resultado);
 
     return new Response(
       JSON.stringify(resultado),
