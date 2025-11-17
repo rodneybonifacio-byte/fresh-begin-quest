@@ -165,10 +165,10 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
             actionTitle={(row) => `${row.nome ?? row.cliente.nome} - ${row.cpfCnpj ?? row.cliente.cpfCnpj}`}
             actions={[
                 {
-                    label: '🔘 REALIZAR FECHAMENTO',
+                    label: 'Realizar Fechamento',
                     icon: <CheckCircle size={16} />,
                     onClick: (row) => realizarFechamento(row),
-                    show: (row) => !!(row.faturas && row.faturas.length === 0) && (row.status === 'PENDENTE' || row.status === 'PAGO_PARCIAL'),
+                    show: (row) => (!row.faturas || row.faturas.length === 0) && (row.status === 'PENDENTE' || row.status === 'PAGO_PARCIAL'),
                 },
                 {
                     label: 'Emitir Boleto',
