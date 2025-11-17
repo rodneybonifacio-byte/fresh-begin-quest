@@ -94,6 +94,10 @@ export const adminRoutesConfig: ProtectedRouteItem[] = [
         component: () => import('../pages/private/admin/ferramentas/ReprocessarEmissaoEmitiEtiqueta'),
     },
     {
+        path: 'ferramentas/realizar-fechamento',
+        component: () => import('../pages/private/admin/ferramentas/RealizarFechamento'),
+    },
+    {
         path: 'transportadoras',
         component: () => import('../pages/private/admin/transportadoras/index'),
     },
