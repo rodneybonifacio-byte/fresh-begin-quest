@@ -20,6 +20,7 @@ import { ToggleSection } from "../../../../components/ToggleSection";
 import { ButtonComponent } from "../../../../components/button";
 import { toast } from "sonner";
 import { FileText } from "lucide-react";
+import { ModalVisualizarFechamento } from "../../../../components/ModalVisualizarFechamento";
 
 const FaturaViewDetail = () => {
     const { user } = useAuth();
@@ -27,6 +28,7 @@ const FaturaViewDetail = () => {
     const [subfatura] = useParams().subfatura ? [useParams().subfatura] : [];
     const [fatura, setFatura] = useState<FaturaDto>({} as FaturaDto);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [isModalFechamento, setIsModalFechamento] = useState<{ isOpen: boolean; pdfBase64: string; codigoFatura: string }>({ isOpen: false, pdfBase64: '', codigoFatura: '' });
 
     const service = new FaturaService()
 
@@ -50,12 +52,19 @@ const FaturaViewDetail = () => {
 
         setIsProcessing(true);
         try {
-            await service.realizarFechamento(
+            const resultado = await service.realizarFechamento(
                 fatura.codigo,
                 fatura.cliente.nome,
                 fatura.cliente.telefone
             );
-            toast.success("Fechamento realizado com sucesso! PDF enviado via WhatsApp.");
+            toast.success("Fechamento realizado com sucesso!");
+            
+            // Abrir modal com o PDF concatenado
+            setIsModalFechamento({
+                isOpen: true,
+                pdfBase64: resultado.arquivo_final_pdf,
+                codigoFatura: fatura.codigo
+            });
         } catch (error: any) {
             toast.error(error?.message || "Erro ao realizar fechamento da fatura");
         } finally {
@@ -173,6 +182,13 @@ const FaturaViewDetail = () => {
 
                 </div>
             </div>
+            
+            <ModalVisualizarFechamento
+                isOpen={isModalFechamento.isOpen}
+                onClose={() => setIsModalFechamento({ isOpen: false, pdfBase64: '', codigoFatura: '' })}
+                pdfBase64={isModalFechamento.pdfBase64}
+                codigoFatura={isModalFechamento.codigoFatura}
+            />
         </Content>
     )
 }

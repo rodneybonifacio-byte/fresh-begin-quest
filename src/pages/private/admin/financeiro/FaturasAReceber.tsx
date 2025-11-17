@@ -21,6 +21,8 @@ import { RealtimeStatusIndicator } from '../../../../components/RealtimeStatusIn
 import { showPagamentoToast } from '../../../../components/PagamentoRealtimeToast';
 import { formatCurrencyWithCents } from '../../../../utils/formatCurrency';
 import { ModalEmitirBoleto } from '../../../../components/ModalEmitirBoleto';
+import { ModalVisualizarFechamento } from '../../../../components/ModalVisualizarFechamento';
+import { toast } from 'sonner';
 
 const FinanceiroFaturasAReceber = () => {
     const { setIsLoading } = useLoadingSpinner();
@@ -32,6 +34,7 @@ const FinanceiroFaturasAReceber = () => {
 
     const [isModalConfirmaPagamento, setIsModalConfirmaPagamento] = useState<{ isOpen: boolean; fatura: IFatura }>({ isOpen: false, fatura: {} as IFatura });
     const [isModalBoleto, setIsModalBoleto] = useState<{ isOpen: boolean; fatura: IFatura }>({ isOpen: false, fatura: {} as IFatura });
+    const [isModalFechamento, setIsModalFechamento] = useState<{ isOpen: boolean; pdfBase64: string; codigoFatura: string }>({ isOpen: false, pdfBase64: '', codigoFatura: '' });
     const [page, setPage] = useState<number>(1);
     const perPage = config.pagination.perPage;
 
@@ -149,13 +152,19 @@ const FinanceiroFaturasAReceber = () => {
             const nomeCliente = fatura.nome ?? fatura.cliente.nome;
             const codigoFatura = fatura.codigo || '';
 
-            // O telefone será buscado pelo MCP usando o código da fatura
             const result = await service.realizarFechamento(codigoFatura, nomeCliente, '');
             
-            console.log('Resultado do fechamento:', result);
-            toastSuccess('Fechamento realizado com sucesso! WhatsApp enviado.');
+            toast.success('Fechamento realizado com sucesso!');
+            
+            // Abrir modal com o PDF concatenado
+            setIsModalFechamento({
+                isOpen: true,
+                pdfBase64: result.arquivo_final_pdf,
+                codigoFatura: codigoFatura
+            });
         } catch (error: any) {
             console.error('Erro ao realizar fechamento:', error);
+            toast.error(error?.message || 'Erro ao realizar fechamento');
             throw error;
         } finally {
             setIsLoading(false);
@@ -222,6 +231,13 @@ const FinanceiroFaturasAReceber = () => {
                             }}
                         />
                     )}
+                    
+                    <ModalVisualizarFechamento
+                        isOpen={isModalFechamento.isOpen}
+                        onClose={() => setIsModalFechamento({ isOpen: false, pdfBase64: '', codigoFatura: '' })}
+                        pdfBase64={isModalFechamento.pdfBase64}
+                        codigoFatura={isModalFechamento.codigoFatura}
+                    />
                 </>
             )}
         </Content>
