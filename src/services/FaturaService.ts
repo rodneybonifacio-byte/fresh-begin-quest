@@ -3,7 +3,6 @@ import type { IFatura } from "../types/IFatura";
 import type { IResponse } from "../types/IResponse";
 import { CustomHttpClient } from "../utils/http-axios-client";
 import { BaseService } from "./BaseService";
-import { supabase } from "../integrations/supabase/client";
 
 export class FaturaService extends BaseService<IFatura> {
 
@@ -44,18 +43,11 @@ export class FaturaService extends BaseService<IFatura> {
     }
 
     async realizarFechamento(codigoFatura: string, nomeCliente: string, telefoneCliente: string): Promise<any> {
-        const { data, error } = await supabase.functions.invoke('processar-fechamento-fatura', {
-            body: {
-                codigo_fatura: codigoFatura,
-                nome_cliente: nomeCliente,
-                telefone_cliente: telefoneCliente,
-            }
+        const response = await this.httpClient.post<any, any>(`${this.endpoint}/realizar-fechamento`, {
+            codigo_fatura: codigoFatura,
+            nome_cliente: nomeCliente,
+            telefone_cliente: telefoneCliente,
         });
-        
-        if (error) {
-            throw new Error(error.message || 'Erro ao processar fechamento');
-        }
-        
-        return data;
+        return response;
     }
 }
