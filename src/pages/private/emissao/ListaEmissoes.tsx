@@ -1,4 +1,4 @@
-import { Filter, Import, Plus, Printer, ReceiptText, BarChart3 } from 'lucide-react';
+import { Filter, Import, Plus, Printer, ReceiptText, BarChart3, Download } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DataTable } from '../../../components/DataTable';
@@ -17,6 +17,7 @@ import type { IEmissao } from '../../../types/IEmissao';
 import type { IResponse } from '../../../types/IResponse';
 import { formatDateTime } from '../../../utils/date-utils';
 import { formatCpfCnpj } from '../../../utils/lib.formats';
+import { exportEmissoesToExcel } from '../../../utils/exportToExcel';
 import { Content } from '../Content';
 import { FiltroEmissao } from './FiltroEmissao';
 import { ModalViewDeclaracaoConteudo } from './ModalViewDeclaracaoConteudo';
@@ -118,6 +119,12 @@ export const ListaEmissoes = () => {
         setPage(pageNumber);
     };
 
+    const handleExportToExcel = () => {
+        if (data && data.length > 0) {
+            exportEmissoesToExcel(data, 'emissoes');
+        }
+    };
+
     return (
         <Content
             titulo="Etiquetas de envio"
@@ -134,6 +141,12 @@ export const ListaEmissoes = () => {
                     link: '/app/emissao/importacao',
                     icon: <Import size={22} />,
                     bgColor: 'bg-slate-600',
+                },
+                {
+                    label: 'Exportar XLSX',
+                    onClick: handleExportToExcel,
+                    icon: <Download size={22} />,
+                    bgColor: 'bg-green-600',
                 },
                 {
                     label: '',
@@ -166,39 +179,84 @@ export const ListaEmissoes = () => {
                                 rowKey={(row) => row.id?.toString() || ''}
                                 columns={[
                                     {
-                                        header: 'Objeto',
+                                        header: 'Código Objeto',
                                         accessor: (row) => (
                                             <div className="flex flex-col">
-                                                <span className="font-medium">{row.codigoObjeto}</span>
-                                                <small className="text-slate-500 dark:text-slate-400">
-                                                    {`${row.transportadora}${row.transportadora?.toLocaleUpperCase() === 'CORREIOS' ? ' ' + row.servico : ''}`}
-                                                </small>
+                                                <span className="font-semibold text-primary">{row.codigoObjeto}</span>
+                                            </div>
+                                        ),
+                                    },
+                                    {
+                                        header: 'Transportadora',
+                                        accessor: (row) => (
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="font-medium">{row.transportadora}</span>
+                                                {row.transportadora?.toLocaleUpperCase() === 'CORREIOS' && (
+                                                    <small className="text-slate-500 dark:text-slate-400">{row.servico}</small>
+                                                )}
                                             </div>
                                         ),
                                     },
                                     {
                                         header: 'Remetente',
                                         accessor: (row) => (
-                                            <div className="flex flex-col">
+                                            <div className="flex flex-col gap-0.5">
                                                 <span className="font-medium">{row.remetenteNome}</span>
-                                                <small className="text-slate-500 dark:text-slate-400">{row.cliente?.nome}</small>
+                                                <small className="text-slate-500 dark:text-slate-400">
+                                                    {row.remetente?.endereco?.localidade || ''} - {row.remetente?.endereco?.uf || ''}
+                                                </small>
+                                            </div>
+                                        ),
+                                    },
+                                    {
+                                        header: 'Cliente',
+                                        accessor: (row) => (
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="font-medium text-sm">{row.cliente?.nome}</span>
+                                                <small className="text-slate-500 dark:text-slate-400">
+                                                    {formatCpfCnpj(row.cliente?.cpfCnpj || '')}
+                                                </small>
                                             </div>
                                         ),
                                     },
                                     {
                                         header: 'Destinatário',
                                         accessor: (row) => (
-                                            <div className="flex flex-col">
+                                            <div className="flex flex-col gap-0.5">
                                                 <span className="font-medium">{row.destinatario?.nome}</span>
-                                                <small className="text-slate-500 dark:text-slate-400">{formatCpfCnpj(row.destinatario?.cpfCnpj || '')}</small>
+                                                <small className="text-slate-500 dark:text-slate-400">
+                                                    {row.destinatario?.endereco?.localidade || ''} - {row.destinatario?.endereco?.uf || ''}
+                                                </small>
                                             </div>
                                         ),
                                     },
                                     {
-                                        header: 'Frete R$',
+                                        header: 'Valores',
                                         accessor: (row) => (
-                                            <div className="flex flex-col">
-                                                <span className="font-medium">{row.valor}</span>
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="font-semibold text-green-600 dark:text-green-400">
+                                                    R$ {row.valor}
+                                                </span>
+                                                {row.valorDeclarado > 0 && (
+                                                    <small className="text-slate-500 dark:text-slate-400">
+                                                        VD: R$ {row.valorDeclarado}
+                                                    </small>
+                                                )}
+                                            </div>
+                                        ),
+                                    },
+                                    {
+                                        header: 'NF',
+                                        accessor: (row) => (
+                                            <div className="flex flex-col gap-0.5">
+                                                {row.numeroNotaFiscal && (
+                                                    <span className="text-sm">{row.numeroNotaFiscal}</span>
+                                                )}
+                                                {row.valorNotaFiscal > 0 && (
+                                                    <small className="text-slate-500 dark:text-slate-400">
+                                                        R$ {row.valorNotaFiscal}
+                                                    </small>
+                                                )}
                                             </div>
                                         ),
                                     },
@@ -215,7 +273,11 @@ export const ListaEmissoes = () => {
                                     {
                                         header: 'Criado em',
                                         accessor: (row) => {
-                                            return formatDateTime(row.criadoEm);
+                                            return (
+                                                <span className="text-sm whitespace-nowrap">
+                                                    {formatDateTime(row.criadoEm)}
+                                                </span>
+                                            );
                                         },
                                     },
                                 ]}
