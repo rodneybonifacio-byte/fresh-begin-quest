@@ -98,9 +98,49 @@ const RltEnvios = () => {
         setIsFilterOpen((prev) => !prev);
     };
 
-    const handleExportToExcel = () => {
-        if (data && data.length > 0) {
-            exportEmissoesToExcel(data, 'relatorio-envios');
+    const handleExportToExcel = async () => {
+        try {
+            setIsLoading(true);
+            
+            // Buscar TODOS os dados com os filtros aplicados
+            const params: {
+                limit: number;
+                offset: number;
+                dataIni?: string;
+                dataFim?: string;
+                status?: string;
+                clienteId?: string;
+                remetenteId?: string;
+                transportadora?: string;
+            } = {
+                limit: 10000, // Limite alto para pegar todos os dados
+                offset: 0,
+                status: tab,
+            };
+
+            const dataIni = searchParams.get('dataIni') || undefined;
+            const dataFim = searchParams.get('dataFim') || undefined;
+            const status = searchParams.get('status') || undefined;
+            const clienteId = searchParams.get('clienteId') || undefined;
+            const remetenteId = searchParams.get('remetenteId') || undefined;
+            const transportadora = searchParams.get('transportadora') || undefined;
+
+            if (dataIni) params.dataIni = dataIni;
+            if (dataFim) params.dataFim = dataFim;
+            if (status) params.status = status;
+            if (clienteId) params.clienteId = clienteId;
+            if (remetenteId) params.remetenteId = remetenteId;
+            if (transportadora) params.transportadora = transportadora;
+
+            const response = await service.getAll(params);
+            
+            if (response?.data && response.data.length > 0) {
+                exportEmissoesToExcel(response.data, `relatorio-envios-${dataIni || 'todos'}-${dataFim || 'todos'}`);
+            }
+        } catch (error) {
+            console.error('Erro ao exportar:', error);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -146,6 +186,49 @@ const RltEnvios = () => {
             data={emissoes?.data && emissoes.data.length > 0 ? emissoes.data : []}
         >
             {isLoading ? <LoadSpinner mensagem="Carregando..." /> : null}
+            
+            {/* Indicador de Filtros Ativos */}
+            {(searchParams.get('dataIni') || searchParams.get('dataFim') || searchParams.get('status') || 
+              searchParams.get('clienteId') || searchParams.get('remetenteId') || searchParams.get('transportadora')) && (
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+                    <div className="flex items-start gap-2">
+                        <Filter className="text-blue-600 dark:text-blue-400 mt-0.5" size={18} />
+                        <div className="flex-1">
+                            <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
+                                Filtros Aplicados (serão considerados na exportação):
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                                {searchParams.get('dataIni') && (
+                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200">
+                                        Período: {searchParams.get('dataIni')} até {searchParams.get('dataFim')}
+                                    </span>
+                                )}
+                                {searchParams.get('status') && (
+                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-200">
+                                        Status: {searchParams.get('status')}
+                                    </span>
+                                )}
+                                {searchParams.get('transportadora') && (
+                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200">
+                                        Transportadora: {searchParams.get('transportadora')}
+                                    </span>
+                                )}
+                                {searchParams.get('clienteId') && (
+                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 dark:bg-orange-800 text-orange-800 dark:text-orange-200">
+                                        Cliente filtrado
+                                    </span>
+                                )}
+                                {searchParams.get('remetenteId') && (
+                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-pink-100 dark:bg-pink-800 text-pink-800 dark:text-pink-200">
+                                        Remetente filtrado
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            
             <>
                 {isFilterOpen && <FiltroEmissao onCancel={handlerToggleFilter} isDestinatario />}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-5 gap-4">
