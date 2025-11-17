@@ -17,12 +17,16 @@ import { formatDate, formatDateTime } from "../../../../utils/date-utils";
 import { InfoGroup } from "../../../../components/InfoGroup";
 import { useAuth } from "../../../../providers/AuthContext";
 import { ToggleSection } from "../../../../components/ToggleSection";
+import { ButtonComponent } from "../../../../components/button";
+import { toast } from "sonner";
+import { FileText } from "lucide-react";
 
 const FaturaViewDetail = () => {
     const { user } = useAuth();
     const [faturaId] = useParams().faturaId ? [useParams().faturaId] : [];
     const [subfatura] = useParams().subfatura ? [useParams().subfatura] : [];
     const [fatura, setFatura] = useState<FaturaDto>({} as FaturaDto);
+    const [isProcessing, setIsProcessing] = useState(false);
 
     const service = new FaturaService()
 
@@ -38,6 +42,29 @@ const FaturaViewDetail = () => {
         }
     }, [data]);
 
+    const handleRealizarFechamento = async () => {
+        if (!fatura?.codigo || !fatura?.cliente?.nome || !fatura?.cliente?.telefone) {
+            toast.error("Dados insuficientes para realizar o fechamento");
+            return;
+        }
+
+        setIsProcessing(true);
+        try {
+            await service.realizarFechamento(
+                fatura.codigo,
+                fatura.cliente.nome,
+                fatura.cliente.telefone
+            );
+            toast.success("Fechamento realizado com sucesso! PDF enviado via WhatsApp.");
+        } catch (error: any) {
+            toast.error(error?.message || "Erro ao realizar fechamento da fatura");
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const podeRealizarFechamento = fatura?.status === "PENDENTE" || fatura?.status === "PAGO_PARCIAL";
+
     if (isError) return <NotFoundData />;
     if (isLoading || isFetching) return <LoadSpinner mensagem="Aguarde, carregando informações da fatura..." />;
 
@@ -46,6 +73,19 @@ const FaturaViewDetail = () => {
             titulo={`Fatura #${fatura?.codigo}`}
             subTitulo="Visualização mais detalhada da fatura"
         >
+            {user?.role === "ADMIN" && podeRealizarFechamento && (
+                <div className="mb-6 flex justify-end">
+                    <ButtonComponent
+                        variant="primary"
+                        onClick={handleRealizarFechamento}
+                        disabled={isProcessing}
+                        className="gap-2"
+                    >
+                        <FileText size={20} />
+                        {isProcessing ? "Processando..." : "REALIZAR FECHAMENTO"}
+                    </ButtonComponent>
+                </div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-1 gap-3">
                 <div className="flex flex-col gap-4">
 
