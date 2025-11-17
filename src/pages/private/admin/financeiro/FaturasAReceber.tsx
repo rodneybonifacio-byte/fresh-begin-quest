@@ -27,7 +27,6 @@ const FinanceiroFaturasAReceber = () => {
     const [searchParams] = useSearchParams();
     const [data, setData] = useState<IFatura[]>([]);
     const [tab, setTab] = useState('faturamentos');
-    const [realtimeConnected, setRealtimeConnected] = useState(true);
     const [lastUpdate, setLastUpdate] = useState<Date>();
 
     const [isModalConfirmaPagamento, setIsModalConfirmaPagamento] = useState<{ isOpen: boolean; fatura: IFatura }>({ isOpen: false, fatura: {} as IFatura });
@@ -179,7 +178,7 @@ const FinanceiroFaturasAReceber = () => {
                 
                 {tab === 'faturamentos' && (
                     <RealtimeStatusIndicator 
-                        isConnected={realtimeConnected}
+                        isConnected={true}
                         lastUpdate={lastUpdate}
                     />
                 )}
