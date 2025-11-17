@@ -41,4 +41,27 @@ export class FaturaService extends BaseService<IFatura> {
         const response = await this.httpClient.get<{ dados: string; faturaId: string }>(`${this.endpoint}/imprimir/${id}${faturaId ? `/${faturaId}` : '' }`);
         return response;
     }
+
+    async realizarFechamento(codigoFatura: string, nomeCliente: string, telefoneCliente: string): Promise<any> {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const response = await fetch(`${supabaseUrl}/functions/v1/processar-fechamento-fatura`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({
+                codigo_fatura: codigoFatura,
+                nome_cliente: nomeCliente,
+                telefone_cliente: telefoneCliente,
+            }),
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.mensagem || 'Erro ao processar fechamento');
+        }
+        
+        return await response.json();
+    }
 }

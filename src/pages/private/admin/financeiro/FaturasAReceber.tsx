@@ -111,6 +111,26 @@ const FinanceiroFaturasAReceber = () => {
         }
     };
 
+    const handleRealizarFechamento = async (fatura: IFatura) => {
+        try {
+            setIsLoading(true);
+            
+            const nomeCliente = fatura.nome ?? fatura.cliente.nome;
+            const codigoFatura = fatura.codigo || '';
+
+            // O telefone será buscado pelo MCP usando o código da fatura
+            const result = await service.realizarFechamento(codigoFatura, nomeCliente, '');
+            
+            console.log('Resultado do fechamento:', result);
+            toastSuccess('Fechamento realizado com sucesso! WhatsApp enviado.');
+        } catch (error: any) {
+            console.error('Erro ao realizar fechamento:', error);
+            throw error;
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
         <Content
             titulo="Faturas a Receber"
@@ -135,6 +155,7 @@ const FinanceiroFaturasAReceber = () => {
                             return new Date(fatura.dataVencimento) < today && !fatura.dataPagamento;
                         }}
                         imprimirFaturaPdf={handleEnviarEImprimir}
+                        realizarFechamento={handleRealizarFechamento}
                     />
 
                     <div className="py-3">
