@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, Loader2, WifiOff } from 'lucide-react';
+import { CheckCircle2, WifiOff } from 'lucide-react';
 
 interface RealtimeStatusIndicatorProps {
   isConnected: boolean;

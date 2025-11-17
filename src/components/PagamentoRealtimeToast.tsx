@@ -1,4 +1,3 @@
-import React, { useEffect } from 'react';
 import { toast } from 'sonner';
 import { CheckCircle, DollarSign } from 'lucide-react';
 
@@ -13,7 +12,7 @@ export const showPagamentoToast = (props: PagamentoRealtimeToastProps) => {
   const { clienteNome, valor } = props;
   
   toast.custom(
-    (t) => (
+    () => (
       <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl shadow-2xl p-4 max-w-md animate-in slide-in-from-top">
         <div className="flex items-start gap-3">
           <div className="bg-white/20 rounded-full p-2 backdrop-blur-sm">
