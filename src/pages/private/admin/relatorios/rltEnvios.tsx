@@ -135,7 +135,7 @@ const RltEnvios = () => {
 
             console.log('Params para buscar dados:', params);
 
-            const response = await service.getAll(params);
+            const response = await service.getAll(params, 'admin');
             
             console.log('Resposta da API:', response);
             console.log('Total de registros:', response?.data?.length);
