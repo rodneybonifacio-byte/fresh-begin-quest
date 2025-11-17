@@ -18,6 +18,68 @@ serve(async (req) => {
   }
 
   try {
+    // 🔒 Validação de autenticação JWT
+    const authHeader = req.headers.get('Authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.error('❌ Token JWT ausente ou inválido');
+      return new Response(
+        JSON.stringify({ 
+          status: 'error', 
+          mensagem: 'Autenticação necessária. Token JWT não fornecido.' 
+        }), 
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Validar o token com o Supabase
+    try {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL');
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      
+      const verifyResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'apikey': supabaseServiceKey || '',
+        }
+      });
+
+      if (!verifyResponse.ok) {
+        console.error('❌ Token JWT inválido ou expirado');
+        return new Response(
+          JSON.stringify({ 
+            status: 'error', 
+            mensagem: 'Token JWT inválido ou expirado.' 
+          }), 
+          { 
+            status: 401, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+
+      const user = await verifyResponse.json();
+      console.log('✅ Usuário autenticado:', user.email);
+      
+    } catch (authError) {
+      console.error('❌ Erro ao validar token:', authError);
+      return new Response(
+        JSON.stringify({ 
+          status: 'error', 
+          mensagem: 'Erro ao validar autenticação.' 
+        }), 
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
     const { codigo_fatura, nome_cliente } = await req.json() as FechamentoRequest;
 
     console.log('🚀 Iniciando fechamento da fatura:', codigo_fatura);
