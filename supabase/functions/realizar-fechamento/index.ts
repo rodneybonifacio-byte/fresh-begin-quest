@@ -22,6 +22,11 @@ serve(async (req) => {
 
     // URL do MCP
     const mcpUrl = Deno.env.get('MCP_URL') || 'https://auth.srv762140.hstgr.cloud/mcp';
+    const mcpAuthToken = Deno.env.get('MCP_AUTH_TOKEN');
+    
+    if (!mcpAuthToken) {
+      throw new Error('MCP_AUTH_TOKEN não configurado');
+    }
     
     console.log('Chamando MCP:', `${mcpUrl}/fazer_faturamento_envios`);
 
@@ -30,6 +35,7 @@ serve(async (req) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${mcpAuthToken}`,
       },
       body: JSON.stringify({
         dataInicio,
