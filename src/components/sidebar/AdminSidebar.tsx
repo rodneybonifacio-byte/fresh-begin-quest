@@ -1,4 +1,4 @@
-import { Archive, ClipboardList, FileBarChart, FilePen, FileStack, Home, Package, Settings, Truck, UsersRound, Wallet } from 'lucide-react';
+import { Archive, Calculator, ClipboardList, FileBarChart, FilePen, FileStack, Home, Package, Settings, Truck, UsersRound, Wallet } from 'lucide-react';
 import { observer } from 'mobx-react-lite';
 import { useLocation } from 'react-router-dom';
 import { SidebarLayout } from './SidebarLayout';
@@ -95,7 +95,7 @@ const AdminSidebar = observer(({
         {
             icon: Settings,
             label: 'Ferramentas',
-            active: ['/admin/ferramentas/cancelar-emissao', '/admin/ferramentas/criar-manifesto'].some(path => isPathActive(path)),
+            active: ['/admin/ferramentas/cancelar-emissao', '/admin/ferramentas/criar-manifesto', '/admin/ferramentas/realizar-fechamento'].some(path => isPathActive(path)),
             submenu: [
                 {
                     icon: FilePen,
@@ -114,6 +114,12 @@ const AdminSidebar = observer(({
                     label: 'Reprocessar Emissão Etiqueta',
                     to: '/admin/ferramentas/reprocessar-emissao-etiqueta',
                     active: isPathActive('/admin/ferramentas/reprocessar-emissao-etiqueta')
+                },
+                {
+                    icon: Calculator,
+                    label: 'Realizar Fechamento',
+                    to: '/admin/ferramentas/realizar-fechamento',
+                    active: isPathActive('/admin/ferramentas/realizar-fechamento')
                 }
             ]
         }
