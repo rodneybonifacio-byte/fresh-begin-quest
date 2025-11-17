@@ -185,47 +185,6 @@ serve(async (req) => {
 
     console.log('✅ PDFs concatenados');
 
-    // ✅ ETAPA 6: Enviar via WhatsApp
-    console.log('📱 Etapa 6: Enviando via WhatsApp...');
-    
-    const mensagem = `Olá ${nome_cliente}, tudo bem? 😊
-
-Concluímos o fechamento da sua fatura BRHUB Envios – código ${codigo_fatura}.
-
-Segue anexo o documento com a fatura e o boleto bancário (vencimento para amanhã).
-
-Qualquer dúvida, estou à disposição!`;
-
-    const whatsappResponse = await fetch(mcpUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${mcpAuthToken}`,
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'tools/call',
-        params: {
-          name: 'enviar_whatsapp_com_arquivo',
-          arguments: {
-            telefone: telefone_cliente,
-            mensagem,
-            arquivo_base64: pdfFinalBase64,
-            nome_arquivo: `fatura_${codigo_fatura}.pdf`,
-          }
-        },
-        id: Date.now(),
-      }),
-    });
-
-    const whatsappData = await whatsappResponse.json();
-    
-    if (whatsappData.error) {
-      console.warn('⚠️ Erro ao enviar WhatsApp:', whatsappData.error);
-    } else {
-      console.log('✅ WhatsApp enviado com sucesso');
-    }
-
     // 📤 RESPOSTA FINAL
     const resultado = {
       status: 'ok',
