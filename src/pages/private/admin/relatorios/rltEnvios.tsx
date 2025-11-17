@@ -1,4 +1,4 @@
-import { DollarSign, Filter, PackageCheck, Printer, ReceiptText, ShoppingCart, Users, Wallet } from 'lucide-react';
+import { DollarSign, Filter, PackageCheck, Printer, ReceiptText, ShoppingCart, Users, Wallet, Download } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { LoadSpinner } from '../../../../components/loading';
@@ -20,10 +20,10 @@ import { useImprimirEtiquetaPDF } from '../../../../hooks/useImprimirEtiquetaPDF
 import { useLoadingSpinner } from '../../../../providers/LoadingSpinnerContext';
 import { formatDateTime } from '../../../../utils/date-utils';
 import { calcularLucro, formatMoedaDecimal } from '../../../../utils/formatCurrency';
-import { truncateText } from '../../../../utils/funcoes';
 import { formatCpfCnpj } from '../../../../utils/lib.formats';
 import { ModalViewPDF } from '../../emissao/ModalViewPDF';
 import { ModalAtualizarPrecos } from './ModalAtualizarPrecos';
+import { exportEmissoesToExcel } from '../../../../utils/exportToExcel';
 
 const RltEnvios = () => {
     const config = useGlobalConfig();
@@ -98,6 +98,12 @@ const RltEnvios = () => {
         setIsFilterOpen((prev) => !prev);
     };
 
+    const handleExportToExcel = () => {
+        if (data && data.length > 0) {
+            exportEmissoesToExcel(data, 'relatorio-envios');
+        }
+    };
+
     useEffect(() => {
         if (emissoes?.data) {
             setData(emissoes.data);
@@ -125,6 +131,12 @@ const RltEnvios = () => {
             subTitulo="Acompanhe os envios realizados, visualize detalhes e estatísticas em geral."
             isButton
             button={[
+                {
+                    label: 'Exportar XLSX',
+                    onClick: handleExportToExcel,
+                    icon: <Download size={22} />,
+                    bgColor: 'bg-green-600',
+                },
                 {
                     label: 'Filtrar',
                     onClick: () => handlerToggleFilter(),
@@ -210,40 +222,85 @@ const RltEnvios = () => {
                                 rowKey={(row) => row.id?.toString() || ''}
                                 columns={[
                                     {
-                                        header: 'Objeto',
+                                        header: 'Código Objeto',
                                         accessor: (row) => (
                                             <div className="flex flex-col">
-                                                <span className="font-medium">{row.codigoObjeto}</span>
-                                                <small className="text-slate-500 dark:text-slate-400">
-                                                    {`${row.transportadora}${row.transportadora?.toLocaleUpperCase() === 'CORREIOS' ? ' ' + row.servico : ''}`}
-                                                </small>
+                                                <span className="font-semibold text-primary">{row.codigoObjeto}</span>
+                                            </div>
+                                        ),
+                                    },
+                                    {
+                                        header: 'Transportadora',
+                                        accessor: (row) => (
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="font-medium">{row.transportadora}</span>
+                                                {row.transportadora?.toLocaleUpperCase() === 'CORREIOS' && (
+                                                    <small className="text-slate-500 dark:text-slate-400">{row.servico}</small>
+                                                )}
                                             </div>
                                         ),
                                     },
                                     {
                                         header: 'Remetente',
                                         accessor: (row) => (
-                                            <div className="flex flex-col">
-                                                <span className="font-medium">{truncateText(row.remetenteNome || '---', 15)}</span>
-                                                <small className="text-slate-500 dark:text-slate-400">{row.cliente?.nome}</small>
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="font-medium">{row.remetenteNome}</span>
+                                                <small className="text-slate-500 dark:text-slate-400">
+                                                    {row.remetente?.endereco?.localidade || ''} - {row.remetente?.endereco?.uf || ''}
+                                                </small>
+                                            </div>
+                                        ),
+                                    },
+                                    {
+                                        header: 'Cliente',
+                                        accessor: (row) => (
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="font-medium text-sm">{row.cliente?.nome}</span>
+                                                <small className="text-slate-500 dark:text-slate-400">
+                                                    {formatCpfCnpj(row.cliente?.cpfCnpj || '')}
+                                                </small>
                                             </div>
                                         ),
                                     },
                                     {
                                         header: 'Destinatário',
                                         accessor: (row) => (
-                                            <div className="flex flex-col">
+                                            <div className="flex flex-col gap-0.5">
                                                 <span className="font-medium">{row.destinatario?.nome}</span>
-                                                <small className="text-slate-500 dark:text-slate-400">{formatCpfCnpj(row.destinatario?.cpfCnpj || '')}</small>
+                                                <small className="text-slate-500 dark:text-slate-400">
+                                                    {row.destinatario?.endereco?.localidade || ''} - {row.destinatario?.endereco?.uf || ''}
+                                                </small>
                                             </div>
                                         ),
                                     },
                                     {
-                                        header: 'Valor/Custo',
+                                        header: 'Valores',
                                         accessor: (row) => (
-                                            <div className="flex flex-col">
-                                                <span className="font-medium">{row.valor}</span>
-                                                <small className="text-slate-500 dark:text-slate-400">{row.valorPostagem}</small>
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="font-semibold text-green-600 dark:text-green-400">
+                                                    R$ {row.valor || 0}
+                                                </span>
+                                                <small className="text-slate-500 dark:text-slate-400">
+                                                    Custo: R$ {row.valorPostagem || 0}
+                                                </small>
+                                                <small className="font-medium text-blue-600 dark:text-blue-400">
+                                                    Lucro: {calcularLucro(row.valor || 0, row.valorPostagem || 0)}
+                                                </small>
+                                            </div>
+                                        ),
+                                    },
+                                    {
+                                        header: 'NF',
+                                        accessor: (row) => (
+                                            <div className="flex flex-col gap-0.5">
+                                                {row.numeroNotaFiscal && (
+                                                    <span className="text-sm">{row.numeroNotaFiscal}</span>
+                                                )}
+                                                {row.valorNotaFiscal > 0 && (
+                                                    <small className="text-slate-500 dark:text-slate-400">
+                                                        R$ {row.valorNotaFiscal}
+                                                    </small>
+                                                )}
                                             </div>
                                         ),
                                     },
