@@ -3,12 +3,45 @@ import { Content } from '../../Content';
 import { ButtonComponent } from '../../../../components/button';
 import { supabase } from '../../../../integrations/supabase/client';
 import { toast } from 'sonner';
-import { Calendar } from 'lucide-react';
+import { Calendar, Wifi } from 'lucide-react';
 
 export default function RealizarFechamento() {
     const [dataInicio, setDataInicio] = useState('');
     const [dataFim, setDataFim] = useState('');
     const [loading, setLoading] = useState(false);
+    const [testingConnection, setTestingConnection] = useState(false);
+
+    const handleTestarConexao = async () => {
+        try {
+            setTestingConnection(true);
+            
+            // Usar datas de teste para validar a conexão
+            const testDataInicio = '2025-01-01';
+            const testDataFim = '2025-01-02';
+            
+            console.log('Testando conexão com MCP...');
+            
+            const { data, error } = await supabase.functions.invoke('realizar-fechamento', {
+                body: {
+                    dataInicio: testDataInicio,
+                    dataFim: testDataFim,
+                }
+            });
+
+            if (error) {
+                console.error('Erro na conexão:', error);
+                toast.error('Falha na conexão com MCP: ' + error.message);
+            } else {
+                console.log('Resposta do MCP:', data);
+                toast.success('Conexão com MCP estabelecida com sucesso!');
+            }
+        } catch (error: any) {
+            console.error('Erro ao testar conexão:', error);
+            toast.error('Erro ao testar conexão: ' + error.message);
+        } finally {
+            setTestingConnection(false);
+        }
+    };
 
     const handleRealizarFechamento = async () => {
         if (!dataInicio || !dataFim) {
@@ -88,12 +121,24 @@ export default function RealizarFechamento() {
                         </ul>
                     </div>
 
-                    <ButtonComponent
-                        onClick={handleRealizarFechamento}
-                        disabled={loading || !dataInicio || !dataFim}
-                    >
-                        {loading ? 'Processando...' : 'Realizar Fechamento'}
-                    </ButtonComponent>
+                    <div className="flex gap-2">
+                        <ButtonComponent
+                            onClick={handleTestarConexao}
+                            disabled={testingConnection}
+                            variant="secondary"
+                            border="outline"
+                        >
+                            <Wifi className="mr-2 h-4 w-4" />
+                            {testingConnection ? 'Testando...' : 'Testar Conexão'}
+                        </ButtonComponent>
+                        
+                        <ButtonComponent
+                            onClick={handleRealizarFechamento}
+                            disabled={loading || !dataInicio || !dataFim}
+                        >
+                            {loading ? 'Processando...' : 'Realizar Fechamento'}
+                        </ButtonComponent>
+                    </div>
                 </div>
             </div>
         </Content>
