@@ -20,18 +20,9 @@ serve(async (req) => {
       throw new Error('Datas de início e fim são obrigatórias');
     }
 
-    // URL do MCP - com logs detalhados para debug
-    const mcpBaseUrlEnv = Deno.env.get('MCP_URL');
-    console.log('MCP_URL da variável de ambiente:', mcpBaseUrlEnv);
-    
-    let mcpBaseUrl = mcpBaseUrlEnv || 'https://connectores.srv762140.hstgr.cloud/mcp';
-    
-    // Garantir que a URL base não termine com barra
-    mcpBaseUrl = mcpBaseUrl.replace(/\/$/, '');
-    console.log('MCP Base URL (após limpeza):', mcpBaseUrl);
-    
-    // Construir a URL completa
-    const mcpUrl = `${mcpBaseUrl}/fazer_faturamento_envios`;
+    // URL do MCP
+    let mcpUrl = Deno.env.get('MCP_URL') || 'https://connectores.srv762140.hstgr.cloud/mcp';
+    mcpUrl = mcpUrl.replace(/\/$/, ''); // Remove trailing slash
     
     const mcpAuthToken = Deno.env.get('MCP_AUTH_TOKEN');
     
@@ -39,33 +30,47 @@ serve(async (req) => {
       throw new Error('MCP_AUTH_TOKEN não configurado');
     }
     
-    console.log('URL final para chamada MCP:', mcpUrl);
-    console.log('Token presente:', mcpAuthToken ? 'SIM' : 'NÃO');
+    console.log('Chamando MCP via JSON-RPC:', mcpUrl);
 
-    // Chamar a função do MCP
+    // Chamar a função do MCP usando JSON-RPC 2.0
     const mcpResponse = await fetch(mcpUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Credential': mcpAuthToken,
+        'Authorization': `Bearer ${mcpAuthToken}`,
+        'Accept': 'text/event-stream, application/json',
       },
       body: JSON.stringify({
-        dataInicio,
-        dataFim,
+        jsonrpc: '2.0',
+        method: 'tools/call',
+        params: {
+          name: 'fazer_faturamento_envios',
+          arguments: {
+            dataInicio,
+            dataFim,
+          }
+        },
+        id: Date.now(),
       }),
     });
 
-    if (!mcpResponse.ok) {
-      const errorText = await mcpResponse.text();
-      console.error('Erro ao chamar MCP:', errorText);
-      throw new Error(`Erro ao processar fechamento: ${errorText}`);
+    const resultado = await mcpResponse.json();
+    console.log('Resposta MCP:', resultado);
+
+    // Verificar resposta JSON-RPC
+    if (resultado.error) {
+      console.error('Erro JSON-RPC:', resultado.error);
+      throw new Error(`Erro ao processar fechamento: ${resultado.error.message}`);
     }
 
-    const resultado = await mcpResponse.json();
-    console.log('Fechamento concluído via MCP:', resultado);
+    if (!resultado.result) {
+      throw new Error('Resposta MCP inválida: sem campo result');
+    }
+
+    console.log('Fechamento concluído via MCP:', resultado.result);
 
     return new Response(
-      JSON.stringify(resultado),
+      JSON.stringify(resultado.result),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
