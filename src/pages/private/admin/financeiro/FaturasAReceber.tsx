@@ -16,6 +16,10 @@ import { TabItem } from '../../../../components/TabItem';
 import { ListaFaturas } from './ListaFaturas';
 import { useMutation } from '@tanstack/react-query';
 import { viewPDF } from '../../../../utils/pdfUtils';
+import { useFaturasRealtime } from '../../../../hooks/useFaturasRealtime';
+import { RealtimeStatusIndicator } from '../../../../components/RealtimeStatusIndicator';
+import { showPagamentoToast } from '../../../../components/PagamentoRealtimeToast';
+import { formatCurrencyWithCents } from '../../../../utils/formatCurrency';
 
 const FinanceiroFaturasAReceber = () => {
     const { setIsLoading } = useLoadingSpinner();
@@ -23,12 +27,38 @@ const FinanceiroFaturasAReceber = () => {
     const [searchParams] = useSearchParams();
     const [data, setData] = useState<IFatura[]>([]);
     const [tab, setTab] = useState('faturamentos');
+    const [realtimeConnected, setRealtimeConnected] = useState(true);
+    const [lastUpdate, setLastUpdate] = useState<Date>();
 
     const [isModalConfirmaPagamento, setIsModalConfirmaPagamento] = useState<{ isOpen: boolean; fatura: IFatura }>({ isOpen: false, fatura: {} as IFatura });
     const [page, setPage] = useState<number>(1);
     const perPage = config.pagination.perPage;
 
     const service = new FaturaService();
+
+    // Monitoramento em tempo real de pagamentos
+    useFaturasRealtime({
+        enabled: tab === 'faturamentos', // Apenas quando está na aba de pendentes
+        onStatusChange: (faturaId, novoStatus) => {
+            console.log(`🔔 Status da fatura ${faturaId} alterado para: ${novoStatus}`);
+            
+            // Buscar a fatura atualizada nos dados atuais
+            const faturaAtualizada = data.find(f => f.id === faturaId);
+            
+            if (faturaAtualizada && novoStatus === 'PAGO') {
+                showPagamentoToast({
+                    faturaId,
+                    clienteNome: faturaAtualizada.cliente.nome,
+                    valor: formatCurrencyWithCents(faturaAtualizada.totalFaturado),
+                    onShow: () => {
+                        setLastUpdate(new Date());
+                    }
+                });
+            }
+            
+            setLastUpdate(new Date());
+        }
+    });
 
     const {
         data: faturas,
@@ -138,12 +168,22 @@ const FinanceiroFaturasAReceber = () => {
             data={faturas?.data && faturas.data.length > 0 ? faturas.data : []}
         >
             {isLoading ? <LoadSpinner mensagem="Carregando..." /> : null}
-            <Tabs value={tab} onValueChange={setTab} className="w-full flex flex-col gap-4">
-                <TabsList className="flex gap-4 bg-white dark:bg-slate-800 w-full p-4 rounded-xl border border-input dark:border-slate-600">
-                    <TabItem value="faturamentos" label="Pendentes" />
-                    <TabItem value="finalizados" label="Finalizados" />
-                </TabsList>
-            </Tabs>
+            
+            <div className="flex items-center justify-between mb-4">
+                <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col gap-4">
+                    <TabsList className="flex gap-4 bg-white dark:bg-slate-800 w-full p-4 rounded-xl border border-input dark:border-slate-600">
+                        <TabItem value="faturamentos" label="Pendentes" />
+                        <TabItem value="finalizados" label="Finalizados" />
+                    </TabsList>
+                </Tabs>
+                
+                {tab === 'faturamentos' && (
+                    <RealtimeStatusIndicator 
+                        isConnected={realtimeConnected}
+                        lastUpdate={lastUpdate}
+                    />
+                )}
+            </div>
             {!isLoading && !isError && faturas && faturas.data.length > 0 && (
                 <>
                     <ListaFaturas
