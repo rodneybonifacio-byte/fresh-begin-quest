@@ -20,21 +20,32 @@ serve(async (req) => {
       throw new Error('Datas de início e fim são obrigatórias');
     }
 
-    // URL do MCP
-    let mcpBaseUrl = Deno.env.get('MCP_URL') || 'https://auth.srv762140.hstgr.cloud';
+    // URL do MCP - com logs detalhados para debug
+    const mcpBaseUrlEnv = Deno.env.get('MCP_URL');
+    console.log('MCP_URL da variável de ambiente:', mcpBaseUrlEnv);
+    
+    let mcpBaseUrl = mcpBaseUrlEnv || 'https://auth.srv762140.hstgr.cloud';
     
     // Garantir que a URL base não termine com barra
     mcpBaseUrl = mcpBaseUrl.replace(/\/$/, '');
+    console.log('MCP Base URL (após limpeza):', mcpBaseUrl);
     
-    // Construir a URL completa
-    const mcpUrl = `${mcpBaseUrl}/mcp/fazer_faturamento_envios`;
+    // Construir a URL completa - verificar se já contém /mcp
+    let mcpUrl;
+    if (mcpBaseUrl.endsWith('/mcp')) {
+      mcpUrl = `${mcpBaseUrl}/fazer_faturamento_envios`;
+    } else {
+      mcpUrl = `${mcpBaseUrl}/mcp/fazer_faturamento_envios`;
+    }
+    
     const mcpAuthToken = Deno.env.get('MCP_AUTH_TOKEN');
     
     if (!mcpAuthToken) {
       throw new Error('MCP_AUTH_TOKEN não configurado');
     }
     
-    console.log('Chamando MCP:', mcpUrl);
+    console.log('URL final para chamada MCP:', mcpUrl);
+    console.log('Token presente:', mcpAuthToken ? 'SIM' : 'NÃO');
 
     // Chamar a função do MCP
     const mcpResponse = await fetch(mcpUrl, {
