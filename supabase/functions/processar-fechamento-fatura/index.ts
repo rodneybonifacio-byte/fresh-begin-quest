@@ -12,6 +12,40 @@ interface FechamentoRequest {
   telefone_cliente: string;
 }
 
+// Função auxiliar para retry com backoff
+async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3): Promise<Response> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`🔄 Tentativa ${attempt}/${maxRetries} de chamada ao MCP...`);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+      
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      return response;
+      
+    } catch (error) {
+      lastError = error as Error;
+      console.error(`❌ Tentativa ${attempt} falhou:`, error.message);
+      
+      if (attempt < maxRetries) {
+        const waitTime = Math.pow(2, attempt) * 1000; // Backoff exponencial
+        console.log(`⏳ Aguardando ${waitTime}ms antes da próxima tentativa...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+    }
+  }
+  
+  throw new Error(`Falha após ${maxRetries} tentativas. Último erro: ${lastError?.message || 'Desconhecido'}`);
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -32,8 +66,10 @@ serve(async (req) => {
     if (!mcpAuthToken) {
       throw new Error('MCP_AUTH_TOKEN não configurado');
     }
+    
+    console.log('🌐 URL do MCP:', mcpUrl);
 
-    const mcpResponse = await fetch(mcpUrl, {
+    const mcpResponse = await fetchWithRetry(mcpUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -54,7 +90,8 @@ serve(async (req) => {
 
     if (!mcpResponse.ok) {
       const errorText = await mcpResponse.text();
-      throw new Error(`Erro ao buscar fatura: ${mcpResponse.status} - ${errorText}`);
+      console.error('❌ Resposta de erro do MCP:', errorText);
+      throw new Error(`Servidor MCP indisponível (${mcpResponse.status}). O servidor pode estar fora do ar. Tente novamente em alguns minutos.`);
     }
 
     const faturaData = await mcpResponse.json();
