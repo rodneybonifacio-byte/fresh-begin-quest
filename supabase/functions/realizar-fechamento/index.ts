@@ -54,8 +54,27 @@ serve(async (req) => {
       }),
     });
 
-    const resultado = await mcpResponse.json();
-    console.log('Resposta MCP:', resultado);
+    console.log('Status da resposta MCP:', mcpResponse.status);
+    console.log('Content-Type:', mcpResponse.headers.get('content-type'));
+
+    // Capturar a resposta como texto primeiro para debug
+    const responseText = await mcpResponse.text();
+    console.log('Resposta MCP (texto):', responseText.substring(0, 500));
+
+    // Verificar se não é 2xx
+    if (!mcpResponse.ok) {
+      throw new Error(`MCP retornou erro ${mcpResponse.status}: ${responseText.substring(0, 200)}`);
+    }
+
+    // Tentar fazer parse do JSON
+    let resultado;
+    try {
+      resultado = JSON.parse(responseText);
+      console.log('Resposta MCP parseada:', resultado);
+    } catch (parseError) {
+      console.error('Erro ao fazer parse da resposta:', parseError);
+      throw new Error(`Resposta MCP não é JSON válido. Status: ${mcpResponse.status}, Conteúdo: ${responseText.substring(0, 200)}`);
+    }
 
     // Verificar resposta JSON-RPC
     if (resultado.error) {
