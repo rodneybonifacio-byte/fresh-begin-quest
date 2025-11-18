@@ -314,7 +314,7 @@ const ModernRltEnvios = () => {
                 const custo = Number(row.valorPostagem) || 0;
                 return (
                     <span className="font-semibold text-emerald-700 dark:text-emerald-400">
-                        {formatMoedaDecimal(calcularLucro(preco, custo))}
+                        {calcularLucro(preco, custo)}
                     </span>
                 );
             },
