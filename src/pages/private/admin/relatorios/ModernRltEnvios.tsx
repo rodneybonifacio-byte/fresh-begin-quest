@@ -48,6 +48,43 @@ const ModernRltEnvios = () => {
         return response ?? {};
     });
 
+    // Buscar dados agregados para gráficos (todos os dados, sem paginação)
+    const { data: dadosAgregados } = useFetchQuery<IResponse<IEmissao[]>>(['emissoes-agregadas', filtros, tab], async () => {
+        const params: any = { status: tab };
+        
+        const dataIni = searchParams.get('dataIni') || undefined;
+        const dataFim = searchParams.get('dataFim') || undefined;
+        const clienteId = searchParams.get('clienteId') || undefined;
+        const remetenteId = searchParams.get('remetenteId') || undefined;
+        const transportadora = searchParams.get('transportadora') || undefined;
+
+        if (dataIni) params.dataIni = dataIni;
+        if (dataFim) params.dataFim = dataFim;
+        if (clienteId) params.clienteId = clienteId;
+        if (remetenteId) params.remetenteId = remetenteId;
+        if (transportadora) params.transportadora = transportadora;
+
+        // Buscar todos os dados para agregação
+        const allData: IEmissao[] = [];
+        const batchSize = 1000;
+        let offset = 0;
+        let hasMore = true;
+
+        while (hasMore) {
+            const batchParams = { ...params, limit: batchSize, offset };
+            const batch = await service.getAll(batchParams);
+            if (batch?.data && batch.data.length > 0) {
+                allData.push(...batch.data);
+                offset += batchSize;
+                hasMore = batch.data.length === batchSize;
+            } else {
+                hasMore = false;
+            }
+        }
+
+        return { data: allData } as IResponse<IEmissao[]>;
+    });
+
     const {
         data: emissoes,
         isLoading,
@@ -146,6 +183,43 @@ const ModernRltEnvios = () => {
         { label: 'Cancelados', value: 'CANCELADO', icon: <XCircle className="w-4 h-4" /> },
     ];
 
+    // Processar dados reais para gráficos
+    const processarDadosGraficos = () => {
+        if (!dadosAgregados?.data) {
+            return {
+                enviosPorMes: Array(12).fill(0),
+                transportadoras: { labels: [], valores: [] }
+            };
+        }
+
+        const dados = dadosAgregados.data;
+
+        // Envios por mês
+        const enviosPorMes = Array(12).fill(0);
+        dados.forEach(emissao => {
+            if (emissao.criadoEm) {
+                const mes = new Date(emissao.criadoEm).getMonth();
+                enviosPorMes[mes]++;
+            }
+        });
+
+        // Distribuição por transportadora
+        const transportadorasMap: { [key: string]: number } = {};
+        dados.forEach(emissao => {
+            const transp = emissao.transportadora || 'Outros';
+            transportadorasMap[transp] = (transportadorasMap[transp] || 0) + 1;
+        });
+
+        const transportadoras = {
+            labels: Object.keys(transportadorasMap),
+            valores: Object.values(transportadorasMap)
+        };
+
+        return { enviosPorMes, transportadoras };
+    };
+
+    const dadosGraficos = processarDadosGraficos();
+
     // Gráfico de barras - Envios por mês
     const barChartOptions: ApexOptions = {
         chart: {
@@ -193,7 +267,7 @@ const ModernRltEnvios = () => {
 
     const barChartSeries = [{
         name: 'Envios',
-        data: [450, 520, 480, 610, 580, 640, 700, 680, 720, 760, 800, 840]
+        data: dadosGraficos.enviosPorMes
     }];
 
     // Gráfico de pizza - Transportadoras
@@ -202,8 +276,8 @@ const ModernRltEnvios = () => {
             type: 'donut',
             height: 300,
         },
-        labels: ['Correios', 'Rodonaves', 'Outros'],
-        colors: ['#F2541B', '#000000', '#94a3b8'],
+        labels: dadosGraficos.transportadoras.labels.length > 0 ? dadosGraficos.transportadoras.labels : ['Sem dados'],
+        colors: ['#F2541B', '#000000', '#94a3b8', '#3b82f6', '#a855f7'],
         dataLabels: {
             enabled: true,
             style: {
@@ -239,7 +313,7 @@ const ModernRltEnvios = () => {
         }
     };
 
-    const pieChartSeries = [3200, 1800, 781];
+    const pieChartSeries = dadosGraficos.transportadoras.valores.length > 0 ? dadosGraficos.transportadoras.valores : [0];
 
     const columns = [
         {
