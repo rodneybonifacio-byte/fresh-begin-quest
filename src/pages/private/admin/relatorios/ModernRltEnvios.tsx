@@ -60,6 +60,7 @@ const ModernRltEnvios = () => {
 
         if (dataIni) params.dataIni = dataIni;
         if (dataFim) params.dataFim = dataFim;
+        // Apenas aplica filtro de cliente se explicitamente fornecido
         if (clienteId) params.clienteId = clienteId;
         if (remetenteId) params.remetenteId = remetenteId;
         if (transportadora) params.transportadora = transportadora;
