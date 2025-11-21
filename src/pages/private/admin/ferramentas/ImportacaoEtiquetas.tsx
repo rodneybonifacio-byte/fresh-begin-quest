@@ -160,6 +160,7 @@ const ImportacaoEtiquetas = () => {
                 data: dadosEnriquecidos
             };
 
+            console.log('📦 Payload completo:', JSON.stringify(payload, null, 2));
             adicionarLog('info', `Remetente: ${payload.remetente.cidade}/${payload.remetente.estado}`);
             adicionarLog('info', 'Enviando dados para API com remetente: ÓPERA KIDS VAREJO...');
             const response: any = await service.processarPedidosImportados(payload);
