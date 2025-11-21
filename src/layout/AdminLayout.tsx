@@ -4,8 +4,7 @@ import { AuthProvider } from "../providers/AuthContext";
 
 export const baseUrlAdmin = 'admin';
 
-export const AdminLayout = () => {
-
+const AdminLayout = () => {
     return (
         <AuthProvider>
             <LayoutProvider>
@@ -14,3 +13,5 @@ export const AdminLayout = () => {
         </AuthProvider>
     )
 }
+
+export default AdminLayout;
