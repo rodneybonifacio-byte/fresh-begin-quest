@@ -223,10 +223,11 @@ export const BotaoImportacaoMassiva = () => {
                 return;
             }
 
-            // Dividir IDs em blocos de 3 para evitar timeout
+            // Dividir IDs em blocos menores para evitar timeout (1 por requisição)
+            const idsChunkSize = 1;
             const chunks: string[][] = [];
-            for (let i = 0; i < idsEtiquetas.length; i += 3) {
-                chunks.push(idsEtiquetas.slice(i, i + 3));
+            for (let i = 0; i < idsEtiquetas.length; i += idsChunkSize) {
+                chunks.push(idsEtiquetas.slice(i, i + idsChunkSize));
             }
 
             toast.info(`Gerando ${chunks.length} blocos de PDFs...`);
@@ -235,7 +236,10 @@ export const BotaoImportacaoMassiva = () => {
             const pdfBase64Array: string[] = [];
             for (let i = 0; i < chunks.length; i++) {
                 try {
-                    toast.info(`Processando bloco ${i + 1} de ${chunks.length}...`);
+                    // Para não encher a tela de toasts, mostra apenas a cada 10 blocos
+                    if (i === 0 || (i + 1) === chunks.length || (i + 1) % 10 === 0) {
+                        toast.info(`Processando bloco ${i + 1} de ${chunks.length}...`);
+                    }
                     
                     const payloadPDF = {
                         ids: chunks[i],
@@ -248,9 +252,9 @@ export const BotaoImportacaoMassiva = () => {
                         pdfBase64Array.push(responsePDF.dados);
                     }
                     
-                    // Delay de 2 segundos entre blocos para evitar sobrecarga
+                    // Delay de 1 segundo entre blocos para evitar sobrecarga
                     if (i < chunks.length - 1) {
-                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        await new Promise(resolve => setTimeout(resolve, 1000));
                     }
                 } catch (error: any) {
                     console.error(`Erro no bloco ${i + 1}:`, error);
