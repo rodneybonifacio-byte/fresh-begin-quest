@@ -4,6 +4,7 @@ import type { IEmissao } from "../types/IEmissao";
 import type { IResponse } from "../types/IResponse";
 import { CustomHttpClient } from "../utils/http-axios-client";
 import { BaseService } from "./BaseService";
+import axios from "axios";
 
 export class EmissaoService extends BaseService<IEmissao> {
 
@@ -46,10 +47,24 @@ export class EmissaoService extends BaseService<IEmissao> {
         return response.data;
     }
 
-    async processarPedidosImportados(item: any): Promise<IResponse<{ nome: string, dados: string }>> {
-        // Endpoint específico da importação em lote de etiquetas
-        const response = await this.httpClient.post<IResponse<{ nome: string, dados: string }>>(`/importacao/multipla`, item);
-        return response;
+    async processarPedidosImportados(item: any): Promise<any> {
+        // Chamada direta para API externa de importação em lote
+        try {
+            const response = await axios.post(
+                'https://envios.brhubb.com.br/api/importacao/multipla',
+                item,
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                }
+            );
+            return response.data;
+        } catch (error: any) {
+            console.error('Erro na importação múltipla:', error);
+            throw error;
+        }
     }
 
     async cancelarEmissao(item: any): Promise<any> {
