@@ -54,22 +54,21 @@ export const BotaoImportacaoMassiva = () => {
             toast.info(`Processando ${jsonData.length} registros...`);
 
             // Enriquecer com CEP e CORRIGIR CPF/CNPJ INVÁLIDOS
+            let cpfsCorrigidos = 0;
             const dadosEnriquecidos = await Promise.all(
-                jsonData.map(async (item: any) => {
+                jsonData.map(async (item: any, index: number) => {
                     // Corrige CPF/CNPJ inválido
-                    const cpfOriginal = String(item.cpfCnpj || item.CPF_CNPJ || '').replace(/\D/g, '').padStart(11, '0');
+                    const cpfOriginal = String(item.cpfCnpj || item.CPF_CNPJ || '').replace(/\D/g, '');
                     let cpfFinal = cpfOriginal;
                     
-                    if (cpfOriginal.length === 11) {
-                        if (!isValidCPF(cpfOriginal)) {
-                            cpfFinal = gerarCPFValido();
-                        }
-                    } else if (cpfOriginal.length === 14) {
-                        if (!isValidCNPJ(cpfOriginal)) {
-                            cpfFinal = gerarCPFValido();
-                        }
-                    } else {
+                    // Valida conforme o tamanho
+                    const valido = (cpfOriginal.length === 11 && isValidCPF(cpfOriginal)) || 
+                                   (cpfOriginal.length === 14 && isValidCNPJ(cpfOriginal));
+                    
+                    if (!valido) {
                         cpfFinal = gerarCPFValido();
+                        cpfsCorrigidos++;
+                        console.log(`Linha ${index + 2}: CPF inválido ${cpfOriginal} → ${cpfFinal}`);
                     }
                     
                     try {
@@ -95,24 +94,31 @@ export const BotaoImportacaoMassiva = () => {
                 })
             );
 
-            // Normalizar com CPF já corrigido
-            const dadosNormalizados = dadosEnriquecidos.map((item: any) => ({
-                servico_frete: String(item.servico_frete || item.SERVICO_FRETE || 'PAC').toUpperCase().trim(),
-                cep: String(item.cep || item.CEP || '').replace(/\D/g, ''),
-                altura: Number(item.altura || item.ALTURA || 0),
-                largura: Number(item.largura || item.LARGURA || 0),
-                comprimento: Number(item.comprimento || item.COMPRIMENTO || 0),
-                peso: Number(item.peso || item.PESO || 0),
-                logradouro: String(item.logradouro || item.LOGRADOURO || '').trim(),
-                numero: Math.max(Number(item.numero || item.NUMERO || 1), 1),
-                complemento: item.complemento || item.COMPLEMENTO ? String(item.complemento || item.COMPLEMENTO).trim() : undefined,
-                nomeDestinatario: String(item.nomeDestinatario || item.NOME_DESTINATARIO || '').trim(),
-                cpfCnpj: Number(String(item.cpfCnpj).replace(/\D/g, '')),
-                valor_frete: Number(item.valor_frete || item.VALOR_FRETE || 0),
-                bairro: String(item.bairro || '').trim(),
-                cidade: String(item.cidade || '').trim(),
-                estado: String(item.estado || item.uf || item.UF || '').toUpperCase().trim()
-            }));
+            console.log(`✅ ${cpfsCorrigidos} CPFs foram corrigidos automaticamente`);
+
+            // Normalizar com CPF já corrigido e garantir numero válido
+            const dadosNormalizados = dadosEnriquecidos.map((item: any) => {
+                const numeroValue = Number(item.numero || item.NUMERO);
+                const numeroFinal = (!numeroValue || numeroValue <= 0 || isNaN(numeroValue)) ? 1 : numeroValue;
+                
+                return {
+                    servico_frete: String(item.servico_frete || item.SERVICO_FRETE || 'PAC').toUpperCase().trim(),
+                    cep: String(item.cep || item.CEP || '').replace(/\D/g, ''),
+                    altura: Number(item.altura || item.ALTURA || 0),
+                    largura: Number(item.largura || item.LARGURA || 0),
+                    comprimento: Number(item.comprimento || item.COMPRIMENTO || 0),
+                    peso: Number(item.peso || item.PESO || 0),
+                    logradouro: String(item.logradouro || item.LOGRADOURO || '').trim(),
+                    numero: numeroFinal,
+                    complemento: item.complemento || item.COMPLEMENTO ? String(item.complemento || item.COMPLEMENTO).trim() : undefined,
+                    nomeDestinatario: String(item.nomeDestinatario || item.NOME_DESTINATARIO || '').trim(),
+                    cpfCnpj: Number(String(item.cpfCnpj).replace(/\D/g, '')),
+                    valor_frete: Number(item.valor_frete || item.VALOR_FRETE || 0),
+                    bairro: String(item.bairro || '').trim(),
+                    cidade: String(item.cidade || '').trim(),
+                    estado: String(item.estado || item.uf || item.UF || '').toUpperCase().trim()
+                };
+            });
 
             console.log('📦 Enviando:', dadosNormalizados.length, 'registros (CPFs inválidos foram corrigidos)');
 
