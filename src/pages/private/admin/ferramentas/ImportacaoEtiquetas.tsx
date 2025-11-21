@@ -367,6 +367,51 @@ const ImportacaoEtiquetas = () => {
                 <p className="text-muted-foreground">Importe múltiplas etiquetas de uma vez através de planilha Excel</p>
             </div>
 
+            {/* Resumo de Status */}
+            {dados.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div className="bg-card border border-border rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-muted-foreground">Total Carregados</p>
+                                <p className="text-2xl font-bold text-foreground">{dados.length}</p>
+                            </div>
+                            <FileSpreadsheet className="w-8 h-8 text-blue-500" />
+                        </div>
+                    </div>
+                    
+                    <div className="bg-card border border-border rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-muted-foreground">Válidos para Envio</p>
+                                <p className="text-2xl font-bold text-green-600">{dados.length - registrosInvalidos.length}</p>
+                            </div>
+                            <CheckCircle className="w-8 h-8 text-green-600" />
+                        </div>
+                    </div>
+                    
+                    <div className="bg-card border border-border rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-muted-foreground">Com Erro (CPF/CNPJ)</p>
+                                <p className="text-2xl font-bold text-red-600">{registrosInvalidos.length}</p>
+                            </div>
+                            <XCircle className="w-8 h-8 text-red-600" />
+                        </div>
+                    </div>
+                    
+                    <div className="bg-card border border-border rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-muted-foreground">Etiquetas Criadas</p>
+                                <p className="text-2xl font-bold text-primary">{etiquetasCriadas.length}</p>
+                            </div>
+                            <Printer className="w-8 h-8 text-primary" />
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Painel de Upload */}
                 <div className="lg:col-span-2 space-y-6">
