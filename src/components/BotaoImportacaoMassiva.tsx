@@ -39,6 +39,131 @@ export const BotaoImportacaoMassiva = () => {
     const [idsFalha, setIdsFalha] = useState<string[]>([]);
     const [relatorioFalhas, setRelatorioFalhas] = useState<RelatorioItem[]>([]);
     const [mostrarRelatorio, setMostrarRelatorio] = useState(false);
+    const [excluindo, setExcluindo] = useState(false);
+
+    const excluirEtiquetas = async (ids: string[], tipo: 'falhas' | 'duplicadas') => {
+        setExcluindo(true);
+        const emissaoService = new EmissaoService();
+
+        try {
+            toast.info(`Excluindo ${ids.length} etiquetas...`);
+
+            let sucessos = 0;
+            let erros = 0;
+
+            for (let i = 0; i < ids.length; i++) {
+                try {
+                    await emissaoService.delete(ids[i]);
+                    sucessos++;
+
+                    if ((i + 1) % 10 === 0 || (i + 1) === ids.length) {
+                        toast.info(`Excluindo: ${i + 1}/${ids.length} (✅${sucessos} ❌${erros})`);
+                    }
+
+                    // Delay para não sobrecarregar a API
+                    if (i < ids.length - 1) {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+                } catch (error: any) {
+                    console.error(`Erro ao excluir ${ids[i]}:`, error);
+                    erros++;
+                }
+            }
+
+            toast.success(`✅ ${sucessos} etiquetas excluídas | ❌ ${erros} erros`);
+
+            // Limpar os IDs de falha após exclusão bem-sucedida
+            if (tipo === 'falhas' && sucessos > 0) {
+                setIdsFalha([]);
+                setRelatorioFalhas([]);
+                setMostrarRelatorio(false);
+            }
+        } catch (error: any) {
+            toast.error(`Erro ao excluir: ${error.message}`);
+            console.error('Erro na exclusão:', error);
+        } finally {
+            setExcluindo(false);
+        }
+    };
+
+    const excluirDuplicadas = async () => {
+        setExcluindo(true);
+        const emissaoService = new EmissaoService();
+
+        try {
+            toast.info('Buscando etiquetas duplicadas...');
+
+            // Buscar todas as etiquetas recentes
+            let todasEtiquetas: any[] = [];
+            let pagina = 1;
+            const limitePorPagina = 50;
+            const totalPaginas = 10; // Buscar até 500 etiquetas
+
+            while (pagina <= totalPaginas) {
+                const response = await emissaoService.getAll({
+                    page: String(pagina),
+                    limit: String(limitePorPagina)
+                });
+
+                if (!response?.data || response.data.length === 0) {
+                    break;
+                }
+
+                todasEtiquetas = [...todasEtiquetas, ...response.data];
+
+                if (response.data.length < limitePorPagina) {
+                    break;
+                }
+
+                pagina++;
+            }
+
+            if (todasEtiquetas.length === 0) {
+                toast.warning('Nenhuma etiqueta encontrada para verificar');
+                return;
+            }
+
+            toast.info(`Analisando ${todasEtiquetas.length} etiquetas...`);
+
+            // Detectar duplicadas baseado em código_objeto
+            const mapaCodigosObjeto = new Map<string, string[]>();
+
+            todasEtiquetas.forEach((etiqueta) => {
+                const codigo = etiqueta.codigo_objeto;
+                if (codigo) {
+                    if (!mapaCodigosObjeto.has(codigo)) {
+                        mapaCodigosObjeto.set(codigo, []);
+                    }
+                    mapaCodigosObjeto.get(codigo)!.push(etiqueta.id);
+                }
+            });
+
+            // Identificar duplicadas (manter a primeira, excluir as demais)
+            const idsDuplicadas: string[] = [];
+
+            mapaCodigosObjeto.forEach((ids) => {
+                if (ids.length > 1) {
+                    // Manter o primeiro ID, marcar os demais como duplicados
+                    idsDuplicadas.push(...ids.slice(1));
+                }
+            });
+
+            if (idsDuplicadas.length === 0) {
+                toast.success('✅ Nenhuma etiqueta duplicada encontrada!');
+                return;
+            }
+
+            toast.warning(`⚠️ ${idsDuplicadas.length} etiquetas duplicadas encontradas`);
+
+            // Excluir as duplicadas
+            await excluirEtiquetas(idsDuplicadas, 'duplicadas');
+        } catch (error: any) {
+            toast.error(`Erro: ${error.message}`);
+            console.error('Erro ao excluir duplicadas:', error);
+        } finally {
+            setExcluindo(false);
+        }
+    };
 
     const processar = async () => {
         setImportando(true);
@@ -344,6 +469,7 @@ export const BotaoImportacaoMassiva = () => {
         <>
             {importando && <LoadSpinner mensagem="Importando todos os registros..." />}
             {gerandoPDF && <LoadSpinner mensagem="Gerando PDF das etiquetas..." />}
+            {excluindo && <LoadSpinner mensagem="Excluindo etiquetas..." />}
             
             <div className="space-y-4">
                 <div className="flex gap-3">
@@ -389,9 +515,9 @@ export const BotaoImportacaoMassiva = () => {
                             </div>
                         </div>
                         
-                        <div className="flex gap-2">
+                        <div className="space-y-2">
                             {idsFalha.length > 0 && (
-                                <>
+                                <div className="flex gap-2">
                                     <button
                                         onClick={() => setMostrarRelatorio(!mostrarRelatorio)}
                                         className="flex-1 px-4 py-2 bg-amber-500 text-white rounded hover:bg-amber-600 transition-colors text-sm font-medium"
@@ -403,13 +529,39 @@ export const BotaoImportacaoMassiva = () => {
                                             setPdfGeradoBase64(null);
                                             gerarPDFEtiquetasExistentes(idsFalha);
                                         }}
-                                        disabled={gerandoPDF}
-                                        className="flex-1 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+                                        disabled={gerandoPDF || excluindo}
+                                        className="flex-1 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
                                     >
                                         Reprocessar Falhas
                                     </button>
-                                </>
+                                </div>
                             )}
+                            
+                            <div className="flex gap-2">
+                                {idsFalha.length > 0 && (
+                                    <button
+                                        onClick={() => excluirEtiquetas(idsFalha, 'falhas')}
+                                        disabled={gerandoPDF || excluindo}
+                                        className="flex-1 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                        Excluir Etiquetas que Falharam
+                                    </button>
+                                )}
+                                
+                                <button
+                                    onClick={excluirDuplicadas}
+                                    disabled={gerandoPDF || excluindo}
+                                    className="flex-1 px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                    </svg>
+                                    Excluir Duplicadas
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}
