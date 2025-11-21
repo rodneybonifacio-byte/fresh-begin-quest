@@ -112,7 +112,8 @@ export const BotaoImportacaoMassiva = () => {
                     numero: numeroFinal,
                     complemento: item.complemento || item.COMPLEMENTO ? String(item.complemento || item.COMPLEMENTO).trim() : undefined,
                     nomeDestinatario: String(item.nomeDestinatario || item.NOME_DESTINATARIO || '').trim(),
-                    cpfCnpj: Number(String(item.cpfCnpj).replace(/\D/g, '')),
+                    // CPF/CNPJ vai como STRING para não perder zeros à esquerda
+                    cpfCnpj: String(item.cpfCnpj).replace(/\D/g, ''),
                     valor_frete: Number(item.valor_frete || item.VALOR_FRETE || 0),
                     bairro: String(item.bairro || '').trim(),
                     cidade: String(item.cidade || '').trim(),
