@@ -46,8 +46,9 @@ export class EmissaoService extends BaseService<IEmissao> {
         return response.data;
     }
 
-    async processarPedidosImportados(item: any): Promise<{ nome: string, dados: string }> {
-        const response = await this.httpClient.post<{ nome: string, dados: string }>(`${this.endpoint}/processar-pedidos-importados`, item);
+    async processarPedidosImportados(item: any): Promise<IResponse<{ nome: string, dados: string }>> {
+        // Endpoint específico da importação em lote de etiquetas
+        const response = await this.httpClient.post<IResponse<{ nome: string, dados: string }>>(`/importacao/multipla`, item);
         return response;
     }
 
