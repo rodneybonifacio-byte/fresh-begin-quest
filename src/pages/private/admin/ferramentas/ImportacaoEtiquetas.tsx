@@ -136,13 +136,7 @@ const ImportacaoEtiquetas = () => {
         adicionarLog('info', `Iniciando importação de ${dados.length} etiquetas...`);
 
         try {
-            const viacepService = new ViacepService();
-            
-            // Consultar CEP do remetente padrão
-            adicionarLog('info', 'Consultando CEP do remetente...');
-            const enderecoRemetente = await viacepService.consulta('03011000');
-            
-            // Enriquecer dados com consulta de CEP dos destinatários (já foram preenchidos na leitura do arquivo)
+            // Validar CPF/CNPJ dos destinatários
             adicionarLog('info', 'Validando CPF/CNPJ dos destinatários...');
             
             // Validar CPF/CNPJ de cada destinatário
@@ -165,39 +159,33 @@ const ImportacaoEtiquetas = () => {
             adicionarLog('sucesso', 'Todos os CPF/CNPJ validados com sucesso!');
             adicionarLog('info', 'Preparando dados para envio...');
 
-            // Normalizar tipos de dados para o backend
+            // Normalizar tipos de dados conforme contrato da API
             const dadosNormalizados = dados.map((item: any) => ({
-                ...item,
-                cpfCnpj: Number(String(item.cpfCnpj || '').replace(/\D/g, '')), // NUMBER sem formatação
-                cep: String(item.cep || '').replace(/\D/g, ''), // STRING apenas números
-                numero: Number(item.numero) || 0, // NUMBER
-                complemento: item.complemento ? String(item.complemento) : undefined, // STRING ou undefined
-                nomeDestinatario: String(item.nomeDestinatario || ''), // STRING
-                bairro: item.bairro || 'Centro', // STRING obrigatório com fallback
-                cidade: item.cidade || '', // STRING
-                estado: item.estado || '' // STRING
+                servico_frete: item.servico_frete || 'PAC',
+                cep: String(item.cep || '').replace(/\D/g, ''),
+                altura: Number(item.altura) || 0,
+                largura: Number(item.largura) || 0,
+                comprimento: Number(item.comprimento) || 0,
+                peso: Number(item.peso) || 0,
+                logradouro: String(item.logradouro || ''),
+                numero: Number(item.numero) || 0,
+                complemento: item.complemento ? String(item.complemento) : undefined,
+                nomeDestinatario: String(item.nomeDestinatario || ''),
+                cpfCnpj: Number(String(item.cpfCnpj || '').replace(/\D/g, '')),
+                valor_frete: Number(item.valor_frete) || 0,
+                bairro: item.bairro || 'Centro',
+                cidade: item.cidade || '',
+                estado: item.estado || item.uf || ''
             }));
 
             const service = new EmissaoService();
             const payload = {
-                cpfCnpj: cpfCnpjCliente,
-                remetente: {
-                    nome: 'ÓPERA KIDS VAREJO',
-                    cpfCnpj: '15808095000303',
-                    logradouro: 'RUA MARIA MARCOLINA',
-                    numero: '748',
-                    cep: '03011000',
-                    bairro: enderecoRemetente.bairro || 'Brás',
-                    cidade: enderecoRemetente.localidade || 'São Paulo',
-                    estado: enderecoRemetente.uf || 'SP',
-                    uf: enderecoRemetente.uf || 'SP'
-                },
+                cpfCnpj: cpfCnpjCliente.replace(/\D/g, ''), // CPF/CNPJ do remetente (apenas números)
                 data: dadosNormalizados
             };
 
             console.log('📦 Payload completo:', JSON.stringify(payload, null, 2));
-            adicionarLog('info', `Remetente: ${payload.remetente.cidade}/${payload.remetente.estado}`);
-            adicionarLog('info', 'Enviando dados para API com remetente: ÓPERA KIDS VAREJO...');
+            adicionarLog('info', 'Enviando dados para API de importação em lote...');
             const response: any = await service.processarPedidosImportados(payload);
             
             adicionarLog('sucesso', 'Importação concluída com sucesso!');
