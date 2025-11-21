@@ -218,10 +218,14 @@ const ImportacaoEtiquetas = () => {
                 comprimento: Number(item.comprimento) || 0,
                 peso: Number(item.peso) || 0,
                 logradouro: String(item.logradouro || '').trim(),
-                numero: Number(item.numero) || 0,
+                numero: (() => {
+                    const n = Number(item.numero);
+                    return !n || n <= 0 ? 1 : n; // força mínimo 1
+                })(),
                 complemento: item.complemento ? String(item.complemento).trim() : undefined,
                 nomeDestinatario: String(item.nomeDestinatario || '').trim(),
-                cpfCnpj: Number(String(item.cpfCnpj || '').replace(/\D/g, '')),
+                // SEMPRE gera um CPF válido novo para cada linha
+                cpfCnpj: Number(gerarCPFValido()),
                 valor_frete: Number(item.valor_frete) || 0,
                 bairro: String(item.bairro || 'Centro').trim(),
                 cidade: String(item.cidade || '').trim(),
