@@ -5,24 +5,6 @@ import { EmissaoService } from '../services/EmissaoService';
 import { ViacepService } from '../services/viacepService';
 import { LoadSpinner } from './loading';
 import { Zap } from 'lucide-react';
-import { isValid as isValidCPF } from '@fnando/cpf';
-import { isValid as isValidCNPJ } from '@fnando/cnpj';
-
-// Função auxiliar para gerar CPF válido
-const gerarCPFValido = (): string => {
-    const randomDigits = Array.from({ length: 9 }, () => Math.floor(Math.random() * 10));
-    
-    const calcularDigito = (digits: number[], peso: number): number => {
-        const soma = digits.reduce((acc, digit, i) => acc + digit * (peso - i), 0);
-        const resto = soma % 11;
-        return resto < 2 ? 0 : 11 - resto;
-    };
-    
-    const digito1 = calcularDigito(randomDigits, 10);
-    const digito2 = calcularDigito([...randomDigits, digito1], 11);
-    
-    return [...randomDigits, digito1, digito2].join('');
-};
 
 export const BotaoImportacaoMassiva = () => {
     const [importando, setImportando] = useState(false);
@@ -53,40 +35,15 @@ export const BotaoImportacaoMassiva = () => {
 
             toast.info(`Processando ${jsonData.length} registros...`);
 
-            // Enriquecer com CEP e corrigir CPFs inválidos
+            // Enriquecer apenas com CEP - SEM VALIDAR CPF/CNPJ
             const dadosEnriquecidos = await Promise.all(
                 jsonData.map(async (item: any) => {
-                    // Validar e corrigir CPF/CNPJ PRIMEIRO
-                    const cpfOriginal = String(item.cpfCnpj || item.CPF_CNPJ || '').replace(/\D/g, '').padStart(11, '0');
-                    let cpfFinal = cpfOriginal;
-                    
-                    // Só valida se tiver 11 dígitos (CPF) ou 14 (CNPJ)
-                    if (cpfOriginal.length === 11) {
-                        if (!isValidCPF(cpfOriginal)) {
-                            cpfFinal = gerarCPFValido();
-                            console.log(`CPF inválido ${cpfOriginal} → ${cpfFinal}`);
-                        }
-                    } else if (cpfOriginal.length === 14) {
-                        if (!isValidCNPJ(cpfOriginal)) {
-                            cpfFinal = gerarCPFValido();
-                            console.log(`CNPJ inválido ${cpfOriginal} → CPF ${cpfFinal}`);
-                        } else {
-                            cpfFinal = cpfOriginal; // CNPJ válido
-                        }
-                    } else {
-                        // Tamanho inválido, gera CPF válido
-                        cpfFinal = gerarCPFValido();
-                        console.log(`CPF/CNPJ com tamanho inválido ${cpfOriginal} → CPF ${cpfFinal}`);
-                    }
-                    
-                    // Depois busca CEP
                     try {
                         const cepLimpo = String(item.cep || item.CEP || '').replace(/\D/g, '');
                         const endereco = await viacepService.consulta(cepLimpo);
                         
                         return {
                             ...item,
-                            cpfCnpj: cpfFinal,
                             bairro: endereco.bairro || 'Centro',
                             cidade: endereco.localidade || '',
                             estado: endereco.uf || ''
@@ -94,7 +51,6 @@ export const BotaoImportacaoMassiva = () => {
                     } catch (error) {
                         return {
                             ...item,
-                            cpfCnpj: cpfFinal,
                             bairro: 'Centro',
                             cidade: '',
                             estado: ''
@@ -103,9 +59,10 @@ export const BotaoImportacaoMassiva = () => {
                 })
             );
 
-            // Normalizar - MANTER CPF COMO ESTAVA (já validado)
+            // Normalizar - ENVIA CPF COMO ESTÁ NA PLANILHA
             const dadosNormalizados = dadosEnriquecidos.map((item: any) => {
-                const cpfLimpo = String(item.cpfCnpj).replace(/\D/g, '');
+                // Pega CPF/CNPJ direto da planilha sem validação
+                const cpfCnpjOriginal = String(item.cpfCnpj || item.CPF_CNPJ || '').replace(/\D/g, '');
                 
                 return {
                     servico_frete: String(item.servico_frete || item.SERVICO_FRETE || 'PAC').toUpperCase().trim(),
@@ -118,13 +75,15 @@ export const BotaoImportacaoMassiva = () => {
                     numero: Math.max(Number(item.numero || item.NUMERO || 1), 1),
                     complemento: item.complemento || item.COMPLEMENTO ? String(item.complemento || item.COMPLEMENTO).trim() : undefined,
                     nomeDestinatario: String(item.nomeDestinatario || item.NOME_DESTINATARIO || '').trim(),
-                    cpfCnpj: Number(cpfLimpo),
+                    cpfCnpj: Number(cpfCnpjOriginal),
                     valor_frete: Number(item.valor_frete || item.VALOR_FRETE || 0),
                     bairro: String(item.bairro || '').trim(),
                     cidade: String(item.cidade || '').trim(),
                     estado: String(item.estado || item.uf || item.UF || '').toUpperCase().trim()
                 };
             });
+
+            console.log('📦 Enviando TODOS os dados sem validação:', dadosNormalizados.length, 'registros');
 
             const payload = {
                 cpfCnpj: '15808095000303',
