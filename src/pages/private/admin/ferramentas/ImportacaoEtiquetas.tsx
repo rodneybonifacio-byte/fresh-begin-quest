@@ -110,9 +110,14 @@ const ImportacaoEtiquetas = () => {
         adicionarLog('info', `Iniciando importação de ${dados.length} etiquetas...`);
 
         try {
-            // Enriquecer dados com consulta de CEP
-            adicionarLog('info', 'Consultando CEPs...');
             const viacepService = new ViacepService();
+            
+            // Consultar CEP do remetente padrão
+            adicionarLog('info', 'Consultando CEP do remetente...');
+            const enderecoRemetente = await viacepService.consulta('03011000');
+            
+            // Enriquecer dados com consulta de CEP dos destinatários
+            adicionarLog('info', 'Consultando CEPs dos destinatários...');
             
             const dadosEnriquecidos = await Promise.all(
                 dados.map(async (item) => {
@@ -138,10 +143,20 @@ const ImportacaoEtiquetas = () => {
             const service = new EmissaoService();
             const payload = {
                 cpfCnpj: cpfCnpjCliente,
+                remetente: {
+                    nome: 'ÓPERA KIDS VAREJO',
+                    logradouro: 'RUA MARIA MARCOLINA',
+                    numero: '748',
+                    cep: '03011000',
+                    bairro: enderecoRemetente.bairro,
+                    cidade: 'SÃO PAULO',
+                    estado: 'SP',
+                    uf: 'SP'
+                },
                 data: dadosEnriquecidos
             };
 
-            adicionarLog('info', 'Enviando dados para API...');
+            adicionarLog('info', 'Enviando dados para API com remetente: ÓPERA KIDS VAREJO...');
             const response: any = await service.processarPedidosImportados(payload);
             
             adicionarLog('sucesso', 'Importação concluída com sucesso!');
@@ -266,14 +281,24 @@ const ImportacaoEtiquetas = () => {
 
                     {/* Card de CPF/CNPJ */}
                     <div className="bg-card border border-border rounded-lg p-6">
-                        <h2 className="text-xl font-semibold text-foreground mb-4">CPF/CNPJ do Cliente ou Remetente</h2>
+                        <h2 className="text-xl font-semibold text-foreground mb-4">CPF/CNPJ do Cliente</h2>
                         <input
                             type="text"
                             value={cpfCnpjCliente}
                             onChange={(e) => setCpfCnpjCliente(e.target.value)}
-                            placeholder="Digite o CPF ou CNPJ"
+                            placeholder="Digite o CPF ou CNPJ do cliente"
                             className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                         />
+                        <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                            <p className="text-sm font-medium text-blue-700 dark:text-blue-400 mb-2">
+                                Remetente Padrão (Todas as Etiquetas)
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                                <strong>ÓPERA KIDS VAREJO</strong><br />
+                                RUA MARIA MARCOLINA, 748<br />
+                                03011-000 - SÃO PAULO/SP
+                            </p>
+                        </div>
                     </div>
 
                     {/* Card de Upload */}
