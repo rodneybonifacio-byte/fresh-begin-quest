@@ -160,13 +160,27 @@ const ImportacaoEtiquetas = () => {
             const response: any = await service.processarPedidosImportados(payload);
             
             adicionarLog('sucesso', 'Importação concluída com sucesso!');
+            console.log('Resposta completa da API:', response);
             
-            // Trata resposta da API
+            // Trata resposta da API - tentando diferentes formatos de resposta
+            let idsEtiquetas: string[] = [];
+            
             if (response?.etiquetas_criadas && Array.isArray(response.etiquetas_criadas)) {
-                setEtiquetasCriadas(response.etiquetas_criadas);
-                adicionarLog('info', `Total de etiquetas criadas: ${response.etiquetas_criadas.length}`);
-            } else if (response?.data) {
-                adicionarLog('info', 'Resposta recebida da API');
+                idsEtiquetas = response.etiquetas_criadas;
+            } else if (response?.data?.etiquetas_criadas && Array.isArray(response.data.etiquetas_criadas)) {
+                idsEtiquetas = response.data.etiquetas_criadas;
+            } else if (response?.ids && Array.isArray(response.ids)) {
+                idsEtiquetas = response.ids;
+            } else if (response?.data && Array.isArray(response.data)) {
+                // Se a resposta for um array de objetos com IDs
+                idsEtiquetas = response.data.map((item: any) => item.id).filter(Boolean);
+            }
+            
+            if (idsEtiquetas.length > 0) {
+                setEtiquetasCriadas(idsEtiquetas);
+                adicionarLog('sucesso', `✓ ${idsEtiquetas.length} etiquetas criadas e prontas para impressão!`);
+            } else {
+                adicionarLog('info', 'Etiquetas processadas (IDs não retornados pela API)');
             }
 
             if (response?.erros && Array.isArray(response.erros) && response.erros.length > 0) {
@@ -373,7 +387,7 @@ const ImportacaoEtiquetas = () => {
                             <button
                                 onClick={importarTodas}
                                 disabled={importando || !cpfCnpjCliente}
-                                className="flex-1 min-w-[200px] flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex-1 min-w-[200px] flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
                             >
                                 <CheckCircle className="w-5 h-5" />
                                 {importando ? 'Importando...' : 'Importar Todas'}
@@ -383,14 +397,14 @@ const ImportacaoEtiquetas = () => {
                                     <button
                                         onClick={imprimirEtiquetas}
                                         disabled={imprimindo}
-                                        className="flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg"
                                     >
                                         <Printer className="w-5 h-5" />
-                                        {imprimindo ? 'Gerando PDF...' : 'Imprimir Etiquetas'}
+                                        {imprimindo ? 'Gerando PDF...' : `Imprimir ${etiquetasCriadas.length} Etiquetas`}
                                     </button>
                                     <button
                                         onClick={removerTodas}
-                                        className="flex items-center justify-center gap-2 px-6 py-3 bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 transition-colors"
+                                        className="flex items-center justify-center gap-2 px-6 py-3 bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 transition-colors font-semibold"
                                     >
                                         <Trash2 className="w-5 h-5" />
                                         Remover Todas
@@ -404,6 +418,23 @@ const ImportacaoEtiquetas = () => {
                                 <XCircle className="w-5 h-5" />
                                 Limpar
                             </button>
+                        </div>
+                    )}
+
+                    {/* Indicador de Etiquetas Prontas */}
+                    {etiquetasCriadas.length > 0 && (
+                        <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-6">
+                            <div className="flex items-center gap-3">
+                                <CheckCircle className="w-6 h-6 text-green-600" />
+                                <div>
+                                    <p className="text-lg font-semibold text-green-700 dark:text-green-400">
+                                        {etiquetasCriadas.length} Etiquetas Criadas com Sucesso!
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">
+                                        Clique em "Imprimir Etiquetas" acima para gerar o PDF
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>
