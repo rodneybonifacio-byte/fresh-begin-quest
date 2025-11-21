@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
 import { EmissaoService } from '../../../../services/EmissaoService';
 import { openPDFInNewTab } from '../../../../utils/pdfUtils';
+import { ViacepService } from '../../../../services/viacepService';
 
 interface EtiquetaImport {
     servico_frete: string;
@@ -18,9 +19,10 @@ interface EtiquetaImport {
     nomeDestinatario: string;
     cpfCnpj: string;
     valor_frete: number;
-    bairro: string;
-    cidade: string;
-    estado: string;
+    // Campos que serão preenchidos automaticamente
+    bairro?: string;
+    cidade?: string;
+    estado?: string;
 }
 
 interface LogEntry {
@@ -82,10 +84,7 @@ const ImportacaoEtiquetas = () => {
                 complemento: 'Bloco 3 504',
                 nomeDestinatario: 'EXEMPLO DESTINATARIO',
                 cpfCnpj: '11132440700',
-                valor_frete: 22.01,
-                bairro: 'Engenho',
-                cidade: 'Barueri',
-                estado: 'SP'
+                valor_frete: 22.01
             }
         ];
 
@@ -111,12 +110,38 @@ const ImportacaoEtiquetas = () => {
         adicionarLog('info', `Iniciando importação de ${dados.length} etiquetas...`);
 
         try {
+            // Enriquecer dados com consulta de CEP
+            adicionarLog('info', 'Consultando CEPs...');
+            const viacepService = new ViacepService();
+            
+            const dadosEnriquecidos = await Promise.all(
+                dados.map(async (item) => {
+                    try {
+                        const cepLimpo = item.cep.replace(/\D/g, '');
+                        const endereco = await viacepService.consulta(cepLimpo);
+                        
+                        adicionarLog('info', `CEP ${item.cep} consultado - ${endereco.localidade}/${endereco.uf}`);
+                        
+                        return {
+                            ...item,
+                            bairro: endereco.bairro || item.bairro,
+                            cidade: endereco.localidade || item.cidade,
+                            estado: endereco.uf || item.estado
+                        };
+                    } catch (error) {
+                        adicionarLog('erro', `Erro ao consultar CEP ${item.cep}: ${error}`);
+                        return item; // Mantém dados originais se houver erro
+                    }
+                })
+            );
+
             const service = new EmissaoService();
             const payload = {
                 cpfCnpj: cpfCnpjCliente,
-                data: dados
+                data: dadosEnriquecidos
             };
 
+            adicionarLog('info', 'Enviando dados para API...');
             const response: any = await service.processarPedidosImportados(payload);
             
             adicionarLog('sucesso', 'Importação concluída com sucesso!');
