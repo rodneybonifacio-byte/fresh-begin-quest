@@ -51,7 +51,7 @@ const ImportacaoEtiquetas = () => {
         setArquivo(file);
         const reader = new FileReader();
 
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
             try {
                 const data = new Uint8Array(e.target?.result as ArrayBuffer);
                 const workbook = XLSX.read(data, { type: 'array' });
@@ -59,8 +59,32 @@ const ImportacaoEtiquetas = () => {
                 const worksheet = workbook.Sheets[sheetName];
                 const jsonData = XLSX.utils.sheet_to_json<EtiquetaImport>(worksheet);
 
-                setDados(jsonData);
-                adicionarLog('sucesso', `Arquivo carregado: ${jsonData.length} registros encontrados`);
+                // Enriquecer dados com consulta de CEP já na leitura do arquivo
+                const viacepService = new ViacepService();
+                adicionarLog('info', 'Consultando CEPs para preencher cidade/estado na preview...');
+
+                const dadosComCidade = await Promise.all(
+                    jsonData.map(async (item: any) => {
+                        try {
+                            const cepLimpo = String(item.cep || item.CEP || '').replace(/\D/g, '');
+                            if (!cepLimpo) return item;
+
+                            const endereco = await viacepService.consulta(cepLimpo);
+                            return {
+                                ...item,
+                                bairro: endereco.bairro || item.bairro,
+                                cidade: endereco.localidade || item.cidade,
+                                estado: endereco.uf || item.estado
+                            };
+                        } catch (error) {
+                            adicionarLog('erro', `Erro ao consultar CEP ${item.cep || item.CEP}: ${error}`);
+                            return item;
+                        }
+                    })
+                );
+
+                setDados(dadosComCidade);
+                adicionarLog('sucesso', `Arquivo carregado: ${dadosComCidade.length} registros encontrados e CEPs consultados`);
             } catch (error) {
                 adicionarLog('erro', 'Erro ao processar arquivo: ' + (error as Error).message);
                 toast.error('Erro ao processar arquivo');
@@ -116,33 +140,9 @@ const ImportacaoEtiquetas = () => {
             adicionarLog('info', 'Consultando CEP do remetente...');
             const enderecoRemetente = await viacepService.consulta('03011000');
             
-            // Enriquecer dados com consulta de CEP dos destinatários
-            adicionarLog('info', 'Consultando CEPs dos destinatários...');
-            
-            const dadosEnriquecidos = await Promise.all(
-                dados.map(async (item) => {
-                    try {
-                        const cepLimpo = item.cep.replace(/\D/g, '');
-                        const endereco = await viacepService.consulta(cepLimpo);
-                        
-                        adicionarLog('info', `CEP ${item.cep} consultado - ${endereco.localidade}/${endereco.uf}`);
-                        
-                        return {
-                            ...item,
-                            bairro: endereco.bairro || item.bairro,
-                            cidade: endereco.localidade || item.cidade,
-                            estado: endereco.uf || item.estado
-                        };
-                    } catch (error) {
-                        adicionarLog('erro', `Erro ao consultar CEP ${item.cep}: ${error}`);
-                        return item; // Mantém dados originais se houver erro
-                    }
-                })
-            );
-
-            // Atualiza os dados na preview com as informações enriquecidas
-            setDados(dadosEnriquecidos);
-            adicionarLog('sucesso', 'CEPs consultados e dados atualizados!');
+            // Enriquecer dados com consulta de CEP dos destinatários (já foram preenchidos na leitura do arquivo)
+            adicionarLog('info', 'Preparando dados enriquecidos para envio...');
+            const dadosEnriquecidos = dados;
 
             const service = new EmissaoService();
             const payload = {
