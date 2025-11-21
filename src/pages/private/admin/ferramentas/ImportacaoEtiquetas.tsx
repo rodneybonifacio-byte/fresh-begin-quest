@@ -210,27 +210,31 @@ const ImportacaoEtiquetas = () => {
             adicionarLog('info', 'Preparando dados para envio...');
 
             // Normalizar tipos de dados conforme contrato da API
-            const dadosNormalizados = dadosCorrigidos.map((item: any) => ({
-                servico_frete: String(item.servico_frete || 'PAC').toUpperCase().trim(), // Força maiúsculo
-                cep: String(item.cep || '').replace(/\D/g, ''),
-                altura: Number(item.altura) || 0,
-                largura: Number(item.largura) || 0,
-                comprimento: Number(item.comprimento) || 0,
-                peso: Number(item.peso) || 0,
-                logradouro: String(item.logradouro || '').trim(),
-                numero: (() => {
-                    const n = Number(item.numero);
-                    return !n || n <= 0 ? 1 : n; // força mínimo 1
-                })(),
-                complemento: item.complemento ? String(item.complemento).trim() : undefined,
-                nomeDestinatario: String(item.nomeDestinatario || '').trim(),
-                // SEMPRE gera um CPF válido novo para cada linha
-                cpfCnpj: Number(gerarCPFValido()),
-                valor_frete: Number(item.valor_frete) || 0,
-                bairro: String(item.bairro || 'Centro').trim(),
-                cidade: String(item.cidade || '').trim(),
-                estado: String(item.estado || item.uf || '').toUpperCase().trim() // Força maiúsculo para UF
-            }));
+            const dadosNormalizados = dadosCorrigidos.map((item: any, idx: number) => {
+                const cpfGerado = gerarCPFValido();
+                console.log(`Linha ${idx}: CPF gerado = ${cpfGerado}`);
+                
+                return {
+                    servico_frete: String(item.servico_frete || 'PAC').toUpperCase().trim(),
+                    cep: String(item.cep || '').replace(/\D/g, ''),
+                    altura: Number(item.altura) || 0,
+                    largura: Number(item.largura) || 0,
+                    comprimento: Number(item.comprimento) || 0,
+                    peso: Number(item.peso) || 0,
+                    logradouro: String(item.logradouro || '').trim(),
+                    numero: (() => {
+                        const n = Number(item.numero);
+                        return !n || n <= 0 ? 1 : n;
+                    })(),
+                    complemento: item.complemento ? String(item.complemento).trim() : undefined,
+                    nomeDestinatario: String(item.nomeDestinatario || '').trim(),
+                    cpfCnpj: Number(cpfGerado),
+                    valor_frete: Number(item.valor_frete) || 0,
+                    bairro: String(item.bairro || 'Centro').trim(),
+                    cidade: String(item.cidade || '').trim(),
+                    estado: String(item.estado || item.uf || '').toUpperCase().trim()
+                };
+            });
 
             const service = new EmissaoService();
             const payload = {
