@@ -193,37 +193,47 @@ export const BotaoImportacaoMassiva = () => {
                 return;
             }
 
-            // Dividir IDs em blocos de 10
+            // Dividir IDs em blocos de 3 para evitar timeout
             const chunks: string[][] = [];
-            for (let i = 0; i < idsEtiquetas.length; i += 10) {
-                chunks.push(idsEtiquetas.slice(i, i + 10));
+            for (let i = 0; i < idsEtiquetas.length; i += 3) {
+                chunks.push(idsEtiquetas.slice(i, i + 3));
             }
 
             toast.info(`Gerando ${chunks.length} blocos de PDFs...`);
 
-            // Gerar PDFs para cada bloco
+            // Gerar PDFs para cada bloco com delay entre requisições
             const pdfBase64Array: string[] = [];
             for (let i = 0; i < chunks.length; i++) {
-                toast.info(`Processando bloco ${i + 1} de ${chunks.length}...`);
-                
-                const payloadPDF = {
-                    ids: chunks[i],
-                    tipo: 'completa'
-                };
+                try {
+                    toast.info(`Processando bloco ${i + 1} de ${chunks.length}...`);
+                    
+                    const payloadPDF = {
+                        ids: chunks[i],
+                        tipo: 'completa'
+                    };
 
-                const responsePDF = await emissaoService.imprimirEmMassa(payloadPDF);
-                
-                if (responsePDF?.dados) {
-                    pdfBase64Array.push(responsePDF.dados);
+                    const responsePDF = await emissaoService.imprimirEmMassa(payloadPDF);
+                    
+                    if (responsePDF?.dados) {
+                        pdfBase64Array.push(responsePDF.dados);
+                    }
+                    
+                    // Delay de 2 segundos entre blocos para evitar sobrecarga
+                    if (i < chunks.length - 1) {
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                    }
+                } catch (error: any) {
+                    console.error(`Erro no bloco ${i + 1}:`, error);
+                    toast.warning(`Bloco ${i + 1} falhou, continuando...`);
                 }
             }
 
             if (pdfBase64Array.length === 0) {
-                toast.error('Nenhum PDF gerado');
+                toast.error('Nenhum PDF foi gerado com sucesso');
                 return;
             }
 
-            toast.info('Concatenando todos os PDFs...');
+            toast.info(`Concatenando ${pdfBase64Array.length} blocos de PDFs...`);
 
             // Criar PDF final concatenado
             const mergedPdf = await PDFDocument.create();
@@ -247,7 +257,7 @@ export const BotaoImportacaoMassiva = () => {
             const mergedBase64 = btoa(binary);
 
             downloadPDF(mergedBase64, `etiquetas_completas_${idsEtiquetas.length}.pdf`);
-            toast.success(`📄 PDF com ${idsEtiquetas.length} etiquetas baixado!`);
+            toast.success(`📄 PDF gerado! ${pdfBase64Array.length} blocos de ${chunks.length} processados com sucesso.`);
         } catch (error: any) {
             toast.error(`Erro: ${error.message}`);
             console.error('Erro ao gerar PDF:', error);
