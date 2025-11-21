@@ -5,6 +5,7 @@ import { EmissaoService } from '../services/EmissaoService';
 import { ViacepService } from '../services/viacepService';
 import { LoadSpinner } from './loading';
 import { Zap } from 'lucide-react';
+import { openPDFInNewTab } from '../utils/pdfUtils';
 
 // Gera CPF válido para substituir ou ignorar CPFs inválidos
 const gerarCPFValido = (): string => {
@@ -113,17 +114,57 @@ export const BotaoImportacaoMassiva = () => {
 
             console.log('📦 Enviando:', dadosNormalizados.length, 'registros (CPFs gerados para todos)');
 
-            console.log('📦 Enviando:', dadosNormalizados.length, 'registros (CPFs inválidos foram corrigidos)');
-
             const payload = {
                 cpfCnpj: '15808095000303',
                 data: dadosNormalizados
             };
 
-            await emissaoService.processarPedidosImportados(payload);
+            toast.info('Enviando dados para a API...');
+            const responseAPI: any = await emissaoService.processarPedidosImportados(payload);
+            
             toast.success(`✅ ${dadosNormalizados.length} etiquetas importadas!`);
+            
+            // Captura IDs das etiquetas criadas para gerar PDF
+            let idsEtiquetas: string[] = [];
+            
+            if (responseAPI?.etiquetas_criadas && Array.isArray(responseAPI.etiquetas_criadas)) {
+                idsEtiquetas = responseAPI.etiquetas_criadas;
+            } else if (responseAPI?.data?.etiquetas_criadas && Array.isArray(responseAPI.data.etiquetas_criadas)) {
+                idsEtiquetas = responseAPI.data.etiquetas_criadas;
+            } else if (responseAPI?.ids && Array.isArray(responseAPI.ids)) {
+                idsEtiquetas = responseAPI.ids;
+            } else if (responseAPI?.data && Array.isArray(responseAPI.data)) {
+                idsEtiquetas = responseAPI.data.map((item: any) => item.id).filter(Boolean);
+            }
+            
+            // Gera PDF automaticamente se houver IDs
+            if (idsEtiquetas.length > 0) {
+                toast.info(`Gerando PDF com ${idsEtiquetas.length} etiquetas...`);
+                
+                try {
+                    const payloadPDF = {
+                        ids: idsEtiquetas,
+                        tipo: 'completa'
+                    };
+                    
+                    const responsePDF = await emissaoService.imprimirEmMassa(payloadPDF);
+                    
+                    if (responsePDF?.dados) {
+                        openPDFInNewTab(responsePDF.dados, responsePDF.nome || `etiquetas_${dadosNormalizados.length}.pdf`);
+                        toast.success('📄 PDF gerado com sucesso!');
+                    } else {
+                        toast.error('Erro ao gerar PDF: resposta inválida');
+                    }
+                } catch (errorPDF: any) {
+                    toast.error(`Erro ao gerar PDF: ${errorPDF.message}`);
+                    console.error('Erro ao gerar PDF:', errorPDF);
+                }
+            } else {
+                toast.warning('Nenhum ID de etiqueta retornado pela API - não foi possível gerar PDF');
+            }
         } catch (error: any) {
             toast.error(`Erro: ${error.message}`);
+            console.error('Erro na importação:', error);
         } finally {
             setImportando(false);
         }
