@@ -47,6 +47,50 @@ export class EmissaoService extends BaseService<IEmissao> {
         return response.data;
     }
 
+    async testarConexaoAPI(): Promise<{ sucesso: boolean; mensagem: string }> {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                return { sucesso: false, mensagem: 'Token de autenticação não encontrado. Faça login novamente.' };
+            }
+
+            // Faz uma chamada de teste simples para validar autenticação
+            const response = await axios.get(
+                'https://envios.brhubb.com.br/api/auth/validate',
+                {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    timeout: 10000 // 10 segundos
+                }
+            );
+
+            if (response.status === 200) {
+                return { sucesso: true, mensagem: 'Conexão estabelecida! API acessível e token válido.' };
+            }
+            
+            return { sucesso: false, mensagem: 'Resposta inesperada da API.' };
+        } catch (error: any) {
+            if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+                return { sucesso: false, mensagem: 'Timeout: API não respondeu em 10 segundos.' };
+            }
+            if (error.response?.status === 401) {
+                return { sucesso: false, mensagem: 'Token inválido ou expirado. Faça login novamente.' };
+            }
+            if (error.response?.status === 404) {
+                return { sucesso: false, mensagem: 'Endpoint de validação não encontrado. API pode estar offline.' };
+            }
+            if (!error.response) {
+                return { sucesso: false, mensagem: 'Não foi possível conectar à API. Verifique sua conexão.' };
+            }
+            
+            return { 
+                sucesso: false, 
+                mensagem: `Erro ao conectar: ${error.response?.data?.message || error.message}` 
+            };
+        }
+    }
+
     async processarPedidosImportados(item: any): Promise<any> {
         // Chamada direta para API externa de importação em lote
         try {
