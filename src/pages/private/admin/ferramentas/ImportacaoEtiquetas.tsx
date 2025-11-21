@@ -49,9 +49,42 @@ const ImportacaoEtiquetas = () => {
     const [imprimindo, setImprimindo] = useState(false);
     const [etiquetasCriadas, setEtiquetasCriadas] = useState<string[]>([]);
     const [registrosInvalidos, setRegistrosInvalidos] = useState<RegistroInvalido[]>([]);
+    const [statusConexao, setStatusConexao] = useState<'idle' | 'testando' | 'sucesso' | 'erro'>('idle');
+    const [mensagemConexao, setMensagemConexao] = useState<string>('');
+
+    const service = new EmissaoService();
+    const viacepService = new ViacepService();
 
     const adicionarLog = (tipo: 'sucesso' | 'erro' | 'info', mensagem: string) => {
         setLogs(prev => [...prev, { tipo, mensagem, timestamp: new Date() }]);
+    };
+
+    const testarConexao = async () => {
+        setStatusConexao('testando');
+        setMensagemConexao('Testando conexão com a API...');
+        adicionarLog('info', '🔍 Iniciando teste de conexão...');
+
+        try {
+            const resultado = await service.testarConexaoAPI();
+            
+            if (resultado.sucesso) {
+                setStatusConexao('sucesso');
+                setMensagemConexao(resultado.mensagem);
+                adicionarLog('sucesso', '✓ ' + resultado.mensagem);
+                toast.success(resultado.mensagem);
+            } else {
+                setStatusConexao('erro');
+                setMensagemConexao(resultado.mensagem);
+                adicionarLog('erro', '✗ ' + resultado.mensagem);
+                toast.error(resultado.mensagem);
+            }
+        } catch (error: any) {
+            setStatusConexao('erro');
+            const mensagem = error.message || 'Erro desconhecido ao testar conexão';
+            setMensagemConexao(mensagem);
+            adicionarLog('erro', '✗ ' + mensagem);
+            toast.error(mensagem);
+        }
     };
 
     const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -70,7 +103,6 @@ const ImportacaoEtiquetas = () => {
                 const jsonData = XLSX.utils.sheet_to_json<EtiquetaImport>(worksheet);
 
                 // Enriquecer dados com consulta de CEP já na leitura do arquivo
-                const viacepService = new ViacepService();
                 adicionarLog('info', 'Consultando CEPs para preencher cidade/estado na preview...');
 
                 const dadosComCidade = await Promise.all(
@@ -234,7 +266,6 @@ const ImportacaoEtiquetas = () => {
                 estado: String(item.estado || item.uf || '').toUpperCase().trim(),
             }));
 
-            const service = new EmissaoService();
             const payload = {
                 cpfCnpj: cpfCnpjCliente.replace(/\D/g, ''), // CPF/CNPJ do remetente (apenas números)
                 data: dadosNormalizados,
@@ -304,7 +335,6 @@ const ImportacaoEtiquetas = () => {
         adicionarLog('info', `Gerando PDF com ${etiquetasCriadas.length} etiquetas...`);
 
         try {
-            const service = new EmissaoService();
             const payload = {
                 ids: etiquetasCriadas,
                 tipo: 'completa' // ou 'etiqueta' se quiser apenas as etiquetas
@@ -435,7 +465,55 @@ const ImportacaoEtiquetas = () => {
 
                     {/* Card de CPF/CNPJ */}
                     <div className="bg-card border border-border rounded-lg p-6">
-                        <h2 className="text-xl font-semibold text-foreground mb-4">CPF/CNPJ do Cliente</h2>
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-xl font-semibold text-foreground">CPF/CNPJ do Cliente</h2>
+                            <button
+                                onClick={testarConexao}
+                                disabled={statusConexao === 'testando'}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
+                                    statusConexao === 'testando' 
+                                        ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                                        : statusConexao === 'sucesso'
+                                        ? 'bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/20'
+                                        : statusConexao === 'erro'
+                                        ? 'bg-red-500/10 text-red-700 dark:text-red-400 border border-red-500/20'
+                                        : 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20 hover:bg-blue-500/20'
+                                }`}
+                            >
+                                {statusConexao === 'testando' ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-t-transparent border-current rounded-full animate-spin" />
+                                        Testando...
+                                    </>
+                                ) : statusConexao === 'sucesso' ? (
+                                    <>
+                                        <CheckCircle className="w-4 h-4" />
+                                        Conexão OK
+                                    </>
+                                ) : statusConexao === 'erro' ? (
+                                    <>
+                                        <XCircle className="w-4 h-4" />
+                                        Erro
+                                    </>
+                                ) : (
+                                    <>
+                                        <AlertCircle className="w-4 h-4" />
+                                        Testar Conexão
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                        {mensagemConexao && (
+                            <div className={`mb-4 p-3 rounded-lg text-sm ${
+                                statusConexao === 'sucesso' 
+                                    ? 'bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/20'
+                                    : statusConexao === 'erro'
+                                    ? 'bg-red-500/10 text-red-700 dark:text-red-400 border border-red-500/20'
+                                    : 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20'
+                            }`}>
+                                {mensagemConexao}
+                            </div>
+                        )}
                         <input
                             type="text"
                             value={cpfCnpjCliente}
