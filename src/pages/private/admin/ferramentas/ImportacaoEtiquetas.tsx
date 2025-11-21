@@ -139,20 +139,36 @@ const ImportacaoEtiquetas = () => {
             // Validar CPF/CNPJ dos destinatários
             adicionarLog('info', 'Validando CPF/CNPJ dos destinatários...');
             
-            // Validar CPF/CNPJ de cada destinatário
             const errosValidacao: string[] = [];
             dados.forEach((item: any, index: number) => {
-                const docLimpo = String(item.cpfCnpj || '').replace(/\D/g, '');
-                const isValid = docLimpo.length === 11 ? isValidCPF(docLimpo) : isValidCNPJ(docLimpo);
+                const docOriginal = String(item.cpfCnpj || '').trim();
+                const docLimpo = docOriginal.replace(/\D/g, '');
+                
+                // Verifica se tem o tamanho correto
+                if (docLimpo.length !== 11 && docLimpo.length !== 14) {
+                    errosValidacao.push(
+                        `Linha ${index + 1}: CPF/CNPJ "${docOriginal}" tem ${docLimpo.length} dígitos (deve ter 11 para CPF ou 14 para CNPJ) - Destinatário: ${item.nomeDestinatario}`
+                    );
+                    return;
+                }
+                
+                // Valida usando a biblioteca correta
+                const isValid = docLimpo.length === 11 
+                    ? isValidCPF(docLimpo) 
+                    : isValidCNPJ(docLimpo);
                 
                 if (!isValid) {
-                    errosValidacao.push(`Linha ${index + 1}: CPF/CNPJ inválido (${item.cpfCnpj}) - Destinatário: ${item.nomeDestinatario}`);
+                    const tipo = docLimpo.length === 11 ? 'CPF' : 'CNPJ';
+                    errosValidacao.push(
+                        `Linha ${index + 1}: ${tipo} "${docOriginal}" é inválido - Destinatário: ${item.nomeDestinatario}`
+                    );
                 }
             });
             
             if (errosValidacao.length > 0) {
                 errosValidacao.forEach(erro => adicionarLog('erro', erro));
-                toast.error(`${errosValidacao.length} CPF/CNPJ inválido(s) encontrado(s). Verifique os logs.`);
+                toast.error(`${errosValidacao.length} CPF/CNPJ inválido(s) encontrado(s). Verifique os logs abaixo.`);
+                setImportando(false);
                 return;
             }
             
