@@ -50,6 +50,8 @@ export class EmissaoService extends BaseService<IEmissao> {
     async processarPedidosImportados(item: any): Promise<any> {
         // Chamada direta para API externa de importação em lote
         try {
+            console.log('📤 Enviando para API:', JSON.stringify(item, null, 2));
+            
             const response = await axios.post(
                 'https://envios.brhubb.com.br/api/importacao/multipla',
                 item,
@@ -60,10 +62,17 @@ export class EmissaoService extends BaseService<IEmissao> {
                     }
                 }
             );
+            
+            console.log('✅ Resposta da API:', response.data);
             return response.data;
         } catch (error: any) {
-            console.error('Erro na importação múltipla:', error);
-            throw error;
+            console.error('❌ Erro na importação múltipla:', error);
+            console.error('📋 Detalhes do erro:', error.response?.data);
+            console.error('📋 Status:', error.response?.status);
+            console.error('📋 Mensagem:', error.response?.data?.message || error.message);
+            
+            // Relança o erro com mais contexto
+            throw new Error(error.response?.data?.message || error.message || 'Erro ao importar etiquetas');
         }
     }
 
