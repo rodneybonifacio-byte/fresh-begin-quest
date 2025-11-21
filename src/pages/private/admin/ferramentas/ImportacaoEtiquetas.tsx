@@ -140,6 +140,10 @@ const ImportacaoEtiquetas = () => {
                 })
             );
 
+            // Atualiza os dados na preview com as informações enriquecidas
+            setDados(dadosEnriquecidos);
+            adicionarLog('sucesso', 'CEPs consultados e dados atualizados!');
+
             const service = new EmissaoService();
             const payload = {
                 cpfCnpj: cpfCnpjCliente,
