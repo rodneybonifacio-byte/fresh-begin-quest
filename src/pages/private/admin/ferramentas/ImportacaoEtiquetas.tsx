@@ -182,19 +182,12 @@ const ImportacaoEtiquetas = () => {
                     : isValidCNPJ(docLimpo);
                 
                 if (!isValid) {
-                    // Se for tamanho de CPF mas inválido, gera novo
-                    if (docLimpo.length === 11) {
-                        const novoCPF = gerarCPFValido();
-                        errosCorrigidos.push(
-                            `Linha ${index + 1}: CPF "${docOriginal}" inválido - Substituído por: ${novoCPF} - Destinatário: ${item.nomeDestinatario}`
-                        );
-                        dadosCorrigidos.push({ ...item, cpfCnpj: novoCPF });
-                    } else {
-                        // CNPJ inválido, mantém erro mas não corrige automaticamente
-                        errosCorrigidos.push(
-                            `Linha ${index + 1}: CNPJ "${docOriginal}" inválido - Não foi possível corrigir automaticamente - Destinatário: ${item.nomeDestinatario}`
-                        );
-                    }
+                    // Qualquer documento inválido será substituído por um CPF válido
+                    const novoCPF = gerarCPFValido();
+                    errosCorrigidos.push(
+                        `Linha ${index + 1}: documento "${docOriginal}" inválido - Substituído por CPF: ${novoCPF} - Destinatário: ${item.nomeDestinatario}`
+                    );
+                    dadosCorrigidos.push({ ...item, cpfCnpj: novoCPF });
                 } else {
                     dadosCorrigidos.push(item);
                 }
