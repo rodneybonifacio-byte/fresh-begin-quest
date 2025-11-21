@@ -218,21 +218,21 @@ const ImportacaoEtiquetas = () => {
 
             // Normalizar tipos de dados conforme contrato da API
             const dadosNormalizados = dadosCorrigidos.map((item: any) => ({
-                servico_frete: item.servico_frete || 'PAC',
+                servico_frete: String(item.servico_frete || 'PAC').toUpperCase().trim(), // Força maiúsculo
                 cep: String(item.cep || '').replace(/\D/g, ''),
                 altura: Number(item.altura) || 0,
                 largura: Number(item.largura) || 0,
                 comprimento: Number(item.comprimento) || 0,
                 peso: Number(item.peso) || 0,
-                logradouro: String(item.logradouro || ''),
+                logradouro: String(item.logradouro || '').trim(),
                 numero: Number(item.numero) || 0,
-                complemento: item.complemento ? String(item.complemento) : undefined,
-                nomeDestinatario: String(item.nomeDestinatario || ''),
+                complemento: item.complemento ? String(item.complemento).trim() : undefined,
+                nomeDestinatario: String(item.nomeDestinatario || '').trim(),
                 cpfCnpj: Number(String(item.cpfCnpj || '').replace(/\D/g, '')),
                 valor_frete: Number(item.valor_frete) || 0,
-                bairro: item.bairro || 'Centro',
-                cidade: item.cidade || '',
-                estado: item.estado || item.uf || ''
+                bairro: String(item.bairro || 'Centro').trim(),
+                cidade: String(item.cidade || '').trim(),
+                estado: String(item.estado || item.uf || '').toUpperCase().trim() // Força maiúsculo para UF
             }));
 
             const service = new EmissaoService();
