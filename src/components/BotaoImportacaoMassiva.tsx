@@ -5,7 +5,7 @@ import { EmissaoService } from '../services/EmissaoService';
 import { ViacepService } from '../services/viacepService';
 import { LoadSpinner } from './loading';
 import { Zap } from 'lucide-react';
-import { openPDFInNewTab, downloadPDF } from '../utils/pdfUtils';
+import { downloadPDF } from '../utils/pdfUtils';
 import { PDFDocument } from 'pdf-lib';
 
 // Gera CPF válido para substituir ou ignorar CPFs inválidos
@@ -152,8 +152,8 @@ export const BotaoImportacaoMassiva = () => {
                     const responsePDF = await emissaoService.imprimirEmMassa(payloadPDF);
                     
                     if (responsePDF?.dados) {
-                        openPDFInNewTab(responsePDF.dados, responsePDF.nome || `etiquetas_${dadosNormalizados.length}.pdf`);
-                        toast.success('📄 PDF gerado com sucesso!');
+                        downloadPDF(responsePDF.dados, responsePDF.nome || `etiquetas_${dadosNormalizados.length}.pdf`);
+                        toast.success('📄 PDF baixado com sucesso!');
                     } else {
                         toast.error('Erro ao gerar PDF: resposta inválida');
                     }
