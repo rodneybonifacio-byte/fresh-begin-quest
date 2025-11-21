@@ -33,6 +33,13 @@ interface LogEntry {
     timestamp: Date;
 }
 
+interface RegistroInvalido {
+    linha: number;
+    nomeDestinatario: string;
+    cpfOriginal: string;
+    motivo: string;
+}
+
 const ImportacaoEtiquetas = () => {
     const [arquivo, setArquivo] = useState<File | null>(null);
     const [dados, setDados] = useState<EtiquetaImport[]>([]);
@@ -41,6 +48,7 @@ const ImportacaoEtiquetas = () => {
     const [importando, setImportando] = useState(false);
     const [imprimindo, setImprimindo] = useState(false);
     const [etiquetasCriadas, setEtiquetasCriadas] = useState<string[]>([]);
+    const [registrosInvalidos, setRegistrosInvalidos] = useState<RegistroInvalido[]>([]);
 
     const adicionarLog = (tipo: 'sucesso' | 'erro' | 'info', mensagem: string) => {
         setLogs(prev => [...prev, { tipo, mensagem, timestamp: new Date() }]);
@@ -136,106 +144,99 @@ const ImportacaoEtiquetas = () => {
         adicionarLog('info', `Iniciando importação de ${dados.length} etiquetas...`);
 
         try {
-            // Função para gerar CPF válido
-            const gerarCPFValido = (): string => {
-                const randomDigits = (length: number) => 
-                    Array.from({ length }, () => Math.floor(Math.random() * 10));
-                
-                const calcularDigito = (digits: number[]) => {
-                    const soma = digits.reduce((acc, digit, idx) => 
-                        acc + digit * (digits.length + 1 - idx), 0);
-                    const resto = soma % 11;
-                    return resto < 2 ? 0 : 11 - resto;
-                };
-                
-                const primeiros9 = randomDigits(9);
-                const digito1 = calcularDigito(primeiros9);
-                const primeiros10 = [...primeiros9, digito1];
-                const digito2 = calcularDigito(primeiros10);
-                
-                return [...primeiros9, digito1, digito2].join('');
-            };
+            adicionarLog('info', 'Validando CPF/CNPJ dos destinatários...');
 
-            // Validar CPF/CNPJ dos destinatários e substituir inválidos
-            adicionarLog('info', 'Validando e corrigindo CPF/CNPJ dos destinatários...');
-            
-            const dadosCorrigidos: any[] = [];
-            const errosCorrigidos: string[] = [];
-            
+            const dadosValidos: any[] = [];
+            const registrosInvalidosLocal: RegistroInvalido[] = [];
+
             dados.forEach((item: any, index: number) => {
-                const docOriginal = String(item.cpfCnpj || '').trim();
+                const docOriginal = String(item.cpfCnpj ?? '').trim();
                 const docLimpo = docOriginal.replace(/\D/g, '');
-                
-                // Se não tem tamanho correto, tenta gerar CPF válido
-                if (docLimpo.length !== 11 && docLimpo.length !== 14) {
-                    const novoCPF = gerarCPFValido();
-                    errosCorrigidos.push(
-                        `Linha ${index + 1}: CPF/CNPJ "${docOriginal}" inválido (${docLimpo.length} dígitos) - Substituído por CPF: ${novoCPF} - Destinatário: ${item.nomeDestinatario}`
-                    );
-                    dadosCorrigidos.push({ ...item, cpfCnpj: novoCPF });
+
+                if (!docLimpo) {
+                    registrosInvalidosLocal.push({
+                        linha: index + 1,
+                        nomeDestinatario: String(item.nomeDestinatario ?? ''),
+                        cpfOriginal: docOriginal,
+                        motivo: 'CPF/CNPJ vazio',
+                    });
                     return;
                 }
-                
-                // Valida usando a biblioteca correta
-                const isValid = docLimpo.length === 11 
-                    ? isValidCPF(docLimpo) 
-                    : isValidCNPJ(docLimpo);
-                
-                if (!isValid) {
-                    // Qualquer documento inválido será substituído por um CPF válido
-                    const novoCPF = gerarCPFValido();
-                    errosCorrigidos.push(
-                        `Linha ${index + 1}: documento "${docOriginal}" inválido - Substituído por CPF: ${novoCPF} - Destinatário: ${item.nomeDestinatario}`
-                    );
-                    dadosCorrigidos.push({ ...item, cpfCnpj: novoCPF });
-                } else {
-                    dadosCorrigidos.push(item);
+
+                if (docLimpo.length !== 11 && docLimpo.length !== 14) {
+                    registrosInvalidosLocal.push({
+                        linha: index + 1,
+                        nomeDestinatario: String(item.nomeDestinatario ?? ''),
+                        cpfOriginal: docOriginal,
+                        motivo: 'CPF/CNPJ deve ter 11 (CPF) ou 14 (CNPJ) dígitos',
+                    });
+                    return;
                 }
+
+                const isValid = docLimpo.length === 11 ? isValidCPF(docLimpo) : isValidCNPJ(docLimpo);
+
+                if (!isValid) {
+                    registrosInvalidosLocal.push({
+                        linha: index + 1,
+                        nomeDestinatario: String(item.nomeDestinatario ?? ''),
+                        cpfOriginal: docOriginal,
+                        motivo: 'CPF/CNPJ inválido',
+                    });
+                    return;
+                }
+
+                // Documento válido: mantemos o valor original (limpo) para envio
+                dadosValidos.push({
+                    ...item,
+                    cpfCnpj: docLimpo,
+                });
             });
-            
-            // Registra as correções realizadas
-            if (errosCorrigidos.length > 0) {
-                errosCorrigidos.forEach(erro => adicionarLog('info', erro));
-                toast.success(`${errosCorrigidos.length} CPF/CNPJ inválido(s) foram corrigidos automaticamente!`);
+
+            setRegistrosInvalidos(registrosInvalidosLocal);
+
+            if (registrosInvalidosLocal.length > 0) {
+                registrosInvalidosLocal.forEach((r) =>
+                    adicionarLog(
+                        'erro',
+                        `Linha ${r.linha}: CPF/CNPJ inválido ("${r.cpfOriginal}") - Destinatário: ${r.nomeDestinatario} - Motivo: ${r.motivo}`,
+                    ),
+                );
+                toast.warning(
+                    `${registrosInvalidosLocal.length} registro(s) com CPF/CNPJ inválido não serão enviados. Apenas os válidos serão importados.`,
+                );
             }
-            
-            if (dadosCorrigidos.length === 0) {
-                adicionarLog('erro', 'Nenhum registro para importar.');
-                toast.error('Nenhum registro encontrado.');
+
+            if (dadosValidos.length === 0) {
+                adicionarLog('erro', 'Nenhum registro válido para importar.');
+                toast.error('Nenhum registro válido encontrado. Corrija os documentos na planilha.');
                 setImportando(false);
                 return;
             }
-            
-            adicionarLog('sucesso', `${dadosCorrigidos.length} registros prontos para importação.`);
+
+            adicionarLog('sucesso', `${dadosValidos.length} registros válidos prontos para importação.`);
             adicionarLog('info', 'Preparando dados para envio...');
 
             // Normalizar tipos de dados conforme contrato da API
-            const dadosNormalizados = dadosCorrigidos.map((item: any, idx: number) => {
-                const cpfGerado = gerarCPFValido();
-                console.log(`Linha ${idx}: CPF gerado = ${cpfGerado}`);
-                
-                return {
-                    servico_frete: String(item.servico_frete || 'PAC').toUpperCase().trim(),
-                    cep: String(item.cep || '').replace(/\D/g, ''),
-                    altura: Number(item.altura) || 0,
-                    largura: Number(item.largura) || 0,
-                    comprimento: Number(item.comprimento) || 0,
-                    peso: Number(item.peso) || 0,
-                    logradouro: String(item.logradouro || '').trim(),
-                    numero: (() => {
-                        const n = Number(item.numero);
-                        return !n || n <= 0 ? 1 : n;
-                    })(),
-                    complemento: item.complemento ? String(item.complemento).trim() : undefined,
-                    nomeDestinatario: String(item.nomeDestinatario || '').trim(),
-                    // Envia CPF como STRING para evitar perda de zeros à esquerda
-                    cpfCnpj: cpfGerado,
-                    valor_frete: Number(item.valor_frete) || 0,
-                    bairro: String(item.bairro || 'Centro').trim(),
-                    cidade: String(item.cidade || '').trim(),
-                    estado: String(item.estado || item.uf || '').toUpperCase().trim()
-                };
-            });
+            const dadosNormalizados = dadosValidos.map((item: any) => ({
+                servico_frete: String(item.servico_frete || 'PAC').toUpperCase().trim(),
+                cep: String(item.cep || '').replace(/\D/g, ''),
+                altura: Number(item.altura) || 0,
+                largura: Number(item.largura) || 0,
+                comprimento: Number(item.comprimento) || 0,
+                peso: Number(item.peso) || 0,
+                logradouro: String(item.logradouro || '').trim(),
+                numero: (() => {
+                    const n = Number(item.numero);
+                    return !n || n <= 0 ? 1 : n;
+                })(),
+                complemento: item.complemento ? String(item.complemento).trim() : undefined,
+                nomeDestinatario: String(item.nomeDestinatario || '').trim(),
+                cpfCnpj: Number(String(item.cpfCnpj || '').replace(/\D/g, '')),
+                valor_frete: Number(item.valor_frete) || 0,
+                bairro: String(item.bairro || 'Centro').trim(),
+                cidade: String(item.cidade || '').trim(),
+                estado: String(item.estado || item.uf || '').toUpperCase().trim(),
+            }));
 
             const service = new EmissaoService();
             const payload = {
@@ -478,42 +479,75 @@ const ImportacaoEtiquetas = () => {
 
                     {/* Botões de Ação */}
                     {dados.length > 0 && (
-                        <div className="flex gap-4 flex-wrap">
-                            <button
-                                onClick={importarTodas}
-                                disabled={importando || !cpfCnpjCliente}
-                                className="flex-1 min-w-[200px] flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
-                            >
-                                <CheckCircle className="w-5 h-5" />
-                                {importando ? 'Importando...' : 'Importar Todas'}
-                            </button>
-                            {etiquetasCriadas.length > 0 && (
-                                <>
-                                    <button
-                                        onClick={imprimirEtiquetas}
-                                        disabled={imprimindo}
-                                        className="flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg"
-                                    >
-                                        <Printer className="w-5 h-5" />
-                                        {imprimindo ? 'Gerando PDF...' : `Imprimir ${etiquetasCriadas.length} Etiquetas`}
-                                    </button>
-                                    <button
-                                        onClick={removerTodas}
-                                        className="flex items-center justify-center gap-2 px-6 py-3 bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 transition-colors font-semibold"
-                                    >
-                                        <Trash2 className="w-5 h-5" />
-                                        Remover Todas
-                                    </button>
-                                </>
+                        <>
+                            {/* Tabela de erros de CPF/CNPJ */}
+                            {registrosInvalidos.length > 0 && (
+                                <div className="bg-red-500/5 border border-red-500/30 rounded-lg p-4 mb-4">
+                                    <h2 className="text-lg font-semibold text-red-700 dark:text-red-400 mb-2">
+                                        Registros com erro de CPF/CNPJ (não enviados)
+                                    </h2>
+                                    <div className="max-h-64 overflow-y-auto">
+                                        <table className="w-full text-xs">
+                                            <thead>
+                                                <tr className="border-b border-border">
+                                                    <th className="text-left p-2 text-muted-foreground">Linha</th>
+                                                    <th className="text-left p-2 text-muted-foreground">Destinatário</th>
+                                                    <th className="text-left p-2 text-muted-foreground">CPF/CNPJ</th>
+                                                    <th className="text-left p-2 text-muted-foreground">Motivo</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {registrosInvalidos.map((r) => (
+                                                    <tr key={r.linha} className="border-b border-border">
+                                                        <td className="p-2">{r.linha}</td>
+                                                        <td className="p-2">{r.nomeDestinatario}</td>
+                                                        <td className="p-2">{r.cpfOriginal || '-'}</td>
+                                                        <td className="p-2">{r.motivo}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             )}
-                            <button
-                                onClick={limparTudo}
-                                className="flex items-center justify-center gap-2 px-6 py-3 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/90 transition-colors"
-                            >
-                                <XCircle className="w-5 h-5" />
-                                Limpar
-                            </button>
-                        </div>
+
+                            <div className="flex gap-4 flex-wrap">
+                                <button
+                                    onClick={importarTodas}
+                                    disabled={importando || !cpfCnpjCliente}
+                                    className="flex-1 min-w-[200px] flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                                >
+                                    <CheckCircle className="w-5 h-5" />
+                                    {importando ? 'Importando...' : 'Importar Todas'}
+                                </button>
+                                {etiquetasCriadas.length > 0 && (
+                                    <>
+                                        <button
+                                            onClick={imprimirEtiquetas}
+                                            disabled={imprimindo}
+                                            className="flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg"
+                                        >
+                                            <Printer className="w-5 h-5" />
+                                            {imprimindo ? 'Gerando PDF...' : `Imprimir ${etiquetasCriadas.length} Etiquetas`}
+                                        </button>
+                                        <button
+                                            onClick={removerTodas}
+                                            className="flex items-center justify-center gap-2 px-6 py-3 bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 transition-colors font-semibold"
+                                        >
+                                            <Trash2 className="w-5 h-5" />
+                                            Remover Todas
+                                        </button>
+                                    </>
+                                )}
+                                <button
+                                    onClick={limparTudo}
+                                    className="flex items-center justify-center gap-2 px-6 py-3 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/90 transition-colors"
+                                >
+                                    <XCircle className="w-5 h-5" />
+                                    Limpar
+                                </button>
+                            </div>
+                        </>
                     )}
 
                     {/* Indicador de Etiquetas Prontas */}
