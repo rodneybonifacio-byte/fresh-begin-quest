@@ -228,7 +228,8 @@ const ImportacaoEtiquetas = () => {
                     })(),
                     complemento: item.complemento ? String(item.complemento).trim() : undefined,
                     nomeDestinatario: String(item.nomeDestinatario || '').trim(),
-                    cpfCnpj: Number(cpfGerado),
+                    // Envia CPF como STRING para evitar perda de zeros à esquerda
+                    cpfCnpj: cpfGerado,
                     valor_frete: Number(item.valor_frete) || 0,
                     bairro: String(item.bairro || 'Centro').trim(),
                     cidade: String(item.cidade || '').trim(),
