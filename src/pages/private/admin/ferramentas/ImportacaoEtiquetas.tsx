@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 import { EmissaoService } from '../../../../services/EmissaoService';
 import { openPDFInNewTab } from '../../../../utils/pdfUtils';
 import { ViacepService } from '../../../../services/viacepService';
+import { isValid as isValidCPF } from '@fnando/cpf';
+import { isValid as isValidCNPJ } from '@fnando/cnpj';
 
 interface EtiquetaImport {
     servico_frete: string;
@@ -141,8 +143,27 @@ const ImportacaoEtiquetas = () => {
             const enderecoRemetente = await viacepService.consulta('03011000');
             
             // Enriquecer dados com consulta de CEP dos destinatários (já foram preenchidos na leitura do arquivo)
-            adicionarLog('info', 'Preparando dados enriquecidos para envio...');
-            const dadosEnriquecidos = dados;
+            adicionarLog('info', 'Validando CPF/CNPJ dos destinatários...');
+            
+            // Validar CPF/CNPJ de cada destinatário
+            const errosValidacao: string[] = [];
+            dados.forEach((item: any, index: number) => {
+                const docLimpo = String(item.cpfCnpj || '').replace(/\D/g, '');
+                const isValid = docLimpo.length === 11 ? isValidCPF(docLimpo) : isValidCNPJ(docLimpo);
+                
+                if (!isValid) {
+                    errosValidacao.push(`Linha ${index + 1}: CPF/CNPJ inválido (${item.cpfCnpj}) - Destinatário: ${item.nomeDestinatario}`);
+                }
+            });
+            
+            if (errosValidacao.length > 0) {
+                errosValidacao.forEach(erro => adicionarLog('erro', erro));
+                toast.error(`${errosValidacao.length} CPF/CNPJ inválido(s) encontrado(s). Verifique os logs.`);
+                return;
+            }
+            
+            adicionarLog('sucesso', 'Todos os CPF/CNPJ validados com sucesso!');
+            adicionarLog('info', 'Preparando dados para envio...');
 
             const service = new EmissaoService();
             const payload = {
@@ -158,7 +179,7 @@ const ImportacaoEtiquetas = () => {
                     estado: enderecoRemetente.uf || 'SP',
                     uf: enderecoRemetente.uf || 'SP'
                 },
-                data: dadosEnriquecidos
+                data: dados
             };
 
             console.log('📦 Payload completo:', JSON.stringify(payload, null, 2));
