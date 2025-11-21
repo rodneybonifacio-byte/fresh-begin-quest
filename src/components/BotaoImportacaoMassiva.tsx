@@ -25,10 +25,20 @@ const gerarCPFValido = (): string => {
     return [...randomDigits, digito1, digito2].join('');
 };
 
+type RelatorioItem = {
+    id: string;
+    bloco: number;
+    erro: string;
+};
+
 export const BotaoImportacaoMassiva = () => {
     const [importando, setImportando] = useState(false);
     const [gerandoPDF, setGerandoPDF] = useState(false);
     const [pdfGeradoBase64, setPdfGeradoBase64] = useState<string | null>(null);
+    const [idsSucesso, setIdsSucesso] = useState<string[]>([]);
+    const [idsFalha, setIdsFalha] = useState<string[]>([]);
+    const [relatorioFalhas, setRelatorioFalhas] = useState<RelatorioItem[]>([]);
+    const [mostrarRelatorio, setMostrarRelatorio] = useState(false);
 
     const processar = async () => {
         setImportando(true);
@@ -173,72 +183,79 @@ export const BotaoImportacaoMassiva = () => {
         }
     };
 
-    const gerarPDFEtiquetasExistentes = async () => {
+    const gerarPDFEtiquetasExistentes = async (idsEspecificos?: string[]) => {
         setGerandoPDF(true);
         setPdfGeradoBase64(null);
         const emissaoService = new EmissaoService();
 
+        const sucessos: string[] = [];
+        const falhas: string[] = [];
+        const relatorio: RelatorioItem[] = [];
+
         try {
-            toast.info('Buscando etiquetas...');
+            let idsEtiquetas: string[] = [];
 
-            // Buscar múltiplas páginas até ter 200 etiquetas
-            let todasEtiquetas: any[] = [];
-            let pagina = 1;
-            const limitePorPagina = 20;
-            const totalDesejado = 200;
+            if (idsEspecificos && idsEspecificos.length > 0) {
+                // Modo retry: usar apenas os IDs que falharam
+                idsEtiquetas = idsEspecificos;
+                toast.info(`Reprocessando ${idsEtiquetas.length} etiquetas que falharam...`);
+            } else {
+                // Modo normal: buscar 200 etiquetas
+                toast.info('Buscando etiquetas...');
+                let todasEtiquetas: any[] = [];
+                let pagina = 1;
+                const limitePorPagina = 20;
+                const totalDesejado = 200;
 
-            while (todasEtiquetas.length < totalDesejado) {
-                const response = await emissaoService.getAll({ 
-                    page: String(pagina), 
-                    limit: String(limitePorPagina) 
-                });
+                while (todasEtiquetas.length < totalDesejado) {
+                    const response = await emissaoService.getAll({ 
+                        page: String(pagina), 
+                        limit: String(limitePorPagina) 
+                    });
 
-                if (!response?.data || response.data.length === 0) {
-                    break; // Não há mais dados
+                    if (!response?.data || response.data.length === 0) {
+                        break;
+                    }
+
+                    todasEtiquetas = [...todasEtiquetas, ...response.data];
+                    
+                    if (response.data.length < limitePorPagina) {
+                        break;
+                    }
+
+                    pagina++;
                 }
 
-                todasEtiquetas = [...todasEtiquetas, ...response.data];
-                
-                if (response.data.length < limitePorPagina) {
-                    break; // Última página
+                todasEtiquetas = todasEtiquetas.slice(0, totalDesejado);
+
+                if (todasEtiquetas.length === 0) {
+                    toast.error('Nenhuma etiqueta encontrada');
+                    return;
                 }
 
-                pagina++;
+                idsEtiquetas = todasEtiquetas.map((etiqueta: any) => etiqueta.id).filter(Boolean);
+                toast.info(`${idsEtiquetas.length} etiquetas encontradas. Iniciando geração...`);
             }
-
-            // Limitar a 200 etiquetas
-            todasEtiquetas = todasEtiquetas.slice(0, totalDesejado);
-
-            if (todasEtiquetas.length === 0) {
-                toast.error('Nenhuma etiqueta encontrada');
-                return;
-            }
-
-            toast.info(`${todasEtiquetas.length} etiquetas encontradas. Iniciando geração de PDF...`);
-
-            const idsEtiquetas = todasEtiquetas.map((etiqueta: any) => etiqueta.id).filter(Boolean);
 
             if (idsEtiquetas.length === 0) {
-                toast.error('Nenhum ID de etiqueta válido encontrado');
+                toast.error('Nenhum ID de etiqueta válido');
                 return;
             }
 
-            // Dividir IDs em blocos menores para evitar timeout (1 por requisição)
-            const idsChunkSize = 1;
+            // Dividir IDs em blocos de 1 para controle preciso
             const chunks: string[][] = [];
-            for (let i = 0; i < idsEtiquetas.length; i += idsChunkSize) {
-                chunks.push(idsEtiquetas.slice(i, i + idsChunkSize));
+            for (let i = 0; i < idsEtiquetas.length; i++) {
+                chunks.push([idsEtiquetas[i]]);
             }
 
-            toast.info(`Gerando ${chunks.length} blocos de PDFs...`);
+            toast.info(`Processando ${chunks.length} etiquetas...`);
 
-            // Gerar PDFs para cada bloco com delay entre requisições
             const pdfBase64Array: string[] = [];
+            
             for (let i = 0; i < chunks.length; i++) {
                 try {
-                    // Para não encher a tela de toasts, mostra apenas a cada 10 blocos
-                    if (i === 0 || (i + 1) === chunks.length || (i + 1) % 10 === 0) {
-                        toast.info(`Processando bloco ${i + 1} de ${chunks.length}...`);
+                    if (i === 0 || (i + 1) === chunks.length || (i + 1) % 20 === 0) {
+                        toast.info(`Processando: ${i + 1}/${chunks.length} (✅${sucessos.length} ❌${falhas.length})`);
                     }
                     
                     const payloadPDF = {
@@ -250,24 +267,42 @@ export const BotaoImportacaoMassiva = () => {
                     
                     if (responsePDF?.dados) {
                         pdfBase64Array.push(responsePDF.dados);
+                        sucessos.push(chunks[i][0]);
+                    } else {
+                        falhas.push(chunks[i][0]);
+                        relatorio.push({
+                            id: chunks[i][0],
+                            bloco: i + 1,
+                            erro: 'Resposta sem dados de PDF'
+                        });
                     }
                     
-                    // Delay de 1 segundo entre blocos para evitar sobrecarga
                     if (i < chunks.length - 1) {
-                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        await new Promise(resolve => setTimeout(resolve, 800));
                     }
                 } catch (error: any) {
                     console.error(`Erro no bloco ${i + 1}:`, error);
-                    toast.warning(`Bloco ${i + 1} falhou, continuando...`);
+                    falhas.push(chunks[i][0]);
+                    relatorio.push({
+                        id: chunks[i][0],
+                        bloco: i + 1,
+                        erro: error.message || 'Erro desconhecido'
+                    });
                 }
             }
 
+            // Atualizar estados de rastreamento
+            setIdsSucesso(sucessos);
+            setIdsFalha(falhas);
+            setRelatorioFalhas(relatorio);
+
             if (pdfBase64Array.length === 0) {
-                toast.error('Nenhum PDF foi gerado com sucesso');
+                toast.error('Nenhum PDF gerado! Veja o relatório de falhas.');
+                setMostrarRelatorio(true);
                 return;
             }
 
-            toast.info(`Concatenando ${pdfBase64Array.length} blocos de PDFs...`);
+            toast.info(`Mesclando ${pdfBase64Array.length} PDFs...`);
 
             // Criar PDF final concatenado
             const mergedPdf = await PDFDocument.create();
@@ -281,7 +316,6 @@ export const BotaoImportacaoMassiva = () => {
 
             const mergedPdfBytes = await mergedPdf.save();
             
-            // Converter bytes para base64 em chunks para evitar stack overflow
             let binary = '';
             const chunkSize = 8192;
             for (let i = 0; i < mergedPdfBytes.length; i += chunkSize) {
@@ -291,7 +325,13 @@ export const BotaoImportacaoMassiva = () => {
             const mergedBase64 = btoa(binary);
 
             setPdfGeradoBase64(mergedBase64);
-            toast.success(`PDF pronto! Clique no botão "Baixar PDF das Existentes" para fazer o download. (${idsEtiquetas.length} etiquetas)`);
+            
+            const mensagemFinal = `✅ ${sucessos.length} PDFs gerados | ❌ ${falhas.length} falharam`;
+            toast.success(mensagemFinal);
+            
+            if (falhas.length > 0) {
+                setMostrarRelatorio(true);
+            }
         } catch (error: any) {
             toast.error(`Erro: ${error.message}`);
             console.error('Erro ao gerar PDF:', error);
@@ -304,32 +344,104 @@ export const BotaoImportacaoMassiva = () => {
         <>
             {importando && <LoadSpinner mensagem="Importando todos os registros..." />}
             {gerandoPDF && <LoadSpinner mensagem="Gerando PDF das etiquetas..." />}
-            <div className="flex gap-3">
-                <button
-                    onClick={processar}
-                    disabled={importando || gerandoPDF}
-                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
-                >
-                    <Zap className="w-5 h-5" />
-                    <span className="font-semibold">Importação Rápida</span>
-                </button>
-                
-                <button
-                    onClick={() => {
-                        if (pdfGeradoBase64) {
-                            downloadPDF(pdfGeradoBase64, 'etiquetas_completas_geradas.pdf');
-                        } else {
-                            gerarPDFEtiquetasExistentes();
-                        }
-                    }}
-                    disabled={importando || gerandoPDF}
-                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
-                >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                    </svg>
-                    <span className="font-semibold">Baixar PDF das Existentes</span>
-                </button>
+            
+            <div className="space-y-4">
+                <div className="flex gap-3">
+                    <button
+                        onClick={processar}
+                        disabled={importando || gerandoPDF}
+                        className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
+                    >
+                        <Zap className="w-5 h-5" />
+                        <span className="font-semibold">Importação Rápida</span>
+                    </button>
+                    
+                    <button
+                        onClick={() => {
+                            if (pdfGeradoBase64) {
+                                downloadPDF(pdfGeradoBase64, 'etiquetas_completas_geradas.pdf');
+                            } else {
+                                gerarPDFEtiquetasExistentes();
+                            }
+                        }}
+                        disabled={importando || gerandoPDF}
+                        className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                        <span className="font-semibold">Baixar PDF das Existentes</span>
+                    </button>
+                </div>
+
+                {/* Painel de Estatísticas */}
+                {(idsSucesso.length > 0 || idsFalha.length > 0) && (
+                    <div className="bg-white dark:bg-slate-800 rounded-lg p-4 shadow-md border border-gray-200 dark:border-slate-700">
+                        <h3 className="text-lg font-semibold mb-3 text-gray-800 dark:text-white">Resultado da Geração</h3>
+                        <div className="grid grid-cols-2 gap-4 mb-3">
+                            <div className="bg-green-50 dark:bg-green-900/20 rounded p-3 border border-green-200 dark:border-green-800">
+                                <div className="text-2xl font-bold text-green-600 dark:text-green-400">{idsSucesso.length}</div>
+                                <div className="text-sm text-green-700 dark:text-green-300">Etiquetas Geradas</div>
+                            </div>
+                            <div className="bg-red-50 dark:bg-red-900/20 rounded p-3 border border-red-200 dark:border-red-800">
+                                <div className="text-2xl font-bold text-red-600 dark:text-red-400">{idsFalha.length}</div>
+                                <div className="text-sm text-red-700 dark:text-red-300">Falhas</div>
+                            </div>
+                        </div>
+                        
+                        <div className="flex gap-2">
+                            {idsFalha.length > 0 && (
+                                <>
+                                    <button
+                                        onClick={() => setMostrarRelatorio(!mostrarRelatorio)}
+                                        className="flex-1 px-4 py-2 bg-amber-500 text-white rounded hover:bg-amber-600 transition-colors text-sm font-medium"
+                                    >
+                                        {mostrarRelatorio ? 'Ocultar Relatório' : 'Ver Relatório de Falhas'}
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setPdfGeradoBase64(null);
+                                            gerarPDFEtiquetasExistentes(idsFalha);
+                                        }}
+                                        disabled={gerandoPDF}
+                                        className="flex-1 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+                                    >
+                                        Reprocessar Falhas
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Relatório de Falhas */}
+                {mostrarRelatorio && relatorioFalhas.length > 0 && (
+                    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md border border-red-200 dark:border-red-800">
+                        <div className="bg-red-50 dark:bg-red-900/20 px-4 py-3 border-b border-red-200 dark:border-red-800">
+                            <h4 className="font-semibold text-red-800 dark:text-red-300">Relatório de Falhas ({relatorioFalhas.length})</h4>
+                        </div>
+                        <div className="max-h-96 overflow-y-auto">
+                            <table className="w-full text-sm">
+                                <thead className="bg-gray-50 dark:bg-slate-900 sticky top-0">
+                                    <tr>
+                                        <th className="px-4 py-2 text-left text-gray-700 dark:text-gray-300 font-medium">Bloco</th>
+                                        <th className="px-4 py-2 text-left text-gray-700 dark:text-gray-300 font-medium">ID Etiqueta</th>
+                                        <th className="px-4 py-2 text-left text-gray-700 dark:text-gray-300 font-medium">Erro</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
+                                    {relatorioFalhas.map((item, idx) => (
+                                        <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-slate-700/50">
+                                            <td className="px-4 py-2 text-gray-600 dark:text-gray-400">#{item.bloco}</td>
+                                            <td className="px-4 py-2 font-mono text-xs text-gray-800 dark:text-gray-200">{item.id}</td>
+                                            <td className="px-4 py-2 text-red-600 dark:text-red-400 text-xs">{item.erro}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
             </div>
         </>
     );
