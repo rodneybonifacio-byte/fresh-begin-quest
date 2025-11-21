@@ -227,11 +227,12 @@ const ImportacaoEtiquetas = () => {
                 logradouro: String(item.logradouro || '').trim(),
                 numero: (() => {
                     const n = Number(item.numero);
-                    return !n || n <= 0 ? 1 : n;
+                    return !n || n <= 0 ? 1 : n; // força mínimo 1
                 })(),
                 complemento: item.complemento ? String(item.complemento).trim() : undefined,
                 nomeDestinatario: String(item.nomeDestinatario || '').trim(),
-                cpfCnpj: Number(String(item.cpfCnpj || '').replace(/\D/g, '')),
+                // Mantém o CPF/CNPJ já validado, como STRING, sem converter para número
+                cpfCnpj: String(item.cpfCnpj).replace(/\D/g, ''),
                 valor_frete: Number(item.valor_frete) || 0,
                 bairro: String(item.bairro || 'Centro').trim(),
                 cidade: String(item.cidade || '').trim(),
