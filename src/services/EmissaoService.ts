@@ -67,8 +67,13 @@ export class EmissaoService extends BaseService<IEmissao> {
             return response.data;
         } catch (error: any) {
             console.error('❌ Erro na importação múltipla:', error);
-            console.error('📋 Detalhes do erro:', error.response?.data);
-            throw error; // deixa o componente tratar a mensagem de erro
+            console.error('📋 Status:', error.response?.status);
+            console.error('📋 Dados do erro:', error.response?.data);
+            console.error('📋 Mensagem:', error.response?.data?.message || error.response?.data?.error || error.message);
+            
+            // Propaga o erro com mais detalhes
+            const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message;
+            throw new Error(errorMessage);
         }
     }
 
