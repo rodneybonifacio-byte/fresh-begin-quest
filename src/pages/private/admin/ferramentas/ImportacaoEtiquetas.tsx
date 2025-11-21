@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 import { EmissaoService } from '../../../../services/EmissaoService';
 import { openPDFInNewTab } from '../../../../utils/pdfUtils';
 import { ViacepService } from '../../../../services/viacepService';
+import { isValid as isValidCPF } from '@fnando/cpf';
+import { isValid as isValidCNPJ } from '@fnando/cnpj';
 
 interface EtiquetaImport {
     servico_frete: string;
@@ -46,7 +48,7 @@ const ImportacaoEtiquetas = () => {
     const [importando, setImportando] = useState(false);
     const [imprimindo, setImprimindo] = useState(false);
     const [etiquetasCriadas, setEtiquetasCriadas] = useState<string[]>([]);
-    const [registrosInvalidos] = useState<RegistroInvalido[]>([]);
+    const [registrosInvalidos, setRegistrosInvalidos] = useState<RegistroInvalido[]>([]);
 
     const adicionarLog = (tipo: 'sucesso' | 'erro' | 'info', mensagem: string) => {
         setLogs(prev => [...prev, { tipo, mensagem, timestamp: new Date() }]);
@@ -142,42 +144,100 @@ const ImportacaoEtiquetas = () => {
         adicionarLog('info', `Iniciando importação de ${dados.length} etiquetas...`);
 
         try {
-            adicionarLog('info', 'Preparando dados para envio...');
+            adicionarLog('info', 'Validando documentos e preparando dados para envio...');
 
-            const dadosNormalizados = dados.map((item: any, index: number) => {
-                const cpfLimpo = String(item.cpfCnpj || '').replace(/\D/g, '');
-                
-                // Log se o CPF estiver vazio ou inválido
-                if (!cpfLimpo || cpfLimpo.length < 11) {
-                    adicionarLog('info', `Linha ${index + 1}: CPF/CNPJ "${item.cpfCnpj}" com formato inválido, será enviado como 0`);
+            const dadosValidos: any[] = [];
+            const invalidos: RegistroInvalido[] = [];
+
+            dados.forEach((item: any, index: number) => {
+                const docOriginal = String(item.cpfCnpj || '').trim();
+                const docLimpo = docOriginal.replace(/\D/g, '');
+
+                if (!docLimpo) {
+                    invalidos.push({
+                        linha: index + 1,
+                        nomeDestinatario: String(item.nomeDestinatario || ''),
+                        cpfOriginal: docOriginal,
+                        motivo: 'CPF/CNPJ vazio',
+                    });
+                    return;
                 }
-                
-                return {
-                    servico_frete: String(item.servico_frete || 'PAC').toUpperCase().trim(),
-                    cep: String(item.cep || '').replace(/\D/g, ''),
-                    altura: Number(item.altura) || 0,
-                    largura: Number(item.largura) || 0,
-                    comprimento: Number(item.comprimento) || 0,
-                    peso: Number(item.peso) || 0,
-                    logradouro: String(item.logradouro || '').trim(),
-                    numero: (() => {
-                        const n = Number(item.numero);
-                        return !n || n <= 0 ? 1 : n;
-                    })(),
-                    complemento: item.complemento ? String(item.complemento).trim() : undefined,
-                    nomeDestinatario: String(item.nomeDestinatario || '').trim(),
-                    cpfCnpj: Number(cpfLimpo) || 0,
-                    valor_frete: Number(item.valor_frete) || 0,
-                    bairro: String(item.bairro || 'Centro').trim(),
-                    cidade: String(item.cidade || '').trim(),
-                    estado: String(item.estado || item.uf || '').toUpperCase().trim(),
-                };
+
+                if (docLimpo.length !== 11 && docLimpo.length !== 14) {
+                    invalidos.push({
+                        linha: index + 1,
+                        nomeDestinatario: String(item.nomeDestinatario || ''),
+                        cpfOriginal: docOriginal,
+                        motivo: 'CPF deve ter 11 dígitos ou CNPJ 14 dígitos',
+                    });
+                    return;
+                }
+
+                const isValid = docLimpo.length === 11 ? isValidCPF(docLimpo) : isValidCNPJ(docLimpo);
+                if (!isValid) {
+                    invalidos.push({
+                        linha: index + 1,
+                        nomeDestinatario: String(item.nomeDestinatario || ''),
+                        cpfOriginal: docOriginal,
+                        motivo: 'CPF/CNPJ inválido',
+                    });
+                    return;
+                }
+
+                dadosValidos.push({
+                    ...item,
+                    cpfCnpj: docLimpo,
+                });
             });
+
+            setRegistrosInvalidos(invalidos);
+
+            if (invalidos.length > 0) {
+                invalidos.forEach((r) =>
+                    adicionarLog(
+                        'erro',
+                        `Linha ${r.linha}: CPF/CNPJ inválido ("${r.cpfOriginal}") - Destinatário: ${r.nomeDestinatario} - Motivo: ${r.motivo}`,
+                    ),
+                );
+                toast.warning(
+                    `${invalidos.length} registro(s) com CPF/CNPJ inválido NÃO serão enviados. Apenas os válidos serão importados.`,
+                );
+            }
+
+            if (dadosValidos.length === 0) {
+                adicionarLog('erro', 'Nenhum registro válido para importar.');
+                toast.error('Nenhum registro válido encontrado. Corrija os documentos na planilha.');
+                setImportando(false);
+                return;
+            }
+
+            adicionarLog('sucesso', `${dadosValidos.length} registros válidos prontos para importação.`);
+
+            const dadosNormalizados = dadosValidos.map((item: any) => ({
+                servico_frete: String(item.servico_frete || 'PAC').toUpperCase().trim(),
+                cep: String(item.cep || '').replace(/\D/g, ''),
+                altura: Number(item.altura) || 0,
+                largura: Number(item.largura) || 0,
+                comprimento: Number(item.comprimento) || 0,
+                peso: Number(item.peso) || 0,
+                logradouro: String(item.logradouro || '').trim(),
+                numero: (() => {
+                    const n = Number(item.numero);
+                    return !n || n <= 0 ? 1 : n;
+                })(),
+                complemento: item.complemento ? String(item.complemento).trim() : undefined,
+                nomeDestinatario: String(item.nomeDestinatario || '').trim(),
+                cpfCnpj: Number(item.cpfCnpj),
+                valor_frete: Number(item.valor_frete) || 0,
+                bairro: String(item.bairro || 'Centro').trim(),
+                cidade: String(item.cidade || '').trim(),
+                estado: String(item.estado || item.uf || '').toUpperCase().trim(),
+            }));
 
             const service = new EmissaoService();
             const payload = {
                 cpfCnpj: cpfCnpjCliente.replace(/\D/g, ''), // CPF/CNPJ do remetente (apenas números)
-                data: dadosNormalizados
+                data: dadosNormalizados,
             };
 
             console.log('📦 Payload completo:', JSON.stringify(payload, null, 2));
