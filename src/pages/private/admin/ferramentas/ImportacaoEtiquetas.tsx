@@ -278,7 +278,13 @@ const ImportacaoEtiquetas = () => {
             toast.success(`Importação concluída! ${dados.length} etiquetas processadas`);
         } catch (error: any) {
             console.error('Erro na importação múltipla (frontend):', error);
-            const mensagemApi = error?.response?.data?.message || error?.response?.data?.mensagem || error?.message;
+            const rawApiError = error?.response?.data;
+            const mensagemApi = rawApiError?.message || rawApiError?.mensagem || error?.message;
+            
+            if (rawApiError) {
+                adicionarLog('erro', 'Resposta completa da API (erro 400): ' + JSON.stringify(rawApiError));
+            }
+            
             adicionarLog('erro', 'Erro na importação: ' + (mensagemApi || 'Erro desconhecido'));
             toast.error(`Erro na importação: ${mensagemApi || 'Erro desconhecido'}`);
         } finally {
