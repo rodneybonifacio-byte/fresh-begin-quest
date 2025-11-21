@@ -168,6 +168,155 @@ const ImportacaoEtiquetas = () => {
         }
 
         if (dados.length === 0) {
+            toast.error('Nenhum dado para importar. Faça upload de um arquivo primeiro.');
+            return;
+        }
+
+        setImportando(true);
+        adicionarLog('info', `Iniciando importação de ${dados.length} registros...`);
+
+        try {
+            // Validar e separar registros válidos dos inválidos
+            const invalidos: RegistroInvalido[] = [];
+            const dadosValidos = dados.filter((item: any, index: number) => {
+                const cpfLimpo = String(item.cpfCnpj || item.cpfCnpj).replace(/\D/g, '');
+                const numero = Number(item.numero);
+                
+                // Valida CPF/CNPJ
+                const cpfValido = cpfLimpo.length === 11 && isValidCPF(cpfLimpo);
+                const cnpjValido = cpfLimpo.length === 14 && isValidCNPJ(cpfLimpo);
+                
+                // Valida número
+                const numeroValido = numero > 0;
+                
+                if (!cpfValido && !cnpjValido) {
+                    invalidos.push({
+                        linha: index + 2,
+                        nomeDestinatario: item.nomeDestinatario || 'N/A',
+                        cpfOriginal: item.cpfCnpj || item.cpfCnpj || '',
+                        motivo: 'CPF/CNPJ inválido'
+                    });
+                    return false;
+                }
+                
+                if (!numeroValido) {
+                    invalidos.push({
+                        linha: index + 2,
+                        nomeDestinatario: item.nomeDestinatario || 'N/A',
+                        cpfOriginal: item.cpfCnpj || item.cpfCnpj || '',
+                        motivo: 'Número deve ser maior que zero'
+                    });
+                    return false;
+                }
+                
+                return true;
+            });
+
+            setRegistrosInvalidos(invalidos);
+
+            if (invalidos.length > 0) {
+                adicionarLog(
+                    'erro',
+                    `⚠️ ${invalidos.length} registro(s) com erro detectado(s). Verifique a tabela de erros abaixo.`,
+                );
+                toast.warning(
+                    `${invalidos.length} registro(s) com CPF/CNPJ inválido ou número inválido NÃO serão enviados.`,
+                );
+            }
+
+            if (dadosValidos.length === 0) {
+                adicionarLog('erro', 'Nenhum registro válido para importar.');
+                toast.error('Nenhum registro válido encontrado. Corrija os documentos na planilha.');
+                setImportando(false);
+                return;
+            }
+
+            adicionarLog('sucesso', `${dadosValidos.length} registros válidos prontos para importação.`);
+            
+            // PROCESSAR TODOS OS REGISTROS VÁLIDOS SEM PAUSAR
+            adicionarLog('info', `Processando ${dadosValidos.length} registros em lote...`);
+
+            const dadosNormalizados = dadosValidos.map((item: any) => ({
+                servico_frete: String(item.servico_frete || 'PAC').toUpperCase().trim(),
+                cep: String(item.cep || '').replace(/\D/g, ''),
+                altura: Number(item.altura) || 0,
+                largura: Number(item.largura) || 0,
+                comprimento: Number(item.comprimento) || 0,
+                peso: Number(item.peso) || 0,
+                logradouro: String(item.logradouro || '').trim(),
+                numero: (() => {
+                    const n = Number(item.numero);
+                    return !n || n <= 0 ? 1 : n;
+                })(),
+                complemento: item.complemento ? String(item.complemento).trim() : undefined,
+                nomeDestinatario: String(item.nomeDestinatario || '').trim(),
+                cpfCnpj: Number(String(item.cpfCnpj || '').replace(/\D/g, '')),
+                valor_frete: Number(item.valor_frete) || 0,
+                bairro: String(item.bairro || 'Centro').trim(),
+                cidade: String(item.cidade || '').trim(),
+                estado: String(item.estado || item.uf || '').toUpperCase().trim(),
+            }));
+
+            const payload = {
+                cpfCnpj: cpfCnpjCliente.replace(/\D/g, ''),
+                data: dadosNormalizados,
+            };
+
+            console.log('📦 Payload completo:', JSON.stringify(payload, null, 2));
+            adicionarLog('info', `Enviando ${dadosValidos.length} registros para API de importação em lote...`);
+            const response: any = await service.processarPedidosImportados(payload);
+            
+            adicionarLog('sucesso', 'Importação concluída com sucesso!');
+            console.log('Resposta completa da API:', response);
+            
+            // Trata resposta da API - tentando diferentes formatos de resposta
+            let idsEtiquetas: string[] = [];
+            
+            if (response?.etiquetas_criadas && Array.isArray(response.etiquetas_criadas)) {
+                idsEtiquetas = response.etiquetas_criadas;
+            } else if (response?.data?.etiquetas_criadas && Array.isArray(response.data.etiquetas_criadas)) {
+                idsEtiquetas = response.data.etiquetas_criadas;
+            } else if (response?.ids && Array.isArray(response.ids)) {
+                idsEtiquetas = response.ids;
+            } else if (response?.data && Array.isArray(response.data)) {
+                // Se a resposta for um array de objetos com IDs
+                idsEtiquetas = response.data.map((item: any) => item.id).filter(Boolean);
+            }
+            
+            if (idsEtiquetas.length > 0) {
+                setEtiquetasCriadas(idsEtiquetas);
+                adicionarLog('sucesso', `✓ ${idsEtiquetas.length} etiquetas criadas e prontas para impressão!`);
+            } else {
+                adicionarLog('info', 'Etiquetas processadas (IDs não retornados pela API)');
+            }
+            
+            if (response?.erros && Array.isArray(response.erros) && response.erros.length > 0) {
+                response.erros.forEach((erro: any) => {
+                    adicionarLog('erro', `Erro: ${erro.mensagem || erro}`);
+                });
+            }
+
+            toast.success(`Importação concluída! ${dadosValidos.length} etiquetas processadas`);
+        } catch (error: any) {
+            console.error('Erro na importação múltipla (frontend):', error);
+            
+            // Captura mensagem detalhada do erro
+            const mensagemApi = error?.message || error?.response?.data?.message || error?.response?.data?.mensagem || error?.response?.data?.error || 'Erro desconhecido';
+            const rawApiError = error?.response?.data;
+            
+            if (rawApiError) {
+                console.error('📋 Resposta completa da API (erro 400):', JSON.stringify(rawApiError, null, 2));
+                adicionarLog('erro', 'Resposta da API: ' + JSON.stringify(rawApiError, null, 2));
+            }
+            
+            adicionarLog('erro', `❌ Erro: ${mensagemApi}`);
+            toast.error(`Erro na importação: ${mensagemApi}`);
+        } finally {
+            setImportando(false);
+        }
+    };
+
+    const imprimirEtiquetas = async () => {
             toast.error('Nenhum dado para importar');
             return;
         }
