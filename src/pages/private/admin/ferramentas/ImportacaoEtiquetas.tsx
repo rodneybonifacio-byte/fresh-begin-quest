@@ -165,6 +165,19 @@ const ImportacaoEtiquetas = () => {
             adicionarLog('sucesso', 'Todos os CPF/CNPJ validados com sucesso!');
             adicionarLog('info', 'Preparando dados para envio...');
 
+            // Normalizar tipos de dados para o backend
+            const dadosNormalizados = dados.map((item: any) => ({
+                ...item,
+                cpfCnpj: Number(String(item.cpfCnpj || '').replace(/\D/g, '')), // NUMBER sem formatação
+                cep: String(item.cep || '').replace(/\D/g, ''), // STRING apenas números
+                numero: Number(item.numero) || 0, // NUMBER
+                complemento: item.complemento ? String(item.complemento) : undefined, // STRING ou undefined
+                nomeDestinatario: String(item.nomeDestinatario || ''), // STRING
+                bairro: item.bairro || 'Centro', // STRING obrigatório com fallback
+                cidade: item.cidade || '', // STRING
+                estado: item.estado || '' // STRING
+            }));
+
             const service = new EmissaoService();
             const payload = {
                 cpfCnpj: cpfCnpjCliente,
@@ -179,7 +192,7 @@ const ImportacaoEtiquetas = () => {
                     estado: enderecoRemetente.uf || 'SP',
                     uf: enderecoRemetente.uf || 'SP'
                 },
-                data: dados
+                data: dadosNormalizados
             };
 
             console.log('📦 Payload completo:', JSON.stringify(payload, null, 2));
