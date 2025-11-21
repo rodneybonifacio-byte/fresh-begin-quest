@@ -148,14 +148,15 @@ const ImportacaoEtiquetas = () => {
                     logradouro: 'RUA MARIA MARCOLINA',
                     numero: '748',
                     cep: '03011000',
-                    bairro: enderecoRemetente.bairro,
-                    cidade: 'SÃO PAULO',
-                    estado: 'SP',
-                    uf: 'SP'
+                    bairro: enderecoRemetente.bairro || 'Brás',
+                    cidade: enderecoRemetente.localidade || 'São Paulo',
+                    estado: enderecoRemetente.uf || 'SP',
+                    uf: enderecoRemetente.uf || 'SP'
                 },
                 data: dadosEnriquecidos
             };
 
+            adicionarLog('info', `Remetente: ${payload.remetente.cidade}/${payload.remetente.estado}`);
             adicionarLog('info', 'Enviando dados para API com remetente: ÓPERA KIDS VAREJO...');
             const response: any = await service.processarPedidosImportados(payload);
             
