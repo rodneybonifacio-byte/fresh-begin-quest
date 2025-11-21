@@ -6,6 +6,7 @@ import { ViacepService } from '../services/viacepService';
 import { LoadSpinner } from './loading';
 import { Zap } from 'lucide-react';
 import { openPDFInNewTab, downloadPDF } from '../utils/pdfUtils';
+import { PDFDocument } from 'pdf-lib';
 
 // Gera CPF válido para substituir ou ignorar CPFs inválidos
 const gerarCPFValido = (): string => {
@@ -178,7 +179,6 @@ export const BotaoImportacaoMassiva = () => {
         try {
             toast.info('Buscando últimas 200 etiquetas...');
 
-            // Buscar via getAll com paginação
             const response = await emissaoService.getAll({ page: '1', limit: '200' });
 
             if (!response?.data || response.data.length === 0) {
@@ -193,21 +193,53 @@ export const BotaoImportacaoMassiva = () => {
                 return;
             }
 
-            toast.info(`Gerando PDF com ${idsEtiquetas.length} etiquetas...`);
-
-            const payloadPDF = {
-                ids: idsEtiquetas,
-                tipo: 'completa'
-            };
-
-            const responsePDF = await emissaoService.imprimirEmMassa(payloadPDF);
-
-            if (responsePDF?.dados) {
-                downloadPDF(responsePDF.dados, responsePDF.nome || `etiquetas_existentes_${idsEtiquetas.length}.pdf`);
-                toast.success(`📄 PDF com ${idsEtiquetas.length} etiquetas baixado!`);
-            } else {
-                toast.error('Erro ao gerar PDF: resposta inválida');
+            // Dividir IDs em blocos de 10
+            const chunks: string[][] = [];
+            for (let i = 0; i < idsEtiquetas.length; i += 10) {
+                chunks.push(idsEtiquetas.slice(i, i + 10));
             }
+
+            toast.info(`Gerando ${chunks.length} blocos de PDFs...`);
+
+            // Gerar PDFs para cada bloco
+            const pdfBase64Array: string[] = [];
+            for (let i = 0; i < chunks.length; i++) {
+                toast.info(`Processando bloco ${i + 1} de ${chunks.length}...`);
+                
+                const payloadPDF = {
+                    ids: chunks[i],
+                    tipo: 'completa'
+                };
+
+                const responsePDF = await emissaoService.imprimirEmMassa(payloadPDF);
+                
+                if (responsePDF?.dados) {
+                    pdfBase64Array.push(responsePDF.dados);
+                }
+            }
+
+            if (pdfBase64Array.length === 0) {
+                toast.error('Nenhum PDF gerado');
+                return;
+            }
+
+            toast.info('Concatenando todos os PDFs...');
+
+            // Criar PDF final concatenado
+            const mergedPdf = await PDFDocument.create();
+
+            for (const base64 of pdfBase64Array) {
+                const pdfBytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+                const pdf = await PDFDocument.load(pdfBytes);
+                const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+                copiedPages.forEach((page) => mergedPdf.addPage(page));
+            }
+
+            const mergedPdfBytes = await mergedPdf.save();
+            const mergedBase64 = btoa(String.fromCharCode(...mergedPdfBytes));
+
+            downloadPDF(mergedBase64, `etiquetas_completas_${idsEtiquetas.length}.pdf`);
+            toast.success(`📄 PDF com ${idsEtiquetas.length} etiquetas baixado!`);
         } catch (error: any) {
             toast.error(`Erro: ${error.message}`);
             console.error('Erro ao gerar PDF:', error);
