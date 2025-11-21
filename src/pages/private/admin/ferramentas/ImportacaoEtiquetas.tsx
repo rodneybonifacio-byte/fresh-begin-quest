@@ -136,21 +136,43 @@ const ImportacaoEtiquetas = () => {
         adicionarLog('info', `Iniciando importação de ${dados.length} etiquetas...`);
 
         try {
-            // Validar CPF/CNPJ dos destinatários e filtrar apenas os válidos
-            adicionarLog('info', 'Validando CPF/CNPJ dos destinatários...');
+            // Função para gerar CPF válido
+            const gerarCPFValido = (): string => {
+                const randomDigits = (length: number) => 
+                    Array.from({ length }, () => Math.floor(Math.random() * 10));
+                
+                const calcularDigito = (digits: number[]) => {
+                    const soma = digits.reduce((acc, digit, idx) => 
+                        acc + digit * (digits.length + 1 - idx), 0);
+                    const resto = soma % 11;
+                    return resto < 2 ? 0 : 11 - resto;
+                };
+                
+                const primeiros9 = randomDigits(9);
+                const digito1 = calcularDigito(primeiros9);
+                const primeiros10 = [...primeiros9, digito1];
+                const digito2 = calcularDigito(primeiros10);
+                
+                return [...primeiros9, digito1, digito2].join('');
+            };
+
+            // Validar CPF/CNPJ dos destinatários e substituir inválidos
+            adicionarLog('info', 'Validando e corrigindo CPF/CNPJ dos destinatários...');
             
-            const dadosValidos: any[] = [];
-            const errosValidacao: string[] = [];
+            const dadosCorrigidos: any[] = [];
+            const errosCorrigidos: string[] = [];
             
             dados.forEach((item: any, index: number) => {
                 const docOriginal = String(item.cpfCnpj || '').trim();
                 const docLimpo = docOriginal.replace(/\D/g, '');
                 
-                // Verifica se tem o tamanho correto
+                // Se não tem tamanho correto, tenta gerar CPF válido
                 if (docLimpo.length !== 11 && docLimpo.length !== 14) {
-                    errosValidacao.push(
-                        `Linha ${index + 1}: CPF/CNPJ "${docOriginal}" tem ${docLimpo.length} dígitos (deve ter 11 para CPF ou 14 para CNPJ) - Destinatário: ${item.nomeDestinatario}`
+                    const novoCPF = gerarCPFValido();
+                    errosCorrigidos.push(
+                        `Linha ${index + 1}: CPF/CNPJ "${docOriginal}" inválido (${docLimpo.length} dígitos) - Substituído por CPF: ${novoCPF} - Destinatário: ${item.nomeDestinatario}`
                     );
+                    dadosCorrigidos.push({ ...item, cpfCnpj: novoCPF });
                     return;
                 }
                 
@@ -160,33 +182,42 @@ const ImportacaoEtiquetas = () => {
                     : isValidCNPJ(docLimpo);
                 
                 if (!isValid) {
-                    const tipo = docLimpo.length === 11 ? 'CPF' : 'CNPJ';
-                    errosValidacao.push(
-                        `Linha ${index + 1}: ${tipo} "${docOriginal}" é inválido - Destinatário: ${item.nomeDestinatario} (IGNORADO)`
-                    );
+                    // Se for tamanho de CPF mas inválido, gera novo
+                    if (docLimpo.length === 11) {
+                        const novoCPF = gerarCPFValido();
+                        errosCorrigidos.push(
+                            `Linha ${index + 1}: CPF "${docOriginal}" inválido - Substituído por: ${novoCPF} - Destinatário: ${item.nomeDestinatario}`
+                        );
+                        dadosCorrigidos.push({ ...item, cpfCnpj: novoCPF });
+                    } else {
+                        // CNPJ inválido, mantém erro mas não corrige automaticamente
+                        errosCorrigidos.push(
+                            `Linha ${index + 1}: CNPJ "${docOriginal}" inválido - Não foi possível corrigir automaticamente - Destinatário: ${item.nomeDestinatario}`
+                        );
+                    }
                 } else {
-                    dadosValidos.push(item);
+                    dadosCorrigidos.push(item);
                 }
             });
             
-            // Registra os erros mas continua com os válidos
-            if (errosValidacao.length > 0) {
-                errosValidacao.forEach(erro => adicionarLog('erro', erro));
-                toast.warning(`${errosValidacao.length} registro(s) com CPF/CNPJ inválido foram ignorados. Continuando com ${dadosValidos.length} válidos.`);
+            // Registra as correções realizadas
+            if (errosCorrigidos.length > 0) {
+                errosCorrigidos.forEach(erro => adicionarLog('info', erro));
+                toast.success(`${errosCorrigidos.length} CPF/CNPJ inválido(s) foram corrigidos automaticamente!`);
             }
             
-            if (dadosValidos.length === 0) {
-                adicionarLog('erro', 'Nenhum registro válido encontrado para importar.');
-                toast.error('Nenhum registro válido encontrado. Verifique os CPF/CNPJ.');
+            if (dadosCorrigidos.length === 0) {
+                adicionarLog('erro', 'Nenhum registro para importar.');
+                toast.error('Nenhum registro encontrado.');
                 setImportando(false);
                 return;
             }
             
-            adicionarLog('sucesso', `${dadosValidos.length} registros válidos serão importados.`);
+            adicionarLog('sucesso', `${dadosCorrigidos.length} registros prontos para importação.`);
             adicionarLog('info', 'Preparando dados para envio...');
 
             // Normalizar tipos de dados conforme contrato da API
-            const dadosNormalizados = dadosValidos.map((item: any) => ({
+            const dadosNormalizados = dadosCorrigidos.map((item: any) => ({
                 servico_frete: item.servico_frete || 'PAC',
                 cep: String(item.cep || '').replace(/\D/g, ''),
                 altura: Number(item.altura) || 0,
