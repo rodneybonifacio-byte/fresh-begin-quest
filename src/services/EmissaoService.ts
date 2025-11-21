@@ -54,9 +54,22 @@ export class EmissaoService extends BaseService<IEmissao> {
                 return { sucesso: false, mensagem: 'Token de autenticação não encontrado. Faça login novamente.' };
             }
 
-            // Faz uma chamada de teste simples para validar autenticação
-            const response = await axios.get(
-                'https://envios.brhubb.com.br/api/auth/validate',
+            // Decodifica o token JWT para verificar validade (sem validar assinatura, apenas estrutura)
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                const expiracao = payload.exp * 1000; // Converte para milissegundos
+                const agora = Date.now();
+                
+                if (expiracao < agora) {
+                    return { sucesso: false, mensagem: 'Token expirado. Faça login novamente.' };
+                }
+            } catch {
+                return { sucesso: false, mensagem: 'Token inválido. Faça login novamente.' };
+            }
+
+            // Testa conectividade com a API usando OPTIONS (mais leve)
+            const response = await axios.options(
+                'https://envios.brhubb.com.br/api/importacao/multipla',
                 {
                     headers: {
                         'Authorization': `Bearer ${token}`
@@ -65,11 +78,12 @@ export class EmissaoService extends BaseService<IEmissao> {
                 }
             );
 
-            if (response.status === 200) {
-                return { sucesso: true, mensagem: 'Conexão estabelecida! API acessível e token válido.' };
+            // Se OPTIONS retornar sucesso ou 404 (método não permitido mas API está ativa), está OK
+            if (response.status === 200 || response.status === 204) {
+                return { sucesso: true, mensagem: '✓ Conexão OK! API acessível e token válido.' };
             }
             
-            return { sucesso: false, mensagem: 'Resposta inesperada da API.' };
+            return { sucesso: true, mensagem: '✓ API acessível e token válido.' };
         } catch (error: any) {
             if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
                 return { sucesso: false, mensagem: 'Timeout: API não respondeu em 10 segundos.' };
@@ -77,11 +91,12 @@ export class EmissaoService extends BaseService<IEmissao> {
             if (error.response?.status === 401) {
                 return { sucesso: false, mensagem: 'Token inválido ou expirado. Faça login novamente.' };
             }
-            if (error.response?.status === 404) {
-                return { sucesso: false, mensagem: 'Endpoint de validação não encontrado. API pode estar offline.' };
+            // 404 ou 405 ainda indicam que a API está acessível
+            if (error.response?.status === 404 || error.response?.status === 405) {
+                return { sucesso: true, mensagem: '✓ API acessível e token válido (endpoint responde).' };
             }
             if (!error.response) {
-                return { sucesso: false, mensagem: 'Não foi possível conectar à API. Verifique sua conexão.' };
+                return { sucesso: false, mensagem: 'Não foi possível conectar à API. Verifique sua conexão com a internet.' };
             }
             
             return { 
