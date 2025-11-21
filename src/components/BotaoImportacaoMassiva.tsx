@@ -28,6 +28,7 @@ const gerarCPFValido = (): string => {
 export const BotaoImportacaoMassiva = () => {
     const [importando, setImportando] = useState(false);
     const [gerandoPDF, setGerandoPDF] = useState(false);
+    const [pdfGeradoBase64, setPdfGeradoBase64] = useState<string | null>(null);
 
     const processar = async () => {
         setImportando(true);
@@ -174,6 +175,7 @@ export const BotaoImportacaoMassiva = () => {
 
     const gerarPDFEtiquetasExistentes = async () => {
         setGerandoPDF(true);
+        setPdfGeradoBase64(null);
         const emissaoService = new EmissaoService();
 
         try {
@@ -284,8 +286,8 @@ export const BotaoImportacaoMassiva = () => {
             }
             const mergedBase64 = btoa(binary);
 
-            downloadPDF(mergedBase64, `etiquetas_completas_${idsEtiquetas.length}.pdf`);
-            toast.success(`📄 PDF gerado! ${pdfBase64Array.length} blocos de ${chunks.length} processados com sucesso.`);
+            setPdfGeradoBase64(mergedBase64);
+            toast.success(`PDF pronto! Clique no botão "Baixar PDF das Existentes" para fazer o download. (${idsEtiquetas.length} etiquetas)`);
         } catch (error: any) {
             toast.error(`Erro: ${error.message}`);
             console.error('Erro ao gerar PDF:', error);
@@ -309,14 +311,20 @@ export const BotaoImportacaoMassiva = () => {
                 </button>
                 
                 <button
-                    onClick={gerarPDFEtiquetasExistentes}
+                    onClick={() => {
+                        if (pdfGeradoBase64) {
+                            downloadPDF(pdfGeradoBase64, 'etiquetas_completas_geradas.pdf');
+                        } else {
+                            gerarPDFEtiquetasExistentes();
+                        }
+                    }}
                     disabled={importando || gerandoPDF}
                     className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
                 >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                     </svg>
-                    <span className="font-semibold">Gerar PDF das Existentes</span>
+                    <span className="font-semibold">Baixar PDF das Existentes</span>
                 </button>
             </div>
         </>
