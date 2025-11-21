@@ -50,58 +50,101 @@ export class EmissaoService extends BaseService<IEmissao> {
     async testarConexaoAPI(): Promise<{ sucesso: boolean; mensagem: string }> {
         try {
             const token = localStorage.getItem('token');
-            if (!token) {
-                return { sucesso: false, mensagem: 'Token de autenticação não encontrado. Faça login novamente.' };
-            }
+            
+            // Dados de teste para validar a API
+            const dadosTeste = {
+                cpfCnpj: "15808095000303", // ÓPERA KIDS VAREJO
+                data: [
+                    {
+                        servico_frete: "PAC",
+                        cep: "01310100",
+                        altura: 10,
+                        largura: 20,
+                        comprimento: 20,
+                        peso: 500,
+                        logradouro: "Avenida Paulista",
+                        numero: 1000,
+                        complemento: "Teste de Conexão",
+                        nomeDestinatario: "TESTE CONEXAO API",
+                        cpfCnpj: 11132440700,
+                        valor_frete: 15.00,
+                        bairro: "Bela Vista",
+                        cidade: "São Paulo",
+                        estado: "SP"
+                    }
+                ]
+            };
 
-            // Decodifica o token JWT para verificar validade (sem validar assinatura, apenas estrutura)
-            try {
-                const payload = JSON.parse(atob(token.split('.')[1]));
-                const expiracao = payload.exp * 1000; // Converte para milissegundos
-                const agora = Date.now();
-                
-                if (expiracao < agora) {
-                    return { sucesso: false, mensagem: 'Token expirado. Faça login novamente.' };
-                }
-            } catch {
-                return { sucesso: false, mensagem: 'Token inválido. Faça login novamente.' };
-            }
+            console.log('🔍 Testando conexão com dados:', dadosTeste);
 
-            // Testa conectividade com a API usando OPTIONS (mais leve)
-            const response = await axios.options(
+            const response = await axios.post(
                 'https://envios.brhubb.com.br/api/importacao/multipla',
+                dadosTeste,
                 {
                     headers: {
-                        'Authorization': `Bearer ${token}`
+                        'Content-Type': 'application/json',
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                     },
-                    timeout: 10000 // 10 segundos
+                    timeout: 15000 // 15 segundos
                 }
             );
 
-            // Se OPTIONS retornar sucesso ou 404 (método não permitido mas API está ativa), está OK
-            if (response.status === 200 || response.status === 204) {
-                return { sucesso: true, mensagem: '✓ Conexão OK! API acessível e token válido.' };
-            }
-            
-            return { sucesso: true, mensagem: '✓ API acessível e token válido.' };
-        } catch (error: any) {
-            if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
-                return { sucesso: false, mensagem: 'Timeout: API não respondeu em 10 segundos.' };
-            }
-            if (error.response?.status === 401) {
-                return { sucesso: false, mensagem: 'Token inválido ou expirado. Faça login novamente.' };
-            }
-            // 404 ou 405 ainda indicam que a API está acessível
-            if (error.response?.status === 404 || error.response?.status === 405) {
-                return { sucesso: true, mensagem: '✓ API acessível e token válido (endpoint responde).' };
-            }
-            if (!error.response) {
-                return { sucesso: false, mensagem: 'Não foi possível conectar à API. Verifique sua conexão com a internet.' };
+            console.log('✅ Resposta do teste:', response.data);
+
+            if (response.status === 200 || response.status === 201) {
+                return { 
+                    sucesso: true, 
+                    mensagem: '✓ Conexão OK! API respondeu com sucesso. Sistema operacional.' 
+                };
             }
             
             return { 
+                sucesso: true, 
+                mensagem: `✓ API acessível (status ${response.status}).` 
+            };
+        } catch (error: any) {
+            console.error('❌ Erro no teste de conexão:', error);
+            
+            if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+                return { 
+                    sucesso: false, 
+                    mensagem: '⏱️ Timeout: API não respondeu em 15 segundos. Tente novamente.' 
+                };
+            }
+            
+            if (error.response?.status === 400) {
+                const mensagemErro = error.response?.data?.message || error.response?.data?.error || 'Erro de validação';
+                return { 
+                    sucesso: false, 
+                    mensagem: `❌ Erro 400: ${mensagemErro}` 
+                };
+            }
+            
+            if (error.response?.status === 401) {
+                return { 
+                    sucesso: false, 
+                    mensagem: '🔒 Token inválido ou expirado. Faça login novamente.' 
+                };
+            }
+            
+            if (error.response?.status === 500) {
+                return { 
+                    sucesso: false, 
+                    mensagem: '⚠️ Erro no servidor da API. Tente novamente mais tarde.' 
+                };
+            }
+            
+            if (!error.response) {
+                return { 
+                    sucesso: false, 
+                    mensagem: '🌐 Não foi possível conectar à API. Verifique sua conexão com a internet.' 
+                };
+            }
+            
+            const mensagemDetalhada = error.response?.data?.message || error.response?.data?.error || error.message;
+            return { 
                 sucesso: false, 
-                mensagem: `Erro ao conectar: ${error.response?.data?.message || error.message}` 
+                mensagem: `❌ Erro ${error.response?.status || 'desconhecido'}: ${mensagemDetalhada}` 
             };
         }
     }
