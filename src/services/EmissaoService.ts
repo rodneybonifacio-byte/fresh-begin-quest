@@ -68,11 +68,7 @@ export class EmissaoService extends BaseService<IEmissao> {
         } catch (error: any) {
             console.error('❌ Erro na importação múltipla:', error);
             console.error('📋 Detalhes do erro:', error.response?.data);
-            console.error('📋 Status:', error.response?.status);
-            console.error('📋 Mensagem:', error.response?.data?.message || error.message);
-            
-            // Relança o erro com mais contexto
-            throw new Error(error.response?.data?.message || error.message || 'Erro ao importar etiquetas');
+            throw error; // deixa o componente tratar a mensagem de erro
         }
     }
 

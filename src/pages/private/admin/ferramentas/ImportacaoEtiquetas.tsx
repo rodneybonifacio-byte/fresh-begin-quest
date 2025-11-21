@@ -277,9 +277,10 @@ const ImportacaoEtiquetas = () => {
 
             toast.success(`Importação concluída! ${dados.length} etiquetas processadas`);
         } catch (error: any) {
-            adicionarLog('erro', 'Erro na importação: ' + (error.message || 'Erro desconhecido'));
-            toast.error('Erro ao importar etiquetas');
-            console.error('Erro completo:', error);
+            console.error('Erro na importação múltipla (frontend):', error);
+            const mensagemApi = error?.response?.data?.message || error?.response?.data?.mensagem || error?.message;
+            adicionarLog('erro', 'Erro na importação: ' + (mensagemApi || 'Erro desconhecido'));
+            toast.error(`Erro na importação: ${mensagemApi || 'Erro desconhecido'}`);
         } finally {
             setImportando(false);
         }
