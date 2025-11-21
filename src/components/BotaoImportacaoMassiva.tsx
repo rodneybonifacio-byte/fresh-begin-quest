@@ -236,7 +236,15 @@ export const BotaoImportacaoMassiva = () => {
             }
 
             const mergedPdfBytes = await mergedPdf.save();
-            const mergedBase64 = btoa(String.fromCharCode(...mergedPdfBytes));
+            
+            // Converter bytes para base64 em chunks para evitar stack overflow
+            let binary = '';
+            const chunkSize = 8192;
+            for (let i = 0; i < mergedPdfBytes.length; i += chunkSize) {
+                const chunk = mergedPdfBytes.slice(i, i + chunkSize);
+                binary += String.fromCharCode.apply(null, Array.from(chunk));
+            }
+            const mergedBase64 = btoa(binary);
 
             downloadPDF(mergedBase64, `etiquetas_completas_${idsEtiquetas.length}.pdf`);
             toast.success(`📄 PDF com ${idsEtiquetas.length} etiquetas baixado!`);
