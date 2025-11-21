@@ -177,16 +177,44 @@ export const BotaoImportacaoMassiva = () => {
         const emissaoService = new EmissaoService();
 
         try {
-            toast.info('Buscando últimas 200 etiquetas...');
+            toast.info('Buscando etiquetas...');
 
-            const response = await emissaoService.getAll({ page: '1', limit: '200' });
+            // Buscar múltiplas páginas até ter 200 etiquetas
+            let todasEtiquetas: any[] = [];
+            let pagina = 1;
+            const limitePorPagina = 20;
+            const totalDesejado = 200;
 
-            if (!response?.data || response.data.length === 0) {
+            while (todasEtiquetas.length < totalDesejado) {
+                const response = await emissaoService.getAll({ 
+                    page: String(pagina), 
+                    limit: String(limitePorPagina) 
+                });
+
+                if (!response?.data || response.data.length === 0) {
+                    break; // Não há mais dados
+                }
+
+                todasEtiquetas = [...todasEtiquetas, ...response.data];
+                
+                if (response.data.length < limitePorPagina) {
+                    break; // Última página
+                }
+
+                pagina++;
+            }
+
+            // Limitar a 200 etiquetas
+            todasEtiquetas = todasEtiquetas.slice(0, totalDesejado);
+
+            if (todasEtiquetas.length === 0) {
                 toast.error('Nenhuma etiqueta encontrada');
                 return;
             }
 
-            const idsEtiquetas = response.data.map((etiqueta: any) => etiqueta.id).filter(Boolean);
+            toast.info(`${todasEtiquetas.length} etiquetas encontradas. Iniciando geração de PDF...`);
+
+            const idsEtiquetas = todasEtiquetas.map((etiqueta: any) => etiqueta.id).filter(Boolean);
 
             if (idsEtiquetas.length === 0) {
                 toast.error('Nenhum ID de etiqueta válido encontrado');
