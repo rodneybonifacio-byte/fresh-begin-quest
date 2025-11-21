@@ -149,7 +149,7 @@ const ImportacaoEtiquetas = () => {
                 cpfCnpj: cpfCnpjCliente,
                 remetente: {
                     nome: 'ÓPERA KIDS VAREJO',
-                    cpfCnpj: '12345678000195', // CNPJ do remetente fixo
+                    cpfCnpj: '15808095000303',
                     logradouro: 'RUA MARIA MARCOLINA',
                     numero: '748',
                     cep: '03011000',
