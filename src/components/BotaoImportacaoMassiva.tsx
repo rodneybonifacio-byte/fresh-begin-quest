@@ -26,6 +26,7 @@ const gerarCPFValido = (): string => {
 
 export const BotaoImportacaoMassiva = () => {
     const [importando, setImportando] = useState(false);
+    const [gerandoPDF, setGerandoPDF] = useState(false);
 
     const processar = async () => {
         setImportando(true);
@@ -170,17 +171,76 @@ export const BotaoImportacaoMassiva = () => {
         }
     };
 
+    const gerarPDFEtiquetasExistentes = async () => {
+        setGerandoPDF(true);
+        const emissaoService = new EmissaoService();
+
+        try {
+            toast.info('Buscando últimas 200 etiquetas...');
+
+            // Buscar via getAll com paginação
+            const response = await emissaoService.getAll({ page: '1', limit: '200' });
+
+            if (!response?.data || response.data.length === 0) {
+                toast.error('Nenhuma etiqueta encontrada');
+                return;
+            }
+
+            const idsEtiquetas = response.data.map((etiqueta: any) => etiqueta.id).filter(Boolean);
+
+            if (idsEtiquetas.length === 0) {
+                toast.error('Nenhum ID de etiqueta válido encontrado');
+                return;
+            }
+
+            toast.info(`Gerando PDF com ${idsEtiquetas.length} etiquetas...`);
+
+            const payloadPDF = {
+                ids: idsEtiquetas,
+                tipo: 'completa'
+            };
+
+            const responsePDF = await emissaoService.imprimirEmMassa(payloadPDF);
+
+            if (responsePDF?.dados) {
+                openPDFInNewTab(responsePDF.dados, responsePDF.nome || `etiquetas_existentes_${idsEtiquetas.length}.pdf`);
+                toast.success(`📄 PDF com ${idsEtiquetas.length} etiquetas gerado!`);
+            } else {
+                toast.error('Erro ao gerar PDF: resposta inválida');
+            }
+        } catch (error: any) {
+            toast.error(`Erro: ${error.message}`);
+            console.error('Erro ao gerar PDF:', error);
+        } finally {
+            setGerandoPDF(false);
+        }
+    };
+
     return (
         <>
             {importando && <LoadSpinner mensagem="Importando todos os registros..." />}
-            <button
-                onClick={processar}
-                disabled={importando}
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
-            >
-                <Zap className="w-5 h-5" />
-                <span className="font-semibold">Importação Rápida</span>
-            </button>
+            {gerandoPDF && <LoadSpinner mensagem="Gerando PDF das etiquetas..." />}
+            <div className="flex gap-3">
+                <button
+                    onClick={processar}
+                    disabled={importando || gerandoPDF}
+                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
+                >
+                    <Zap className="w-5 h-5" />
+                    <span className="font-semibold">Importação Rápida</span>
+                </button>
+                
+                <button
+                    onClick={gerarPDFEtiquetasExistentes}
+                    disabled={importando || gerandoPDF}
+                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                    <span className="font-semibold">Gerar PDF das Existentes</span>
+                </button>
+            </div>
         </>
     );
 };
