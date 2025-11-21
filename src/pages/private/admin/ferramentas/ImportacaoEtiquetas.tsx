@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, Trash2, Download } from 'lucide-react';
+import { Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, Trash2, Download, Printer } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
 import { EmissaoService } from '../../../../services/EmissaoService';
+import { openPDFInNewTab } from '../../../../utils/pdfUtils';
 
 interface EtiquetaImport {
     servico_frete: string;
@@ -34,6 +35,7 @@ const ImportacaoEtiquetas = () => {
     const [cpfCnpjCliente, setCpfCnpjCliente] = useState('');
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [importando, setImportando] = useState(false);
+    const [imprimindo, setImprimindo] = useState(false);
     const [etiquetasCriadas, setEtiquetasCriadas] = useState<string[]>([]);
 
     const adicionarLog = (tipo: 'sucesso' | 'erro' | 'info', mensagem: string) => {
@@ -140,6 +142,40 @@ const ImportacaoEtiquetas = () => {
             console.error('Erro completo:', error);
         } finally {
             setImportando(false);
+        }
+    };
+
+    const imprimirEtiquetas = async () => {
+        if (etiquetasCriadas.length === 0) {
+            toast.error('Nenhuma etiqueta para imprimir');
+            return;
+        }
+
+        setImprimindo(true);
+        adicionarLog('info', `Gerando PDF com ${etiquetasCriadas.length} etiquetas...`);
+
+        try {
+            const service = new EmissaoService();
+            const payload = {
+                ids: etiquetasCriadas,
+                tipo: 'completa' // ou 'etiqueta' se quiser apenas as etiquetas
+            };
+
+            const response = await service.imprimirEmMassa(payload);
+            
+            if (response?.dados) {
+                openPDFInNewTab(response.dados, response.nome || 'etiquetas_lote.pdf');
+                adicionarLog('sucesso', 'PDF gerado com sucesso!');
+                toast.success('Abrindo PDF para impressão');
+            } else {
+                throw new Error('Resposta inválida da API');
+            }
+        } catch (error: any) {
+            adicionarLog('erro', 'Erro ao gerar PDF: ' + (error.message || 'Erro desconhecido'));
+            toast.error('Erro ao gerar PDF das etiquetas');
+            console.error('Erro completo:', error);
+        } finally {
+            setImprimindo(false);
         }
     };
 
@@ -283,23 +319,33 @@ const ImportacaoEtiquetas = () => {
 
                     {/* Botões de Ação */}
                     {dados.length > 0 && (
-                        <div className="flex gap-4">
+                        <div className="flex gap-4 flex-wrap">
                             <button
                                 onClick={importarTodas}
                                 disabled={importando || !cpfCnpjCliente}
-                                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex-1 min-w-[200px] flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <CheckCircle className="w-5 h-5" />
                                 {importando ? 'Importando...' : 'Importar Todas'}
                             </button>
                             {etiquetasCriadas.length > 0 && (
-                                <button
-                                    onClick={removerTodas}
-                                    className="flex items-center justify-center gap-2 px-6 py-3 bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 transition-colors"
-                                >
-                                    <Trash2 className="w-5 h-5" />
-                                    Remover Todas
-                                </button>
+                                <>
+                                    <button
+                                        onClick={imprimirEtiquetas}
+                                        disabled={imprimindo}
+                                        className="flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <Printer className="w-5 h-5" />
+                                        {imprimindo ? 'Gerando PDF...' : 'Imprimir Etiquetas'}
+                                    </button>
+                                    <button
+                                        onClick={removerTodas}
+                                        className="flex items-center justify-center gap-2 px-6 py-3 bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 transition-colors"
+                                    >
+                                        <Trash2 className="w-5 h-5" />
+                                        Remover Todas
+                                    </button>
+                                </>
                             )}
                             <button
                                 onClick={limparTudo}
