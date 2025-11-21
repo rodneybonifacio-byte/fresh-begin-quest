@@ -136,10 +136,12 @@ const ImportacaoEtiquetas = () => {
         adicionarLog('info', `Iniciando importação de ${dados.length} etiquetas...`);
 
         try {
-            // Validar CPF/CNPJ dos destinatários
+            // Validar CPF/CNPJ dos destinatários e filtrar apenas os válidos
             adicionarLog('info', 'Validando CPF/CNPJ dos destinatários...');
             
+            const dadosValidos: any[] = [];
             const errosValidacao: string[] = [];
+            
             dados.forEach((item: any, index: number) => {
                 const docOriginal = String(item.cpfCnpj || '').trim();
                 const docLimpo = docOriginal.replace(/\D/g, '');
@@ -160,23 +162,31 @@ const ImportacaoEtiquetas = () => {
                 if (!isValid) {
                     const tipo = docLimpo.length === 11 ? 'CPF' : 'CNPJ';
                     errosValidacao.push(
-                        `Linha ${index + 1}: ${tipo} "${docOriginal}" é inválido - Destinatário: ${item.nomeDestinatario}`
+                        `Linha ${index + 1}: ${tipo} "${docOriginal}" é inválido - Destinatário: ${item.nomeDestinatario} (IGNORADO)`
                     );
+                } else {
+                    dadosValidos.push(item);
                 }
             });
             
+            // Registra os erros mas continua com os válidos
             if (errosValidacao.length > 0) {
                 errosValidacao.forEach(erro => adicionarLog('erro', erro));
-                toast.error(`${errosValidacao.length} CPF/CNPJ inválido(s) encontrado(s). Verifique os logs abaixo.`);
+                toast.warning(`${errosValidacao.length} registro(s) com CPF/CNPJ inválido foram ignorados. Continuando com ${dadosValidos.length} válidos.`);
+            }
+            
+            if (dadosValidos.length === 0) {
+                adicionarLog('erro', 'Nenhum registro válido encontrado para importar.');
+                toast.error('Nenhum registro válido encontrado. Verifique os CPF/CNPJ.');
                 setImportando(false);
                 return;
             }
             
-            adicionarLog('sucesso', 'Todos os CPF/CNPJ validados com sucesso!');
+            adicionarLog('sucesso', `${dadosValidos.length} registros válidos serão importados.`);
             adicionarLog('info', 'Preparando dados para envio...');
 
             // Normalizar tipos de dados conforme contrato da API
-            const dadosNormalizados = dados.map((item: any) => ({
+            const dadosNormalizados = dadosValidos.map((item: any) => ({
                 servico_frete: item.servico_frete || 'PAC',
                 cep: String(item.cep || '').replace(/\D/g, ''),
                 altura: Number(item.altura) || 0,
