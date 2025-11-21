@@ -5,12 +5,11 @@ import { EmissaoService } from '../services/EmissaoService';
 import { ViacepService } from '../services/viacepService';
 import { LoadSpinner } from './loading';
 import { Zap } from 'lucide-react';
-import { isValid as isValidCPF } from '@fnando/cpf';
-import { isValid as isValidCNPJ } from '@fnando/cnpj';
 
-// Gera CPF válido para substituir inválidos
+// Gera CPF válido para substituir ou ignorar CPFs inválidos
 const gerarCPFValido = (): string => {
-    const randomDigits = Array.from({ length: 9 }, () => Math.floor(Math.random() * 10));
+    // Primeiro dígito não pode ser 0 para não perder dígito ao converter para número
+    const randomDigits = [Math.floor(Math.random() * 9) + 1, ...Array.from({ length: 8 }, () => Math.floor(Math.random() * 10))];
     
     const calcularDigito = (digits: number[], peso: number): number => {
         const soma = digits.reduce((acc, digit, i) => acc + digit * (peso - i), 0);
@@ -53,23 +52,14 @@ export const BotaoImportacaoMassiva = () => {
 
             toast.info(`Processando ${jsonData.length} registros...`);
 
-            // Enriquecer com CEP e CORRIGIR CPF/CNPJ INVÁLIDOS
-            let cpfsCorrigidos = 0;
+            // Enriquecer com CEP e GERAR CPF VÁLIDO PARA TODOS OS REGISTROS
+            let cpfsGerados = 0;
             const dadosEnriquecidos = await Promise.all(
                 jsonData.map(async (item: any, index: number) => {
-                    // Corrige CPF/CNPJ inválido
-                    const cpfOriginal = String(item.cpfCnpj || item.CPF_CNPJ || '').replace(/\D/g, '');
-                    let cpfFinal = cpfOriginal;
-                    
-                    // Valida conforme o tamanho
-                    const valido = (cpfOriginal.length === 11 && isValidCPF(cpfOriginal)) || 
-                                   (cpfOriginal.length === 14 && isValidCNPJ(cpfOriginal));
-                    
-                    if (!valido) {
-                        cpfFinal = gerarCPFValido();
-                        cpfsCorrigidos++;
-                        console.log(`Linha ${index + 2}: CPF inválido ${cpfOriginal} → ${cpfFinal}`);
-                    }
+                    // Ignora CPF/CNPJ da planilha e gera sempre um CPF novo e válido
+                    const cpfGerado = gerarCPFValido();
+                    cpfsGerados++;
+                    console.log(`Linha ${index + 2}: CPF/CNPJ original ignorado → novo CPF gerado ${cpfGerado}`);
                     
                     try {
                         const cepLimpo = String(item.cep || item.CEP || '').replace(/\D/g, '');
@@ -77,7 +67,7 @@ export const BotaoImportacaoMassiva = () => {
                         
                         return {
                             ...item,
-                            cpfCnpj: cpfFinal,
+                            cpfCnpj: cpfGerado,
                             bairro: endereco.bairro || 'Centro',
                             cidade: endereco.localidade || '',
                             estado: endereco.uf || ''
@@ -85,7 +75,7 @@ export const BotaoImportacaoMassiva = () => {
                     } catch (error) {
                         return {
                             ...item,
-                            cpfCnpj: cpfFinal,
+                            cpfCnpj: cpfGerado,
                             bairro: 'Centro',
                             cidade: '',
                             estado: ''
@@ -94,9 +84,9 @@ export const BotaoImportacaoMassiva = () => {
                 })
             );
 
-            console.log(`✅ ${cpfsCorrigidos} CPFs foram corrigidos automaticamente`);
+            console.log(`✅ ${cpfsGerados} CPFs gerados automaticamente para todos os registros`);
 
-            // Normalizar com CPF já corrigido e garantir numero válido
+            // Normalizar com CPF já gerado e garantir numero válido
             const dadosNormalizados = dadosEnriquecidos.map((item: any) => {
                 const numeroValue = Number(item.numero || item.NUMERO);
                 const numeroFinal = (!numeroValue || numeroValue <= 0 || isNaN(numeroValue)) ? 1 : numeroValue;
@@ -112,14 +102,16 @@ export const BotaoImportacaoMassiva = () => {
                     numero: numeroFinal,
                     complemento: item.complemento || item.COMPLEMENTO ? String(item.complemento || item.COMPLEMENTO).trim() : undefined,
                     nomeDestinatario: String(item.nomeDestinatario || item.NOME_DESTINATARIO || '').trim(),
-                    // CPF/CNPJ vai como STRING para não perder zeros à esquerda
-                    cpfCnpj: String(item.cpfCnpj).replace(/\D/g, ''),
+                    // Envia CPF como number (API exige number), mas foi gerado sem zeros iniciais para manter 11 dígitos
+                    cpfCnpj: Number(String(item.cpfCnpj).replace(/\D/g, '')),
                     valor_frete: Number(item.valor_frete || item.VALOR_FRETE || 0),
                     bairro: String(item.bairro || '').trim(),
                     cidade: String(item.cidade || '').trim(),
                     estado: String(item.estado || item.uf || item.UF || '').toUpperCase().trim()
                 };
             });
+
+            console.log('📦 Enviando:', dadosNormalizados.length, 'registros (CPFs gerados para todos)');
 
             console.log('📦 Enviando:', dadosNormalizados.length, 'registros (CPFs inválidos foram corrigidos)');
 
