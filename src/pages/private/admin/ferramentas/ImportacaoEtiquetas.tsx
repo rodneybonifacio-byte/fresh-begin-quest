@@ -7,6 +7,7 @@ import { openPDFInNewTab } from '../../../../utils/pdfUtils';
 import { ViacepService } from '../../../../services/viacepService';
 import { isValid as isValidCPF } from '@fnando/cpf';
 import { isValid as isValidCNPJ } from '@fnando/cnpj';
+import { BotaoImportacaoMassiva } from '../../../../components/BotaoImportacaoMassiva';
 
 interface EtiquetaImport {
     servico_frete: string;
@@ -550,6 +551,24 @@ const ImportacaoEtiquetas = () => {
                                     </p>
                                 </div>
                             </label>
+                        </div>
+                        
+                        {/* Separador */}
+                        <div className="relative my-6">
+                            <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t border-border"></div>
+                            </div>
+                            <div className="relative flex justify-center text-sm">
+                                <span className="px-2 bg-card text-muted-foreground">ou</span>
+                            </div>
+                        </div>
+                        
+                        {/* Importação Rápida */}
+                        <div className="flex flex-col items-center gap-3">
+                            <p className="text-sm text-muted-foreground text-center">
+                                Use a planilha pré-configurada do servidor
+                            </p>
+                            <BotaoImportacaoMassiva />
                         </div>
                     </div>
 
