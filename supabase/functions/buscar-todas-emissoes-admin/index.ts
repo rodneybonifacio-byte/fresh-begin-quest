@@ -120,10 +120,17 @@ Deno.serve(async (req) => {
     }
 
     const emissoesData = await emissoesResponse.json();
-    console.log(`✅ ${emissoesData.data?.length || 0} emissões encontradas`);
+    
+    // Garantir que sempre retornamos um objeto válido
+    const responseData = emissoesData || { data: [] };
+    if (!responseData.data) {
+      responseData.data = [];
+    }
+    
+    console.log(`✅ ${responseData.data.length} emissões encontradas`);
 
     return new Response(
-      JSON.stringify(emissoesData),
+      JSON.stringify(responseData),
       {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
