@@ -95,7 +95,7 @@ const AdminSidebar = observer(({
         {
             icon: Settings,
             label: 'Ferramentas',
-            active: ['/admin/ferramentas/cancelar-emissao', '/admin/ferramentas/criar-manifesto', '/admin/ferramentas/realizar-fechamento', '/admin/ferramentas/importacao-etiquetas'].some(path => isPathActive(path)),
+            active: ['/admin/ferramentas/cancelar-emissao', '/admin/ferramentas/criar-manifesto', '/admin/ferramentas/realizar-fechamento', '/admin/ferramentas/importacao-etiquetas', '/admin/ferramentas/gerenciar-etiquetas'].some(path => isPathActive(path)),
             submenu: [
                 {
                     icon: FilePen,
@@ -120,6 +120,12 @@ const AdminSidebar = observer(({
                     label: 'Importação de Etiquetas',
                     to: '/admin/ferramentas/importacao-etiquetas',
                     active: isPathActive('/admin/ferramentas/importacao-etiquetas')
+                },
+                {
+                    icon: Settings,
+                    label: 'Gerenciar Etiquetas',
+                    to: '/admin/ferramentas/gerenciar-etiquetas',
+                    active: isPathActive('/admin/ferramentas/gerenciar-etiquetas')
                 },
                 {
                     icon: Calculator,
