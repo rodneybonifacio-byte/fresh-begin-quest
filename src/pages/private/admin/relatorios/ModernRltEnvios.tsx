@@ -1,13 +1,11 @@
 import { DollarSign, Filter, Download, PackageCheck, ShoppingCart, Users, TrendingUp, Package, Truck, CheckCircle2, Clock, XCircle, AlertCircle } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { LoadSpinner } from '../../../../components/loading';
 import { PaginacaoCustom } from '../../../../components/PaginacaoCustom';
 import { useFetchQuery } from '../../../../hooks/useFetchQuery';
 import { useGlobalConfig } from '../../../../providers/GlobalConfigContext';
-import { EmissaoService } from '../../../../services/EmissaoService';
 import { AdminEmissaoService } from '../../../../services/AdminEmissaoService';
-import type { IDashboard } from '../../../../types/IDashboard';
 import type { IEmissao } from '../../../../types/IEmissao';
 import type { IResponse } from '../../../../types/IResponse';
 import { FiltroEmissao } from '../../emissao/FiltroEmissao';
@@ -32,7 +30,6 @@ const ModernRltEnvios = () => {
     const [page, setPage] = useState<number>(1);
     const [tab, setTab] = useState<string>('PRE_POSTADO');
 
-    const service = new EmissaoService();
     const adminService = new AdminEmissaoService();
     const [isModalViewErroPostagem, setIsModalViewErroPostagem] = useState(false);
     const [erroPostagem, setErroPostagem] = useState<string | undefined>('');
@@ -44,11 +41,6 @@ const ModernRltEnvios = () => {
 
     const [searchParams] = useSearchParams();
     const filtros = Object.fromEntries(searchParams.entries());
-
-    const { data: dashboard } = useFetchQuery<IDashboard>(['dashboard-totais', 'admin', filtros], async () => {
-        const response = await service.dashboard(filtros, 'dashboard/admin');
-        return response ?? {};
-    });
 
     // Buscar dados agregados para gráficos (todos os dados, sem paginação)
     const { data: dadosAgregados } = useFetchQuery<IResponse<IEmissao[]>>(['emissoes-agregadas', filtros, tab], async () => {
@@ -239,6 +231,33 @@ const ModernRltEnvios = () => {
     };
 
     const dadosGraficos = processarDadosGraficos();
+
+    // Calcular KPIs diretamente dos dados agregados
+    const kpis = useMemo(() => {
+        if (!dadosAgregados?.data) {
+            return {
+                totalEnvios: 0,
+                totalVendas: 0,
+                totalCusto: 0,
+                totalLucro: 0,
+                totalClientes: 0,
+            };
+        }
+
+        const dados = dadosAgregados.data;
+        
+        const totalVendas = dados.reduce((acc, e) => acc + (Number(e.cotacao?.preco) || 0), 0);
+        const totalCusto = dados.reduce((acc, e) => acc + (Number(e.valorPostagem) || 0), 0);
+        const clientesUnicos = new Set(dados.map(e => e.cliente?.id).filter(Boolean));
+
+        return {
+            totalEnvios: dados.length,
+            totalVendas,
+            totalCusto,
+            totalLucro: totalVendas - totalCusto,
+            totalClientes: clientesUnicos.size,
+        };
+    }, [dadosAgregados]);
 
     // Gráfico de barras - Envios por mês
     const barChartOptions: ApexOptions = {
@@ -504,7 +523,7 @@ const ModernRltEnvios = () => {
                         </div>
                         <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Total de Envios</h3>
                         <p className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
-                            {dashboard?.totalEnvios?.toLocaleString('pt-BR') || '0'}
+                            {kpis.totalEnvios.toLocaleString('pt-BR')}
                         </p>
                         <div className="h-12 mt-4">
                             <ReactApexChart
@@ -534,7 +553,7 @@ const ModernRltEnvios = () => {
                         </div>
                         <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Vendas Aproximadas</h3>
                         <p className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
-                            {formatMoedaDecimal(dashboard?.totalVendas || 0)}
+                            {formatMoedaDecimal(kpis.totalVendas)}
                         </p>
                         <div className="h-12 mt-4">
                             <ReactApexChart
@@ -561,7 +580,7 @@ const ModernRltEnvios = () => {
                         </div>
                         <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Custo Aproximado</h3>
                         <p className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
-                            {formatMoedaDecimal(dashboard?.totalCusto || 0)}
+                            {formatMoedaDecimal(kpis.totalCusto)}
                         </p>
                         <div className="h-12 mt-4">
                             <ReactApexChart
@@ -591,7 +610,7 @@ const ModernRltEnvios = () => {
                         </div>
                         <h3 className="text-sm font-medium text-emerald-50 mb-1">Lucro Aproximado</h3>
                         <p className="text-3xl font-bold text-white mb-2">
-                            {formatMoedaDecimal((dashboard?.totalVendas || 0) - (dashboard?.totalCusto || 0))}
+                            {formatMoedaDecimal(kpis.totalLucro)}
                         </p>
                         <div className="h-12 mt-4">
                             <ReactApexChart
@@ -618,7 +637,7 @@ const ModernRltEnvios = () => {
                         </div>
                         <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Total de Clientes</h3>
                         <p className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
-                            {dashboard?.totalClientes?.toLocaleString('pt-BR') || '0'}
+                            {kpis.totalClientes.toLocaleString('pt-BR')}
                         </p>
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-4">Clientes ativos</p>
                     </div>
