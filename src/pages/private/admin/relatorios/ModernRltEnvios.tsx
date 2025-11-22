@@ -6,6 +6,7 @@ import { PaginacaoCustom } from '../../../../components/PaginacaoCustom';
 import { useFetchQuery } from '../../../../hooks/useFetchQuery';
 import { useGlobalConfig } from '../../../../providers/GlobalConfigContext';
 import { EmissaoService } from '../../../../services/EmissaoService';
+import { AdminEmissaoService } from '../../../../services/AdminEmissaoService';
 import type { IDashboard } from '../../../../types/IDashboard';
 import type { IEmissao } from '../../../../types/IEmissao';
 import type { IResponse } from '../../../../types/IResponse';
@@ -32,6 +33,7 @@ const ModernRltEnvios = () => {
     const [tab, setTab] = useState<string>('PRE_POSTADO');
 
     const service = new EmissaoService();
+    const adminService = new AdminEmissaoService();
     const [isModalViewErroPostagem, setIsModalViewErroPostagem] = useState(false);
     const [erroPostagem, setErroPostagem] = useState<string | undefined>('');
     const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -50,7 +52,7 @@ const ModernRltEnvios = () => {
 
     // Buscar dados agregados para gráficos (todos os dados, sem paginação)
     const { data: dadosAgregados } = useFetchQuery<IResponse<IEmissao[]>>(['emissoes-agregadas', filtros, tab], async () => {
-        const params: any = { status: tab };
+        const params: Record<string, string> = { status: tab };
         
         const dataIni = searchParams.get('dataIni') || undefined;
         const dataFim = searchParams.get('dataFim') || undefined;
@@ -65,22 +67,28 @@ const ModernRltEnvios = () => {
         if (remetenteId) params.remetenteId = remetenteId;
         if (transportadora) params.transportadora = transportadora;
 
-        // Buscar todos os dados para agregação
+        // Buscar todos os dados usando o serviço admin (todas as emissões)
         const allData: IEmissao[] = [];
-        const batchSize = 1000;
-        let offset = 0;
+        const limit = 100;
+        let pageAtual = 1;
         let hasMore = true;
 
         while (hasMore) {
-            const batchParams = { ...params, limit: batchSize, offset };
-            const batch = await service.getAll(batchParams);
-            if (batch?.data && batch.data.length > 0) {
-                allData.push(...batch.data);
-                offset += batchSize;
-                hasMore = batch.data.length === batchSize;
-            } else {
-                hasMore = false;
+            const pageParams: Record<string, string> = {
+                ...params,
+                page: String(pageAtual),
+                limit: String(limit),
+            };
+
+            const batch = await adminService.getAllEmissoes(pageParams);
+            const registros = batch?.data || [];
+
+            if (registros.length > 0) {
+                allData.push(...registros);
             }
+
+            hasMore = registros.length === limit;
+            pageAtual++;
         }
 
         return { data: allData } as IResponse<IEmissao[]>;
@@ -90,9 +98,9 @@ const ModernRltEnvios = () => {
         data: emissoes,
         isLoading,
     } = useFetchQuery<IResponse<IEmissao[]>>(['emissoes', filtros, 'admin', page, tab], async () => {
-        const params: any = {
-            limit: perPage,
-            offset: (page - 1) * perPage,
+        const params: Record<string, string> = {
+            page: String(page),
+            limit: String(perPage),
             status: tab,
         };
 
@@ -110,7 +118,7 @@ const ModernRltEnvios = () => {
         if (remetenteId) params.remetenteId = remetenteId;
         if (transportadora) params.transportadora = transportadora;
 
-        const response = await service.getAll(params);
+        const response = await adminService.getAllEmissoes(params);
         return response;
     });
 
@@ -132,23 +140,34 @@ const ModernRltEnvios = () => {
     const handleExportToExcel = async () => {
         try {
             setIsLoading(true);
-            const params: any = { status: tab };
-            if (filtros.dataIni) params.dataIni = filtros.dataIni;
-            if (filtros.dataFim) params.dataFim = filtros.dataFim;
-            if (filtros.clienteId) params.clienteId = filtros.clienteId;
-            if (filtros.remetenteId) params.remetenteId = filtros.remetenteId;
-            if (filtros.transportadora) params.transportadora = filtros.transportadora;
+            const paramsBase: Record<string, string> = { status: tab };
+            if (filtros.dataIni) paramsBase.dataIni = filtros.dataIni;
+            if (filtros.dataFim) paramsBase.dataFim = filtros.dataFim;
+            if (filtros.clienteId) paramsBase.clienteId = filtros.clienteId;
+            if (filtros.remetenteId) paramsBase.remetenteId = filtros.remetenteId;
+            if (filtros.transportadora) paramsBase.transportadora = filtros.transportadora;
 
-            const totalRecords = emissoes?.meta?.totalRecords || 0;
             const batchSize = 100;
             let allData: IEmissao[] = [];
+            let pageAtual = 1;
+            let hasMore = true;
 
-            for (let offset = 0; offset < totalRecords; offset += batchSize) {
-                const batchParams = { ...params, limit: batchSize, offset };
-                const batch = await service.getAll(batchParams);
-                if (batch?.data) {
-                    allData = [...allData, ...batch.data];
+            while (hasMore) {
+                const pageParams: Record<string, string> = {
+                    ...paramsBase,
+                    page: String(pageAtual),
+                    limit: String(batchSize),
+                };
+
+                const batch = await adminService.getAllEmissoes(pageParams);
+                const registros = batch?.data || [];
+
+                if (registros.length > 0) {
+                    allData = [...allData, ...registros];
                 }
+
+                hasMore = registros.length === batchSize;
+                pageAtual++;
             }
 
             const dateRange = filtros.dataIni && filtros.dataFim ? `_${filtros.dataIni}_a_${filtros.dataFim}` : '';
