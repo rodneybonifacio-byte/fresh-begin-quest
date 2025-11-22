@@ -24,38 +24,9 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log('🔐 Verificando autenticação do usuário...');
+    console.log('📥 Requisição recebida para buscar todas as emissões (admin)...');
 
-    // Verificar autenticação do Supabase
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
-    );
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabaseClient.auth.getUser();
-
-    if (authError || !user) {
-      console.error('❌ Erro de autenticação:', authError);
-      return new Response(
-        JSON.stringify({ error: 'Não autenticado' }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
-    console.log('✅ Usuário autenticado:', user.email);
-
-    // Pegar os parâmetros da requisição
+    // Pegar os parâmetros da requisição enviados pelo frontend
     const { params } = await req.json();
     console.log('📋 Parâmetros recebidos:', params);
 
