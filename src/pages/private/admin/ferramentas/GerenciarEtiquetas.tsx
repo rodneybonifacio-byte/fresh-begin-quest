@@ -2,18 +2,22 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Trash2, RefreshCw, CheckSquare, Square, Search } from 'lucide-react';
 import { EmissaoService } from '../../../../services/EmissaoService';
+import { RemetenteService } from '../../../../services/RemetenteService';
 import { LoadSpinner } from '../../../../components/loading';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { IEmissao } from '../../../../types/IEmissao';
+import { IRemetente } from '../../../../types/IRemetente';
 
 export const GerenciarEtiquetas = () => {
     const [etiquetas, setEtiquetas] = useState<IEmissao[]>([]);
     const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
+    const [remetentes, setRemetentes] = useState<IRemetente[]>([]);
     const [carregando, setCarregando] = useState(false);
     const [excluindo, setExcluindo] = useState(false);
     const [filtroStatus, setFiltroStatus] = useState<string>('');
     const [filtroTransportadora, setFiltroTransportadora] = useState<string>('');
+    const [filtroRemetente, setFiltroRemetente] = useState<string>('');
     const [filtroBusca, setFiltroBusca] = useState<string>('');
     const [dataInicio, setDataInicio] = useState<string>('');
     const [dataFim, setDataFim] = useState<string>('');
@@ -21,6 +25,22 @@ export const GerenciarEtiquetas = () => {
     const [totalPaginas, setTotalPaginas] = useState(1);
 
     const emissaoService = new EmissaoService();
+    const remetenteService = new RemetenteService();
+
+    useEffect(() => {
+        buscarRemetentes();
+    }, []);
+
+    const buscarRemetentes = async () => {
+        try {
+            const response = await remetenteService.getAll();
+            if (response?.data) {
+                setRemetentes(response.data);
+            }
+        } catch (error) {
+            console.error('Erro ao buscar remetentes:', error);
+        }
+    };
 
     const buscarEtiquetas = async () => {
         setCarregando(true);
@@ -32,6 +52,7 @@ export const GerenciarEtiquetas = () => {
 
             if (filtroStatus) params.status = filtroStatus;
             if (filtroTransportadora) params.transportadora = filtroTransportadora;
+            if (filtroRemetente) params.remetenteId = filtroRemetente;
             if (dataInicio) params.dataIni = dataInicio;
             if (dataFim) params.dataFim = dataFim;
 
@@ -66,7 +87,7 @@ export const GerenciarEtiquetas = () => {
 
     useEffect(() => {
         buscarEtiquetas();
-    }, [pagina, filtroStatus, filtroTransportadora, dataInicio, dataFim]);
+    }, [pagina, filtroStatus, filtroTransportadora, filtroRemetente, dataInicio, dataFim]);
 
     const toggleSelecionada = (id: string) => {
         const novoSet = new Set(selecionadas);
@@ -169,7 +190,7 @@ export const GerenciarEtiquetas = () => {
                 <div className="bg-card border border-border rounded-lg p-6 shadow-md">
                     <h2 className="text-lg font-semibold mb-4 text-foreground">Filtros</h2>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-muted-foreground mb-2">Buscar</label>
                             <div className="relative">
@@ -182,6 +203,22 @@ export const GerenciarEtiquetas = () => {
                                     className="w-full pl-10 pr-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-orange-500 bg-background text-foreground"
                                 />
                             </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-muted-foreground mb-2">Remetente</label>
+                            <select
+                                value={filtroRemetente}
+                                onChange={(e) => setFiltroRemetente(e.target.value)}
+                                className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-orange-500 bg-background text-foreground"
+                            >
+                                <option value="">Todos</option>
+                                {remetentes.map((rem) => (
+                                    <option key={rem.id} value={rem.id}>
+                                        {rem.nome}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
 
                         <div>
@@ -248,6 +285,7 @@ export const GerenciarEtiquetas = () => {
                                 setFiltroBusca('');
                                 setFiltroStatus('');
                                 setFiltroTransportadora('');
+                                setFiltroRemetente('');
                                 setDataInicio('');
                                 setDataFim('');
                                 setPagina(1);
@@ -318,6 +356,8 @@ export const GerenciarEtiquetas = () => {
                                                 />
                                             </th>
                                             <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Código</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Cliente</th>
+                                            <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Remetente</th>
                                             <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Transportadora</th>
                                             <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Destinatário</th>
                                             <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Cidade/UF</th>
@@ -352,13 +392,23 @@ export const GerenciarEtiquetas = () => {
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3">
+                                                    <span className="text-sm text-foreground">
+                                                        {etiqueta.cliente?.nome || '-'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span className="text-sm text-foreground">
+                                                        {etiqueta.remetenteNome || etiqueta.remetente?.nome || '-'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3">
                                                     <span className="text-sm text-foreground font-medium">
                                                         {etiqueta.transportadora || '-'}
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <span className="text-sm text-foreground">
-                                                        {etiqueta.destinatario?.nome || etiqueta.remetenteNome || '-'}
+                                                        {etiqueta.destinatario?.nome || '-'}
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3">
