@@ -102,6 +102,10 @@ export const adminRoutesConfig: ProtectedRouteItem[] = [
         component: () => import('../pages/private/admin/ferramentas/ImportacaoEtiquetas'),
     },
     {
+        path: 'ferramentas/gerenciar-etiquetas',
+        component: () => import('../pages/private/admin/ferramentas/GerenciarEtiquetas'),
+    },
+    {
         path: 'transportadoras',
         component: () => import('../pages/private/admin/transportadoras/index'),
     },
