@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Trash2, RefreshCw, CheckSquare, Square, Search } from 'lucide-react';
-import { EmissaoService } from '../../../../services/EmissaoService';
+import { AdminEmissaoService } from '../../../../services/AdminEmissaoService';
 import { RemetenteService } from '../../../../services/RemetenteService';
 import { LoadSpinner } from '../../../../components/loading';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { IEmissao } from '../../../../types/IEmissao';
 import { IRemetente } from '../../../../types/IRemetente';
+import { EmissaoService } from '../../../../services/EmissaoService';
 
 export const GerenciarEtiquetas = () => {
     const [etiquetas, setEtiquetas] = useState<IEmissao[]>([]);
@@ -24,7 +25,8 @@ export const GerenciarEtiquetas = () => {
     const [pagina, setPagina] = useState(1);
     const [totalPaginas, setTotalPaginas] = useState(1);
 
-    const emissaoService = new EmissaoService();
+    const adminEmissaoService = new AdminEmissaoService();
+    const emissaoService = new EmissaoService(); // Para exclusão
     const remetenteService = new RemetenteService();
 
     useEffect(() => {
@@ -45,10 +47,9 @@ export const GerenciarEtiquetas = () => {
     const buscarEtiquetas = async () => {
         setCarregando(true);
         try {
-            const params: any = {
+            const params: Record<string, string> = {
                 page: String(pagina),
-                limit: '50',
-                allClients: 'true' // Admin pode ver etiquetas de todos os clientes
+                limit: '50'
             };
 
             if (filtroStatus) params.status = filtroStatus;
@@ -57,7 +58,10 @@ export const GerenciarEtiquetas = () => {
             if (dataInicio) params.dataIni = dataInicio;
             if (dataFim) params.dataFim = dataFim;
 
-            const response = await emissaoService.getAll(params);
+            console.log('🔍 Buscando etiquetas com filtros:', params);
+
+            // Usar o serviço admin que busca todas as emissões
+            const response = await adminEmissaoService.getAllEmissoes(params);
             
             if (response?.data) {
                 let dados = response.data;
