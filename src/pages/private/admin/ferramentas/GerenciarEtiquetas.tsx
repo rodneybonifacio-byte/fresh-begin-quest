@@ -47,7 +47,8 @@ export const GerenciarEtiquetas = () => {
         try {
             const params: any = {
                 page: String(pagina),
-                limit: '50'
+                limit: '50',
+                allClients: 'true' // Admin pode ver etiquetas de todos os clientes
             };
 
             if (filtroStatus) params.status = filtroStatus;
