@@ -472,11 +472,12 @@ export const BotaoImportacaoMassiva = () => {
             {excluindo && <LoadSpinner mensagem="Excluindo etiquetas..." />}
             
             <div className="space-y-4">
-                <div className="flex gap-3">
+                {/* Linha Principal de Ações */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <button
                         onClick={processar}
-                        disabled={importando || gerandoPDF}
-                        className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
+                        disabled={importando || gerandoPDF || excluindo}
+                        className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
                     >
                         <Zap className="w-5 h-5" />
                         <span className="font-semibold">Importação Rápida</span>
@@ -490,13 +491,24 @@ export const BotaoImportacaoMassiva = () => {
                                 gerarPDFEtiquetasExistentes();
                             }
                         }}
-                        disabled={importando || gerandoPDF}
-                        className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
+                        disabled={importando || gerandoPDF || excluindo}
+                        className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                         </svg>
-                        <span className="font-semibold">Baixar PDF das Existentes</span>
+                        <span className="font-semibold">Baixar PDF Existentes</span>
+                    </button>
+
+                    <button
+                        onClick={excluirDuplicadas}
+                        disabled={importando || gerandoPDF || excluindo}
+                        className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                        </svg>
+                        <span className="font-semibold">Excluir Duplicadas</span>
                     </button>
                 </div>
 
@@ -517,51 +529,38 @@ export const BotaoImportacaoMassiva = () => {
                         
                         <div className="space-y-2">
                             {idsFalha.length > 0 && (
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => setMostrarRelatorio(!mostrarRelatorio)}
-                                        className="flex-1 px-4 py-2 bg-amber-500 text-white rounded hover:bg-amber-600 transition-colors text-sm font-medium"
-                                    >
-                                        {mostrarRelatorio ? 'Ocultar Relatório' : 'Ver Relatório de Falhas'}
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            setPdfGeradoBase64(null);
-                                            gerarPDFEtiquetasExistentes(idsFalha);
-                                        }}
-                                        disabled={gerandoPDF || excluindo}
-                                        className="flex-1 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
-                                    >
-                                        Reprocessar Falhas
-                                    </button>
-                                </div>
-                            )}
-                            
-                            <div className="flex gap-2">
-                                {idsFalha.length > 0 && (
+                                <>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setMostrarRelatorio(!mostrarRelatorio)}
+                                            className="flex-1 px-4 py-2 bg-amber-500 text-white rounded hover:bg-amber-600 transition-colors text-sm font-medium"
+                                        >
+                                            {mostrarRelatorio ? 'Ocultar Relatório' : 'Ver Relatório de Falhas'}
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setPdfGeradoBase64(null);
+                                                gerarPDFEtiquetasExistentes(idsFalha);
+                                            }}
+                                            disabled={gerandoPDF || excluindo}
+                                            className="flex-1 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+                                        >
+                                            Reprocessar Falhas
+                                        </button>
+                                    </div>
+                                    
                                     <button
                                         onClick={() => excluirEtiquetas(idsFalha, 'falhas')}
                                         disabled={gerandoPDF || excluindo}
-                                        className="flex-1 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                                        className="w-full px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center justify-center gap-2"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                         </svg>
                                         Excluir Etiquetas que Falharam
                                     </button>
-                                )}
-                                
-                                <button
-                                    onClick={excluirDuplicadas}
-                                    disabled={gerandoPDF || excluindo}
-                                    className="flex-1 px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center justify-center gap-2"
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                                    </svg>
-                                    Excluir Duplicadas
-                                </button>
-                            </div>
+                                </>
+                            )}
                         </div>
                     </div>
                 )}
