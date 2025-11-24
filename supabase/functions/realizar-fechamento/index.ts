@@ -14,95 +14,75 @@ serve(async (req) => {
   try {
     const { dataInicio, dataFim } = await req.json();
 
-    console.log('Iniciando fechamento via MCP:', { dataInicio, dataFim });
-
     if (!dataInicio || !dataFim) {
-      throw new Error('Datas de início e fim são obrigatórias');
+      return new Response(
+        JSON.stringify({ 
+          status: 'error', 
+          mensagem: 'dataInicio e dataFim são obrigatórios' 
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
     }
 
-    // URL do MCP
-    let mcpUrl = Deno.env.get('MCP_URL') || 'https://connectores.srv762140.hstgr.cloud/mcp';
-    mcpUrl = mcpUrl.replace(/\/$/, ''); // Remove trailing slash
-    
-    const mcpAuthToken = Deno.env.get('MCP_AUTH_TOKEN');
-    
-    if (!mcpAuthToken) {
-      throw new Error('MCP_AUTH_TOKEN não configurado');
-    }
-    
-    console.log('Chamando MCP via JSON-RPC:', mcpUrl);
+    console.log('🚀 Iniciando faturamento:', { dataInicio, dataFim });
 
-    // Chamar a função do MCP usando JSON-RPC 2.0
-    const mcpResponse = await fetch(mcpUrl, {
-      method: 'POST',
+    // Buscar token do environment
+    const apiToken = Deno.env.get('FATURAMENTO_API_TOKEN');
+    
+    if (!apiToken) {
+      throw new Error('Token de API não configurado');
+    }
+
+    // Chamar API de faturamento
+    const apiUrl = `https://envios.brhubb.com.br/api/faturas/scheduler/fazer-faturamento/envios?dataInicio=${dataInicio}&dataFim=${dataFim}`;
+    
+    console.log('📞 Chamando API:', apiUrl);
+
+    const response = await fetch(apiUrl, {
+      method: 'GET',
       headers: {
+        'x-internal-token': apiToken,
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${mcpAuthToken}`,
-        'Accept': 'text/event-stream, application/json',
       },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'tools/call',
-        params: {
-          name: 'fazer_faturamento_envios',
-          arguments: {
-            dataInicio,
-            dataFim,
-          }
-        },
-        id: Date.now(),
-      }),
     });
 
-    console.log('Status da resposta MCP:', mcpResponse.status);
-    console.log('Content-Type:', mcpResponse.headers.get('content-type'));
-
-    // Capturar a resposta como texto primeiro para debug
-    const responseText = await mcpResponse.text();
-    console.log('Resposta MCP (texto):', responseText.substring(0, 500));
-
-    // Verificar se não é 2xx
-    if (!mcpResponse.ok) {
-      throw new Error(`MCP retornou erro ${mcpResponse.status}: ${responseText.substring(0, 200)}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Erro na API:', response.status, errorText);
+      throw new Error(`Erro na API de faturamento: ${response.status} - ${errorText}`);
     }
 
-    // Tentar fazer parse do JSON
-    let resultado;
-    try {
-      resultado = JSON.parse(responseText);
-      console.log('Resposta MCP parseada:', resultado);
-    } catch (parseError) {
-      console.error('Erro ao fazer parse da resposta:', parseError);
-      throw new Error(`Resposta MCP não é JSON válido. Status: ${mcpResponse.status}, Conteúdo: ${responseText.substring(0, 200)}`);
-    }
-
-    // Verificar resposta JSON-RPC
-    if (resultado.error) {
-      console.error('Erro JSON-RPC:', resultado.error);
-      throw new Error(`Erro ao processar fechamento: ${resultado.error.message}`);
-    }
-
-    if (!resultado.result) {
-      throw new Error('Resposta MCP inválida: sem campo result');
-    }
-
-    console.log('Fechamento concluído via MCP:', resultado.result);
+    const data = await response.json();
+    
+    console.log('✅ Faturamento realizado com sucesso');
 
     return new Response(
-      JSON.stringify(resultado.result),
+      JSON.stringify({ 
+        status: 'success', 
+        mensagem: 'Faturamento realizado com sucesso',
+        data 
+      }),
       { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );
 
   } catch (error: any) {
-    console.error('Erro no fechamento:', error);
+    console.error('❌ Erro ao processar faturamento:', error);
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        status: 'error', 
+        mensagem: error.message || 'Erro ao processar faturamento',
+        erro_detalhado: error.toString()
+      }),
       { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );
   }
