@@ -53,6 +53,29 @@ export default function CriarEtiquetasEmMassa() {
     return cpfCnpj?.toString().replace(/[^\d]/g, "") || "";
   };
 
+  const validarCpf = (cpf: string): boolean => {
+    const cpfLimpo = cpf.replace(/[^\d]/g, "");
+    
+    if (cpfLimpo.length !== 11) return false;
+    if (/^(\d)\1{10}$/.test(cpfLimpo)) return false; // CPFs com todos dígitos iguais
+    
+    let sum = 0;
+    for (let i = 0; i < 9; i++) {
+      sum += parseInt(cpfLimpo.charAt(i)) * (10 - i);
+    }
+    let digit1 = 11 - (sum % 11);
+    if (digit1 >= 10) digit1 = 0;
+    
+    sum = 0;
+    for (let i = 0; i < 10; i++) {
+      sum += parseInt(cpfLimpo.charAt(i)) * (11 - i);
+    }
+    let digit2 = 11 - (sum % 11);
+    if (digit2 >= 10) digit2 = 0;
+    
+    return digit1 === parseInt(cpfLimpo.charAt(9)) && digit2 === parseInt(cpfLimpo.charAt(10));
+  };
+
   const gerarCpfValido = (): string => {
     const randomDigits = (n: number) => 
       Array.from({ length: n }, () => Math.floor(Math.random() * 10));
@@ -87,7 +110,7 @@ export default function CriarEtiquetasEmMassa() {
     }
   };
 
-  const enviarParaApi = async (cpfCnpjRemetente: string, envios: EnvioData[], tentativa = 1): Promise<any> => {
+  const enviarParaApi = async (cpfCnpjRemetente: string, envios: EnvioData[]): Promise<any> => {
     try {
       const response = await axios.post(
         "https://envios.brhubb.com.br/api/importacao/multipla",
@@ -104,16 +127,10 @@ export default function CriarEtiquetasEmMassa() {
       );
       return response.data;
     } catch (error: any) {
-      if (tentativa === 1 && error.response?.data?.message?.includes("CPF")) {
-        addLog(`Erro de CPF detectado. Gerando novos CPFs válidos...`, "warning");
-        
-        const enviosCorrigidos = envios.map(envio => ({
-          ...envio,
-          cpfCnpj: gerarCpfValido()
-        }));
-        
-        addLog(`CPFs gerados. Reenviando requisição...`, "info");
-        return enviarParaApi(cpfCnpjRemetente, enviosCorrigidos, 2);
+      const errorDetails = error.response?.data?.error;
+      if (errorDetails && Array.isArray(errorDetails)) {
+        const errorMessages = errorDetails.map((e: any) => e.message).join("; ");
+        addLog(`Erros da API: ${errorMessages}`, "error");
       }
       throw error;
     }
@@ -180,6 +197,21 @@ export default function CriarEtiquetasEmMassa() {
 
         addLog(`Linha ${linhaNum} – CEP consultado: ${dadosCep.bairro}, ${dadosCep.cidade}/${dadosCep.estado}`, "success");
 
+        // Processar e validar CPF
+        let cpfDestinatario = limparCpfCnpj(row.cpfCnpj);
+        if (!validarCpf(cpfDestinatario)) {
+          const cpfOriginal = cpfDestinatario;
+          cpfDestinatario = gerarCpfValido();
+          addLog(`Linha ${linhaNum} – CPF inválido (${cpfOriginal}). Gerando CPF válido: ${cpfDestinatario}`, "warning");
+        }
+
+        // Processar número (tratar null/undefined)
+        let numero = parseInt(row.numero);
+        if (isNaN(numero) || numero === null || numero === undefined) {
+          numero = 0;
+          addLog(`Linha ${linhaNum} – Número não informado, usando valor 0`, "warning");
+        }
+
         const envio: EnvioData = {
           servico_frete: row.servico_frete?.toString().toUpperCase() || "PAC",
           cep: limparCpfCnpj(row.cep),
@@ -188,10 +220,10 @@ export default function CriarEtiquetasEmMassa() {
           comprimento: parseInt(row.comprimento),
           peso: parseInt(row.peso),
           logradouro: row.logradouro?.toString().trim() || "",
-          numero: parseInt(row.numero),
+          numero: numero,
           complemento: row.complemento?.toString().trim() || "",
           nomeDestinatario: row.nomeDestinatario?.toString().trim() || "",
-          cpfCnpj: limparCpfCnpj(row.cpfCnpj),
+          cpfCnpj: cpfDestinatario,
           valor_frete: parseFloat(row.valor_frete),
           bairro: dadosCep.bairro,
           cidade: dadosCep.cidade,
@@ -209,6 +241,7 @@ export default function CriarEtiquetasEmMassa() {
       }
 
       addLog(`Enviando ${enviosProcessados.length} etiquetas para a API...`, "info");
+      addLog(`Payload: ${JSON.stringify({ cpfCnpj: cpfCnpjRemetenteClean, totalEnvios: enviosProcessados.length })}`, "info");
 
       const resultado = await enviarParaApi(cpfCnpjRemetenteClean, enviosProcessados);
       
