@@ -92,49 +92,27 @@ serve(async (req) => {
     console.log('🚀 Iniciando fechamento da fatura:', codigo_fatura);
     console.log('📋 Cliente:', nome_cliente);
 
-    // ✅ ETAPA 1: Buscar dados completos da fatura via MCP
+    // ✅ ETAPA 1: Buscar dados completos da fatura via API Backend
     console.log('📊 Etapa 1: Buscando dados completos da fatura...');
     
-    const mcpUrl = Deno.env.get('MCP_URL') || 'https://connectores.srv762140.hstgr.cloud/mcp';
-    const mcpAuthToken = Deno.env.get('MCP_AUTH_TOKEN');
+    const baseApiUrl = Deno.env.get('BASE_API_URL') || 'https://envios.brhubb.com.br/api';
+    const apiToken = authHeader.replace('Bearer ', '');
     
-    if (!mcpAuthToken) {
-      throw new Error('MCP_AUTH_TOKEN não configurado');
-    }
-
-    const mcpResponse = await fetch(mcpUrl, {
-      method: 'POST',
+    const faturaResponse = await fetch(`${baseApiUrl}/faturas/buscar-fatura-completa?codigoFatura=${codigo_fatura}`, {
+      method: 'GET',
       headers: {
+        'Authorization': `Bearer ${apiToken}`,
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${mcpAuthToken}`,
       },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'tools/call',
-        params: {
-          name: 'buscar_fatura_completa',
-          arguments: {
-            codigo_fatura,
-          }
-        },
-        id: Date.now(),
-      }),
     });
 
-    if (!mcpResponse.ok) {
-      const errorText = await mcpResponse.text();
-      throw new Error(`Erro ao buscar fatura: ${mcpResponse.status} - ${errorText}`);
+    if (!faturaResponse.ok) {
+      const errorText = await faturaResponse.text();
+      throw new Error(`Erro ao buscar fatura: ${faturaResponse.status} - ${errorText}`);
     }
 
-    const faturaData = await mcpResponse.json();
-    
-    if (faturaData.error) {
-      throw new Error(`Erro MCP: ${faturaData.error.message}`);
-    }
-
-    const fatura = faturaData.result?.content?.[0]?.text 
-      ? JSON.parse(faturaData.result.content[0].text)
-      : faturaData.result;
+    const faturaDataResponse = await faturaResponse.json();
+    const fatura = faturaDataResponse.data;
 
     console.log('✅ Fatura encontrada:', {
       codigo: fatura.codigo,
