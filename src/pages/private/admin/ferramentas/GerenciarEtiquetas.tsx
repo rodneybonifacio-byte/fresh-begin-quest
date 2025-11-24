@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { isValid as isValidCpf, strip as stripCpf, generate as generateCpf } from "@fnando/cpf";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Content, type ContentButtonProps } from "../../Content";
 import { EmissaoService } from "../../../../services/EmissaoService";
@@ -471,13 +472,23 @@ export default function GerenciarEtiquetas() {
     try {
       setGlobalLoading(true);
       
+      // Validar e corrigir CPF se necessário
+      const cpfLimpo = editableEmissao.destinatarioCpfCnpj?.replace(/\D/g, '') || '';
+      let cpfFinal = cpfLimpo;
+      
+      if (!isValidCpf(cpfLimpo)) {
+        cpfFinal = stripCpf(generateCpf());
+        console.warn(`CPF inválido (${cpfLimpo}). Gerando CPF válido: ${cpfFinal}`);
+        toast.warning(`CPF inválido substituído por CPF válido: ${cpfFinal}`);
+      }
+      
       // Preparar dados no formato EXATO do endpoint de criação em massa
       const dadosParaImportar = {
         cpfCnpj: "15808095000303", // CNPJ fixo ÓPERA KIDS VAREJO
         data: [
           {
             nomeDestinatario: editableEmissao.destinatarioNome?.trim(),
-            cpfCnpj: editableEmissao.destinatarioCpfCnpj?.replace(/\D/g, ''), // String, não Number!
+            cpfCnpj: cpfFinal, // CPF validado/corrigido
             telefone: editableEmissao.destinatarioCelular?.replace(/\D/g, ''),
             cep: editableEmissao.cep?.replace(/\D/g, ''),
             logradouro: editableEmissao.logradouro?.trim(),
