@@ -1109,7 +1109,7 @@ export default function GerenciarEtiquetas() {
       {showDebugModal && (
         <ModalCustom
           onCancel={() => setShowDebugModal(false)}
-          title="🔍 Debug - Dados Pendentes do Supabase"
+          title="🔍 Debug - Etiquetas Pendentes de Correção"
           size="large"
         >
           <div className="space-y-4 max-h-[600px] overflow-y-auto">
@@ -1117,30 +1117,74 @@ export default function GerenciarEtiquetas() {
               <h3 className="font-bold mb-2">📊 Resumo</h3>
               <div className="space-y-1 text-sm">
                 <p><strong>Pendentes do Supabase:</strong> {debugData?.pendentesData?.length || 0}</p>
-                <p><strong>Pendentes Formatados:</strong> {debugData?.pendentesFormatted?.length || 0}</p>
                 <p><strong>Dados da API:</strong> {debugData?.apiData?.length || 0}</p>
                 <p><strong>Total Combinado:</strong> {debugData?.combinedData?.length || 0}</p>
               </div>
             </div>
 
-            <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg">
-              <h3 className="font-bold mb-2">⚠️ Dados Brutos do Supabase</h3>
-              <pre className="text-xs bg-white dark:bg-slate-800 p-3 rounded overflow-x-auto">
-                {JSON.stringify(debugData?.pendentesData, null, 2)}
-              </pre>
-            </div>
+            {debugData?.pendentesData && debugData.pendentesData.length > 0 && (
+              <div className="bg-white dark:bg-slate-800 rounded-lg border overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-slate-700">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">ID</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Remetente</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Destinatário</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">CEP</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Cidade/UF</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Serviço</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Valor</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Motivo Erro</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-gray-700">
+                      {debugData.pendentesData.map((item: any) => (
+                        <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-slate-700">
+                          <td className="px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
+                            {item.id.substring(0, 8)}...
+                          </td>
+                          <td className="px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
+                            {item.remetente_nome || '-'}
+                          </td>
+                          <td className="px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
+                            {item.destinatario_nome}
+                          </td>
+                          <td className="px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
+                            {item.destinatario_cep}
+                          </td>
+                          <td className="px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
+                            {item.destinatario_cidade || '-'}/{item.destinatario_estado || '-'}
+                          </td>
+                          <td className="px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
+                            {item.servico_frete || '-'}
+                          </td>
+                          <td className="px-3 py-2 text-xs text-green-600 dark:text-green-400 font-medium">
+                            R$ {item.valor_frete?.toFixed(2) || '0.00'}
+                          </td>
+                          <td className="px-3 py-2 text-xs text-red-600 dark:text-red-400">
+                            {item.motivo_erro}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
-            <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-              <h3 className="font-bold mb-2">✅ Dados Formatados</h3>
-              <pre className="text-xs bg-white dark:bg-slate-800 p-3 rounded overflow-x-auto">
-                {JSON.stringify(debugData?.pendentesFormatted, null, 2)}
-              </pre>
-            </div>
+            {(!debugData?.pendentesData || debugData.pendentesData.length === 0) && (
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg text-center">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  ⚠️ Nenhuma etiqueta pendente de correção encontrada no Supabase
+                </p>
+              </div>
+            )}
 
             <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
-              <h3 className="font-bold mb-2">🔗 Dados Combinados (primeiros 3)</h3>
-              <pre className="text-xs bg-white dark:bg-slate-800 p-3 rounded overflow-x-auto">
-                {JSON.stringify(debugData?.combinedData?.slice(0, 3), null, 2)}
+              <h3 className="font-bold mb-2">🔗 Dados Formatados (IEmissao)</h3>
+              <pre className="text-xs bg-white dark:bg-slate-800 p-3 rounded overflow-x-auto max-h-60">
+                {JSON.stringify(debugData?.pendentesFormatted, null, 2)}
               </pre>
             </div>
           </div>
