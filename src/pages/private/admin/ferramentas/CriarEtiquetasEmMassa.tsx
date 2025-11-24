@@ -7,7 +7,7 @@ import { PDFDocument } from "pdf-lib";
 import { Content } from "../../Content";
 import { ViacepService } from "../../../../services/viacepService";
 import { isValid as isValidCpf, strip as stripCpf, generate as generateCpf } from "@fnando/cpf";
-import { supabase } from "../../../../integrations/supabase/client";
+import { getSupabaseWithAuth } from "../../../../integrations/supabase/custom-auth";
 import authStore from "../../../../authentica/authentication.store";
 
 interface LogEntry {
@@ -208,6 +208,9 @@ export default function CriarEtiquetasEmMassa() {
       }
 
       addLog(`🔑 Cliente ID: ${clienteId}`, "info");
+
+      // Usar supabase com autenticação customizada
+      const supabase = getSupabaseWithAuth();
 
       const registrosParaSalvar = etiquetasComErro.map((erro, index) => {
         addLog(`📋 Registro ${index + 1}/${etiquetasComErro.length}: ${erro.envio.nomeDestinatario} - Motivo: ${erro.motivo}`, "info");
