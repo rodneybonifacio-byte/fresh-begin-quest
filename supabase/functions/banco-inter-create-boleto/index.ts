@@ -189,8 +189,10 @@ serve(async (req) => {
     
     const tipoPessoa = cpfCnpj.length === 11 ? 'FISICA' : 'JURIDICA';
     
-    // Limitar seuNumero a 15 caracteres (pegar os últimos 15 do UUID)
-    const seuNumero = body.faturaId.slice(-15);
+    // Criar seuNumero único: timestamp + parte do UUID (máximo 15 caracteres)
+    const timestamp = Date.now().toString().slice(-8); // últimos 8 dígitos do timestamp
+    const uuidPart = body.faturaId.replace(/-/g, '').slice(0, 7); // 7 primeiros caracteres do UUID sem hífens
+    const seuNumero = timestamp + uuidPart; // Total: 15 caracteres
 
     const boletoData = {
       seuNumero: seuNumero,
