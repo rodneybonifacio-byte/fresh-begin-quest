@@ -254,6 +254,9 @@ export default function CriarEtiquetasEmMassa() {
     setLogs([]);
     setPdfBase64(null);
 
+    let enviosProcessados: EnvioData[] = [];
+    let cpfCnpjRemetenteClean = "";
+
     try {
       addLog(`Iniciando leitura da planilha: ${file.name}`, "info");
       
@@ -264,7 +267,7 @@ export default function CriarEtiquetasEmMassa() {
 
       addLog(`${rows.length} registros carregados da planilha`, "success");
 
-      const cpfCnpjRemetenteClean = limparCpfCnpj(remetenteCpfCnpj);
+      cpfCnpjRemetenteClean = limparCpfCnpj(remetenteCpfCnpj);
       
       if (!cpfCnpjRemetenteClean) {
         addLog("CPF/CNPJ do remetente não informado!", "error");
@@ -273,7 +276,7 @@ export default function CriarEtiquetasEmMassa() {
         return;
       }
 
-      const enviosProcessados: EnvioData[] = [];
+      enviosProcessados = [];
       const etiquetasComErro: EtiquetaComErro[] = [];
       let errosCep = 0;
 
@@ -398,6 +401,11 @@ export default function CriarEtiquetasEmMassa() {
         });
       }
 
+      // Salvar etiquetas que falharam na geração pela API
+      if (etiquetasComErro.length > 0) {
+        await salvarEtiquetasComErro(etiquetasComErro, cpfCnpjRemetenteClean);
+      }
+
       if (pdfArray.length > 0) {
         addLog(`Concatenando ${pdfArray.length} PDFs em um único arquivo...`, "info");
         const pdfFinal = await concatenarPdfs(pdfArray);
@@ -419,6 +427,19 @@ export default function CriarEtiquetasEmMassa() {
     } catch (error: any) {
       console.error("Erro no processamento:", error);
       addLog(`Erro crítico: ${error.message}`, "error");
+      
+      // Se houver enviosProcessados mas falhou completamente, salvar todos como erro
+      if (enviosProcessados && enviosProcessados.length > 0) {
+        const todosComErro: EtiquetaComErro[] = enviosProcessados.map((envio, idx) => ({
+          envio,
+          motivo: error.response?.data?.error || error.message || "Erro crítico na importação",
+          linhaOriginal: idx + 1
+        }));
+        
+        await salvarEtiquetasComErro(todosComErro, limparCpfCnpj(remetenteCpfCnpj));
+        addLog(`${todosComErro.length} etiquetas foram salvas no Gerenciador para correção`, "info");
+      }
+      
       toast.error("Erro ao processar planilha");
     } finally {
       setIsProcessing(false);
