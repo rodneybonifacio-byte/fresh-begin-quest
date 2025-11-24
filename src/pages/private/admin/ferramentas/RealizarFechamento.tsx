@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Content } from '../../Content';
 import { ButtonComponent } from '../../../../components/button';
-import { supabase } from '../../../../integrations/supabase/client';
 import { toast } from 'sonner';
 import { Calendar, Wifi } from 'lucide-react';
+import axios from 'axios';
 
 export default function RealizarFechamento() {
     const [dataInicio, setDataInicio] = useState('');
@@ -15,29 +15,29 @@ export default function RealizarFechamento() {
         try {
             setTestingConnection(true);
             
-            // Usar datas de teste para validar a conexão
             const testDataInicio = '2025-01-01';
             const testDataFim = '2025-01-02';
             
-            console.log('Testando conexão com MCP...');
+            console.log('Testando conexão com API...');
             
-            const { data, error } = await supabase.functions.invoke('realizar-fechamento', {
-                body: {
-                    dataInicio: testDataInicio,
-                    dataFim: testDataFim,
+            const response = await axios.get(
+                `https://envios.brhubb.com.br/api/faturas/scheduler/fazer-faturamento/envios`,
+                {
+                    params: {
+                        dataInicio: testDataInicio,
+                        dataFim: testDataFim,
+                    },
+                    headers: {
+                        'x-internal-token': '43f656418e58a5cf9f5478732d8c7f1ed7fceafee60059a3c8ab9a295c4f2ec78e5da97a6d3421a76edecd37616251955978954a1c073fd12046c69a630e6f3a'
+                    }
                 }
-            });
+            );
 
-            if (error) {
-                console.error('Erro na conexão:', error);
-                toast.error('Falha na conexão com MCP: ' + error.message);
-            } else {
-                console.log('Resposta do MCP:', data);
-                toast.success('Conexão com MCP estabelecida com sucesso!');
-            }
+            console.log('Resposta da API:', response.data);
+            toast.success('Conexão com API estabelecida com sucesso!');
         } catch (error: any) {
             console.error('Erro ao testar conexão:', error);
-            toast.error('Erro ao testar conexão: ' + error.message);
+            toast.error('Erro ao testar conexão: ' + (error.response?.data?.message || error.message));
         } finally {
             setTestingConnection(false);
         }
@@ -52,20 +52,24 @@ export default function RealizarFechamento() {
         try {
             setLoading(true);
             
-            const { data, error } = await supabase.functions.invoke('realizar-fechamento', {
-                body: {
-                    dataInicio,
-                    dataFim,
+            const response = await axios.get(
+                `https://envios.brhubb.com.br/api/faturas/scheduler/fazer-faturamento/envios`,
+                {
+                    params: {
+                        dataInicio,
+                        dataFim,
+                    },
+                    headers: {
+                        'x-internal-token': '43f656418e58a5cf9f5478732d8c7f1ed7fceafee60059a3c8ab9a295c4f2ec78e5da97a6d3421a76edecd37616251955978954a1c073fd12046c69a630e6f3a'
+                    }
                 }
-            });
-
-            if (error) throw error;
+            );
 
             toast.success('Fechamento realizado com sucesso!');
-            console.log('Resultado do fechamento:', data);
+            console.log('Resultado do fechamento:', response.data);
         } catch (error: any) {
             console.error('Erro ao realizar fechamento:', error);
-            toast.error(error.message || 'Erro ao realizar fechamento');
+            toast.error(error.response?.data?.message || error.message || 'Erro ao realizar fechamento');
         } finally {
             setLoading(false);
         }
