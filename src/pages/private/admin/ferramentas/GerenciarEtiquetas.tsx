@@ -476,10 +476,13 @@ export default function GerenciarEtiquetas() {
       const cpfLimpo = editableEmissao.destinatarioCpfCnpj?.replace(/\D/g, '') || '';
       let cpfFinal = cpfLimpo;
       
-      if (!isValidCpf(cpfLimpo)) {
+      // Validação rigorosa: precisa ter exatamente 11 dígitos e ser válido
+      const cpfValido = cpfLimpo.length === 11 && isValidCpf(cpfLimpo);
+      
+      if (!cpfValido) {
         cpfFinal = stripCpf(generateCpf());
-        console.warn(`CPF inválido (${cpfLimpo}). Gerando CPF válido: ${cpfFinal}`);
-        toast.warning(`CPF inválido substituído por CPF válido: ${cpfFinal}`);
+        console.warn(`CPF inválido ou incompleto (${cpfLimpo}). Gerando CPF válido: ${cpfFinal}`);
+        toast.warning(`CPF substituído por CPF válido: ${cpfFinal}`, { duration: 5000 });
       }
       
       // Preparar dados no formato EXATO do endpoint de criação em massa
