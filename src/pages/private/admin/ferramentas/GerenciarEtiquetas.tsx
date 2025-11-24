@@ -24,7 +24,7 @@ export default function GerenciarEtiquetas() {
   const [showModalAtualizarPrecos, setShowModalAtualizarPrecos] = useState(false);
   const [filters, setFilters] = useState({
     remetente: "",
-    status: "",
+    status: [] as string[],
     dataInicio: "",
     dataFim: ""
   });
@@ -36,27 +36,54 @@ export default function GerenciarEtiquetas() {
     queryKey: ["emissoes-gerenciar", page, appliedFilters],
     queryFn: async () => {
       const params: Record<string, string | number> = {
-        limit: 200,
+        limit: 500,
         offset: 0
       };
-      
-      if (appliedFilters.status) params.status = appliedFilters.status;
-      if (appliedFilters.dataInicio) params.dataIni = appliedFilters.dataInicio;
-      if (appliedFilters.dataFim) params.dataFim = appliedFilters.dataFim;
 
-      console.log('Parâmetros enviados para API:', params);
+      console.log('Filtros aplicados:', appliedFilters);
       const response = await emissaoService.getAll(params, 'admin');
-      console.log('Quantidade de resultados da API:', response.data?.length);
+      console.log('Quantidade total da API:', response.data?.length);
 
-      // Aplicar filtro de remetente client-side (API não está filtrando corretamente)
+      // Aplicar todos os filtros client-side
       let filteredData = response.data || [];
+
+      // Filtro de remetente
       if (appliedFilters.remetente) {
         const searchTerm = appliedFilters.remetente.toLowerCase();
         filteredData = filteredData.filter((item: IEmissao) => 
           item.remetenteNome?.toLowerCase().includes(searchTerm)
         );
-        console.log('Quantidade após filtro de remetente:', filteredData.length);
       }
+
+      // Filtro de status (múltiplos)
+      if (appliedFilters.status.length > 0) {
+        filteredData = filteredData.filter((item: IEmissao) => 
+          item.status && appliedFilters.status.includes(item.status)
+        );
+      }
+
+      // Filtro de data início
+      if (appliedFilters.dataInicio) {
+        const dataIni = new Date(appliedFilters.dataInicio);
+        filteredData = filteredData.filter((item: IEmissao) => {
+          if (!item.criadoEm) return false;
+          const dataCriacao = new Date(item.criadoEm);
+          return dataCriacao >= dataIni;
+        });
+      }
+
+      // Filtro de data fim
+      if (appliedFilters.dataFim) {
+        const dataFim = new Date(appliedFilters.dataFim);
+        dataFim.setHours(23, 59, 59, 999);
+        filteredData = filteredData.filter((item: IEmissao) => {
+          if (!item.criadoEm) return false;
+          const dataCriacao = new Date(item.criadoEm);
+          return dataCriacao <= dataFim;
+        });
+      }
+
+      console.log('Quantidade após todos os filtros:', filteredData.length);
 
       // Aplicar paginação client-side
       const startIndex = (page - 1) * 50;
@@ -215,23 +242,42 @@ export default function GerenciarEtiquetas() {
       setGlobalLoading(true);
 
       const params: Record<string, string | number> = {
-        limit: 200,
+        limit: 500,
         offset: 0,
       };
-
-      if (appliedFilters.status) params.status = appliedFilters.status;
-      if (appliedFilters.dataInicio) params.dataIni = appliedFilters.dataInicio;
-      if (appliedFilters.dataFim) params.dataFim = appliedFilters.dataFim;
 
       const response = await emissaoService.getAll(params, 'admin');
       let allData = response.data || [];
 
-      // Aplicar filtro de remetente client-side
+      // Aplicar filtros client-side
       if (appliedFilters.remetente) {
         const searchTerm = appliedFilters.remetente.toLowerCase();
         allData = allData.filter((item: IEmissao) => 
           item.remetenteNome?.toLowerCase().includes(searchTerm)
         );
+      }
+
+      if (appliedFilters.status.length > 0) {
+        allData = allData.filter((item: IEmissao) => 
+          item.status && appliedFilters.status.includes(item.status)
+        );
+      }
+
+      if (appliedFilters.dataInicio) {
+        const dataIni = new Date(appliedFilters.dataInicio);
+        allData = allData.filter((item: IEmissao) => {
+          if (!item.criadoEm) return false;
+          return new Date(item.criadoEm) >= dataIni;
+        });
+      }
+
+      if (appliedFilters.dataFim) {
+        const dataFim = new Date(appliedFilters.dataFim);
+        dataFim.setHours(23, 59, 59, 999);
+        allData = allData.filter((item: IEmissao) => {
+          if (!item.criadoEm) return false;
+          return new Date(item.criadoEm) <= dataFim;
+        });
       }
 
       let allIds: string[] = [];
@@ -315,10 +361,21 @@ export default function GerenciarEtiquetas() {
   };
 
   const handleClearFilters = () => {
-    const emptyFilters = { remetente: "", status: "", dataInicio: "", dataFim: "" };
+    const emptyFilters = { remetente: "", status: [] as string[], dataInicio: "", dataFim: "" };
     setFilters(emptyFilters);
     setAppliedFilters(emptyFilters);
     setPage(1);
+  };
+
+  const handleStatusChange = (statusValue: string) => {
+    setFilters(prev => {
+      const currentStatus = prev.status;
+      if (currentStatus.includes(statusValue)) {
+        return { ...prev, status: currentStatus.filter(s => s !== statusValue) };
+      } else {
+        return { ...prev, status: [...currentStatus, statusValue] };
+      }
+    });
   };
 
   const columns: Column<IEmissao>[] = [
@@ -478,19 +535,26 @@ export default function GerenciarEtiquetas() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1 block">Status</label>
-              <select
-                className="w-full px-3 py-2 border rounded-md dark:bg-slate-700 dark:border-gray-600"
-                value={filters.status}
-                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-              >
-                <option value="">Todos</option>
-                <option value="PRE_POSTADO">Pré-postado</option>
-                <option value="POSTADO">Postado</option>
-                <option value="EM_TRANSITO">Em Trânsito</option>
-                <option value="ENTREGUE">Entregue</option>
-                <option value="CANCELADO">Cancelado</option>
-              </select>
+              <label className="text-sm font-medium mb-2 block">Status (Múltipla Seleção)</label>
+              <div className="space-y-2 border rounded-md p-3 dark:bg-slate-700 dark:border-gray-600">
+                {[
+                  { value: 'PRE_POSTADO', label: 'Pré-postado' },
+                  { value: 'POSTADO', label: 'Postado' },
+                  { value: 'EM_TRANSITO', label: 'Em Trânsito' },
+                  { value: 'ENTREGUE', label: 'Entregue' },
+                  { value: 'CANCELADO', label: 'Cancelado' }
+                ].map(status => (
+                  <label key={status.value} className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 p-1 rounded">
+                    <input
+                      type="checkbox"
+                      checked={filters.status.includes(status.value)}
+                      onChange={() => handleStatusChange(status.value)}
+                      className="rounded border-gray-300"
+                    />
+                    <span className="text-sm">{status.label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
             <div>
               <label className="text-sm font-medium mb-1 block">Data Início</label>
