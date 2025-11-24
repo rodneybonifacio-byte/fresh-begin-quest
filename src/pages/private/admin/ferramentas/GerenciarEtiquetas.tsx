@@ -938,7 +938,7 @@ export default function GerenciarEtiquetas() {
 
       <DataTable
         columns={columns}
-        data={data || []}
+        data={data?.data || []}
         rowKey={(item) => item.id || ""}
       />
 
