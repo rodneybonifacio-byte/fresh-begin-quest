@@ -474,7 +474,7 @@ export default function GerenciarEtiquetas() {
       // Preparar dados no formato do endpoint de criação em massa
       const dadosParaImportar = {
         cpfCnpj: "15808095000303", // CNPJ fixo ÓPERA KIDS VAREJO
-        dados: [
+        data: [
           {
             nome: editableEmissao.destinatarioNome?.trim(),
             cpf_cnpj: editableEmissao.destinatarioCpfCnpj?.replace(/\D/g, ''),
@@ -503,6 +503,7 @@ export default function GerenciarEtiquetas() {
       const response = await fetch('https://envios.brhubb.com.br/api/importacao/multipla', {
         method: 'POST',
         headers: {
+          'API-Version': '3.0.0',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(dadosParaImportar)
