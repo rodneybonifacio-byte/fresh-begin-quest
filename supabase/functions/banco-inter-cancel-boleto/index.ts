@@ -40,34 +40,50 @@ const formatPemCert = (pemString: string): string => {
 async function obterTokenBancoInter(httpClient: Deno.HttpClient): Promise<string> {
   const clientId = Deno.env.get('BANCO_INTER_CLIENT_ID');
   const clientSecret = Deno.env.get('BANCO_INTER_CLIENT_SECRET');
+
+  console.log('🔐 Verificando credenciais do Banco Inter...');
   
-  console.log('🔑 Obtendo token OAuth...');
+  if (!clientId || !clientSecret) {
+    throw new Error('Credenciais do Banco Inter não configuradas');
+  }
+
+  console.log('✅ Credenciais encontradas');
+
+  const tokenUrl = 'https://cdpj.partners.bancointer.com.br/oauth/v2/token';
   
-  const authString = btoa(`${clientId}:${clientSecret}`);
+  console.log('📡 Obtendo token de autenticação...');
   
-  const tokenResponse = await fetch('https://cdpj.partners.bancointer.com.br/oauth/v2/token', {
+  const response = await fetch(tokenUrl, {
     method: 'POST',
-    client: httpClient,
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
-      'Authorization': `Basic ${authString}`,
     },
     body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      scope: 'boleto-cobranca.read boleto-cobranca.write',
       grant_type: 'client_credentials',
-      scope: 'boleto-cobranca.write boleto-cobranca.read',
     }),
-  });
+    client: httpClient,
+  } as any);
+
+  console.log('📡 Resposta recebida - Status:', response.status);
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('❌ Erro na resposta:', error);
+    throw new Error(`Erro ao obter token (${response.status}): ${error}`);
+  }
+
+  const data = await response.json();
   
-  if (!tokenResponse.ok) {
-    const errorText = await tokenResponse.text();
-    console.error('❌ Erro ao obter token:', errorText);
-    throw new Error(`Falha na autenticação: ${tokenResponse.status} - ${errorText}`);
+  if (!data.access_token) {
+    console.error('❌ Token não encontrado na resposta:', data);
+    throw new Error('Token não retornado pela API do Banco Inter');
   }
   
-  const tokenData = await tokenResponse.json();
-  console.log('✅ Token OAuth obtido com sucesso');
-  
-  return tokenData.access_token;
+  console.log('✅ Token obtido com sucesso');
+  return data.access_token;
 }
 
 serve(async (req) => {
