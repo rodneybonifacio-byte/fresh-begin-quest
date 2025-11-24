@@ -3,6 +3,7 @@ import { X, Download, FileText, Loader2 } from 'lucide-react';
 import { ButtonComponent } from './button';
 import { PDFDocument } from 'pdf-lib';
 import { toast } from 'sonner';
+import * as pdfjsLib from 'pdfjs-dist';
 
 interface ModalVisualizarFechamentoProps {
     isOpen: boolean;
@@ -32,8 +33,12 @@ export const ModalVisualizarFechamento: React.FC<ModalVisualizarFechamentoProps>
     const [mergedPdfUrl, setMergedPdfUrl] = useState<string | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [pdfImages, setPdfImages] = useState<string[]>([]);
 
     useEffect(() => {
+        // Configurar worker do pdf.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+        
         if (isOpen && faturaPdf) {
             mergePdfs();
         }
@@ -45,15 +50,44 @@ export const ModalVisualizarFechamento: React.FC<ModalVisualizarFechamentoProps>
         };
     }, [isOpen, faturaPdf, boletoPdf]);
 
+    const convertPdfToImages = async (pdfBase64: string): Promise<string[]> => {
+        const bytes = Uint8Array.from(atob(pdfBase64), c => c.charCodeAt(0));
+        const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
+        const images: string[] = [];
+
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const viewport = page.getViewport({ scale: 2.0 });
+            
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+
+            if (context) {
+                const renderContext: any = {
+                    canvasContext: context,
+                    viewport: viewport
+                };
+                await page.render(renderContext).promise;
+                images.push(canvas.toDataURL('image/png'));
+            }
+        }
+
+        return images;
+    };
+
     const mergePdfs = async () => {
         try {
             setIsProcessing(true);
             setError(null);
+            setPdfImages([]);
 
             console.log('🔗 Iniciando merge de PDFs no frontend...');
 
             // Criar documento PDF final
             const mergedPdf = await PDFDocument.create();
+            const allImages: string[] = [];
 
             // Se houver boleto, adicionar primeiro
             if (boletoPdf) {
@@ -62,6 +96,10 @@ export const ModalVisualizarFechamento: React.FC<ModalVisualizarFechamentoProps>
                 const boletoPdfDoc = await PDFDocument.load(boletoBytes);
                 const boletoPages = await mergedPdf.copyPages(boletoPdfDoc, boletoPdfDoc.getPageIndices());
                 boletoPages.forEach((page) => mergedPdf.addPage(page));
+                
+                // Converter boleto para imagens
+                const boletoImages = await convertPdfToImages(boletoPdf);
+                allImages.push(...boletoImages);
                 console.log('✅ Boleto adicionado ao PDF final');
             }
 
@@ -71,6 +109,10 @@ export const ModalVisualizarFechamento: React.FC<ModalVisualizarFechamentoProps>
             const faturaPdfDoc = await PDFDocument.load(faturaBytes);
             const faturaPages = await mergedPdf.copyPages(faturaPdfDoc, faturaPdfDoc.getPageIndices());
             faturaPages.forEach((page) => mergedPdf.addPage(page));
+            
+            // Converter fatura para imagens
+            const faturaImages = await convertPdfToImages(faturaPdf);
+            allImages.push(...faturaImages);
             console.log('✅ Fatura adicionada ao PDF final');
 
             // Salvar PDF final
@@ -79,7 +121,8 @@ export const ModalVisualizarFechamento: React.FC<ModalVisualizarFechamentoProps>
             const url = URL.createObjectURL(blob);
             
             setMergedPdfUrl(url);
-            console.log('✅ PDF mesclado com sucesso!');
+            setPdfImages(allImages);
+            console.log('✅ PDF mesclado e convertido para imagens com sucesso!');
             toast.success('PDF gerado com sucesso!');
             
         } catch (err) {
@@ -172,7 +215,7 @@ export const ModalVisualizarFechamento: React.FC<ModalVisualizarFechamentoProps>
                 </div>
 
                 {/* Área de visualização do PDF */}
-                <div className="flex-1 overflow-hidden">
+                <div className="flex-1 overflow-auto bg-muted/20">
                     {isProcessing ? (
                         <div className="h-full flex items-center justify-center">
                             <div className="text-center">
@@ -187,12 +230,18 @@ export const ModalVisualizarFechamento: React.FC<ModalVisualizarFechamentoProps>
                                 <p>{error}</p>
                             </div>
                         </div>
-                    ) : mergedPdfUrl ? (
-                        <iframe
-                            src={mergedPdfUrl}
-                            className="w-full h-full"
-                            title="PDF Mesclado"
-                        />
+                    ) : pdfImages.length > 0 ? (
+                        <div className="flex flex-col items-center gap-4 p-4">
+                            {pdfImages.map((image, index) => (
+                                <div key={index} className="w-full max-w-3xl border border-border rounded-lg overflow-hidden shadow-sm">
+                                    <img 
+                                        src={image} 
+                                        alt={`Página ${index + 1}`}
+                                        className="w-full h-auto"
+                                    />
+                                </div>
+                            ))}
+                        </div>
                     ) : null}
                 </div>
 
