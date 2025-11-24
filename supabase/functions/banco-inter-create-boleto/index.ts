@@ -95,76 +95,53 @@ function formatPemCert(pemString: string): string {
   return `${header}\n${formatted}\n${footer}`;
 }
 
-async function obterTokenBancoInter(): Promise<string> {
+async function obterTokenBancoInter(httpClient: Deno.HttpClient): Promise<string> {
   const clientId = Deno.env.get('BANCO_INTER_CLIENT_ID');
   const clientSecret = Deno.env.get('BANCO_INTER_CLIENT_SECRET');
-  const cert = Deno.env.get('BANCO_INTER_CLIENT_CERT');
-  const key = Deno.env.get('BANCO_INTER_CLIENT_KEY');
-  const caCert = Deno.env.get('BANCO_INTER_CA_CERT');
 
   console.log('🔐 Verificando credenciais do Banco Inter...');
   
-  if (!clientId || !clientSecret || !cert || !key || !caCert) {
+  if (!clientId || !clientSecret) {
     throw new Error('Credenciais do Banco Inter não configuradas');
   }
 
-  console.log('✅ Todas as credenciais encontradas');
-  console.log('🔧 Formatando certificados...');
-  
-  const certFixed = formatPemCert(cert);
-  const keyFixed = formatPemCert(key);
-  const caCertFixed = formatPemCert(caCert);
-  
-  console.log('Certificado formatado - primeira linha:', certFixed.split('\n')[0]);
+  console.log('✅ Credenciais encontradas');
 
   const tokenUrl = 'https://cdpj.partners.bancointer.com.br/oauth/v2/token';
   
-  console.log('🌐 Criando cliente HTTP com mTLS...');
+  console.log('📡 Obtendo token de autenticação...');
   
-  // Criar cliente HTTP com mTLS (mesma estrutura da função PIX)
-  const httpClient = Deno.createHttpClient({
-    cert: certFixed,
-    key: keyFixed,
-    caCerts: [caCertFixed]
-  });
+  const response = await fetch(tokenUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      scope: 'boleto-cobranca.read boleto-cobranca.write',
+      grant_type: 'client_credentials',
+    }),
+    client: httpClient,
+  } as any);
 
-  try {
-    console.log('📡 Obtendo token de autenticação...');
-    
-    const response = await fetch(tokenUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
-        scope: 'boleto-cobranca.read boleto-cobranca.write',
-        grant_type: 'client_credentials',
-      }),
-      client: httpClient,
-    } as any);
+  console.log('📡 Resposta recebida - Status:', response.status);
 
-    console.log('📡 Resposta recebida - Status:', response.status);
-
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('❌ Erro na resposta:', error);
-      throw new Error(`Erro ao obter token (${response.status}): ${error}`);
-    }
-
-    const data = await response.json();
-    
-    if (!data.access_token) {
-      console.error('❌ Token não encontrado na resposta:', data);
-      throw new Error('Token não retornado pela API do Banco Inter');
-    }
-    
-    console.log('✅ Token obtido com sucesso');
-    return data.access_token;
-  } finally {
-    httpClient.close();
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('❌ Erro na resposta:', error);
+    throw new Error(`Erro ao obter token (${response.status}): ${error}`);
   }
+
+  const data = await response.json();
+  
+  if (!data.access_token) {
+    console.error('❌ Token não encontrado na resposta:', data);
+    throw new Error('Token não retornado pela API do Banco Inter');
+  }
+  
+  console.log('✅ Token obtido com sucesso');
+  return data.access_token;
 }
 
 serve(async (req) => {
@@ -181,9 +158,27 @@ serve(async (req) => {
     const dataVencimento = body.dataVencimento || calcularVencimentoDMaisUm();
     console.log('📅 Data de vencimento:', dataVencimento);
 
-    // Obter token de autenticação
-    const accessToken = await obterTokenBancoInter();
-    console.log('✅ Token obtido com sucesso');
+    // Criar cliente HTTP com mTLS ÚNICO para todas as operações
+    const cert = Deno.env.get('BANCO_INTER_CLIENT_CERT')!;
+    const key = Deno.env.get('BANCO_INTER_CLIENT_KEY')!;
+    const caCert = Deno.env.get('BANCO_INTER_CA_CERT')!;
+    
+    console.log('🔧 Formatando certificados...');
+    const certFixed = formatPemCert(cert);
+    const keyFixed = formatPemCert(key);
+    const caCertFixed = formatPemCert(caCert);
+    
+    console.log('🌐 Criando cliente HTTP com mTLS...');
+    const httpClient = Deno.createHttpClient({
+      cert: certFixed,
+      key: keyFixed,
+      caCerts: [caCertFixed]
+    });
+
+    try {
+      // Obter token de autenticação usando o mesmo cliente HTTP
+      const accessToken = await obterTokenBancoInter(httpClient);
+      console.log('✅ Token obtido com sucesso');
 
     // Preparar dados do boleto
     const cpfCnpj = body.pagadorCpfCnpj.replace(/\D/g, '');
@@ -245,27 +240,11 @@ serve(async (req) => {
     console.log('📝 Dados do boleto preparados');
     console.log('📋 Payload do boleto:', JSON.stringify(boletoData, null, 2));
 
-    // Criar cliente HTTP com mTLS para emissão do boleto
-    const cert = Deno.env.get('BANCO_INTER_CLIENT_CERT')!;
-    const key = Deno.env.get('BANCO_INTER_CLIENT_KEY')!;
-    const caCert = Deno.env.get('BANCO_INTER_CA_CERT')!;
+    // Emitir boleto via API do Banco Inter com mTLS (usando o mesmo httpClient)
+    const boletoUrl = 'https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas';
     
-    const certFixed = formatPemCert(cert);
-    const keyFixed = formatPemCert(key);
-    const caCertFixed = formatPemCert(caCert);
-    
-    const httpClient = Deno.createHttpClient({
-      cert: certFixed,
-      key: keyFixed,
-      caCerts: [caCertFixed]
-    });
-
-    try {
-      // Emitir boleto via API do Banco Inter com mTLS
-      const boletoUrl = 'https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas';
-      
-      console.log('🌐 Enviando requisição para emitir boleto com mTLS...');
-      const boletoResponse = await fetch(boletoUrl, {
+    console.log('🌐 Enviando requisição para emitir boleto com mTLS...');
+    const boletoResponse = await fetch(boletoUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -280,7 +259,6 @@ serve(async (req) => {
       if (!boletoResponse.ok) {
         const errorText = await boletoResponse.text();
         console.error('❌ Erro ao emitir boleto:', errorText);
-        httpClient.close();
         throw new Error(`Erro ao emitir boleto: ${boletoResponse.status} - ${errorText}`);
       }
 
@@ -290,7 +268,7 @@ serve(async (req) => {
       // Aguardar alguns segundos para o boleto estar disponível no sistema
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Buscar PDF do boleto com mTLS
+      // Buscar PDF do boleto com mTLS (usando o mesmo httpClient)
       const pdfUrl = `https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas/${boletoResult.nossoNumero}/pdf`;
       
       console.log('📄 Baixando PDF do boleto com mTLS...');
@@ -333,6 +311,8 @@ serve(async (req) => {
         }
       );
     } finally {
+      // Fechar o cliente HTTP uma única vez
+      console.log('🔒 Fechando cliente HTTP...');
       httpClient.close();
     }
 
