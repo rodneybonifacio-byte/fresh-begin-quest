@@ -721,6 +721,12 @@ export default function GerenciarEtiquetas() {
       bgColor: "bg-gray-200 hover:bg-gray-300 text-gray-800"
     },
     {
+      label: "🔍 Debug Dados",
+      icon: <Eye className="h-4 w-4" />,
+      onClick: () => setShowDebugModal(true),
+      bgColor: "bg-purple-500 hover:bg-purple-600 text-white"
+    },
+    {
       label: selectAllMode === 'all' ? "Todas Selecionadas" : "Selecionar Todas Filtradas",
       onClick: handleSelectAllFiltered,
       bgColor: selectAllMode === 'all' ? "bg-green-500 text-white" : "bg-blue-500 hover:bg-blue-600 text-white"
