@@ -64,7 +64,7 @@ export default function GerenciarEtiquetas() {
   });
 
   // Query para buscar etiquetas pendentes de correção do Supabase
-  const { data: etiquetasPendentes, isLoading: isLoadingPendentes } = useQuery({
+  const { data: etiquetasPendentes } = useQuery({
     queryKey: ["etiquetas-pendentes-correcao", page, appliedFilters],
     queryFn: async () => {
       let query = supabase
