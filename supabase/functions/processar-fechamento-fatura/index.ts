@@ -264,9 +264,18 @@ serve(async (req) => {
     if (boletoPdfBase64) {
       console.log('🔗 Etapa 5: Concatenando PDFs...');
       
-      // Decodificar Base64 para bytes
-      const boletoBytes = Uint8Array.from(atob(boletoPdfBase64), c => c.charCodeAt(0));
-      const faturaBytes = Uint8Array.from(atob(faturaPdfBase64), c => c.charCodeAt(0));
+      // Decodificar Base64 para bytes de forma eficiente
+      const decodeBoleto = atob(boletoPdfBase64);
+      const boletoBytes = new Uint8Array(decodeBoleto.length);
+      for (let i = 0; i < decodeBoleto.length; i++) {
+        boletoBytes[i] = decodeBoleto.charCodeAt(i);
+      }
+      
+      const decodeFatura = atob(faturaPdfBase64);
+      const faturaBytes = new Uint8Array(decodeFatura.length);
+      for (let i = 0; i < decodeFatura.length; i++) {
+        faturaBytes[i] = decodeFatura.charCodeAt(i);
+      }
       
       // Carregar PDFs
       const boletoPdf = await PDFDocument.load(boletoBytes);
