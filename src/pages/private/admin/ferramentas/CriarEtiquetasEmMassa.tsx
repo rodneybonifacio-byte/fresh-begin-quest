@@ -7,6 +7,8 @@ import { PDFDocument } from "pdf-lib";
 import { Content } from "../../Content";
 import { ViacepService } from "../../../../services/viacepService";
 import { isValid as isValidCpf, strip as stripCpf, generate as generateCpf } from "@fnando/cpf";
+import { supabase } from "../../../../integrations/supabase/client";
+import { getSupabaseWithAuth } from "../../../../integrations/supabase/custom-auth";
 
 interface LogEntry {
   timestamp: string;
@@ -192,38 +194,61 @@ export default function CriarEtiquetasEmMassa() {
     if (etiquetasComErro.length === 0) return;
 
     try {
-      addLog(`Salvando ${etiquetasComErro.length} etiquetas com erro para correção posterior...`, "info");
+      addLog(`Salvando ${etiquetasComErro.length} etiquetas com erro no Supabase para correção posterior...`, "info");
 
-      // Preparar dados para envio individual (sem validações rigorosas, apenas salvar)
-      const enviosParaSalvar = etiquetasComErro.map(erro => erro.envio);
+      // Obter cliente_id do JWT token
+      const { data: { user } } = await getSupabaseWithAuth().auth.getUser();
+      const token = (await getSupabaseWithAuth().auth.getSession()).data.session?.access_token;
+      const decoded: any = token ? JSON.parse(atob(token.split('.')[1])) : null;
+      const clienteId = decoded?.clienteId;
 
-      const payload = {
-        cpfCnpj: cpfCnpjRemetente,
-        status: "erro_pendente_correcao", // Status especial
-        salvarSemValidacao: true, // Flag para API saber que deve salvar mesmo com erros
-        data: enviosParaSalvar.map((e) => ({
-          ...e,
-          cpfCnpj: Number(e.cpfCnpj) || 0, // Mesmo que inválido, tenta salvar
-          observacao: `ERRO IMPORTAÇÃO - ${etiquetasComErro.find(err => err.envio === e)?.motivo || 'Requer correção'}`,
-        })),
-      };
+      if (!clienteId) {
+        addLog(`Erro: cliente_id não encontrado no token`, "error");
+        return;
+      }
 
-      await axios.post(
-        "https://envios.brhubb.com.br/api/importacao/multipla",
-        payload,
-        {
-          headers: {
-            "API-Version": "3.0.0",
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      // Preparar dados para inserção no Supabase
+      const registrosParaInserir = etiquetasComErro.map(erro => ({
+        cliente_id: clienteId,
+        remetente_cpf_cnpj: cpfCnpjRemetente,
+        remetente_nome: 'ÓPERA KIDS VAREJO',
+        destinatario_nome: erro.envio.nomeDestinatario,
+        destinatario_cpf_cnpj: erro.envio.cpfCnpj || null,
+        destinatario_celular: null,
+        destinatario_cep: erro.envio.cep,
+        destinatario_logradouro: erro.envio.logradouro || null,
+        destinatario_numero: erro.envio.numero?.toString() || null,
+        destinatario_complemento: erro.envio.complemento || null,
+        destinatario_bairro: erro.envio.bairro || null,
+        destinatario_cidade: erro.envio.cidade || null,
+        destinatario_estado: erro.envio.estado || null,
+        altura: erro.envio.altura || null,
+        largura: erro.envio.largura || null,
+        comprimento: erro.envio.comprimento || null,
+        peso: erro.envio.peso || null,
+        valor_frete: erro.envio.valor_frete || null,
+        valor_declarado: null,
+        servico_frete: erro.envio.servico_frete || null,
+        motivo_erro: erro.motivo,
+        linha_original: erro.linhaOriginal,
+        observacao: `ERRO IMPORTAÇÃO - ${erro.motivo}`,
+        tentativas_correcao: 0
+      }));
 
-      addLog(`✓ ${etiquetasComErro.length} etiquetas com erro salvas no gerenciador para correção`, "success");
-      toast.info(`${etiquetasComErro.length} etiquetas com erro foram salvas para correção posterior`);
+      const { error } = await supabase
+        .from('etiquetas_pendentes_correcao')
+        .insert(registrosParaInserir);
+
+      if (error) {
+        throw error;
+      }
+
+      addLog(`✓ ${etiquetasComErro.length} etiquetas com erro salvas no Supabase para correção`, "success");
+      toast.success(`${etiquetasComErro.length} etiquetas com erro foram salvas no Gerenciador de Etiquetas`);
     } catch (error: any) {
-      addLog(`Erro ao salvar etiquetas com erro: ${error.message}`, "warning");
+      addLog(`Erro ao salvar etiquetas com erro no Supabase: ${error.message}`, "error");
       console.error("Erro salvamento etiquetas com erro:", error);
+      toast.error("Erro ao salvar etiquetas com erro para correção");
     }
   };
 
