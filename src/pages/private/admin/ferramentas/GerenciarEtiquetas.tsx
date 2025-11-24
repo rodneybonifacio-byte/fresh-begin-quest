@@ -40,6 +40,7 @@ export default function GerenciarEtiquetas() {
   const [editableEmissao, setEditableEmissao] = useState<any>(null);
   const [showDebugModal, setShowDebugModal] = useState(false);
   const [debugData, setDebugData] = useState<any>(null);
+  const [todasPendentes, setTodasPendentes] = useState<any[]>([]);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -735,9 +736,25 @@ export default function GerenciarEtiquetas() {
     {
       label: "🔍 Debug Dados",
       icon: <Eye className="h-4 w-4" />,
-      onClick: () => {
-        console.log('🔍 Abrindo modal de debug');
-        console.log('Debug data:', debugData);
+      onClick: async () => {
+        console.log('🔍 Buscando TODAS as etiquetas pendentes sem filtros...');
+        
+        // Buscar TODAS sem nenhum filtro
+        const { data: todas, error, count } = await supabase
+          .from('etiquetas_pendentes_correcao')
+          .select('*', { count: 'exact' });
+        
+        console.log('📦 Total encontrado:', count);
+        console.log('📦 Registros retornados:', todas?.length);
+        console.log('📦 Dados:', todas);
+        
+        if (error) {
+          console.error('Erro ao buscar:', error);
+          toast.error('Erro ao buscar etiquetas pendentes');
+          return;
+        }
+        
+        setTodasPendentes(todas || []);
         setShowDebugModal(true);
       },
       bgColor: "bg-purple-500 hover:bg-purple-600 text-white"
@@ -1132,18 +1149,18 @@ export default function GerenciarEtiquetas() {
           size="large"
         >
           <div className="space-y-4 max-h-[600px] overflow-y-auto">
-            {console.log('Renderizando modal debug com:', debugData)}
             
             <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
               <h3 className="font-bold mb-2">📊 Resumo</h3>
               <div className="space-y-1 text-sm">
-                <p><strong>Pendentes do Supabase:</strong> {debugData?.pendentesData?.length || 0}</p>
+                <p><strong>Total de Pendentes (SEM FILTROS):</strong> {todasPendentes.length}</p>
+                <p><strong>Pendentes do Supabase (com filtros):</strong> {debugData?.pendentesData?.length || 0}</p>
                 <p><strong>Dados da API:</strong> {debugData?.apiData?.length || 0}</p>
                 <p><strong>Total Combinado:</strong> {debugData?.combinedData?.length || 0}</p>
               </div>
             </div>
 
-            {debugData?.pendentesData && debugData.pendentesData.length > 0 && (
+            {todasPendentes && todasPendentes.length > 0 && (
               <div className="bg-white dark:bg-slate-800 rounded-lg border overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -1161,7 +1178,7 @@ export default function GerenciarEtiquetas() {
                       </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-gray-700">
-                      {debugData.pendentesData.map((item: any) => (
+                      {todasPendentes.map((item: any) => (
                         <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-slate-700">
                           <td className="px-3 py-2 text-xs">
                             <button
@@ -1230,7 +1247,7 @@ export default function GerenciarEtiquetas() {
               </div>
             )}
 
-            {(!debugData?.pendentesData || debugData.pendentesData.length === 0) && (
+            {(!todasPendentes || todasPendentes.length === 0) && (
               <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg text-center">
                 <p className="text-sm text-yellow-800 dark:text-yellow-200">
                   ⚠️ Nenhuma etiqueta pendente de correção encontrada no Supabase
