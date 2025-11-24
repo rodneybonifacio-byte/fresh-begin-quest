@@ -5,7 +5,7 @@ import { Content, type ContentButtonProps } from "../../Content";
 import { EmissaoService } from "../../../../services/EmissaoService";
 import { supabase } from "../../../../integrations/supabase/client";
 import { DataTable, type Column } from "../../../../components/DataTable";
-import { Trash2, Filter, X, DollarSign, Eye, RefreshCw, FileText, User, Calendar, Activity } from "lucide-react";
+import { Trash2, Filter, X, DollarSign, Eye, RefreshCw, FileText, User, Calendar, Activity, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { ModalCustom } from "../../../../components/modal";
 import { format } from "date-fns";
@@ -476,7 +476,17 @@ export default function GerenciarEtiquetas() {
     {
       header: "Status",
       accessor: (item: IEmissao) => (
-        <StatusBadgeEmissao status={item.status} mensagensErrorPostagem={item.mensagensErrorPostagem || ""} handleOnViewErroPostagem={() => {}} />
+        <div className="flex items-center gap-2">
+          {(item as any)._isPendente && (
+            <div className="flex items-center gap-1 px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 rounded-md text-xs font-medium">
+              <AlertTriangle size={14} />
+              <span>PENDENTE CORREÇÃO</span>
+            </div>
+          )}
+          {!((item as any)._isPendente) && (
+            <StatusBadgeEmissao status={item.status} mensagensErrorPostagem={item.mensagensErrorPostagem || ""} handleOnViewErroPostagem={() => {}} />
+          )}
+        </div>
       )
     },
     {
