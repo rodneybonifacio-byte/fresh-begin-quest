@@ -491,7 +491,7 @@ export default function GerenciarEtiquetas() {
       
       // Preparar dados no formato EXATO do endpoint de criação em massa
       const dadosParaImportar = {
-        cpfCnpj: "15808095000303", // CNPJ fixo ÓPERA KIDS VAREJO
+        cpfCnpj: editableEmissao.remetenteCpfCnpj?.replace(/\D/g, ''), // Usar remetente da etiqueta original
         data: [
           {
             nomeDestinatario: editableEmissao.destinatarioNome?.trim(),
