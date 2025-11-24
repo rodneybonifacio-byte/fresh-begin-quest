@@ -258,85 +258,21 @@ serve(async (req) => {
     console.log('✅ Boleto emitido:', boletoData.nossoNumero);
     console.log('📋 Status do PDF:', boletoPdfBase64 ? 'PDF disponível' : 'PDF não disponível');
 
-    // ✅ ETAPA 5: Concatenar PDFs (Boleto + Fatura) ou retornar apenas fatura
-    let pdfFinalBase64;
-    
-    if (boletoPdfBase64) {
-      console.log('🔗 Etapa 5: Concatenando PDFs...');
-      
-      // Decodificar Base64 para bytes de forma eficiente
-      console.log('📦 Tamanho do boleto base64:', boletoPdfBase64.length);
-      console.log('📦 Tamanho da fatura base64:', faturaPdfBase64.length);
-      
-      const decodeBoleto = atob(boletoPdfBase64);
-      const boletoBytes = new Uint8Array(decodeBoleto.length);
-      for (let i = 0; i < decodeBoleto.length; i++) {
-        boletoBytes[i] = decodeBoleto.charCodeAt(i);
-      }
-      
-      const decodeFatura = atob(faturaPdfBase64);
-      const faturaBytes = new Uint8Array(decodeFatura.length);
-      for (let i = 0; i < decodeFatura.length; i++) {
-        faturaBytes[i] = decodeFatura.charCodeAt(i);
-      }
-      
-      console.log('✅ Base64 decodificado para bytes');
-      
-      // Carregar PDFs
-      const boletoPdf = await PDFDocument.load(boletoBytes);
-      const faturaPdf = await PDFDocument.load(faturaBytes);
-      
-      console.log('✅ PDFs carregados');
-      
-      // Criar PDF final
-      const pdfFinal = await PDFDocument.create();
-      
-      // Copiar páginas do boleto primeiro
-      const boletoPages = await pdfFinal.copyPages(boletoPdf, boletoPdf.getPageIndices());
-      boletoPages.forEach((page) => pdfFinal.addPage(page));
-      
-      console.log('✅ Páginas do boleto copiadas');
-      
-      // Depois copiar páginas da fatura
-      const faturaPages = await pdfFinal.copyPages(faturaPdf, faturaPdf.getPageIndices());
-      faturaPages.forEach((page) => pdfFinal.addPage(page));
-      
-      console.log('✅ Páginas da fatura copiadas');
-      
-      // Salvar PDF final
-      const pdfFinalBytes = await pdfFinal.save();
-      
-      console.log('✅ PDF final salvo, convertendo para base64...');
-      console.log('📦 Tamanho do PDF final:', pdfFinalBytes.length);
-      
-      // Converter para base64 de forma eficiente (sem spread operator)
-      let binaryString = '';
-      const len = pdfFinalBytes.length;
-      for (let i = 0; i < len; i++) {
-        binaryString += String.fromCharCode(pdfFinalBytes[i]);
-      }
-      pdfFinalBase64 = btoa(binaryString);
-
-      console.log('✅ PDFs concatenados');
-    } else {
-      console.log('⚠️ PDF do boleto não disponível - retornando apenas fatura');
-      pdfFinalBase64 = faturaPdfBase64;
-    }
-
-    // 📤 RESPOSTA FINAL
+    // Retornar PDFs separados para o frontend fazer o merge
     const resultado = {
       status: 'ok',
-      mensagem: 'Fechamento realizado com sucesso.',
-      nome_cliente,
-      codigo_fatura,
-      telefone_cliente,
+      mensagem: 'Fechamento realizado com sucesso',
+      nome_cliente: clienteData.nome,
+      codigo_fatura: codigo_fatura,
+      telefone_cliente: telefone,
       fatura_pdf: faturaPdfBase64,
       boleto_pdf: boletoPdfBase64,
-      arquivo_final_pdf: pdfFinalBase64,
       boleto_info: {
-        nosso_numero: boletoData.nossoNumero,
-        linha_digitavel: boletoData.linhaDigitavel,
-        codigo_barras: boletoData.codigoBarras,
+        nossoNumero: boletoData.nossoNumero,
+        linhaDigitavel: boletoData.linhaDigitavel,
+        codigoBarras: boletoData.codigoBarras,
+        dataVencimento: dataVencimento,
+        valor: valorBoleto,
       },
       detalhes: {
         valor_total: fatura.totalFaturado,
