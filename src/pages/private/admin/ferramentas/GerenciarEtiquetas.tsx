@@ -51,17 +51,48 @@ export default function GerenciarEtiquetas() {
 
   const deleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      const promises = ids.map(id => 
-        emissaoService.cancelarEmissao({ id })
-      );
-      return Promise.all(promises);
+      const batchSize = 10; // Processar 10 por vez
+      const results = [];
+      const errors = [];
+      
+      for (let i = 0; i < ids.length; i += batchSize) {
+        const batch = ids.slice(i, i + batchSize);
+        console.log(`Excluindo lote ${i / batchSize + 1}:`, batch);
+        
+        try {
+          const promises = batch.map(id => 
+            emissaoService.cancelarEmissao({ id })
+              .catch(err => {
+                console.error(`Erro ao excluir ${id}:`, err);
+                errors.push({ id, error: err });
+                return null;
+              })
+          );
+          const batchResults = await Promise.all(promises);
+          results.push(...batchResults.filter(r => r !== null));
+        } catch (error) {
+          console.error(`Erro no lote ${i / batchSize + 1}:`, error);
+          errors.push({ batch, error });
+        }
+      }
+      
+      console.log(`Total processado: ${results.length}, Erros: ${errors.length}`);
+      return { results, errors };
     },
-    onSuccess: () => {
-      toast.success("Etiquetas excluídas com sucesso!");
+    onSuccess: (data) => {
+      const { results, errors } = data;
+      if (errors.length > 0) {
+        toast.warning(`${results.length} excluídas com sucesso. ${errors.length} com erro.`);
+        console.error('Erros detalhados:', errors);
+      } else {
+        toast.success(`${results.length} etiquetas excluídas com sucesso!`);
+      }
       setSelectedIds([]);
+      setSelectAllMode('none');
       queryClient.invalidateQueries({ queryKey: ["emissoes-gerenciar"] });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Erro geral na exclusão:', error);
       toast.error("Erro ao excluir etiquetas");
     }
   });
