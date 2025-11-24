@@ -151,32 +151,26 @@ serve(async (req) => {
       telefone: telefone_cliente,
     });
 
-    // ✅ ETAPA 2: Gerar PDF da Fatura
+    // ✅ ETAPA 2: Gerar PDF da Fatura via API
     console.log('📄 Etapa 2: Gerando PDF da fatura...');
     
-    const pdfFaturaResponse = await fetch(mcpUrl, {
-      method: 'POST',
+    const baseApiUrl = Deno.env.get('BASE_API_URL') || 'https://envios.brhubb.com.br/api';
+    const apiToken = authHeader.replace('Bearer ', '');
+    
+    const pdfFaturaResponse = await fetch(`${baseApiUrl}/faturas/imprimir/${fatura.id}`, {
+      method: 'GET',
       headers: {
+        'Authorization': `Bearer ${apiToken}`,
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${mcpAuthToken}`,
       },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'tools/call',
-        params: {
-          name: 'gerar_pdf_fatura',
-          arguments: {
-            codigo_fatura,
-          }
-        },
-        id: Date.now(),
-      }),
     });
 
+    if (!pdfFaturaResponse.ok) {
+      throw new Error(`Erro ao gerar PDF da fatura: ${pdfFaturaResponse.status}`);
+    }
+
     const pdfFaturaData = await pdfFaturaResponse.json();
-    const faturaPdfBase64 = pdfFaturaData.result?.content?.[0]?.text 
-      ? JSON.parse(pdfFaturaData.result.content[0].text).pdf_base64
-      : pdfFaturaData.result.pdf_base64;
+    const faturaPdfBase64 = pdfFaturaData.dados;
 
     console.log('✅ PDF da fatura gerado');
 
@@ -184,66 +178,80 @@ serve(async (req) => {
     console.log('💰 Etapa 4: Emitindo boleto...');
     
     const valorBoleto = parseFloat(fatura.totalFaturado);
-    const dataVencimento = new Date();
-    dataVencimento.setDate(dataVencimento.getDate() + 1); // D+1
-
-    const boletoResponse = await fetch(mcpUrl, {
+    
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    
+    const boletoResponse = await fetch(`${supabaseUrl}/functions/v1/banco-inter-create-boleto`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${mcpAuthToken}`,
+        'Authorization': authHeader,
       },
       body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'tools/call',
-        params: {
-          name: 'emitir_boleto_inter',
-          arguments: {
-            valor: valorBoleto,
-            vencimento: dataVencimento.toISOString().split('T')[0],
-            pagador_nome: clienteData.nome,
-            pagador_documento: clienteData.cpfCnpj.replace(/\D/g, ''),
-            instrucao: `Referente aos serviços BRHUB Envios - Fatura ${codigo_fatura}`,
-          }
+        faturaId: fatura.id,
+        valorCobrado: valorBoleto,
+        pagadorNome: clienteData.nome,
+        pagadorCpfCnpj: clienteData.cpfCnpj,
+        pagadorEndereco: {
+          logradouro: clienteData.logradouro,
+          numero: clienteData.numero,
+          complemento: clienteData.complemento || '',
+          bairro: clienteData.bairro,
+          cidade: clienteData.localidade,
+          uf: clienteData.uf,
+          cep: clienteData.cep,
         },
-        id: Date.now(),
+        mensagem: `Fatura ${codigo_fatura} - BRHUB Envios`,
+        multa: {
+          tipo: 'PERCENTUAL',
+          valor: 10, // 10% de multa após vencimento
+        },
+        juros: {
+          tipo: 'PERCENTUAL_DIA',
+          valor: 0.033, // 1% ao mês = 0.033% ao dia
+        },
       }),
     });
+
+    if (!boletoResponse.ok) {
+      const errorText = await boletoResponse.text();
+      throw new Error(`Erro ao emitir boleto: ${boletoResponse.status} - ${errorText}`);
+    }
 
     const boletoData = await boletoResponse.json();
-    const boletoPdfBase64 = boletoData.result?.content?.[0]?.text 
-      ? JSON.parse(boletoData.result.content[0].text).boleto_pdf_base64
-      : boletoData.result.boleto_pdf_base64;
+    const boletoPdfBase64 = boletoData.pdf;
+    const dataVencimento = boletoData.dataVencimento;
 
-    console.log('✅ Boleto emitido com sucesso');
+    console.log('✅ Boleto emitido:', boletoData.nossoNumero);
 
-    // ✅ ETAPA 5: Concatenar PDFs (Fatura + Boleto)
+    // ✅ ETAPA 5: Concatenar PDFs (Boleto + Fatura)
     console.log('🔗 Etapa 5: Concatenando PDFs...');
     
-    const concatenarResponse = await fetch(mcpUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${mcpAuthToken}`,
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'tools/call',
-        params: {
-          name: 'concatenar_pdfs',
-          arguments: {
-            pdf1_base64: faturaPdfBase64,
-            pdf2_base64: boletoPdfBase64,
-          }
-        },
-        id: Date.now(),
-      }),
-    });
-
-    const concatenarData = await concatenarResponse.json();
-    const pdfFinalBase64 = concatenarData.result?.content?.[0]?.text 
-      ? JSON.parse(concatenarData.result.content[0].text).pdf_concatenado_base64
-      : concatenarData.result.pdf_concatenado_base64;
+    // Importar pdf-lib dinamicamente
+    const { PDFDocument } = await import('https://cdn.skypack.dev/pdf-lib@^1.17.1');
+    
+    // Decodificar Base64 para bytes
+    const boletoBytes = Uint8Array.from(atob(boletoPdfBase64), c => c.charCodeAt(0));
+    const faturaBytes = Uint8Array.from(atob(faturaPdfBase64), c => c.charCodeAt(0));
+    
+    // Carregar PDFs
+    const boletoPdf = await PDFDocument.load(boletoBytes);
+    const faturaPdf = await PDFDocument.load(faturaBytes);
+    
+    // Criar PDF final
+    const pdfFinal = await PDFDocument.create();
+    
+    // Copiar páginas do boleto primeiro
+    const boletoPages = await pdfFinal.copyPages(boletoPdf, boletoPdf.getPageIndices());
+    boletoPages.forEach((page) => pdfFinal.addPage(page));
+    
+    // Depois copiar páginas da fatura
+    const faturaPages = await pdfFinal.copyPages(faturaPdf, faturaPdf.getPageIndices());
+    faturaPages.forEach((page) => pdfFinal.addPage(page));
+    
+    // Salvar PDF final
+    const pdfFinalBytes = await pdfFinal.save();
+    const pdfFinalBase64 = btoa(String.fromCharCode(...pdfFinalBytes));
 
     console.log('✅ PDFs concatenados');
 
@@ -257,10 +265,17 @@ serve(async (req) => {
       fatura_pdf: faturaPdfBase64,
       boleto_pdf: boletoPdfBase64,
       arquivo_final_pdf: pdfFinalBase64,
+      boleto_info: {
+        nosso_numero: boletoData.nossoNumero,
+        linha_digitavel: boletoData.linhaDigitavel,
+        codigo_barras: boletoData.codigoBarras,
+      },
       detalhes: {
         valor_total: fatura.totalFaturado,
         periodo: `${fatura.periodoInicial} a ${fatura.periodoFinal}`,
-        vencimento_boleto: dataVencimento.toISOString().split('T')[0],
+        vencimento_boleto: dataVencimento,
+        multa_percentual: '10%',
+        juros_mensal: '1%',
       }
     };
 
