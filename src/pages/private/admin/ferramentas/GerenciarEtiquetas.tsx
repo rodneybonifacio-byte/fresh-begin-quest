@@ -29,8 +29,8 @@ export default function GerenciarEtiquetas() {
     queryKey: ["emissoes-gerenciar", page, appliedFilters],
     queryFn: async () => {
       const params: Record<string, string | number> = {
-        page,
-        limit: 50
+        limit: 50,
+        offset: (page - 1) * 50
       };
       
       if (appliedFilters.status) params.status = appliedFilters.status;
@@ -39,6 +39,9 @@ export default function GerenciarEtiquetas() {
       if (appliedFilters.remetente) params.busca = appliedFilters.remetente;
 
       const response = await emissaoService.getAll(params, 'admin');
+      console.log('Dados retornados da API:', response);
+      console.log('Primeiro item:', response.data?.[0]);
+      console.log('Remetente do primeiro item:', response.data?.[0]?.remetente);
       return response;
     }
   });
