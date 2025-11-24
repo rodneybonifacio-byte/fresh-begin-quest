@@ -466,13 +466,37 @@ export default function GerenciarEtiquetas() {
     setShowRegerarModal(true);
   };
 
+  const gerarCpfSemZeroInicial = () => {
+    // Gerar CPF válido que NÃO comece com zero (para não perder dígito ao converter para Number)
+    let cpf = stripCpf(generateCpf());
+    let tentativas = 0;
+    
+    while (cpf.startsWith('0') && tentativas < 20) {
+      cpf = stripCpf(generateCpf());
+      tentativas++;
+    }
+    
+    return cpf;
+  };
+
   const handleValidarCpf = () => {
     if (!editableEmissao) return;
     
     const cpfLimpo = editableEmissao.destinatarioCpfCnpj?.replace(/\D/g, '') || '';
     
+    // Verificar se CPF começa com zero (problemático ao converter para Number)
+    if (cpfLimpo.startsWith('0')) {
+      const novoCpf = gerarCpfSemZeroInicial();
+      setEditableEmissao({
+        ...editableEmissao,
+        destinatarioCpfCnpj: novoCpf
+      });
+      toast.warning(`CPF começa com zero (perde dígito ao enviar). Novo CPF gerado: ${novoCpf}`, { duration: 5000 });
+      return;
+    }
+    
     if (!cpfLimpo || cpfLimpo.length !== 11 || !isValidCpf(cpfLimpo)) {
-      const novoCpf = stripCpf(generateCpf());
+      const novoCpf = gerarCpfSemZeroInicial();
       setEditableEmissao({
         ...editableEmissao,
         destinatarioCpfCnpj: novoCpf
@@ -533,8 +557,8 @@ export default function GerenciarEtiquetas() {
         
         // Se erro de CPF inválido, gerar novo CPF válido e tentar novamente
         if (errorData.error?.message?.includes('cpfCnpj')) {
-          console.warn('CPF rejeitado pela API. Gerando novo CPF válido...');
-          const novoCpf = stripCpf(generateCpf());
+          console.warn('CPF rejeitado pela API. Gerando novo CPF válido (sem zero inicial)...');
+          const novoCpf = gerarCpfSemZeroInicial();
           
           // Atualizar o estado com o novo CPF
           setEditableEmissao({
