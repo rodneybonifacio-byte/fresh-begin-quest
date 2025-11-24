@@ -6,14 +6,34 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Formatar certificado PEM
+// Formatar certificado PEM corretamente
 const formatPemCert = (pemString: string): string => {
-  if (!pemString) return '';
-  return pemString
-    .replace(/\\n/g, '\n')
-    .replace(/-----BEGIN [A-Z\s]+-----\n?/g, match => match.trim() + '\n')
-    .replace(/\n?-----END [A-Z\s]+-----/g, match => '\n' + match.trim())
-    .trim();
+  let cleaned = pemString.trim();
+  
+  if (cleaned.includes('\n')) {
+    return cleaned;
+  }
+  
+  const beginRegex = /(-----BEGIN [^-]+-----)/;
+  const endRegex = /(-----END [^-]+-----)/;
+  
+  const beginMatch = cleaned.match(beginRegex);
+  const endMatch = cleaned.match(endRegex);
+  
+  if (!beginMatch || !endMatch) {
+    console.error('Formato de certificado inválido');
+    return pemString;
+  }
+  
+  const header = beginMatch[0];
+  const footer = endMatch[0];
+  const startPos = cleaned.indexOf(header) + header.length;
+  const endPos = cleaned.indexOf(footer);
+  const content = cleaned.substring(startPos, endPos).replace(/\s/g, '');
+  
+  const formatted = content.match(/.{1,64}/g)?.join('\n') || content;
+  
+  return `${header}\n${formatted}\n${footer}`;
 };
 
 // Obter token OAuth do Banco Inter
