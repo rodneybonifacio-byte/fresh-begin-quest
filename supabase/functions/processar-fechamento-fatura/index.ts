@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { PDFDocument } from "npm:pdf-lib@^1.17.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -258,9 +259,6 @@ serve(async (req) => {
 
     // ✅ ETAPA 5: Concatenar PDFs (Boleto + Fatura)
     console.log('🔗 Etapa 5: Concatenando PDFs...');
-    
-    // Importar pdf-lib dinamicamente
-    const { PDFDocument } = await import('https://cdn.skypack.dev/pdf-lib@^1.17.1');
     
     // Decodificar Base64 para bytes
     const boletoBytes = Uint8Array.from(atob(boletoPdfBase64), c => c.charCodeAt(0));
