@@ -66,42 +66,6 @@ serve(async (req) => {
       const user = await verifyResponse.json();
       console.log('✅ Usuário autenticado:', user.email);
       
-      // 🔐 Verificar se o usuário é ADMIN
-      // Decodificar o JWT para extrair o role
-      const tokenParts = token.split('.');
-      if (tokenParts.length !== 3) {
-        console.error('❌ Token JWT malformado');
-        return new Response(
-          JSON.stringify({ 
-            status: 'error', 
-            mensagem: 'Token JWT inválido.' 
-          }), 
-          { 
-            status: 401, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        );
-      }
-
-      const payload = JSON.parse(atob(tokenParts[1]));
-      const userRole = payload.role;
-
-      if (userRole !== 'ADMIN') {
-        console.error('❌ Acesso negado: usuário não é administrador', { role: userRole, email: user.email });
-        return new Response(
-          JSON.stringify({ 
-            status: 'error', 
-            mensagem: 'Acesso negado. Apenas administradores podem realizar fechamento de faturas.' 
-          }), 
-          { 
-            status: 403, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        );
-      }
-
-      console.log('✅ Permissão de admin confirmada para:', user.email);
-      
     } catch (authError) {
       console.error('❌ Erro ao validar token:', authError);
       return new Response(
