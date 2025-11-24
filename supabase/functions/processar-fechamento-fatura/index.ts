@@ -197,10 +197,18 @@ serve(async (req) => {
 
     // ✅ ETAPA 4: Emitir boleto via Banco Inter
     console.log('💰 Etapa 4: Emitindo boleto...');
+    console.log('💰 Valor do boleto:', fatura.totalFaturado);
     
     const valorBoleto = parseFloat(fatura.totalFaturado);
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    
+    console.log('📤 Enviando requisição para banco-inter-create-boleto...');
+    console.log('📋 Dados do pagador:', {
+      nome: clienteData.nome,
+      cpfCnpj: cpfCnpj,
+      cep: cep
+    });
     
     const boletoResponse = await fetch(`${supabaseUrl}/functions/v1/banco-inter-create-boleto`, {
       method: 'POST',
@@ -234,8 +242,11 @@ serve(async (req) => {
       }),
     });
 
+    console.log('📡 Resposta do banco-inter-create-boleto - Status:', boletoResponse.status);
+
     if (!boletoResponse.ok) {
       const errorText = await boletoResponse.text();
+      console.error('❌ Erro detalhado do boleto:', errorText);
       throw new Error(`Erro ao emitir boleto: ${boletoResponse.status} - ${errorText}`);
     }
 
