@@ -226,14 +226,18 @@ serve(async (req) => {
           data: body.desconto.dataLimite || dataVencimento,
         }
       }),
-      multa: {
-        codigo: 'PERCENTUAL',
-        taxa: 2, // 2% de multa
-      },
-      mora: {
-        codigo: 'TAXAMENSAL',
-        taxa: 1, // 1% ao mês (proporcional por dia)
-      },
+      ...(body.multa && {
+        multa: {
+          codigo: body.multa.tipo === 'PERCENTUAL' ? 'PERCENTUAL' : 'VALORFIXO',
+          taxa: body.multa.valor,
+        }
+      }),
+      ...(body.juros && {
+        mora: {
+          codigo: body.juros.tipo === 'PERCENTUAL_DIA' ? 'TAXAMENSAL' : 'VALORDIA',
+          taxa: body.juros.tipo === 'PERCENTUAL_DIA' ? (body.juros.valor * 30) : body.juros.valor,
+        }
+      }),
     };
 
     console.log('📝 Dados do boleto preparados');
