@@ -58,32 +58,87 @@ export const ModalAtualizarPrecosEmMassa = ({
     mutationFn: async (input: FormAtualizarPrecosEmMassa) => {
       setIsLoading(true);
       
+      // Primeiro, buscar dados das emissões selecionadas para pegar valores atuais
       const batchSize = 10;
       const results: any[] = [];
       const errors: any[] = [];
 
+      // Se for percentual, precisamos buscar os valores atuais primeiro
+      let emissoesData: Map<string, any> = new Map();
+      
+      if (input.modoAtualizacao === 'PERCENTUAL') {
+        try {
+          console.log('Buscando dados das emissões para calcular percentual...');
+          const fetchPromises = selectedIds.map(async (id) => {
+            try {
+              const response = await service.getById(id);
+              return { id, data: response.data };
+            } catch (err) {
+              console.error(`Erro ao buscar emissão ${id}:`, err);
+              return null;
+            }
+          });
+          
+          const fetchedData = await Promise.all(fetchPromises);
+          fetchedData.forEach((item) => {
+            if (item) {
+              emissoesData.set(item.id, item.data);
+            }
+          });
+          
+          console.log(`Dados buscados: ${emissoesData.size} emissões`);
+        } catch (err) {
+          console.error('Erro ao buscar dados das emissões:', err);
+          toast.error('Erro ao buscar dados das etiquetas');
+          setIsLoading(false);
+          throw err;
+        }
+      }
+
+      // Processar atualizações em lotes
       for (let i = 0; i < selectedIds.length; i += batchSize) {
         const batch = selectedIds.slice(i, i + batchSize);
         
         try {
           const promises = batch.map(async (emissaoId) => {
             try {
-              // Para PERCENTUAL, enviar valor direto como string/número (pode ser negativo)
-              // Para VALOR_FIXO, converter para número formatado
-              const valorProcessado = input.modoAtualizacao === 'PERCENTUAL' 
-                ? input.valor.replace(',', '.') // Substituir vírgula por ponto para números decimais
-                : formatNumberString(input.valor || '');
+              let valorFinal: string;
+              
+              if (input.modoAtualizacao === 'PERCENTUAL') {
+                // Calcular valor com percentual
+                const emissaoData = emissoesData.get(emissaoId);
+                if (!emissaoData) {
+                  throw new Error('Dados da emissão não encontrados');
+                }
+                
+                // Pegar valor atual baseado no tipo de atualização
+                const valorAtual = input.tipoAtualizacao === 'VALOR_VENDA' 
+                  ? parseFloat(emissaoData.valor || emissaoData.valorPostagem || '0')
+                  : parseFloat(emissaoData.valorPostagem || '0');
+                
+                // Calcular percentual (converter string para número)
+                const percentual = parseFloat(input.valor.replace(',', '.'));
+                
+                // Aplicar percentual: valor_atual * (1 + percentual/100)
+                // Para -18%, seria: valor_atual * (1 - 0.18) = valor_atual * 0.82
+                const novoValor = valorAtual * (1 + percentual / 100);
+                
+                valorFinal = novoValor.toFixed(2);
+                
+                console.log(`Emissão ${emissaoId}: Valor atual R$ ${valorAtual.toFixed(2)} → ${percentual}% → Novo valor R$ ${valorFinal}`);
+              } else {
+                // VALOR_FIXO: usar valor direto
+                valorFinal = formatNumberString(input.valor || '');
+              }
 
               const inputData = {
                 emissaoId,
                 tipoAtualizacao: input.tipoAtualizacao,
-                valor: valorProcessado,
-                modoAtualizacao: input.modoAtualizacao,
+                valor: valorFinal,
               };
 
-              console.log('Enviando dados para API:', inputData);
               const response = await service.atualizarPrecos(emissaoId, inputData);
-              return { success: true, emissaoId, response };
+              return { success: true, emissaoId, response, valorFinal };
             } catch (err) {
               console.error(`Erro ao atualizar ${emissaoId}:`, err);
               errors.push({ emissaoId, error: err });
