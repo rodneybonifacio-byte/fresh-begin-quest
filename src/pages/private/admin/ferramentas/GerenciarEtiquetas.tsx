@@ -415,6 +415,16 @@ export default function GerenciarEtiquetas() {
       bgColor: selectAllMode === 'all' ? "bg-green-500 text-white" : "bg-blue-500 hover:bg-blue-600 text-white"
     },
     {
+      label: "Remover Seleção",
+      icon: <X className="h-4 w-4" />,
+      onClick: () => {
+        setSelectedIds([]);
+        setSelectedMeta({});
+        setSelectAllMode('none');
+      },
+      bgColor: selectedIds.length === 0 ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-orange-500 hover:bg-orange-600 text-white"
+    },
+    {
       label: `Atualizar Preços (${selectedIds.length})`,
       icon: <DollarSign className="h-4 w-4" />,
       onClick: handleAtualizarPrecos,
