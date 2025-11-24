@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Content, type ContentButtonProps } from "../../Content";
 import { EmissaoService } from "../../../../services/EmissaoService";
 import { DataTable, type Column } from "../../../../components/DataTable";
-import { Trash2, Filter, X, DollarSign } from "lucide-react";
+import { Trash2, Filter, X, DollarSign, Calendar, User, Activity, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -530,6 +530,74 @@ export default function GerenciarEtiquetas() {
               className="px-4 py-2 bg-gray-200 dark:bg-slate-700 rounded-md hover:bg-gray-300 dark:hover:bg-slate-600"
             >
               <X className="h-4 w-4 inline mr-2" />
+              Limpar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Resumo dos Filtros Ativos */}
+      {(appliedFilters.remetente || appliedFilters.status.length > 0 || appliedFilters.dataInicio || appliedFilters.dataFim) && (
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-4 shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-3">
+                <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <h3 className="font-semibold text-blue-900 dark:text-blue-100">Filtros Ativos</h3>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+                {appliedFilters.remetente && (
+                  <div className="flex items-center gap-2 bg-white/60 dark:bg-slate-800/60 px-3 py-2 rounded-lg">
+                    <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400 text-xs">Remetente:</span>
+                      <p className="font-medium text-gray-900 dark:text-gray-100">{appliedFilters.remetente}</p>
+                    </div>
+                  </div>
+                )}
+                
+                {(appliedFilters.dataInicio || appliedFilters.dataFim) && (
+                  <div className="flex items-center gap-2 bg-white/60 dark:bg-slate-800/60 px-3 py-2 rounded-lg">
+                    <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400 text-xs">Período:</span>
+                      <p className="font-medium text-gray-900 dark:text-gray-100">
+                        {appliedFilters.dataInicio ? format(new Date(appliedFilters.dataInicio), "dd/MM/yyyy", { locale: ptBR }) : "?"} 
+                        {" até "}
+                        {appliedFilters.dataFim ? format(new Date(appliedFilters.dataFim), "dd/MM/yyyy", { locale: ptBR }) : "?"}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                
+                {appliedFilters.status.length > 0 && (
+                  <div className="flex items-center gap-2 bg-white/60 dark:bg-slate-800/60 px-3 py-2 rounded-lg">
+                    <Activity className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400 text-xs">Status ({appliedFilters.status.length}):</span>
+                      <p className="font-medium text-gray-900 dark:text-gray-100">
+                        {appliedFilters.status.map(s => s.replace('_', ' ')).join(', ')}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/30 px-3 py-2 rounded-lg border border-green-200 dark:border-green-800">
+                  <FileText className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  <div>
+                    <span className="text-gray-600 dark:text-gray-400 text-xs">Total:</span>
+                    <p className="font-bold text-green-700 dark:text-green-300 text-lg">{data?.total || data?.data?.length || 0}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <button
+              onClick={handleClearFilters}
+              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300 rounded-lg transition-colors"
+            >
+              <X className="h-4 w-4" />
               Limpar
             </button>
           </div>
