@@ -68,13 +68,20 @@ export const ModalAtualizarPrecosEmMassa = ({
         try {
           const promises = batch.map(async (emissaoId) => {
             try {
+              // Para PERCENTUAL, enviar valor direto como string/número (pode ser negativo)
+              // Para VALOR_FIXO, converter para número formatado
+              const valorProcessado = input.modoAtualizacao === 'PERCENTUAL' 
+                ? input.valor.replace(',', '.') // Substituir vírgula por ponto para números decimais
+                : formatNumberString(input.valor || '');
+
               const inputData = {
                 emissaoId,
                 tipoAtualizacao: input.tipoAtualizacao,
-                valor: formatNumberString(input.valor || ''),
+                valor: valorProcessado,
                 modoAtualizacao: input.modoAtualizacao,
               };
 
+              console.log('Enviando dados para API:', inputData);
               const response = await service.atualizarPrecos(emissaoId, inputData);
               return { success: true, emissaoId, response };
             } catch (err) {
