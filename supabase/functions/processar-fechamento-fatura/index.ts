@@ -146,9 +146,6 @@ serve(async (req) => {
     // ✅ ETAPA 2: Gerar PDF da Fatura via API
     console.log('📄 Etapa 2: Gerando PDF da fatura...');
     
-    const baseApiUrl = Deno.env.get('BASE_API_URL') || 'https://envios.brhubb.com.br/api';
-    const apiToken = authHeader.replace('Bearer ', '');
-    
     const pdfFaturaResponse = await fetch(`${baseApiUrl}/faturas/imprimir/${fatura.id}`, {
       method: 'GET',
       headers: {
