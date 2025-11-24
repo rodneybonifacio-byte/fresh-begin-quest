@@ -36,19 +36,38 @@ export default function GerenciarEtiquetas() {
     queryKey: ["emissoes-gerenciar", page, appliedFilters],
     queryFn: async () => {
       const params: Record<string, string | number> = {
-        limit: 50,
-        offset: (page - 1) * 50
+        limit: 200,
+        offset: 0
       };
       
       if (appliedFilters.status) params.status = appliedFilters.status;
       if (appliedFilters.dataInicio) params.dataIni = appliedFilters.dataInicio;
       if (appliedFilters.dataFim) params.dataFim = appliedFilters.dataFim;
-      if (appliedFilters.remetente) params.remetenteNome = appliedFilters.remetente;
 
       console.log('Parâmetros enviados para API:', params);
       const response = await emissaoService.getAll(params, 'admin');
-      console.log('Quantidade de resultados:', response.data?.length);
-      return response;
+      console.log('Quantidade de resultados da API:', response.data?.length);
+
+      // Aplicar filtro de remetente client-side (API não está filtrando corretamente)
+      let filteredData = response.data || [];
+      if (appliedFilters.remetente) {
+        const searchTerm = appliedFilters.remetente.toLowerCase();
+        filteredData = filteredData.filter((item: IEmissao) => 
+          item.remetenteNome?.toLowerCase().includes(searchTerm)
+        );
+        console.log('Quantidade após filtro de remetente:', filteredData.length);
+      }
+
+      // Aplicar paginação client-side
+      const startIndex = (page - 1) * 50;
+      const endIndex = startIndex + 50;
+      const paginatedData = filteredData.slice(startIndex, endIndex);
+
+      return {
+        ...response,
+        data: paginatedData,
+        total: filteredData.length
+      };
     }
   });
 
@@ -195,41 +214,34 @@ export default function GerenciarEtiquetas() {
     try {
       setGlobalLoading(true);
 
-      const batchSize = 100;
-      let offset = 0;
-      let hasMore = true;
+      const params: Record<string, string | number> = {
+        limit: 200,
+        offset: 0,
+      };
+
+      if (appliedFilters.status) params.status = appliedFilters.status;
+      if (appliedFilters.dataInicio) params.dataIni = appliedFilters.dataInicio;
+      if (appliedFilters.dataFim) params.dataFim = appliedFilters.dataFim;
+
+      const response = await emissaoService.getAll(params, 'admin');
+      let allData = response.data || [];
+
+      // Aplicar filtro de remetente client-side
+      if (appliedFilters.remetente) {
+        const searchTerm = appliedFilters.remetente.toLowerCase();
+        allData = allData.filter((item: IEmissao) => 
+          item.remetenteNome?.toLowerCase().includes(searchTerm)
+        );
+      }
+
       let allIds: string[] = [];
       let meta: Record<string, { codigoObjeto: string }> = {};
 
-      while (hasMore) {
-        const params: Record<string, string | number> = {
-          limit: batchSize,
-          offset,
-        };
-
-        if (appliedFilters.status) params.status = appliedFilters.status;
-        if (appliedFilters.dataInicio) params.dataIni = appliedFilters.dataInicio;
-        if (appliedFilters.dataFim) params.dataFim = appliedFilters.dataFim;
-        if (appliedFilters.remetente) params.remetenteNome = appliedFilters.remetente;
-
-        const response = await emissaoService.getAll(params, 'admin');
-        const pageData = response.data || [];
-
-        if (pageData.length === 0) {
-          hasMore = false;
-        } else {
-          pageData.forEach((item: IEmissao) => {
-            if (!item.id || !item.codigoObjeto) return;
-            allIds.push(item.id);
-            meta[item.id] = { codigoObjeto: item.codigoObjeto };
-          });
-
-          offset += batchSize;
-          if (pageData.length < batchSize) {
-            hasMore = false;
-          }
-        }
-      }
+      allData.forEach((item: IEmissao) => {
+        if (!item.id || !item.codigoObjeto) return;
+        allIds.push(item.id);
+        meta[item.id] = { codigoObjeto: item.codigoObjeto };
+      });
 
       setSelectedIds(allIds);
       setSelectedMeta(meta);
