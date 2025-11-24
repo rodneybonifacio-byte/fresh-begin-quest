@@ -263,13 +263,23 @@ serve(async (req) => {
       }
 
       const boletoResult = await boletoResponse.json();
-      console.log('✅ Boleto emitido:', boletoResult.nossoNumero);
+      console.log('📋 Resposta completa do boleto:', JSON.stringify(boletoResult, null, 2));
+      
+      // O campo pode ser 'nossoNumero' ou 'codigoSolicitacao'
+      const boletoId = boletoResult.nossoNumero || boletoResult.codigoSolicitacao || boletoResult.id;
+      
+      if (!boletoId) {
+        console.error('❌ Nenhum identificador de boleto encontrado na resposta');
+        throw new Error('Resposta da API do Inter não contém identificador do boleto');
+      }
+      
+      console.log('✅ Boleto emitido - ID:', boletoId);
 
       // Aguardar alguns segundos para o boleto estar disponível no sistema
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       // Buscar PDF do boleto com mTLS (usando o mesmo httpClient)
-      const pdfUrl = `https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas/${boletoResult.nossoNumero}/pdf`;
+      const pdfUrl = `https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas/${boletoId}/pdf`;
       
       console.log('📄 Baixando PDF do boleto com mTLS...');
       const pdfResponse = await fetch(pdfUrl, {
@@ -282,17 +292,23 @@ serve(async (req) => {
       } as any);
 
       if (!pdfResponse.ok) {
-        console.warn('⚠️ Não foi possível obter o PDF do boleto');
+        const errorText = await pdfResponse.text();
+        console.error('❌ Erro ao baixar PDF do boleto:', errorText);
+        throw new Error(`Falha ao baixar PDF do boleto: ${pdfResponse.status}`);
       }
 
-      const pdfBuffer = pdfResponse.ok ? await pdfResponse.arrayBuffer() : null;
-      const pdfBase64 = pdfBuffer 
-        ? btoa(String.fromCharCode(...new Uint8Array(pdfBuffer)))
-        : null;
+      const pdfBuffer = await pdfResponse.arrayBuffer();
+      
+      // Validar que recebemos um PDF válido
+      if (!pdfBuffer || pdfBuffer.byteLength === 0) {
+        throw new Error('PDF do boleto está vazio');
+      }
+      
+      const pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(pdfBuffer)));
 
       const resultado = {
-        nossoNumero: boletoResult.nossoNumero,
-        seuNumero: boletoResult.seuNumero,
+        nossoNumero: boletoId,
+        seuNumero: boletoResult.seuNumero || seuNumero,
         codigoBarras: boletoResult.codigoBarras,
         linhaDigitavel: boletoResult.linhaDigitavel,
         pdf: pdfBase64,
