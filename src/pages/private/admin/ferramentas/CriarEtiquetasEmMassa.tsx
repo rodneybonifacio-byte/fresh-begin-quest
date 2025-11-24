@@ -217,12 +217,13 @@ export default function CriarEtiquetasEmMassa() {
 
         const dadosCep = await consultarCep(row.cep);
         
-        if (!dadosCep) {
-          addLog(`Linha ${linhaNum} – Erro ao consultar CEP ${row.cep}`, "error");
+        // Se não conseguir bairro/cidade/estado válidos, não envia esse registro
+        if (!dadosCep || !dadosCep.bairro || !dadosCep.cidade || !dadosCep.estado) {
+          addLog(`Linha ${linhaNum} – Erro ao consultar CEP ${row.cep} (bairro/cidade/estado obrigatórios)`, "error");
           errosCep++;
           continue;
         }
-
+ 
         addLog(`Linha ${linhaNum} – CEP consultado: ${dadosCep.bairro}, ${dadosCep.cidade}/${dadosCep.estado}`, "success");
 
         // Processar e validar CPF
@@ -233,11 +234,11 @@ export default function CriarEtiquetasEmMassa() {
           addLog(`Linha ${linhaNum} – CPF inválido (${cpfOriginal}). Gerando CPF válido: ${cpfDestinatario}`, "warning");
         }
 
-        // Processar número (tratar null/undefined)
+        // Processar número (tratar null/undefined/<=0)
         let numero = parseInt(row.numero);
-        if (isNaN(numero) || numero === null || numero === undefined) {
+        if (isNaN(numero) || numero === null || numero === undefined || numero <= 0) {
           numero = 1;
-          addLog(`Linha ${linhaNum} – Número não informado, usando valor 1`, "warning");
+          addLog(`Linha ${linhaNum} – Número inválido ou não informado (${row.numero}), usando valor 1`, "warning");
         }
 
         const envio: EnvioData = {
