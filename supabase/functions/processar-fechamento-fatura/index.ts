@@ -87,10 +87,11 @@ serve(async (req) => {
       );
     }
 
-    const { codigo_fatura, nome_cliente } = await req.json() as FechamentoRequest;
+    const { codigo_fatura, nome_cliente, fatura_id } = await req.json() as FechamentoRequest & { fatura_id?: string };
 
     console.log('🚀 Iniciando fechamento da fatura:', codigo_fatura);
     console.log('📋 Cliente:', nome_cliente);
+    console.log('🆔 Fatura ID:', fatura_id);
 
     // ✅ ETAPA 1: Buscar dados completos da fatura via API Backend
     console.log('📊 Etapa 1: Buscando dados completos da fatura...');
@@ -98,7 +99,8 @@ serve(async (req) => {
     const baseApiUrl = Deno.env.get('BASE_API_URL') || 'https://envios.brhubb.com.br/api';
     const apiToken = authHeader.replace('Bearer ', '');
     
-    const faturaResponse = await fetch(`${baseApiUrl}/faturas/buscar-fatura-completa?codigoFatura=${codigo_fatura}`, {
+    // Buscar pela API usando o ID da fatura
+    const faturaResponse = await fetch(`${baseApiUrl}/faturas/admin/${fatura_id || codigo_fatura}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${apiToken}`,
@@ -114,7 +116,12 @@ serve(async (req) => {
     const faturaDataResponse = await faturaResponse.json();
     const fatura = faturaDataResponse.data;
 
+    if (!fatura) {
+      throw new Error('Fatura não encontrada');
+    }
+
     console.log('✅ Fatura encontrada:', {
+      id: fatura.id,
       codigo: fatura.codigo,
       valor: fatura.totalFaturado,
       periodo: `${fatura.periodoInicial} - ${fatura.periodoFinal}`,

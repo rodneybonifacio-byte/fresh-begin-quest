@@ -43,11 +43,12 @@ export class FaturaService extends BaseService<IFatura> {
         return response;
     }
 
-    async realizarFechamento(codigoFatura: string, nomeCliente: string, telefoneCliente: string): Promise<any> {
+    async realizarFechamento(faturaId: string, codigoFatura: string, nomeCliente: string, telefoneCliente: string): Promise<any> {
         const supabase = getSupabaseWithAuth();
         
         const { data, error } = await supabase.functions.invoke('processar-fechamento-fatura', {
             body: {
+                fatura_id: faturaId,
                 codigo_fatura: codigoFatura,
                 nome_cliente: nomeCliente,
                 telefone_cliente: telefoneCliente,
