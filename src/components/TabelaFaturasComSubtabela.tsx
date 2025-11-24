@@ -8,30 +8,18 @@ import { formatCpfCnpj } from '../utils/lib.formats';
 import { formatarDataVencimento } from '../utils/date-utils';
 import { StatusBadge } from './StatusBadge';
 import { CopiadorDeId } from './CopiadorDeId';
-import { Eye, FileText, CreditCard, MessageCircle, CheckCircle } from 'lucide-react';
+import { Eye, CheckCircle } from 'lucide-react';
 
 interface TabelaFaturasComSubtabelaProps {
     faturas: IFatura[];
-    layout: string;
-    setIsModalConfirmaPagamento: (data: { isOpen: boolean; fatura: IFatura }) => void;
-    notificaViaWhatsApp: (fatura: IFatura, tipoNotificacao: 'PADRAO' | 'ATRASADA') => void;
-    estaAtrasada: (fatura: IFatura) => boolean;
-    imprimirFaturaPdf: (fatura: IFatura) => void;
     realizarFechamento: (fatura: IFatura) => void;
-    emitirBoleto: (fatura: IFatura) => void;
     verificarFechamentoExistente: (faturaId: string) => any;
     visualizarFechamento: (fatura: IFatura) => void;
 }
 
 export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps> = ({
     faturas,
-    layout,
-    setIsModalConfirmaPagamento,
-    notificaViaWhatsApp,
-    estaAtrasada,
-    imprimirFaturaPdf,
     realizarFechamento,
-    emitirBoleto,
     verificarFechamentoExistente,
     visualizarFechamento,
 }) => {
@@ -41,7 +29,7 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
         setExpandedRows((prev) => ({ ...prev, [rowId]: !prev[rowId] }));
     };
 
-    const renderSubTable = (subData: IFatura[], parentRow: IFatura) => {
+    const renderSubTable = (subData: IFatura[]) => {
         return (
             <DataTable<IFatura>
                 data={subData}
@@ -93,36 +81,6 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
                         icon: <CheckCircle size={16} />,
                         onClick: (row) => realizarFechamento(row),
                         show: (row) => !verificarFechamentoExistente(row.id) && (row.status === 'PENDENTE' || row.status === 'PAGO_PARCIAL'),
-                    },
-                    {
-                        label: 'Ver Fatura',
-                        icon: <Eye size={16} />,
-                        to: `/${layout}/financeiro/fatura/${parentRow.id}/agrupada`,
-                        show: true,
-                    },
-                    {
-                        label: 'Ver Fatura PDF',
-                        icon: <FileText size={16} />,
-                         onClick: (row) => imprimirFaturaPdf(row),
-                        show: true,
-                    },
-                    {
-                        label: 'Confirmar Pagamento',
-                        icon: <CreditCard size={16} />,
-                        onClick: (row) => setIsModalConfirmaPagamento({ isOpen: true, fatura: row }),
-                        show: (row) => ['PENDENTE', 'PAGO_PARCIAL'].includes(row.status),
-                    },
-                    {
-                        label: 'Notificar via WhatsApp',
-                        icon: <MessageCircle size={16} />,
-                        onClick: (row) => notificaViaWhatsApp(row, 'PADRAO'),
-                        show: (row) => row.status === 'PENDENTE',
-                    },
-                    {
-                        label: 'Notificar Fatura Pendente',
-                        icon: <MessageCircle size={16} />,
-                        onClick: (row) => notificaViaWhatsApp(row, 'ATRASADA'),
-                        show: (row) => estaAtrasada(row),
                     },
                 ]}
                 rowKey={(row) => row.id}
@@ -191,42 +149,6 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
                     icon: <CheckCircle size={16} />,
                     onClick: (row) => realizarFechamento(row),
                     show: (row) => !verificarFechamentoExistente(row.id) && (!row.faturas || row.faturas.length === 0) && (row.status === 'PENDENTE' || row.status === 'PAGO_PARCIAL'),
-                },
-                {
-                    label: 'Emitir Boleto',
-                    icon: <FileText size={16} />,
-                    onClick: (row) => emitirBoleto(row),
-                    show: (row) => !!(row.faturas && row.faturas.length === 0) && (row.status === 'PENDENTE' || row.status === 'PAGO_PARCIAL'),
-                },
-                {
-                    label: 'Ver Fatura',
-                    icon: <Eye size={16} />,
-                    to: (row) => `/${layout}/financeiro/fatura/${row.id}`,
-                    show: (row) => !(row.faturas && row.faturas.length > 0),
-                },
-                {
-                    label: 'Ver Fatura PDF',
-                    icon: <FileText size={16} />,
-                    onClick: (row) => imprimirFaturaPdf(row),
-                    show: (row) => !(row.faturas && row.faturas.length > 0),
-                },
-                {
-                    label: 'Confirmar Pagamento',
-                    icon: <CreditCard size={16} />,
-                    onClick: (row) => setIsModalConfirmaPagamento({ isOpen: true, fatura: row }),
-                    show: (row) => !(row.faturas && row.faturas.length > 0) && ['PENDENTE', 'PAGO_PARCIAL'].includes(row.status),
-                },
-                {
-                    label: 'Notificar via WhatsApp',
-                    icon: <MessageCircle size={16} />,
-                    onClick: (row) => notificaViaWhatsApp(row, 'PADRAO'),
-                    show: (row) => !(row.faturas && row.faturas.length > 0) && row.status === 'PENDENTE',
-                },
-                {
-                    label: 'Notificar Fatura Pendente',
-                    icon: <MessageCircle size={16} />,
-                    onClick: (row) => notificaViaWhatsApp(row, 'ATRASADA'),
-                    show: (row) => !(row.faturas && row.faturas.length > 0) && estaAtrasada(row),
                 },
             ]}
             subTable={{

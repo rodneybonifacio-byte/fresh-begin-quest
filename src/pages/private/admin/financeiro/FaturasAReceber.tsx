@@ -14,8 +14,6 @@ import { toastSuccess } from '../../../../utils/toastNotify';
 import { Tabs, TabsList } from '@radix-ui/react-tabs';
 import { TabItem } from '../../../../components/TabItem';
 import { ListaFaturas } from './ListaFaturas';
-import { useMutation } from '@tanstack/react-query';
-import { viewPDF } from '../../../../utils/pdfUtils';
 import { useFaturasRealtime } from '../../../../hooks/useFaturasRealtime';
 import { RealtimeStatusIndicator } from '../../../../components/RealtimeStatusIndicator';
 import { showPagamentoToast } from '../../../../components/PagamentoRealtimeToast';
@@ -123,47 +121,6 @@ const FinanceiroFaturasAReceber = () => {
         setPage(pageNumber);
     };
 
-    const notificaViaWhatsApp = async (fatura: IFatura, tipoNotificacao: 'PADRAO' | 'ATRASADA' = 'PADRAO') => {
-        try {
-            setIsLoading(true);
-            await service.notificaViaWhatsApp(fatura.id, tipoNotificacao);
-            toastSuccess('Notificação enviada com sucesso!');
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const sendMutation = useMutation({
-        mutationFn: async (fatura: IFatura) => {
-            let faturaId = '';
-            let id = fatura.id;
-
-            if (fatura.faturaId) {
-                faturaId = fatura.id;
-                id = fatura.faturaId || '';
-            }
-
-            const result = await service.gerarFaturaPdf(id, faturaId || '');
-            return result;
-        },
-        onSuccess: () => {},
-    });
-
-    const handleEnviarEImprimir = async (fatura: IFatura) => {
-        console.log(fatura);
-
-        try {
-            setIsLoading(true);
-            const result = await sendMutation.mutateAsync(fatura);
-            if (result?.dados) {
-                viewPDF(result?.dados, result.faturaId);
-            }
-        } catch (_error) {
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
     const handleRealizarFechamento = async (fatura: IFatura) => {
         const nomeCliente = fatura.nome ?? fatura.cliente.nome;
         const codigoFatura = fatura.codigo || '';
@@ -238,10 +195,6 @@ const FinanceiroFaturasAReceber = () => {
         } finally {
             setIsLoading(false);
         }
-    };
-
-    const handleEmitirBoleto = (fatura: IFatura) => {
-        setIsModalBoleto({ isOpen: true, fatura });
     };
 
     const verificarFechamentoExistente = (faturaId: string) => {
@@ -356,15 +309,7 @@ const FinanceiroFaturasAReceber = () => {
                 <>
                     <ListaFaturas
                         data={data}
-                        setIsModalConfirmaPagamento={setIsModalConfirmaPagamento}
-                        notificaViaWhatsApp={notificaViaWhatsApp}
-                        estaAtrasada={(fatura: IFatura) => {
-                            const today = new Date();
-                            return new Date(fatura.dataVencimento) < today && !fatura.dataPagamento;
-                        }}
-                        imprimirFaturaPdf={handleEnviarEImprimir}
                         realizarFechamento={handleRealizarFechamento}
-                        emitirBoleto={handleEmitirBoleto}
                         verificarFechamentoExistente={verificarFechamentoExistente}
                         visualizarFechamento={handleVisualizarFechamento}
                     />
