@@ -3,7 +3,7 @@ import { isValid as isValidCpf, strip as stripCpf, generate as generateCpf } fro
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Content, type ContentButtonProps } from "../../Content";
 import { EmissaoService } from "../../../../services/EmissaoService";
-import { supabase } from "../../../../integrations/supabase/client";
+import { getSupabaseWithAuth } from "../../../../integrations/supabase/custom-auth";
 import { DataTable, type Column } from "../../../../components/DataTable";
 import { Trash2, Filter, X, DollarSign, Eye, RefreshCw, FileText, User, Calendar, Activity, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
@@ -64,7 +64,8 @@ export default function GerenciarEtiquetas() {
       // Buscar TODAS as etiquetas pendentes de correção do Supabase (sem paginação)
       console.log('🔍 Buscando TODAS etiquetas pendentes do Supabase (sem filtros de paginação)...');
       
-      let supabaseQuery = supabase
+      const supabaseClient = getSupabaseWithAuth();
+      let supabaseQuery = supabaseClient
         .from('etiquetas_pendentes_correcao')
         .select('*', { count: 'exact' });
 
@@ -744,7 +745,8 @@ export default function GerenciarEtiquetas() {
         console.log('🔍 Buscando TODAS as etiquetas pendentes sem filtros...');
         
         // Buscar TODAS sem nenhum filtro
-        const { data: todas, error, count } = await supabase
+        const supabaseClient = getSupabaseWithAuth();
+        const { data: todas, error, count } = await supabaseClient
           .from('etiquetas_pendentes_correcao')
           .select('*', { count: 'exact' });
         
