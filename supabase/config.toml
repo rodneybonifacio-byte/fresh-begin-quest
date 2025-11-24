@@ -18,9 +18,6 @@ verify_jwt = false
 [functions.buscar-remetentes]
 verify_jwt = false
 
-[functions.buscar-todas-emissoes-admin]
-verify_jwt = false
-
 [functions.criar-cliente-autocadastro]
 verify_jwt = false
 

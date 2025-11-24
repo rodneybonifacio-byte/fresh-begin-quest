@@ -43,15 +43,11 @@ export class CustomHttpClient implements IHttpClient {
     }
 
     private handleError(error: unknown): never {
-        console.error('🔴 HTTP Error completo:', error);
-        
         if (axios.isAxiosError(error)) {
             const { response } = error;
-            console.error('🔴 Axios Error - Response:', response);
 
             if (response) {
                 const { status, data } = response;
-                console.error(`🔴 Status: ${status}, Data:`, data);
 
                 if (status === 401) {
                     handleLogout();

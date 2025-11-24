@@ -1,4 +1,4 @@
-import { Archive, Calculator, ClipboardList, FileBarChart, FilePen, FileStack, Home, Package, Settings, Truck, Upload, UsersRound, Wallet, Zap } from 'lucide-react';
+import { Archive, Calculator, ClipboardList, FileBarChart, FilePen, FileStack, Home, Package, Settings, Truck, UsersRound, Wallet } from 'lucide-react';
 import { observer } from 'mobx-react-lite';
 import { useLocation } from 'react-router-dom';
 import { SidebarLayout } from './SidebarLayout';
@@ -95,7 +95,7 @@ const AdminSidebar = observer(({
         {
             icon: Settings,
             label: 'Ferramentas',
-            active: ['/admin/ferramentas/cancelar-emissao', '/admin/ferramentas/criar-manifesto', '/admin/ferramentas/realizar-fechamento', '/admin/ferramentas/importacao-etiquetas', '/admin/ferramentas/gerenciar-etiquetas', '/admin/ferramentas/gerar-etiquetas-rapido'].some(path => isPathActive(path)),
+            active: ['/admin/ferramentas/cancelar-emissao', '/admin/ferramentas/criar-manifesto', '/admin/ferramentas/realizar-fechamento'].some(path => isPathActive(path)),
             submenu: [
                 {
                     icon: FilePen,
@@ -114,24 +114,6 @@ const AdminSidebar = observer(({
                     label: 'Reprocessar Emissão Etiqueta',
                     to: '/admin/ferramentas/reprocessar-emissao-etiqueta',
                     active: isPathActive('/admin/ferramentas/reprocessar-emissao-etiqueta')
-                },
-                {
-                    icon: Upload,
-                    label: 'Importação de Etiquetas',
-                    to: '/admin/ferramentas/importacao-etiquetas',
-                    active: isPathActive('/admin/ferramentas/importacao-etiquetas')
-                },
-                {
-                    icon: Zap,
-                    label: 'Gerar Etiquetas Rápido',
-                    to: '/admin/ferramentas/gerar-etiquetas-rapido',
-                    active: isPathActive('/admin/ferramentas/gerar-etiquetas-rapido')
-                },
-                {
-                    icon: Settings,
-                    label: 'Gerenciar Etiquetas',
-                    to: '/admin/ferramentas/gerenciar-etiquetas',
-                    active: isPathActive('/admin/ferramentas/gerenciar-etiquetas')
                 },
                 {
                     icon: Calculator,

@@ -14,7 +14,7 @@ const RastreioPublica = lazy(() => import('../pages/site/rastreio').then(module 
 const ApiDocs = lazy(() => import('../pages/site/ducumetacoes/ApiDocs').then(module => ({ default: module.ApiDocs })));
 const Manutencao = lazy(() => import('../pages/site/manutencao').then(module => ({ default: module.Manutencao })));
 const AppLayout = lazy(() => import('../layout/AppLayout').then(module => ({ default: module.AppLayout })));
-const AdminLayout = lazy(() => import('../layout/AdminLayout'));
+const AdminLayout = lazy(() => import('../layout/AdminLayout').then(module => ({ default: module.AdminLayout })));
 const RecuperarSenha = lazy(() => import('../pages/site/login/recuperar-senha').then(module => ({ default: module.RecuperarSenha })));
 const MessageRedefinirSenha = lazy(() => import('../pages/site/login/message-redefinir-senha').then(module => ({ default: module.MessageRedefinirSenha })));
 const PinCode = lazy(() => import('../pages/site/login/pin-code').then(module => ({ default: module.PinCode })));
