@@ -104,27 +104,6 @@ export const ModalVisualizarFechamento: React.FC<ModalVisualizarFechamentoProps>
         toast.success('Download iniciado!');
     };
 
-    const handleDownloadIndividual = (type: 'boleto' | 'fatura') => {
-        const pdfBase64 = type === 'boleto' ? boletoPdf : faturaPdf;
-        if (!pdfBase64) return;
-
-        const bytes = Uint8Array.from(atob(pdfBase64), c => c.charCodeAt(0));
-        const blob = new Blob([bytes], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
-
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = type === 'boleto' 
-            ? `BOLETO_${codigoFatura}.pdf`
-            : `FATURA_${codigoFatura}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        
-        toast.success(`${type === 'boleto' ? 'Boleto' : 'Fatura'} baixado!`);
-    };
-
     if (!isOpen) return null;
 
     return (
@@ -201,28 +180,17 @@ export const ModalVisualizarFechamento: React.FC<ModalVisualizarFechamentoProps>
                     {mergedPdfUrl && !error && (
                         <ButtonComponent variant="primary" onClick={handleDownload} className="gap-2">
                             <Download size={18} />
-                            Baixar PDF Completo
-                        </ButtonComponent>
-                    )}
-                    
-                    {boletoPdf && (
-                        <ButtonComponent 
-                            variant="secondary"
-                            onClick={() => handleDownloadIndividual('boleto')} 
-                            className="gap-2"
-                        >
-                            <Download size={18} />
-                            Baixar Boleto
+                            Baixar Fechamento
                         </ButtonComponent>
                     )}
                     
                     <ButtonComponent 
                         variant="secondary"
-                        onClick={() => handleDownloadIndividual('fatura')} 
-                        className="gap-2"
+                        disabled
+                        className="gap-2 opacity-50 cursor-not-allowed"
                     >
-                        <Download size={18} />
-                        Baixar Fatura
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        Notificar WhatsApp (Em breve)
                     </ButtonComponent>
                 </div>
             </div>
