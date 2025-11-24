@@ -80,18 +80,40 @@ export default function GerenciarEtiquetas() {
   const handleSelectAllFiltered = async () => {
     try {
       setGlobalLoading(true);
-      const params: Record<string, string | number> = {
-        limit: 10000 // Limite alto para pegar todos
-      };
-      
-      if (appliedFilters.status) params.status = appliedFilters.status;
-      if (appliedFilters.dataInicio) params.dataIni = appliedFilters.dataInicio;
-      if (appliedFilters.dataFim) params.dataFim = appliedFilters.dataFim;
-      if (appliedFilters.remetente) params.remetenteNome = appliedFilters.remetente;
 
-      const response = await emissaoService.getAll(params, 'admin');
-      const allIds = response.data?.map((item: IEmissao) => item.id || "").filter(Boolean) || [];
-      
+      const batchSize = 100;
+      let offset = 0;
+      let hasMore = true;
+      let allIds: string[] = [];
+
+      while (hasMore) {
+        const params: Record<string, string | number> = {
+          limit: batchSize,
+          offset,
+        };
+
+        if (appliedFilters.status) params.status = appliedFilters.status;
+        if (appliedFilters.dataInicio) params.dataIni = appliedFilters.dataInicio;
+        if (appliedFilters.dataFim) params.dataFim = appliedFilters.dataFim;
+        if (appliedFilters.remetente) params.remetenteNome = appliedFilters.remetente;
+
+        const response = await emissaoService.getAll(params, 'admin');
+        const pageData = response.data || [];
+
+        if (pageData.length === 0) {
+          hasMore = false;
+        } else {
+          allIds = [
+            ...allIds,
+            ...pageData.map((item: IEmissao) => item.id || "").filter(Boolean),
+          ];
+          offset += batchSize;
+          if (pageData.length < batchSize) {
+            hasMore = false;
+          }
+        }
+      }
+
       setSelectedIds(allIds);
       setSelectAllMode('all');
       toast.success(`${allIds.length} etiquetas selecionadas`);
