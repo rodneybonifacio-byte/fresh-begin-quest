@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Download, FileText, Loader2 } from 'lucide-react';
+import { X, Download, FileText, Loader2, ExternalLink } from 'lucide-react';
 import { ButtonComponent } from './button';
 import { PDFDocument } from 'pdf-lib';
 import { toast } from 'sonner';
@@ -32,6 +32,7 @@ export const ModalVisualizarFechamento: React.FC<ModalVisualizarFechamentoProps>
     const [mergedPdfUrl, setMergedPdfUrl] = useState<string | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [pdfLoadError, setPdfLoadError] = useState(false);
 
     useEffect(() => {
         if (isOpen && faturaPdf) {
@@ -104,6 +105,17 @@ export const ModalVisualizarFechamento: React.FC<ModalVisualizarFechamentoProps>
         toast.success('Download iniciado!');
     };
 
+    const handleOpenInNewTab = () => {
+        if (!mergedPdfUrl) return;
+        window.open(mergedPdfUrl, '_blank');
+        toast.success('Abrindo PDF em nova aba...');
+    };
+
+    const handleIframeError = () => {
+        console.error('❌ Erro ao carregar PDF no iframe');
+        setPdfLoadError(true);
+    };
+
     if (!isOpen) return null;
 
     return (
@@ -166,22 +178,49 @@ export const ModalVisualizarFechamento: React.FC<ModalVisualizarFechamentoProps>
                                 <p>{error}</p>
                             </div>
                         </div>
+                    ) : pdfLoadError ? (
+                        <div className="h-full flex items-center justify-center">
+                            <div className="text-center">
+                                <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                                <h3 className="text-lg font-semibold mb-2">Problema ao Exibir PDF</h3>
+                                <p className="text-muted-foreground mb-4">
+                                    Não foi possível visualizar o PDF diretamente no navegador.
+                                </p>
+                                <div className="flex gap-2 justify-center">
+                                    <ButtonComponent variant="primary" onClick={handleOpenInNewTab} className="gap-2">
+                                        <ExternalLink size={18} />
+                                        Abrir em Nova Aba
+                                    </ButtonComponent>
+                                    <ButtonComponent variant="secondary" onClick={handleDownload} className="gap-2">
+                                        <Download size={18} />
+                                        Baixar PDF
+                                    </ButtonComponent>
+                                </div>
+                            </div>
+                        </div>
                     ) : mergedPdfUrl ? (
                         <iframe
                             src={mergedPdfUrl}
-                            className="w-full h-full"
+                            className="w-full h-full border-0"
                             title="PDF Mesclado"
+                            onError={handleIframeError}
                         />
                     ) : null}
                 </div>
 
                 {/* Botões de ação */}
                 <div className="flex gap-3 justify-end p-4 border-t border-border">
-                    {mergedPdfUrl && !error && (
-                        <ButtonComponent variant="primary" onClick={handleDownload} className="gap-2">
-                            <Download size={18} />
-                            Baixar Fechamento
-                        </ButtonComponent>
+                    {mergedPdfUrl && !error && !pdfLoadError && (
+                        <>
+                            <ButtonComponent variant="ghost" onClick={handleOpenInNewTab} className="gap-2">
+                                <ExternalLink size={18} />
+                                Abrir em Nova Aba
+                            </ButtonComponent>
+                            <ButtonComponent variant="primary" onClick={handleDownload} className="gap-2">
+                                <Download size={18} />
+                                Baixar Fechamento
+                            </ButtonComponent>
+                        </>
                     )}
                     
                     <ButtonComponent 
