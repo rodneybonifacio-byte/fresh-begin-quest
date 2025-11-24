@@ -256,34 +256,42 @@ serve(async (req) => {
     const dataVencimento = boletoData.dataVencimento;
 
     console.log('✅ Boleto emitido:', boletoData.nossoNumero);
+    console.log('📋 Status do PDF:', boletoPdfBase64 ? 'PDF disponível' : 'PDF não disponível');
 
-    // ✅ ETAPA 5: Concatenar PDFs (Boleto + Fatura)
-    console.log('🔗 Etapa 5: Concatenando PDFs...');
+    // ✅ ETAPA 5: Concatenar PDFs (Boleto + Fatura) ou retornar apenas fatura
+    let pdfFinalBase64;
     
-    // Decodificar Base64 para bytes
-    const boletoBytes = Uint8Array.from(atob(boletoPdfBase64), c => c.charCodeAt(0));
-    const faturaBytes = Uint8Array.from(atob(faturaPdfBase64), c => c.charCodeAt(0));
-    
-    // Carregar PDFs
-    const boletoPdf = await PDFDocument.load(boletoBytes);
-    const faturaPdf = await PDFDocument.load(faturaBytes);
-    
-    // Criar PDF final
-    const pdfFinal = await PDFDocument.create();
-    
-    // Copiar páginas do boleto primeiro
-    const boletoPages = await pdfFinal.copyPages(boletoPdf, boletoPdf.getPageIndices());
-    boletoPages.forEach((page) => pdfFinal.addPage(page));
-    
-    // Depois copiar páginas da fatura
-    const faturaPages = await pdfFinal.copyPages(faturaPdf, faturaPdf.getPageIndices());
-    faturaPages.forEach((page) => pdfFinal.addPage(page));
-    
-    // Salvar PDF final
-    const pdfFinalBytes = await pdfFinal.save();
-    const pdfFinalBase64 = btoa(String.fromCharCode(...pdfFinalBytes));
+    if (boletoPdfBase64) {
+      console.log('🔗 Etapa 5: Concatenando PDFs...');
+      
+      // Decodificar Base64 para bytes
+      const boletoBytes = Uint8Array.from(atob(boletoPdfBase64), c => c.charCodeAt(0));
+      const faturaBytes = Uint8Array.from(atob(faturaPdfBase64), c => c.charCodeAt(0));
+      
+      // Carregar PDFs
+      const boletoPdf = await PDFDocument.load(boletoBytes);
+      const faturaPdf = await PDFDocument.load(faturaBytes);
+      
+      // Criar PDF final
+      const pdfFinal = await PDFDocument.create();
+      
+      // Copiar páginas do boleto primeiro
+      const boletoPages = await pdfFinal.copyPages(boletoPdf, boletoPdf.getPageIndices());
+      boletoPages.forEach((page) => pdfFinal.addPage(page));
+      
+      // Depois copiar páginas da fatura
+      const faturaPages = await pdfFinal.copyPages(faturaPdf, faturaPdf.getPageIndices());
+      faturaPages.forEach((page) => pdfFinal.addPage(page));
+      
+      // Salvar PDF final
+      const pdfFinalBytes = await pdfFinal.save();
+      pdfFinalBase64 = btoa(String.fromCharCode(...pdfFinalBytes));
 
-    console.log('✅ PDFs concatenados');
+      console.log('✅ PDFs concatenados');
+    } else {
+      console.log('⚠️ PDF do boleto não disponível - retornando apenas fatura');
+      pdfFinalBase64 = faturaPdfBase64;
+    }
 
     // 📤 RESPOSTA FINAL
     const resultado = {

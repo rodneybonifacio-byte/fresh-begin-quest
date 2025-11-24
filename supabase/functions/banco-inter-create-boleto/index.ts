@@ -275,26 +275,55 @@ serve(async (req) => {
       
       console.log('✅ Boleto emitido - ID:', boletoId);
 
-      // Aguardar alguns segundos para o boleto estar disponível no sistema
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Aguardar mais tempo para o PDF ser gerado no sistema do Inter
+      console.log('⏳ Aguardando 5 segundos para geração do PDF...');
+      await new Promise(resolve => setTimeout(resolve, 5000));
 
       // Buscar PDF do boleto com mTLS (usando o mesmo httpClient)
       const pdfUrl = `https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas/${boletoId}/pdf`;
       
       console.log('📄 Baixando PDF do boleto com mTLS...');
+      console.log('🔗 URL do PDF:', pdfUrl);
+      
       const pdfResponse = await fetch(pdfUrl, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Accept': 'application/pdf',
+          'Content-Type': 'application/json',
         },
         client: httpClient,
       } as any);
+      
+      console.log('📡 Resposta PDF - Status:', pdfResponse.status);
+      console.log('📡 Resposta PDF - Headers:', Object.fromEntries(pdfResponse.headers.entries()));
 
       if (!pdfResponse.ok) {
         const errorText = await pdfResponse.text();
-        console.error('❌ Erro ao baixar PDF do boleto:', errorText);
-        throw new Error(`Falha ao baixar PDF do boleto: ${pdfResponse.status}`);
+        console.error('❌ Erro ao baixar PDF - Status:', pdfResponse.status);
+        console.error('❌ Erro ao baixar PDF - Resposta:', errorText);
+        
+        // Se falhar, retornar sem o PDF mas com os dados do boleto
+        console.warn('⚠️ Continuando sem o PDF do boleto');
+        
+        const resultado = {
+          nossoNumero: boletoId,
+          seuNumero: boletoResult.seuNumero || seuNumero,
+          codigoBarras: boletoResult.codigoBarras,
+          linhaDigitavel: boletoResult.linhaDigitavel,
+          pdf: null,
+          dataVencimento: dataVencimento,
+          valor: body.valorCobrado,
+          status: 'EMITIDO_SEM_PDF',
+        };
+        
+        return new Response(
+          JSON.stringify(resultado),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          }
+        );
       }
 
       const pdfBuffer = await pdfResponse.arrayBuffer();
