@@ -7,6 +7,7 @@ import { PDFDocument } from "pdf-lib";
 import { Content } from "../../Content";
 import { ViacepService } from "../../../../services/viacepService";
 import { isValid as isValidCpf, strip as stripCpf, generate as generateCpf } from "@fnando/cpf";
+import { getSupabaseWithAuth } from "../../../../integrations/supabase/custom-auth";
 
 interface LogEntry {
   timestamp: string;
@@ -194,30 +195,51 @@ export default function CriarEtiquetasEmMassa() {
     try {
       addLog(`Salvando ${etiquetasComErro.length} etiquetas com erro para correção posterior...`, "info");
 
-      // Preparar dados para envio individual (sem validações rigorosas, apenas salvar)
-      const enviosParaSalvar = etiquetasComErro.map(erro => erro.envio);
+      const supabase = getSupabaseWithAuth();
+      
+      // Buscar cliente_id do JWT
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("Usuário não autenticado");
+      }
 
-      const payload = {
-        cpfCnpj: cpfCnpjRemetente,
-        status: "erro_pendente_correcao", // Status especial
-        salvarSemValidacao: true, // Flag para API saber que deve salvar mesmo com erros
-        data: enviosParaSalvar.map((e) => ({
-          ...e,
-          cpfCnpj: Number(e.cpfCnpj) || 0, // Mesmo que inválido, tenta salvar
-          observacao: `ERRO IMPORTAÇÃO - ${etiquetasComErro.find(err => err.envio === e)?.motivo || 'Requer correção'}`,
-        })),
-      };
+      // Extrair clienteId do JWT
+      const clienteId = (user as any).user_metadata?.clienteId || user.id;
 
-      await axios.post(
-        "https://envios.brhubb.com.br/api/importacao/multipla",
-        payload,
-        {
-          headers: {
-            "API-Version": "3.0.0",
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const registrosParaSalvar = etiquetasComErro.map(erro => ({
+        cliente_id: clienteId,
+        remetente_cpf_cnpj: cpfCnpjRemetente,
+        remetente_nome: "ÓPERA KIDS VAREJO", // Nome fixo do remetente
+        destinatario_nome: erro.envio.nomeDestinatario,
+        destinatario_cpf_cnpj: erro.envio.cpfCnpj,
+        destinatario_celular: "", // Não disponível na planilha
+        destinatario_cep: erro.envio.cep,
+        destinatario_logradouro: erro.envio.logradouro,
+        destinatario_numero: erro.envio.numero?.toString() || "",
+        destinatario_complemento: erro.envio.complemento || "",
+        destinatario_bairro: erro.envio.bairro || "",
+        destinatario_cidade: erro.envio.cidade || "",
+        destinatario_estado: erro.envio.estado || "",
+        altura: erro.envio.altura,
+        largura: erro.envio.largura,
+        comprimento: erro.envio.comprimento,
+        peso: erro.envio.peso,
+        valor_frete: erro.envio.valor_frete,
+        valor_declarado: 0, // Não disponível na planilha
+        servico_frete: erro.envio.servico_frete,
+        observacao: `ERRO IMPORTAÇÃO LINHA ${erro.linhaOriginal}`,
+        motivo_erro: erro.motivo,
+        linha_original: erro.linhaOriginal,
+        tentativas_correcao: 0
+      }));
+
+      const { error } = await supabase
+        .from('etiquetas_pendentes_correcao')
+        .insert(registrosParaSalvar);
+
+      if (error) {
+        throw error;
+      }
 
       addLog(`✓ ${etiquetasComErro.length} etiquetas com erro salvas no gerenciador para correção`, "success");
       toast.info(`${etiquetasComErro.length} etiquetas com erro foram salvas para correção posterior`);
