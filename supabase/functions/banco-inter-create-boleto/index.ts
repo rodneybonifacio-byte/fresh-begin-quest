@@ -65,6 +65,36 @@ function calcularVencimentoDMaisUm(): string {
 }
 
 // Função para obter token OAuth do Banco Inter
+// Função para formatar certificado PEM corretamente (reutilizada da função PIX)
+function formatPemCert(pemString: string): string {
+  let cleaned = pemString.trim();
+  
+  if (cleaned.includes('\n')) {
+    return cleaned;
+  }
+  
+  const beginRegex = /(-----BEGIN [^-]+-----)/;
+  const endRegex = /(-----END [^-]+-----)/;
+  
+  const beginMatch = cleaned.match(beginRegex);
+  const endMatch = cleaned.match(endRegex);
+  
+  if (!beginMatch || !endMatch) {
+    console.error('Formato de certificado inválido');
+    return pemString;
+  }
+  
+  const header = beginMatch[0];
+  const footer = endMatch[0];
+  const startPos = cleaned.indexOf(header) + header.length;
+  const endPos = cleaned.indexOf(footer);
+  const content = cleaned.substring(startPos, endPos).replace(/\s/g, '');
+  
+  const formatted = content.match(/.{1,64}/g)?.join('\n') || content;
+  
+  return `${header}\n${formatted}\n${footer}`;
+}
+
 async function obterTokenBancoInter(): Promise<string> {
   const clientId = Deno.env.get('BANCO_INTER_CLIENT_ID');
   const clientSecret = Deno.env.get('BANCO_INTER_CLIENT_SECRET');
@@ -74,30 +104,33 @@ async function obterTokenBancoInter(): Promise<string> {
 
   console.log('🔐 Verificando credenciais do Banco Inter...');
   
-  if (!clientId || !clientSecret) {
-    console.error('❌ Client ID ou Secret não configurados');
-    throw new Error('Credenciais do Banco Inter não configuradas: Client ID/Secret ausentes');
-  }
-  
-  if (!cert || !key) {
-    console.error('❌ Certificados mTLS não configurados');
-    throw new Error('Certificados mTLS do Banco Inter não configurados');
+  if (!clientId || !clientSecret || !cert || !key || !caCert) {
+    throw new Error('Credenciais do Banco Inter não configuradas');
   }
 
   console.log('✅ Todas as credenciais encontradas');
+  console.log('🔧 Formatando certificados...');
+  
+  const certFixed = formatPemCert(cert);
+  const keyFixed = formatPemCert(key);
+  const caCertFixed = formatPemCert(caCert);
+  
+  console.log('Certificado formatado - primeira linha:', certFixed.split('\n')[0]);
 
   const tokenUrl = 'https://cdpj.partners.bancointer.com.br/oauth/v2/token';
   
-  console.log('🌐 Chamando API de token do Banco Inter...');
+  console.log('🌐 Criando cliente HTTP com mTLS...');
   
-  // Criar cliente HTTP com mTLS
+  // Criar cliente HTTP com mTLS (mesma estrutura da função PIX)
   const httpClient = Deno.createHttpClient({
-    certChain: cert,
-    privateKey: key,
-    caCerts: caCert ? [caCert] : undefined,
+    cert: certFixed,
+    key: keyFixed,
+    caCerts: [caCertFixed]
   });
 
   try {
+    console.log('📡 Obtendo token de autenticação...');
+    
     const response = await fetch(tokenUrl, {
       method: 'POST',
       headers: {
@@ -110,7 +143,7 @@ async function obterTokenBancoInter(): Promise<string> {
         grant_type: 'client_credentials',
       }),
       client: httpClient,
-    });
+    } as any);
 
     console.log('📡 Resposta recebida - Status:', response.status);
 
