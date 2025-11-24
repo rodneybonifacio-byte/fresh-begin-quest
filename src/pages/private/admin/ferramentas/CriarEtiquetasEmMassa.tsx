@@ -110,28 +110,75 @@ export default function CriarEtiquetasEmMassa() {
     }
   };
 
-  const enviarParaApi = async (cpfCnpjRemetente: string, envios: EnvioData[]): Promise<any> => {
+  const enviarParaApi = async (cpfCnpjRemetente: string, envios: EnvioData[], tentativa = 1): Promise<any> => {
     try {
+      const payload = {
+        cpfCnpj: cpfCnpjRemetente,
+        data: envios.map((e) => ({
+          ...e,
+          // API espera número, não string
+          cpfCnpj: Number(e.cpfCnpj),
+        })),
+      };
+
       const response = await axios.post(
         "https://envios.brhubb.com.br/api/importacao/multipla",
-        {
-          cpfCnpj: cpfCnpjRemetente,
-          data: envios
-        },
+        payload,
         {
           headers: {
             "API-Version": "3.0.0",
-            "Content-Type": "application/json"
-          }
+            "Content-Type": "application/json",
+          },
         }
       );
       return response.data;
     } catch (error: any) {
       const errorDetails = error.response?.data?.error;
-      if (errorDetails && Array.isArray(errorDetails)) {
+
+      if (tentativa === 1 && Array.isArray(errorDetails)) {
+        // Ex.: "data.1.cpfCnpj: CPF/CNPJ inválido"
+        const indicesComErroCpf = new Set<number>();
+
+        errorDetails.forEach((e: any) => {
+          if (typeof e.message === "string" && e.message.includes("cpfCnpj")) {
+            const match = e.message.match(/data\.(\d+)\.cpfCnpj/i);
+            if (match && match[1]) {
+              indicesComErroCpf.add(Number(match[1]));
+            }
+          }
+        });
+
+        if (indicesComErroCpf.size > 0) {
+          addLog(
+            `API retornou CPF inválido para ${indicesComErroCpf.size} registro(s). Gerando novos CPFs e reenviando...`,
+            "warning"
+          );
+
+          const enviosCorrigidos = envios.map((envio, index) => {
+            if (indicesComErroCpf.has(index)) {
+              const cpfOriginal = envio.cpfCnpj;
+              const novoCpf = gerarCpfValido();
+              addLog(
+                `Indice ${index} – CPF inválido (${cpfOriginal}). Novo CPF gerado: ${novoCpf}`,
+                "warning"
+              );
+              return {
+                ...envio,
+                cpfCnpj: novoCpf,
+              };
+            }
+            return envio;
+          });
+
+          return enviarParaApi(cpfCnpjRemetente, enviosCorrigidos, 2);
+        }
+      }
+
+      if (Array.isArray(errorDetails)) {
         const errorMessages = errorDetails.map((e: any) => e.message).join("; ");
         addLog(`Erros da API: ${errorMessages}`, "error");
       }
+
       throw error;
     }
   };
@@ -208,8 +255,8 @@ export default function CriarEtiquetasEmMassa() {
         // Processar número (tratar null/undefined)
         let numero = parseInt(row.numero);
         if (isNaN(numero) || numero === null || numero === undefined) {
-          numero = 0;
-          addLog(`Linha ${linhaNum} – Número não informado, usando valor 0`, "warning");
+          numero = 1;
+          addLog(`Linha ${linhaNum} – Número não informado, usando valor 1`, "warning");
         }
 
         const envio: EnvioData = {
