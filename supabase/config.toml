@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.processar-fechamento-fatura]
 verify_jwt = false
+
+[functions.banco-inter-create-boleto]
+verify_jwt = false
