@@ -1,5 +1,7 @@
 import type { IFatura } from '../../../../types/IFatura';
 import { TabelaFaturasComSubtabela } from '../../../../components/TabelaFaturasComSubtabela';
+import { FaturaMobileList } from '../../../../components/faturas/FaturaMobileList';
+import { useBreakpoint } from '../../../../hooks/useBreakpoint';
 import React from 'react';
 
 interface TabelaFaturasClienteProps {
@@ -19,16 +21,29 @@ export const TabelaFaturasCliente: React.FC<TabelaFaturasClienteProps> = ({
     visualizarFechamento,
     cancelarBoleto,
 }) => {
+    const isMobile = useBreakpoint(undefined, 'md');
+
     return (
-        <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm overflow-visible">
-            <TabelaFaturasComSubtabela
-                faturas={faturas}
-                setIsModalConfirmaPagamento={setIsModalConfirmaPagamento}
-                realizarFechamento={realizarFechamento}
-                verificarFechamentoExistente={verificarFechamentoExistente}
-                visualizarFechamento={visualizarFechamento}
-                cancelarBoleto={cancelarBoleto}
-            />
+        <div className={isMobile ? 'space-y-3' : 'bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm overflow-visible'}>
+            {isMobile ? (
+                <FaturaMobileList
+                    faturas={faturas}
+                    onConfirmarPagamento={(fatura) => setIsModalConfirmaPagamento({ isOpen: true, fatura })}
+                    onRealizarFechamento={realizarFechamento}
+                    onVisualizarFechamento={visualizarFechamento}
+                    onCancelarBoleto={cancelarBoleto}
+                    verificarFechamentoExistente={verificarFechamentoExistente}
+                />
+            ) : (
+                <TabelaFaturasComSubtabela
+                    faturas={faturas}
+                    setIsModalConfirmaPagamento={setIsModalConfirmaPagamento}
+                    realizarFechamento={realizarFechamento}
+                    verificarFechamentoExistente={verificarFechamentoExistente}
+                    visualizarFechamento={visualizarFechamento}
+                    cancelarBoleto={cancelarBoleto}
+                />
+            )}
         </div>
     );
 };
