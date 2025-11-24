@@ -36,68 +36,20 @@ export default function GerenciarEtiquetas() {
     queryKey: ["emissoes-gerenciar", page, appliedFilters],
     queryFn: async () => {
       const params: Record<string, string | number> = {
-        limit: 500,
-        offset: 0
+        limit: 50,
+        offset: (page - 1) * 50
       };
 
-      console.log('Filtros aplicados:', appliedFilters);
+      if (appliedFilters.remetente) params.remetenteNome = appliedFilters.remetente;
+      if (appliedFilters.dataInicio) params.dataIni = appliedFilters.dataInicio;
+      if (appliedFilters.dataFim) params.dataFim = appliedFilters.dataFim;
+      if (appliedFilters.status.length > 0) params.status = appliedFilters.status.join(',');
+
+      console.log('Parâmetros enviados para API (gerenciar etiquetas):', params);
       const response = await emissaoService.getAll(params, 'admin');
-      console.log('Quantidade total da API:', response.data?.length);
+      console.log('Quantidade de resultados (API):', response.data?.length);
 
-      // Aplicar todos os filtros client-side
-      let filteredData = response.data || [];
-
-      // Filtro de remetente
-      if (appliedFilters.remetente) {
-        const searchTerm = appliedFilters.remetente.toLowerCase();
-        filteredData = filteredData.filter((item: IEmissao) => 
-          item.remetenteNome?.toLowerCase().includes(searchTerm)
-        );
-      }
-
-      // Filtro de status (múltiplos)
-      if (appliedFilters.status.length > 0) {
-        const selectedStatuses = appliedFilters.status.map(s => s.toLowerCase());
-        filteredData = filteredData.filter((item: IEmissao) => {
-          if (!item.status) return false;
-          const itemStatus = item.status.toLowerCase();
-          return selectedStatuses.some(sel => itemStatus.includes(sel));
-        });
-      }
-
-      // Filtro de data início
-      if (appliedFilters.dataInicio) {
-        const dataIni = new Date(appliedFilters.dataInicio);
-        filteredData = filteredData.filter((item: IEmissao) => {
-          if (!item.criadoEm) return false;
-          const dataCriacao = new Date(item.criadoEm);
-          return dataCriacao >= dataIni;
-        });
-      }
-
-      // Filtro de data fim
-      if (appliedFilters.dataFim) {
-        const dataFim = new Date(appliedFilters.dataFim);
-        dataFim.setHours(23, 59, 59, 999);
-        filteredData = filteredData.filter((item: IEmissao) => {
-          if (!item.criadoEm) return false;
-          const dataCriacao = new Date(item.criadoEm);
-          return dataCriacao <= dataFim;
-        });
-      }
-
-      console.log('Quantidade após todos os filtros:', filteredData.length);
-
-      // Aplicar paginação client-side
-      const startIndex = (page - 1) * 50;
-      const endIndex = startIndex + 50;
-      const paginatedData = filteredData.slice(startIndex, endIndex);
-
-      return {
-        ...response,
-        data: paginatedData,
-        total: filteredData.length
-      };
+      return response;
     }
   });
 
@@ -244,56 +196,41 @@ export default function GerenciarEtiquetas() {
     try {
       setGlobalLoading(true);
 
-      const params: Record<string, string | number> = {
-        limit: 500,
-        offset: 0,
-      };
-
-      const response = await emissaoService.getAll(params, 'admin');
-      let allData = response.data || [];
-
-      // Aplicar filtros client-side
-      if (appliedFilters.remetente) {
-        const searchTerm = appliedFilters.remetente.toLowerCase();
-        allData = allData.filter((item: IEmissao) => 
-          item.remetenteNome?.toLowerCase().includes(searchTerm)
-        );
-      }
-
-      if (appliedFilters.status.length > 0) {
-        const selectedStatuses = appliedFilters.status.map(s => s.toLowerCase());
-        allData = allData.filter((item: IEmissao) => {
-          if (!item.status) return false;
-          const itemStatus = item.status.toLowerCase();
-          return selectedStatuses.some(sel => itemStatus.includes(sel));
-        });
-      }
-
-      if (appliedFilters.dataInicio) {
-        const dataIni = new Date(appliedFilters.dataInicio);
-        allData = allData.filter((item: IEmissao) => {
-          if (!item.criadoEm) return false;
-          return new Date(item.criadoEm) >= dataIni;
-        });
-      }
-
-      if (appliedFilters.dataFim) {
-        const dataFim = new Date(appliedFilters.dataFim);
-        dataFim.setHours(23, 59, 59, 999);
-        allData = allData.filter((item: IEmissao) => {
-          if (!item.criadoEm) return false;
-          return new Date(item.criadoEm) <= dataFim;
-        });
-      }
-
+      const batchSize = 100;
+      let offset = 0;
+      let hasMore = true;
       let allIds: string[] = [];
       let meta: Record<string, { codigoObjeto: string }> = {};
 
-      allData.forEach((item: IEmissao) => {
-        if (!item.id || !item.codigoObjeto) return;
-        allIds.push(item.id);
-        meta[item.id] = { codigoObjeto: item.codigoObjeto };
-      });
+      while (hasMore) {
+        const params: Record<string, string | number> = {
+          limit: batchSize,
+          offset,
+        };
+
+        if (appliedFilters.remetente) params.remetenteNome = appliedFilters.remetente;
+        if (appliedFilters.dataInicio) params.dataIni = appliedFilters.dataInicio;
+        if (appliedFilters.dataFim) params.dataFim = appliedFilters.dataFim;
+        if (appliedFilters.status.length > 0) params.status = appliedFilters.status.join(',');
+
+        const response = await emissaoService.getAll(params, 'admin');
+        const pageData = response.data || [];
+
+        if (pageData.length === 0) {
+          hasMore = false;
+        } else {
+          pageData.forEach((item: IEmissao) => {
+            if (!item.id || !item.codigoObjeto) return;
+            allIds.push(item.id);
+            meta[item.id] = { codigoObjeto: item.codigoObjeto };
+          });
+
+          offset += batchSize;
+          if (pageData.length < batchSize) {
+            hasMore = false;
+          }
+        }
+      }
 
       setSelectedIds(allIds);
       setSelectedMeta(meta);
