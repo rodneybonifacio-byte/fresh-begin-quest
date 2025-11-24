@@ -6,6 +6,7 @@ import axios from "axios";
 import { PDFDocument } from "pdf-lib";
 import { Content } from "../../Content";
 import { ViacepService } from "../../../../services/viacepService";
+import { isValid as isValidCpf, strip as stripCpf, generate as generateCpf } from "@fnando/cpf";
 
 interface LogEntry {
   timestamp: string;
@@ -50,50 +51,20 @@ export default function CriarEtiquetasEmMassa() {
   };
 
   const limparCpfCnpj = (cpfCnpj: string): string => {
-    return cpfCnpj?.toString().replace(/[^\d]/g, "") || "";
+    const value = cpfCnpj?.toString() || "";
+    return stripCpf(value);
   };
 
   const validarCpf = (cpf: string): boolean => {
-    const cpfLimpo = cpf.replace(/[^\d]/g, "");
-    
-    if (cpfLimpo.length !== 11) return false;
-    if (/^(\d)\1{10}$/.test(cpfLimpo)) return false; // CPFs com todos dígitos iguais
-    
-    let sum = 0;
-    for (let i = 0; i < 9; i++) {
-      sum += parseInt(cpfLimpo.charAt(i)) * (10 - i);
-    }
-    let digit1 = 11 - (sum % 11);
-    if (digit1 >= 10) digit1 = 0;
-    
-    sum = 0;
-    for (let i = 0; i < 10; i++) {
-      sum += parseInt(cpfLimpo.charAt(i)) * (11 - i);
-    }
-    let digit2 = 11 - (sum % 11);
-    if (digit2 >= 10) digit2 = 0;
-    
-    return digit1 === parseInt(cpfLimpo.charAt(9)) && digit2 === parseInt(cpfLimpo.charAt(10));
+    const cleaned = stripCpf(cpf || "");
+    if (!cleaned) return false;
+    return isValidCpf(cleaned);
   };
 
   const gerarCpfValido = (): string => {
-    const randomDigits = (n: number) => 
-      Array.from({ length: n }, () => Math.floor(Math.random() * 10));
-    
-    const calcularDigito = (digits: number[]): number => {
-      let sum = 0;
-      for (let i = 0; i < digits.length; i++) {
-        sum += digits[i] * (digits.length + 1 - i);
-      }
-      const remainder = sum % 11;
-      return remainder < 2 ? 0 : 11 - remainder;
-    };
-
-    const base = randomDigits(9);
-    const digit1 = calcularDigito(base);
-    const digit2 = calcularDigito([...base, digit1]);
-    
-    return [...base, digit1, digit2].join("");
+    // Usa a lib @fnando/cpf (mesma lógica do 4devs) e garante apenas dígitos
+    const novoCpf = generateCpf();
+    return stripCpf(novoCpf);
   };
 
   const consultarCep = async (cep: string): Promise<{ bairro: string; cidade: string; estado: string } | null> => {
@@ -133,6 +104,16 @@ export default function CriarEtiquetasEmMassa() {
       );
       return response.data;
     } catch (error: any) {
+      // Log bruto da resposta para facilitar debug de formato de erro
+      try {
+        addLog(
+          `Resposta bruta da API: ${JSON.stringify(error.response?.data || error.message)}`,
+          "error"
+        );
+      } catch {
+        // ignora falha de stringify
+      }
+
       const errorDetails = error.response?.data?.error;
 
       if (tentativa === 1 && Array.isArray(errorDetails)) {
