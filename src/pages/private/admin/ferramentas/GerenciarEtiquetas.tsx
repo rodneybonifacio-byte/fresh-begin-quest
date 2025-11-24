@@ -495,7 +495,7 @@ export default function GerenciarEtiquetas() {
         data: [
           {
             nomeDestinatario: editableEmissao.destinatarioNome?.trim(),
-            cpfCnpj: editableEmissao.destinatarioCpfCnpj?.replace(/\D/g, ''), // Enviar como string original
+            cpfCnpj: Number(editableEmissao.destinatarioCpfCnpj?.replace(/\D/g, '')), // API espera NUMBER!
             telefone: editableEmissao.destinatarioCelular?.replace(/\D/g, ''),
             cep: editableEmissao.cep?.replace(/\D/g, ''),
             logradouro: editableEmissao.logradouro?.trim(),
@@ -530,9 +530,45 @@ export default function GerenciarEtiquetas() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        const errorMsg = errorData.error?.message || 
-                        errorData.message || 
-                        'Erro ao regerar etiqueta';
+        
+        // Se erro de CPF inválido, gerar novo CPF válido e tentar novamente
+        if (errorData.error?.message?.includes('cpfCnpj')) {
+          console.warn('CPF rejeitado pela API. Gerando novo CPF válido...');
+          const novoCpf = stripCpf(generateCpf());
+          
+          // Atualizar o estado com o novo CPF
+          setEditableEmissao({
+            ...editableEmissao,
+            destinatarioCpfCnpj: novoCpf
+          });
+          
+          // Reenviar com novo CPF
+          dadosParaImportar.data[0].cpfCnpj = Number(novoCpf);
+          
+          const retryResponse = await fetch('https://envios.brhubb.com.br/api/importacao/multipla', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'API-Version': '3.0.0'
+            },
+            body: JSON.stringify(dadosParaImportar)
+          });
+          
+          if (!retryResponse.ok) {
+            const retryError = await retryResponse.json();
+            throw new Error(retryError.error?.message || retryError.message || 'Erro ao regerar etiqueta');
+          }
+          
+          await retryResponse.json();
+          toast.success(`Etiqueta regerada com sucesso! (CPF corrigido: ${novoCpf})`);
+          setShowRegerarModal(false);
+          setEditableEmissao(null);
+          queryClient.invalidateQueries({ queryKey: ["emissoes-gerenciar"] });
+          setGlobalLoading(false);
+          return;
+        }
+        
+        const errorMsg = errorData.error?.message || errorData.message || 'Erro ao regerar etiqueta';
         throw new Error(errorMsg);
       }
 
