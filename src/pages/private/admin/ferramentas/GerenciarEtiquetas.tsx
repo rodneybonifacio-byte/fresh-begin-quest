@@ -17,6 +17,7 @@ const emissaoService = new EmissaoService();
 export default function GerenciarEtiquetas() {
   const { setIsLoading: setGlobalLoading } = useLoadingSpinner();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedMeta, setSelectedMeta] = useState<Record<string, { codigoObjeto: string }>>({});
   const [selectAllMode, setSelectAllMode] = useState<'none' | 'page' | 'all'>('none');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
@@ -52,22 +53,35 @@ export default function GerenciarEtiquetas() {
   const deleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
       const batchSize = 10; // Processar 10 por vez
-      const results = [];
-      const errors = [];
+      const results: any[] = [];
+      const errors: any[] = [];
       
       for (let i = 0; i < ids.length; i += batchSize) {
         const batch = ids.slice(i, i + batchSize);
         console.log(`Excluindo lote ${i / batchSize + 1}:`, batch);
         
         try {
-          const promises = batch.map(id => 
-            emissaoService.cancelarEmissao({ id })
+          const promises = batch.map(id => {
+            const meta = selectedMeta[id];
+            if (!meta?.codigoObjeto) {
+              console.warn(`Sem codigoObjeto para id ${id}, pulando.`);
+              errors.push({ id, error: 'Sem codigoObjeto' });
+              return Promise.resolve(null);
+            }
+
+            const payload = {
+              codigoObjeto: meta.codigoObjeto,
+              motivo: 'Cancelado via Gerenciar Etiquetas',
+            };
+
+            return emissaoService.cancelarEmissao(payload)
               .catch(err => {
                 console.error(`Erro ao excluir ${id}:`, err);
                 errors.push({ id, error: err });
                 return null;
-              })
-          );
+              });
+          });
+
           const batchResults = await Promise.all(promises);
           results.push(...batchResults.filter(r => r !== null));
         } catch (error) {
@@ -99,11 +113,21 @@ export default function GerenciarEtiquetas() {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked && data?.data) {
-      const pageIds = data.data.map((item: IEmissao) => item.id || "").filter(Boolean);
+      const pageIds: string[] = [];
+      const meta: Record<string, { codigoObjeto: string }> = {};
+
+      data.data.forEach((item: IEmissao) => {
+        if (!item.id || !item.codigoObjeto) return;
+        pageIds.push(item.id);
+        meta[item.id] = { codigoObjeto: item.codigoObjeto };
+      });
+
       setSelectedIds(pageIds);
+      setSelectedMeta(meta);
       setSelectAllMode('page');
     } else {
       setSelectedIds([]);
+      setSelectedMeta({});
       setSelectAllMode('none');
     }
   };
@@ -116,6 +140,7 @@ export default function GerenciarEtiquetas() {
       let offset = 0;
       let hasMore = true;
       let allIds: string[] = [];
+      let meta: Record<string, { codigoObjeto: string }> = {};
 
       while (hasMore) {
         const params: Record<string, string | number> = {
@@ -134,10 +159,12 @@ export default function GerenciarEtiquetas() {
         if (pageData.length === 0) {
           hasMore = false;
         } else {
-          allIds = [
-            ...allIds,
-            ...pageData.map((item: IEmissao) => item.id || "").filter(Boolean),
-          ];
+          pageData.forEach((item: IEmissao) => {
+            if (!item.id || !item.codigoObjeto) return;
+            allIds.push(item.id);
+            meta[item.id] = { codigoObjeto: item.codigoObjeto };
+          });
+
           offset += batchSize;
           if (pageData.length < batchSize) {
             hasMore = false;
@@ -146,6 +173,7 @@ export default function GerenciarEtiquetas() {
       }
 
       setSelectedIds(allIds);
+      setSelectedMeta(meta);
       setSelectAllMode('all');
       toast.success(`${allIds.length} etiquetas selecionadas`);
     } catch (error) {
@@ -157,9 +185,25 @@ export default function GerenciarEtiquetas() {
 
   const handleSelectOne = (id: string, checked: boolean) => {
     if (checked) {
-      setSelectedIds(prev => [...prev, id]);
+      if (!selectedIds.includes(id)) {
+        setSelectedIds(prev => [...prev, id]);
+      }
+
+      // garantir meta usando dados da página atual
+      const fromPage = data?.data?.find((e: IEmissao) => e.id === id);
+      if (fromPage?.codigoObjeto) {
+        setSelectedMeta(prev => ({
+          ...prev,
+          [id]: { codigoObjeto: fromPage.codigoObjeto as string },
+        }));
+      }
     } else {
       setSelectedIds(prev => prev.filter(selectedId => selectedId !== id));
+      setSelectedMeta(prev => {
+        const copy = { ...prev };
+        delete copy[id];
+        return copy;
+      });
     }
   };
 
