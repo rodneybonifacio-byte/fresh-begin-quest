@@ -30,6 +30,7 @@ export default function GerenciarEtiquetas() {
   });
   const [appliedFilters, setAppliedFilters] = useState(filters);
   const [page, setPage] = useState(1);
+  const [filteredTotal, setFilteredTotal] = useState<number>(0);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -48,6 +49,14 @@ export default function GerenciarEtiquetas() {
       console.log('Parâmetros enviados para API (gerenciar etiquetas):', params);
       const response = await emissaoService.getAll(params, 'admin');
       console.log('Quantidade de resultados (API):', response.data?.length);
+      console.log('Total da API:', response.total);
+
+      // Atualizar o total filtrado
+      if (response.total !== undefined) {
+        setFilteredTotal(response.total);
+      } else if (response.data) {
+        setFilteredTotal(response.data.length);
+      }
 
       return response;
     }
@@ -586,8 +595,8 @@ export default function GerenciarEtiquetas() {
                 <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/30 px-3 py-2 rounded-lg border border-green-200 dark:border-green-800">
                   <FileText className="h-4 w-4 text-green-600 dark:text-green-400" />
                   <div>
-                    <span className="text-gray-600 dark:text-gray-400 text-xs">Total:</span>
-                    <p className="font-bold text-green-700 dark:text-green-300 text-lg">{data?.total || data?.data?.length || 0}</p>
+                    <span className="text-gray-600 dark:text-gray-400 text-xs">Total Filtrado:</span>
+                    <p className="font-bold text-green-700 dark:text-green-300 text-lg">{filteredTotal}</p>
                   </div>
                 </div>
               </div>
@@ -612,7 +621,7 @@ export default function GerenciarEtiquetas() {
               onClick={handleSelectAllFiltered}
               className="ml-2 font-semibold underline hover:no-underline"
             >
-              Selecionar todas as etiquetas filtradas
+              Selecionar todas as {filteredTotal} etiquetas filtradas
             </button>
           </p>
         </div>
@@ -640,11 +649,12 @@ export default function GerenciarEtiquetas() {
         >
           Anterior
         </button>
-        <span className="flex items-center px-4">
-          Página {page}
+        <span className="flex items-center px-4 text-sm">
+          Página {page} • {data?.data?.length || 0} de {filteredTotal} registros
         </span>
         <button
-          className="px-4 py-2 bg-gray-200 dark:bg-slate-700 rounded-md hover:bg-gray-300 dark:hover:bg-slate-600"
+          className="px-4 py-2 bg-gray-200 dark:bg-slate-700 rounded-md hover:bg-gray-300 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={!data?.data?.length || data.data.length < 50}
           onClick={() => setPage(p => p + 1)}
         >
           Próxima
