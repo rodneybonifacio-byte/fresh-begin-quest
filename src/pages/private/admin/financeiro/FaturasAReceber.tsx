@@ -121,6 +121,16 @@ const FinanceiroFaturasAReceber = () => {
         setPage(pageNumber);
     };
 
+    const notificaViaWhatsApp = async (fatura: IFatura, tipoNotificacao: 'PADRAO' | 'ATRASADA' = 'PADRAO') => {
+        try {
+            setIsLoading(true);
+            await service.notificaViaWhatsApp(fatura.id, tipoNotificacao);
+            toastSuccess('Notificação enviada com sucesso!');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const handleRealizarFechamento = async (fatura: IFatura) => {
         const nomeCliente = fatura.nome ?? fatura.cliente.nome;
         const codigoFatura = fatura.codigo || '';
@@ -309,6 +319,12 @@ const FinanceiroFaturasAReceber = () => {
                 <>
                     <ListaFaturas
                         data={data}
+                        setIsModalConfirmaPagamento={setIsModalConfirmaPagamento}
+                        notificaViaWhatsApp={notificaViaWhatsApp}
+                        estaAtrasada={(fatura: IFatura) => {
+                            const today = new Date();
+                            return new Date(fatura.dataVencimento) < today && !fatura.dataPagamento;
+                        }}
                         realizarFechamento={handleRealizarFechamento}
                         verificarFechamentoExistente={verificarFechamentoExistente}
                         visualizarFechamento={handleVisualizarFechamento}
