@@ -314,7 +314,7 @@ export default function GerenciarEtiquetas() {
       header: (
         <input
           type="checkbox"
-          checked={data?.data && selectedIds.length === data.data.length}
+          checked={data?.data ? (selectedIds.length > 0 && selectedIds.length === data.data.length) : false}
           onChange={(e) => handleSelectAll(e.target.checked)}
           className="rounded border-gray-300"
         />
@@ -322,7 +322,7 @@ export default function GerenciarEtiquetas() {
       accessor: (item: IEmissao) => (
         <input
           type="checkbox"
-          checked={selectedIds.includes(item.id || "")}
+          checked={!!item.id && selectedIds.includes(item.id)}
           onChange={(e) => handleSelectOne(item.id || "", e.target.checked)}
           className="rounded border-gray-300"
         />
