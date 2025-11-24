@@ -723,7 +723,11 @@ export default function GerenciarEtiquetas() {
     {
       label: "🔍 Debug Dados",
       icon: <Eye className="h-4 w-4" />,
-      onClick: () => setShowDebugModal(true),
+      onClick: () => {
+        console.log('🔍 Abrindo modal de debug');
+        console.log('Debug data:', debugData);
+        setShowDebugModal(true);
+      },
       bgColor: "bg-purple-500 hover:bg-purple-600 text-white"
     },
     {
@@ -1108,11 +1112,16 @@ export default function GerenciarEtiquetas() {
 
       {showDebugModal && (
         <ModalCustom
-          onCancel={() => setShowDebugModal(false)}
+          onCancel={() => {
+            console.log('Fechando modal de debug');
+            setShowDebugModal(false);
+          }}
           title="🔍 Debug - Etiquetas Pendentes de Correção"
           size="large"
         >
           <div className="space-y-4 max-h-[600px] overflow-y-auto">
+            {console.log('Renderizando modal debug com:', debugData)}
+            
             <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
               <h3 className="font-bold mb-2">📊 Resumo</h3>
               <div className="space-y-1 text-sm">
