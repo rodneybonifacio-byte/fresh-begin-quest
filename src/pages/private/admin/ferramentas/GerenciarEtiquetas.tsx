@@ -57,9 +57,12 @@ export default function GerenciarEtiquetas() {
 
       // Filtro de status (múltiplos)
       if (appliedFilters.status.length > 0) {
-        filteredData = filteredData.filter((item: IEmissao) => 
-          item.status && appliedFilters.status.includes(item.status)
-        );
+        const selectedStatuses = appliedFilters.status.map(s => s.toLowerCase());
+        filteredData = filteredData.filter((item: IEmissao) => {
+          if (!item.status) return false;
+          const itemStatus = item.status.toLowerCase();
+          return selectedStatuses.some(sel => itemStatus.includes(sel));
+        });
       }
 
       // Filtro de data início
@@ -258,9 +261,12 @@ export default function GerenciarEtiquetas() {
       }
 
       if (appliedFilters.status.length > 0) {
-        allData = allData.filter((item: IEmissao) => 
-          item.status && appliedFilters.status.includes(item.status)
-        );
+        const selectedStatuses = appliedFilters.status.map(s => s.toLowerCase());
+        allData = allData.filter((item: IEmissao) => {
+          if (!item.status) return false;
+          const itemStatus = item.status.toLowerCase();
+          return selectedStatuses.some(sel => itemStatus.includes(sel));
+        });
       }
 
       if (appliedFilters.dataInicio) {
