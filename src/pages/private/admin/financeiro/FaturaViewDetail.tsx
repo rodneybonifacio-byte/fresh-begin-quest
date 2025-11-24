@@ -45,17 +45,20 @@ const FaturaViewDetail = () => {
     }, [data]);
 
     const handleRealizarFechamento = async () => {
-        if (!fatura?.codigo || !fatura?.cliente?.nome || !fatura?.cliente?.telefone) {
+        if (!fatura?.codigo || !fatura?.cliente?.nome) {
             toast.error("Dados insuficientes para realizar o fechamento");
             return;
         }
 
         setIsProcessing(true);
         try {
+            const telefoneCliente = fatura.cliente.telefone || '11999999999';
+            
             const resultado = await service.realizarFechamento(
+                fatura.id,
                 fatura.codigo,
                 fatura.cliente.nome,
-                fatura.cliente.telefone
+                telefoneCliente
             );
             toast.success("Fechamento realizado com sucesso!");
             

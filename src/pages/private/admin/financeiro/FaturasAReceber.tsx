@@ -156,8 +156,10 @@ const FinanceiroFaturasAReceber = () => {
         const nomeCliente = fatura.nome ?? fatura.cliente.nome;
         const codigoFatura = fatura.codigo || '';
         const telefoneCliente = '11999999999';
+        const faturaId = fatura.id;
         
         const payload = {
+            fatura_id: faturaId,
             codigo_fatura: codigoFatura,
             nome_cliente: nomeCliente,
             telefone_cliente: telefoneCliente
@@ -175,7 +177,7 @@ const FinanceiroFaturasAReceber = () => {
                 timestamp: new Date()
             });
 
-            const result = await service.realizarFechamento(codigoFatura, nomeCliente, telefoneCliente);
+            const result = await service.realizarFechamento(faturaId, codigoFatura, nomeCliente, telefoneCliente);
             
             // Registrar sucesso
             setDebugInfo({
