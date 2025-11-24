@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Content, type ContentButtonProps } from "../../Content";
 import { EmissaoService } from "../../../../services/EmissaoService";
 import { DataTable, type Column } from "../../../../components/DataTable";
-import { Trash2, Filter, X } from "lucide-react";
+import { Trash2, Filter, X, DollarSign } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -11,6 +11,7 @@ import { StatusBadgeEmissao } from "../../../../components/StatusBadgeEmissao";
 import type { IEmissao } from "../../../../types/IEmissao";
 import { formatCpfCnpj } from "../../../../utils/lib.formats";
 import { useLoadingSpinner } from "../../../../providers/LoadingSpinnerContext";
+import { ModalAtualizarPrecosEmMassa } from "./ModalAtualizarPrecosEmMassa";
 
 const emissaoService = new EmissaoService();
 
@@ -20,6 +21,7 @@ export default function GerenciarEtiquetas() {
   const [selectedMeta, setSelectedMeta] = useState<Record<string, { codigoObjeto: string }>>({});
   const [selectAllMode, setSelectAllMode] = useState<'none' | 'page' | 'all'>('none');
   const [showFilters, setShowFilters] = useState(false);
+  const [showModalAtualizarPrecos, setShowModalAtualizarPrecos] = useState(false);
   const [filters, setFilters] = useState({
     remetente: "",
     status: "",
@@ -392,6 +394,14 @@ export default function GerenciarEtiquetas() {
     selectedIds.includes(item.id || "") && item.status === "CANCELADO"
   );
 
+  const handleAtualizarPrecos = () => {
+    if (selectedIds.length === 0) {
+      toast.warning("Selecione pelo menos uma etiqueta");
+      return;
+    }
+    setShowModalAtualizarPrecos(true);
+  };
+
   const buttons: ContentButtonProps[] = [
     {
       label: "Filtros",
@@ -403,6 +413,12 @@ export default function GerenciarEtiquetas() {
       label: selectAllMode === 'all' ? "Todas Selecionadas" : "Selecionar Todas Filtradas",
       onClick: handleSelectAllFiltered,
       bgColor: selectAllMode === 'all' ? "bg-green-500 text-white" : "bg-blue-500 hover:bg-blue-600 text-white"
+    },
+    {
+      label: `Atualizar Preços (${selectedIds.length})`,
+      icon: <DollarSign className="h-4 w-4" />,
+      onClick: handleAtualizarPrecos,
+      bgColor: selectedIds.length === 0 ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-purple-500 hover:bg-purple-600 text-white"
     },
     {
       label: `Excluir Selecionadas (${selectedIds.length})`,
@@ -537,6 +553,16 @@ export default function GerenciarEtiquetas() {
           Próxima
         </button>
       </div>
+
+      <ModalAtualizarPrecosEmMassa
+        isOpen={showModalAtualizarPrecos}
+        selectedIds={selectedIds}
+        onClose={() => setShowModalAtualizarPrecos(false)}
+        onSuccess={() => {
+          setSelectedIds([]);
+          setSelectAllMode('none');
+        }}
+      />
     </Content>
   );
 }
