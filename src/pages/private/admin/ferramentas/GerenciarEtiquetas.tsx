@@ -38,7 +38,7 @@ export default function GerenciarEtiquetas() {
       if (appliedFilters.dataFim) params.dataFim = appliedFilters.dataFim;
       if (appliedFilters.remetente) params.busca = appliedFilters.remetente;
 
-      const response = await emissaoService.getAll(params);
+      const response = await emissaoService.getAll(params, 'admin');
       return response;
     }
   });
