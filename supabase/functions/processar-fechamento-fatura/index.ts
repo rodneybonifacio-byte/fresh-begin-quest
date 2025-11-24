@@ -264,7 +264,7 @@ serve(async (req) => {
       mensagem: 'Fechamento realizado com sucesso',
       nome_cliente: clienteData.nome,
       codigo_fatura: codigo_fatura,
-      telefone_cliente: telefone,
+      telefone_cliente: telefone_cliente,
       fatura_pdf: faturaPdfBase64,
       boleto_pdf: boletoPdfBase64,
       boleto_info: {
