@@ -471,17 +471,17 @@ export default function GerenciarEtiquetas() {
     try {
       setGlobalLoading(true);
       
-      // Preparar dados no formato do endpoint de criação em massa
+      // Preparar dados no formato EXATO do endpoint de criação em massa
       const dadosParaImportar = {
         cpfCnpj: "15808095000303", // CNPJ fixo ÓPERA KIDS VAREJO
         data: [
           {
-            nome: editableEmissao.destinatarioNome?.trim(),
-            cpf_cnpj: editableEmissao.destinatarioCpfCnpj?.replace(/\D/g, ''),
+            nomeDestinatario: editableEmissao.destinatarioNome?.trim(),
+            cpfCnpj: Number(editableEmissao.destinatarioCpfCnpj?.replace(/\D/g, '')),
             telefone: editableEmissao.destinatarioCelular?.replace(/\D/g, ''),
             cep: editableEmissao.cep?.replace(/\D/g, ''),
-            endereco: editableEmissao.logradouro?.trim(),
-            numero: editableEmissao.numero?.trim(),
+            logradouro: editableEmissao.logradouro?.trim(),
+            numero: Number(editableEmissao.numero?.trim() || 0),
             complemento: editableEmissao.complemento?.trim() || '',
             bairro: editableEmissao.bairro?.trim(),
             cidade: editableEmissao.localidade?.trim(),
@@ -491,6 +491,7 @@ export default function GerenciarEtiquetas() {
             comprimento: Number(editableEmissao.comprimento),
             peso: Number(editableEmissao.peso),
             valor_declarado: Number(editableEmissao.valorDeclarado),
+            valor_frete: 0, // Será calculado pela API
             servico_frete: "PAC", // Padrão, será recalculado pela API
             observacao: editableEmissao.observacao?.trim() || ''
           }
@@ -511,7 +512,10 @@ export default function GerenciarEtiquetas() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Erro ao regerar etiqueta');
+        const errorMsg = errorData.error?.map((e: any) => e.message).join(', ') || 
+                        errorData.message || 
+                        'Erro ao regerar etiqueta';
+        throw new Error(errorMsg);
       }
 
       const result = await response.json();
