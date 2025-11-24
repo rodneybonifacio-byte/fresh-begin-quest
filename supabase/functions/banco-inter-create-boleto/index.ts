@@ -70,33 +70,68 @@ async function obterTokenBancoInter(): Promise<string> {
   const clientSecret = Deno.env.get('BANCO_INTER_CLIENT_SECRET');
   const cert = Deno.env.get('BANCO_INTER_CLIENT_CERT');
   const key = Deno.env.get('BANCO_INTER_CLIENT_KEY');
+  const caCert = Deno.env.get('BANCO_INTER_CA_CERT');
 
-  if (!clientId || !clientSecret || !cert || !key) {
-    throw new Error('Credenciais do Banco Inter não configuradas');
+  console.log('🔐 Verificando credenciais do Banco Inter...');
+  
+  if (!clientId || !clientSecret) {
+    console.error('❌ Client ID ou Secret não configurados');
+    throw new Error('Credenciais do Banco Inter não configuradas: Client ID/Secret ausentes');
   }
+  
+  if (!cert || !key) {
+    console.error('❌ Certificados mTLS não configurados');
+    throw new Error('Certificados mTLS do Banco Inter não configurados');
+  }
+
+  console.log('✅ Todas as credenciais encontradas');
 
   const tokenUrl = 'https://cdpj.partners.bancointer.com.br/oauth/v2/token';
   
-  const response = await fetch(tokenUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
-      scope: 'boleto-cobranca.read boleto-cobranca.write',
-      grant_type: 'client_credentials',
-    }),
+  console.log('🌐 Chamando API de token do Banco Inter...');
+  
+  // Criar cliente HTTP com mTLS
+  const httpClient = Deno.createHttpClient({
+    certChain: cert,
+    privateKey: key,
+    caCerts: caCert ? [caCert] : undefined,
   });
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Erro ao obter token: ${error}`);
-  }
+  try {
+    const response = await fetch(tokenUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        scope: 'boleto-cobranca.read boleto-cobranca.write',
+        grant_type: 'client_credentials',
+      }),
+      client: httpClient,
+    });
 
-  const data = await response.json();
-  return data.access_token;
+    console.log('📡 Resposta recebida - Status:', response.status);
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error('❌ Erro na resposta:', error);
+      throw new Error(`Erro ao obter token (${response.status}): ${error}`);
+    }
+
+    const data = await response.json();
+    
+    if (!data.access_token) {
+      console.error('❌ Token não encontrado na resposta:', data);
+      throw new Error('Token não retornado pela API do Banco Inter');
+    }
+    
+    console.log('✅ Token obtido com sucesso');
+    return data.access_token;
+  } finally {
+    httpClient.close();
+  }
 }
 
 serve(async (req) => {
