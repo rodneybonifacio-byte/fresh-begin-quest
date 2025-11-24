@@ -3,10 +3,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Content, type ContentButtonProps } from "../../Content";
 import { EmissaoService } from "../../../../services/EmissaoService";
 import { DataTable, type Column } from "../../../../components/DataTable";
-import { Trash2, Filter, X, DollarSign, Calendar, User, Activity, FileText, Eye, RefreshCw } from "lucide-react";
+import { Trash2, Filter, X, DollarSign, Eye, RefreshCw, FileText, User, Calendar, Activity } from "lucide-react";
 import { toast } from "sonner";
 import { ModalCustom } from "../../../../components/modal";
-import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { StatusBadgeEmissao } from "../../../../components/StatusBadgeEmissao";
@@ -19,7 +18,6 @@ const emissaoService = new EmissaoService();
 
 export default function GerenciarEtiquetas() {
   const { setIsLoading: setGlobalLoading } = useLoadingSpinner();
-  const navigate = useNavigate();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedMeta, setSelectedMeta] = useState<Record<string, { codigoObjeto: string }>>({});
   const [selectAllMode, setSelectAllMode] = useState<'none' | 'page' | 'all'>('none');
@@ -36,6 +34,8 @@ export default function GerenciarEtiquetas() {
   const [filteredTotal, setFilteredTotal] = useState<number>(0);
   const [selectedEmissaoDetail, setSelectedEmissaoDetail] = useState<IEmissao | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showRegerarModal, setShowRegerarModal] = useState(false);
+  const [editableEmissao, setEditableEmissao] = useState<any>(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -440,21 +440,77 @@ export default function GerenciarEtiquetas() {
       return;
     }
 
-    // Navegar para página de emissão com dados preenchidos
-    navigate('/emissao', { 
-      state: { 
-        prefilledData: {
-          remetenteId: emissao.remetenteId,
-          destinatario: emissao.destinatario,
-          embalagem: emissao.embalagem,
-          valorDeclarado: emissao.valorDeclarado,
-          observacao: emissao.observacao,
-          chaveNFe: emissao.chaveNFe,
-          numeroNotaFiscal: emissao.numeroNotaFiscal,
-        }
-      } 
+    // Preparar dados editáveis
+    setEditableEmissao({
+      destinatarioNome: emissao.destinatario?.nome || '',
+      destinatarioCpfCnpj: emissao.destinatario?.cpfCnpj || '',
+      destinatarioCelular: emissao.destinatario?.celular || '',
+      cep: emissao.destinatario?.endereco?.cep || '',
+      logradouro: emissao.destinatario?.endereco?.logradouro || '',
+      numero: emissao.destinatario?.endereco?.numero || '',
+      complemento: emissao.destinatario?.endereco?.complemento || '',
+      bairro: emissao.destinatario?.endereco?.bairro || '',
+      localidade: emissao.destinatario?.endereco?.localidade || '',
+      uf: emissao.destinatario?.endereco?.uf || '',
+      altura: emissao.embalagem?.altura || 0,
+      largura: emissao.embalagem?.largura || 0,
+      comprimento: emissao.embalagem?.comprimento || 0,
+      peso: emissao.embalagem?.peso || 0,
+      valorDeclarado: emissao.valorDeclarado || 0,
+      observacao: emissao.observacao || '',
+      remetenteId: emissao.remetenteId,
     });
-    toast.success("Dados carregados! Preencha os detalhes e gere a nova etiqueta");
+    setShowRegerarModal(true);
+  };
+
+  const handleConfirmarRegerar = async () => {
+    if (!editableEmissao) return;
+
+    try {
+      setGlobalLoading(true);
+      
+      // Preparar payload para criar nova emissão (será implementado com cotação)
+      // const novaEmissao = {
+      //   remetenteId: editableEmissao.remetenteId,
+      //   destinatario: {
+      //     nome: editableEmissao.destinatarioNome,
+      //     cpfCnpj: editableEmissao.destinatarioCpfCnpj,
+      //     celular: editableEmissao.destinatarioCelular,
+      //     endereco: {
+      //       cep: editableEmissao.cep,
+      //       logradouro: editableEmissao.logradouro,
+      //       numero: editableEmissao.numero,
+      //       complemento: editableEmissao.complemento,
+      //       bairro: editableEmissao.bairro,
+      //       localidade: editableEmissao.localidade,
+      //       uf: editableEmissao.uf,
+      //     }
+      //   },
+      //   embalagem: {
+      //     altura: Number(editableEmissao.altura),
+      //     largura: Number(editableEmissao.largura),
+      //     comprimento: Number(editableEmissao.comprimento),
+      //     peso: Number(editableEmissao.peso),
+      //   },
+      //   valorDeclarado: Number(editableEmissao.valorDeclarado),
+      //   observacao: editableEmissao.observacao,
+      //   cienteObjetoNaoProibido: true,
+      //   logisticaReversa: "N",
+      // };
+
+      // Aqui você chamaria o serviço para criar a emissão
+      // await emissaoService.create(novaEmissao);
+      
+      toast.info("Funcionalidade de regerar etiqueta será implementada com cotação de frete");
+      setShowRegerarModal(false);
+      setEditableEmissao(null);
+      queryClient.invalidateQueries({ queryKey: ["emissoes-gerenciar"] });
+    } catch (error) {
+      console.error('Erro ao regerar etiqueta:', error);
+      toast.error("Erro ao regerar etiqueta");
+    } finally {
+      setGlobalLoading(false);
+    }
   };
 
   const buttons: ContentButtonProps[] = [
@@ -840,6 +896,203 @@ export default function GerenciarEtiquetas() {
                 </div>
               </div>
             )}
+          </div>
+        </ModalCustom>
+      )}
+
+      {showRegerarModal && editableEmissao && (
+        <ModalCustom
+          onCancel={() => {
+            setShowRegerarModal(false);
+            setEditableEmissao(null);
+          }}
+          title="Regerar Etiqueta"
+          description="Edite os dados conforme necessário e gere uma nova etiqueta"
+          size="large"
+        >
+          <div className="space-y-4">
+            <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg">
+              <h3 className="font-semibold text-lg mb-3">Destinatário</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">Nome</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border rounded-md dark:bg-slate-700 dark:border-gray-600"
+                    value={editableEmissao.destinatarioNome}
+                    onChange={(e) => setEditableEmissao({...editableEmissao, destinatarioNome: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">CPF/CNPJ</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border rounded-md dark:bg-slate-700 dark:border-gray-600"
+                    value={editableEmissao.destinatarioCpfCnpj}
+                    onChange={(e) => setEditableEmissao({...editableEmissao, destinatarioCpfCnpj: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">Celular</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border rounded-md dark:bg-slate-700 dark:border-gray-600"
+                    value={editableEmissao.destinatarioCelular}
+                    onChange={(e) => setEditableEmissao({...editableEmissao, destinatarioCelular: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">CEP</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border rounded-md dark:bg-slate-700 dark:border-gray-600"
+                    value={editableEmissao.cep}
+                    onChange={(e) => setEditableEmissao({...editableEmissao, cep: e.target.value})}
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">Logradouro</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border rounded-md dark:bg-slate-700 dark:border-gray-600"
+                    value={editableEmissao.logradouro}
+                    onChange={(e) => setEditableEmissao({...editableEmissao, logradouro: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">Número</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border rounded-md dark:bg-slate-700 dark:border-gray-600"
+                    value={editableEmissao.numero}
+                    onChange={(e) => setEditableEmissao({...editableEmissao, numero: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">Complemento</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border rounded-md dark:bg-slate-700 dark:border-gray-600"
+                    value={editableEmissao.complemento}
+                    onChange={(e) => setEditableEmissao({...editableEmissao, complemento: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">Bairro</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border rounded-md dark:bg-slate-700 dark:border-gray-600"
+                    value={editableEmissao.bairro}
+                    onChange={(e) => setEditableEmissao({...editableEmissao, bairro: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">Cidade</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border rounded-md dark:bg-slate-700 dark:border-gray-600"
+                    value={editableEmissao.localidade}
+                    onChange={(e) => setEditableEmissao({...editableEmissao, localidade: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">UF</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border rounded-md dark:bg-slate-700 dark:border-gray-600"
+                    value={editableEmissao.uf}
+                    onChange={(e) => setEditableEmissao({...editableEmissao, uf: e.target.value})}
+                    maxLength={2}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg">
+              <h3 className="font-semibold text-lg mb-3">Dimensões do Pacote</h3>
+              <div className="grid grid-cols-4 gap-4">
+                <div>
+                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">Altura (cm)</label>
+                  <input
+                    type="number"
+                    className="w-full px-3 py-2 border rounded-md dark:bg-slate-700 dark:border-gray-600"
+                    value={editableEmissao.altura}
+                    onChange={(e) => setEditableEmissao({...editableEmissao, altura: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">Largura (cm)</label>
+                  <input
+                    type="number"
+                    className="w-full px-3 py-2 border rounded-md dark:bg-slate-700 dark:border-gray-600"
+                    value={editableEmissao.largura}
+                    onChange={(e) => setEditableEmissao({...editableEmissao, largura: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">Comprimento (cm)</label>
+                  <input
+                    type="number"
+                    className="w-full px-3 py-2 border rounded-md dark:bg-slate-700 dark:border-gray-600"
+                    value={editableEmissao.comprimento}
+                    onChange={(e) => setEditableEmissao({...editableEmissao, comprimento: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">Peso (g)</label>
+                  <input
+                    type="number"
+                    className="w-full px-3 py-2 border rounded-md dark:bg-slate-700 dark:border-gray-600"
+                    value={editableEmissao.peso}
+                    onChange={(e) => setEditableEmissao({...editableEmissao, peso: e.target.value})}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg">
+              <h3 className="font-semibold text-lg mb-3">Outros Dados</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">Valor Declarado (R$)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="w-full px-3 py-2 border rounded-md dark:bg-slate-700 dark:border-gray-600"
+                    value={editableEmissao.valorDeclarado}
+                    onChange={(e) => setEditableEmissao({...editableEmissao, valorDeclarado: e.target.value})}
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">Observação</label>
+                  <textarea
+                    className="w-full px-3 py-2 border rounded-md dark:bg-slate-700 dark:border-gray-600"
+                    rows={3}
+                    value={editableEmissao.observacao}
+                    onChange={(e) => setEditableEmissao({...editableEmissao, observacao: e.target.value})}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4">
+              <button
+                onClick={() => {
+                  setShowRegerarModal(false);
+                  setEditableEmissao(null);
+                }}
+                className="px-4 py-2 bg-gray-200 dark:bg-slate-700 text-gray-800 dark:text-white rounded-md hover:bg-gray-300 dark:hover:bg-slate-600"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmarRegerar}
+                className="px-4 py-2 bg-teal-500 text-white rounded-md hover:bg-teal-600 flex items-center gap-2"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Regerar Etiqueta
+              </button>
+            </div>
           </div>
         </ModalCustom>
       )}

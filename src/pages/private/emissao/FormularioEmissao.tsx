@@ -2,7 +2,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import { Box, Save } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
-import { useParams, useLocation } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import * as yup from 'yup';
 import { AutocompleteDestinatario } from '../../../components/autocomplete/AutocompleteDestinatario';
@@ -87,7 +87,6 @@ interface FormularioProdutoProps {
 
 const FormularioEmissao = ({ onCancel }: FormularioProdutoProps) => {
     const { setIsLoading } = useLoadingSpinner();
-    const location = useLocation();
 
     // Estados necessários para o schema dinâmico
     const [cotacaoSelecionado, setCotacaoSelecionado] = useState<ICotacaoMinimaResponse>();
@@ -123,7 +122,6 @@ const FormularioEmissao = ({ onCancel }: FormularioProdutoProps) => {
 
     const [destinatarioSelecionado, setDestinatarioSelecionado] = useState<IDestinatario | null>();
     const [isModalOpenDestinatario, setIsModalOpenDestinatario] = useState<boolean>(false);
-    const [prefilledApplied, setPrefilledApplied] = useState(false);
 
     const [valorDeclarado, setValorDeclarado] = useState<string>('');
     const [valorNotaFiscal, setValorNotaFiscal] = useState<string>('');
@@ -164,67 +162,6 @@ const FormularioEmissao = ({ onCancel }: FormularioProdutoProps) => {
             }
         }
     }, [cliente, remetentesResponse]);
-
-    // Preencher formulário com dados da etiqueta a ser regerada
-    useEffect(() => {
-        const prefilledData = (location.state as any)?.prefilledData;
-        if (prefilledData && !prefilledApplied) {
-            console.log('Dados pré-preenchidos detectados:', prefilledData);
-            setPrefilledApplied(true);
-
-            // Preencher destinatário
-            if (prefilledData.destinatario) {
-                const dest = prefilledData.destinatario;
-                setValue('destinatario.nome', dest.nome || '');
-                setValue('destinatario.cpfCnpj', dest.cpfCnpj ? formatCpfCnpj(dest.cpfCnpj) : '');
-                setValue('destinatario.celular', dest.celular ? formatTelefone(dest.celular) : '');
-                
-                if (dest.endereco) {
-                    setValue('destinatario.endereco.cep', dest.endereco.cep ? formatCep(dest.endereco.cep) : '');
-                    setValue('destinatario.endereco.logradouro', dest.endereco.logradouro || '');
-                    setValue('destinatario.endereco.numero', dest.endereco.numero || '');
-                    setValue('destinatario.endereco.complemento', dest.endereco.complemento || '');
-                    setValue('destinatario.endereco.bairro', dest.endereco.bairro || '');
-                    setValue('destinatario.endereco.localidade', dest.endereco.localidade || '');
-                    setValue('destinatario.endereco.uf', dest.endereco.uf || '');
-                }
-                setDestinatarioSelecionado(dest);
-            }
-
-            // Preencher embalagem
-            if (prefilledData.embalagem) {
-                const emb = prefilledData.embalagem;
-                setValue('embalagem.altura', emb.altura || 0);
-                setValue('embalagem.largura', emb.largura || 0);
-                setValue('embalagem.comprimento', emb.comprimento || 0);
-                setValue('embalagem.peso', emb.peso || 0);
-                setValue('embalagem.diametro', emb.diametro || 0);
-                setSelectedEmbalagem(emb);
-                setDimensoes(emb);
-            }
-
-            // Preencher outros campos
-            if (prefilledData.valorDeclarado) {
-                const valorFormatado = formatCurrency(String(prefilledData.valorDeclarado));
-                setValorDeclarado(valorFormatado);
-                setValue('valorDeclarado', valorFormatado);
-            }
-
-            if (prefilledData.observacao) {
-                setValue('observacoes', prefilledData.observacao);
-            }
-
-            if (prefilledData.chaveNFe) {
-                setValue('chaveNFe', prefilledData.chaveNFe);
-            }
-
-            if (prefilledData.numeroNotaFiscal) {
-                setValue('numeroNotaFiscal', prefilledData.numeroNotaFiscal);
-            }
-
-            toast.success('Dados carregados! Revise e calcule o frete para gerar a nova etiqueta');
-        }
-    }, [location.state, prefilledApplied]);
 
     const handlerOnSubmit = async (data: FormDataProduto) => {
         const destinatario: IDestinatario = {
