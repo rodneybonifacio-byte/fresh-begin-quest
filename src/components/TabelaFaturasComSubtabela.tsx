@@ -83,6 +83,18 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
                 actionTitle={(row) => `${row.nome} - ${row.cpfCnpj}`}
                 actions={[
                     {
+                        label: 'Visualizar Boleto',
+                        icon: <Eye size={16} />,
+                        onClick: (row) => visualizarFechamento(row),
+                        show: (row) => !!(verificarFechamentoExistente(row.id)) && (row.status === 'PENDENTE' || row.status === 'PAGO_PARCIAL'),
+                    },
+                    {
+                        label: 'Realizar Fechamento',
+                        icon: <CheckCircle size={16} />,
+                        onClick: (row) => realizarFechamento(row),
+                        show: (row) => !verificarFechamentoExistente(row.id) && (row.status === 'PENDENTE' || row.status === 'PAGO_PARCIAL'),
+                    },
+                    {
                         label: 'Ver Fatura',
                         icon: <Eye size={16} />,
                         to: `/${layout}/financeiro/fatura/${parentRow.id}/agrupada`,
