@@ -477,7 +477,7 @@ export default function GerenciarEtiquetas() {
         data: [
           {
             nomeDestinatario: editableEmissao.destinatarioNome?.trim(),
-            cpfCnpj: Number(editableEmissao.destinatarioCpfCnpj?.replace(/\D/g, '')),
+            cpfCnpj: editableEmissao.destinatarioCpfCnpj?.replace(/\D/g, ''), // String, não Number!
             telefone: editableEmissao.destinatarioCelular?.replace(/\D/g, ''),
             cep: editableEmissao.cep?.replace(/\D/g, ''),
             logradouro: editableEmissao.logradouro?.trim(),
@@ -512,7 +512,7 @@ export default function GerenciarEtiquetas() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        const errorMsg = errorData.error?.map((e: any) => e.message).join(', ') || 
+        const errorMsg = errorData.error?.message || 
                         errorData.message || 
                         'Erro ao regerar etiqueta';
         throw new Error(errorMsg);
