@@ -193,7 +193,7 @@ export default function CriarEtiquetasEmMassa() {
     if (etiquetasComErro.length === 0) return;
 
     try {
-      addLog(`Salvando ${etiquetasComErro.length} etiquetas com erro para correção posterior...`, "info");
+      addLog(`📝 Salvando ${etiquetasComErro.length} etiquetas com erro para correção posterior...`, "info");
 
       const supabase = getSupabaseWithAuth();
       
@@ -205,47 +205,59 @@ export default function CriarEtiquetasEmMassa() {
 
       // Extrair clienteId do JWT
       const clienteId = (user as any).user_metadata?.clienteId || user.id;
+      addLog(`🔑 Cliente ID: ${clienteId}`, "info");
 
-      const registrosParaSalvar = etiquetasComErro.map(erro => ({
-        cliente_id: clienteId,
-        remetente_cpf_cnpj: cpfCnpjRemetente,
-        remetente_nome: "ÓPERA KIDS VAREJO", // Nome fixo do remetente
-        destinatario_nome: erro.envio.nomeDestinatario,
-        destinatario_cpf_cnpj: erro.envio.cpfCnpj,
-        destinatario_celular: "", // Não disponível na planilha
-        destinatario_cep: erro.envio.cep,
-        destinatario_logradouro: erro.envio.logradouro,
-        destinatario_numero: erro.envio.numero?.toString() || "",
-        destinatario_complemento: erro.envio.complemento || "",
-        destinatario_bairro: erro.envio.bairro || "",
-        destinatario_cidade: erro.envio.cidade || "",
-        destinatario_estado: erro.envio.estado || "",
-        altura: erro.envio.altura,
-        largura: erro.envio.largura,
-        comprimento: erro.envio.comprimento,
-        peso: erro.envio.peso,
-        valor_frete: erro.envio.valor_frete,
-        valor_declarado: 0, // Não disponível na planilha
-        servico_frete: erro.envio.servico_frete,
-        observacao: `ERRO IMPORTAÇÃO LINHA ${erro.linhaOriginal}`,
-        motivo_erro: erro.motivo,
-        linha_original: erro.linhaOriginal,
-        tentativas_correcao: 0
-      }));
+      const registrosParaSalvar = etiquetasComErro.map((erro, index) => {
+        addLog(`📋 Registro ${index + 1}/${etiquetasComErro.length}: ${erro.envio.nomeDestinatario} - Motivo: ${erro.motivo}`, "info");
+        
+        return {
+          cliente_id: clienteId,
+          remetente_cpf_cnpj: cpfCnpjRemetente,
+          remetente_nome: "ÓPERA KIDS VAREJO",
+          destinatario_nome: erro.envio.nomeDestinatario,
+          destinatario_cpf_cnpj: erro.envio.cpfCnpj || "",
+          destinatario_celular: "",
+          destinatario_cep: erro.envio.cep,
+          destinatario_logradouro: erro.envio.logradouro || "",
+          destinatario_numero: erro.envio.numero?.toString() || "1",
+          destinatario_complemento: erro.envio.complemento || "",
+          destinatario_bairro: erro.envio.bairro || "",
+          destinatario_cidade: erro.envio.cidade || "",
+          destinatario_estado: erro.envio.estado || "",
+          altura: erro.envio.altura || 0,
+          largura: erro.envio.largura || 0,
+          comprimento: erro.envio.comprimento || 0,
+          peso: erro.envio.peso || 0,
+          valor_frete: erro.envio.valor_frete || 0,
+          valor_declarado: 0,
+          servico_frete: erro.envio.servico_frete || "PAC",
+          observacao: `ERRO IMPORTAÇÃO LINHA ${erro.linhaOriginal}`,
+          motivo_erro: erro.motivo,
+          linha_original: erro.linhaOriginal,
+          tentativas_correcao: 0
+        };
+      });
 
-      const { error } = await supabase
+      addLog(`💾 Tentando salvar ${registrosParaSalvar.length} registros no Supabase...`, "info");
+      console.log("Registros completos para salvar:", JSON.stringify(registrosParaSalvar, null, 2));
+
+      const { data, error } = await supabase
         .from('etiquetas_pendentes_correcao')
-        .insert(registrosParaSalvar);
+        .insert(registrosParaSalvar)
+        .select();
 
       if (error) {
+        console.error("Erro Supabase completo:", error);
+        addLog(`❌ Erro ao salvar no Supabase: ${error.message} (code: ${error.code})`, "error");
         throw error;
       }
 
-      addLog(`✓ ${etiquetasComErro.length} etiquetas com erro salvas no gerenciador para correção`, "success");
-      toast.info(`${etiquetasComErro.length} etiquetas com erro foram salvas para correção posterior`);
+      addLog(`✅ ${data?.length || registrosParaSalvar.length} etiquetas com erro salvas com sucesso no gerenciador`, "success");
+      toast.success(`${data?.length || registrosParaSalvar.length} etiquetas com erro foram salvas para correção posterior`);
     } catch (error: any) {
-      addLog(`Erro ao salvar etiquetas com erro: ${error.message}`, "warning");
-      console.error("Erro salvamento etiquetas com erro:", error);
+      addLog(`⚠️ ERRO CRÍTICO ao salvar etiquetas: ${error.message}`, "error");
+      console.error("Erro completo salvamento etiquetas:", error);
+      toast.error(`Falha ao salvar etiquetas com erro: ${error.message}`);
     }
   };
 
