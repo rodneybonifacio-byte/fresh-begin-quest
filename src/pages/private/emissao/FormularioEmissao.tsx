@@ -123,6 +123,7 @@ const FormularioEmissao = ({ onCancel }: FormularioProdutoProps) => {
 
     const [destinatarioSelecionado, setDestinatarioSelecionado] = useState<IDestinatario | null>();
     const [isModalOpenDestinatario, setIsModalOpenDestinatario] = useState<boolean>(false);
+    const [prefilledApplied, setPrefilledApplied] = useState(false);
 
     const [valorDeclarado, setValorDeclarado] = useState<string>('');
     const [valorNotaFiscal, setValorNotaFiscal] = useState<string>('');
@@ -167,8 +168,9 @@ const FormularioEmissao = ({ onCancel }: FormularioProdutoProps) => {
     // Preencher formulário com dados da etiqueta a ser regerada
     useEffect(() => {
         const prefilledData = (location.state as any)?.prefilledData;
-        if (prefilledData) {
+        if (prefilledData && !prefilledApplied) {
             console.log('Dados pré-preenchidos detectados:', prefilledData);
+            setPrefilledApplied(true);
 
             // Preencher destinatário
             if (prefilledData.destinatario) {
@@ -220,10 +222,9 @@ const FormularioEmissao = ({ onCancel }: FormularioProdutoProps) => {
                 setValue('numeroNotaFiscal', prefilledData.numeroNotaFiscal);
             }
 
-            // Limpar o state para não preencher novamente se navegar de volta
-            window.history.replaceState({}, document.title);
+            toast.success('Dados carregados! Revise e calcule o frete para gerar a nova etiqueta');
         }
-    }, [location.state, setValue]);
+    }, [location.state, prefilledApplied]);
 
     const handlerOnSubmit = async (data: FormDataProduto) => {
         const destinatario: IDestinatario = {
