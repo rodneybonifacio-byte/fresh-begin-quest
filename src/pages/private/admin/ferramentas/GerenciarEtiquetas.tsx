@@ -440,8 +440,11 @@ export default function GerenciarEtiquetas() {
       return;
     }
 
-    // Preparar dados editáveis
+    // Preparar dados editáveis incluindo remetente
     setEditableEmissao({
+      remetenteId: emissao.remetenteId,
+      remetenteNome: emissao.remetenteNome || '',
+      remetenteCpfCnpj: emissao.remetenteCpfCnpj || '',
       destinatarioNome: emissao.destinatario?.nome || '',
       destinatarioCpfCnpj: emissao.destinatario?.cpfCnpj || '',
       destinatarioCelular: emissao.destinatario?.celular || '',
@@ -458,7 +461,6 @@ export default function GerenciarEtiquetas() {
       peso: emissao.embalagem?.peso || 0,
       valorDeclarado: emissao.valorDeclarado || 0,
       observacao: emissao.observacao || '',
-      remetenteId: emissao.remetenteId,
     });
     setShowRegerarModal(true);
   };
@@ -911,6 +913,25 @@ export default function GerenciarEtiquetas() {
           size="large"
         >
           <div className="space-y-4">
+            <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+              <h3 className="font-semibold text-lg mb-3 text-blue-800 dark:text-blue-300">Remetente (Original)</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Nome</p>
+                  <p className="font-medium text-slate-700 dark:text-slate-200">{editableEmissao.remetenteNome || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">CPF/CNPJ</p>
+                  <p className="font-medium text-slate-700 dark:text-slate-200">
+                    {editableEmissao.remetenteCpfCnpj ? formatCpfCnpj(editableEmissao.remetenteCpfCnpj) : '-'}
+                  </p>
+                </div>
+              </div>
+              <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                ℹ️ O remetente será mantido da etiqueta original
+              </p>
+            </div>
+
             <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg">
               <h3 className="font-semibold text-lg mb-3">Destinatário</h3>
               <div className="grid grid-cols-2 gap-4">
