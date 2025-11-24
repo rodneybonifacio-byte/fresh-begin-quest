@@ -7,7 +7,8 @@ import { PDFDocument } from "pdf-lib";
 import { Content } from "../../Content";
 import { ViacepService } from "../../../../services/viacepService";
 import { isValid as isValidCpf, strip as stripCpf, generate as generateCpf } from "@fnando/cpf";
-import { getSupabaseWithAuth } from "../../../../integrations/supabase/custom-auth";
+import { supabase } from "../../../../integrations/supabase/client";
+import authStore from "../../../../authentica/authentication.store";
 
 interface LogEntry {
   timestamp: string;
@@ -195,16 +196,17 @@ export default function CriarEtiquetasEmMassa() {
     try {
       addLog(`📝 Salvando ${etiquetasComErro.length} etiquetas com erro para correção posterior...`, "info");
 
-      const supabase = getSupabaseWithAuth();
-      
-      // Buscar cliente_id do JWT
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error("Usuário não autenticado");
+      // Buscar clienteId do token JWT armazenado
+      const userData = authStore.getUser();
+      if (!userData) {
+        throw new Error("Usuário não autenticado - faça login novamente");
       }
 
-      // Extrair clienteId do JWT
-      const clienteId = (user as any).user_metadata?.clienteId || user.id;
+      const clienteId = (userData as any).clienteId || userData.id;
+      if (!clienteId) {
+        throw new Error("Cliente ID não encontrado no token");
+      }
+
       addLog(`🔑 Cliente ID: ${clienteId}`, "info");
 
       const registrosParaSalvar = etiquetasComErro.map((erro, index) => {
