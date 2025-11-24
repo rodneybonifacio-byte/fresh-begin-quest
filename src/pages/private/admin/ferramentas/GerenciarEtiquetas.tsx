@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { isValid as isValidCpf, strip as stripCpf, generate as generateCpf } from "@fnando/cpf";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Content, type ContentButtonProps } from "../../Content";
 import { EmissaoService } from "../../../../services/EmissaoService";
@@ -463,6 +464,23 @@ export default function GerenciarEtiquetas() {
       observacao: emissao.observacao || '',
     });
     setShowRegerarModal(true);
+  };
+
+  const handleValidarCpf = () => {
+    if (!editableEmissao) return;
+    
+    const cpfLimpo = editableEmissao.destinatarioCpfCnpj?.replace(/\D/g, '') || '';
+    
+    if (!cpfLimpo || cpfLimpo.length !== 11 || !isValidCpf(cpfLimpo)) {
+      const novoCpf = stripCpf(generateCpf());
+      setEditableEmissao({
+        ...editableEmissao,
+        destinatarioCpfCnpj: novoCpf
+      });
+      toast.success(`CPF inválido! Gerado novo CPF válido: ${novoCpf}`, { duration: 5000 });
+    } else {
+      toast.success("CPF válido! ✓", { duration: 3000 });
+    }
   };
 
   const handleConfirmarRegerar = async () => {
@@ -966,12 +984,21 @@ export default function GerenciarEtiquetas() {
                 </div>
                 <div>
                   <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">CPF/CNPJ</label>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 border rounded-md dark:bg-slate-700 dark:border-gray-600"
-                    value={editableEmissao.destinatarioCpfCnpj}
-                    onChange={(e) => setEditableEmissao({...editableEmissao, destinatarioCpfCnpj: e.target.value})}
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      className="flex-1 px-3 py-2 border rounded-md dark:bg-slate-700 dark:border-gray-600"
+                      value={editableEmissao.destinatarioCpfCnpj}
+                      onChange={(e) => setEditableEmissao({...editableEmissao, destinatarioCpfCnpj: e.target.value})}
+                    />
+                    <button
+                      onClick={handleValidarCpf}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors whitespace-nowrap"
+                      type="button"
+                    >
+                      Validar CPF
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">Celular</label>
