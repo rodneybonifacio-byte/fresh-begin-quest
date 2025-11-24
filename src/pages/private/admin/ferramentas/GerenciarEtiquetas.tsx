@@ -3,9 +3,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Content, type ContentButtonProps } from "../../Content";
 import { EmissaoService } from "../../../../services/EmissaoService";
 import { DataTable, type Column } from "../../../../components/DataTable";
-import { Trash2, Filter, X, DollarSign, Calendar, User, Activity, FileText, Eye } from "lucide-react";
+import { Trash2, Filter, X, DollarSign, Calendar, User, Activity, FileText, Eye, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { ModalCustom } from "../../../../components/modal";
+import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { StatusBadgeEmissao } from "../../../../components/StatusBadgeEmissao";
@@ -18,6 +19,7 @@ const emissaoService = new EmissaoService();
 
 export default function GerenciarEtiquetas() {
   const { setIsLoading: setGlobalLoading } = useLoadingSpinner();
+  const navigate = useNavigate();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedMeta, setSelectedMeta] = useState<Record<string, { codigoObjeto: string }>>({});
   const [selectAllMode, setSelectAllMode] = useState<'none' | 'page' | 'all'>('none');
@@ -426,6 +428,35 @@ export default function GerenciarEtiquetas() {
     setShowModalAtualizarPrecos(true);
   };
 
+  const handleRegerarEtiqueta = () => {
+    if (selectedIds.length !== 1) {
+      toast.warning("Selecione apenas uma etiqueta para regerar");
+      return;
+    }
+    
+    const emissao = data?.data?.find((e: IEmissao) => e.id === selectedIds[0]);
+    if (!emissao) {
+      toast.error("Etiqueta não encontrada");
+      return;
+    }
+
+    // Navegar para página de emissão com dados preenchidos
+    navigate('/emissao', { 
+      state: { 
+        prefilledData: {
+          remetenteId: emissao.remetenteId,
+          destinatario: emissao.destinatario,
+          embalagem: emissao.embalagem,
+          valorDeclarado: emissao.valorDeclarado,
+          observacao: emissao.observacao,
+          chaveNFe: emissao.chaveNFe,
+          numeroNotaFiscal: emissao.numeroNotaFiscal,
+        }
+      } 
+    });
+    toast.success("Dados carregados! Preencha os detalhes e gere a nova etiqueta");
+  };
+
   const buttons: ContentButtonProps[] = [
     {
       label: "Filtros",
@@ -453,6 +484,12 @@ export default function GerenciarEtiquetas() {
         }
       },
       bgColor: selectedIds.length !== 1 ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-indigo-500 hover:bg-indigo-600 text-white"
+    },
+    {
+      label: "Regerar Etiqueta",
+      icon: <RefreshCw className="h-4 w-4" />,
+      onClick: handleRegerarEtiqueta,
+      bgColor: selectedIds.length !== 1 ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-teal-500 hover:bg-teal-600 text-white"
     },
     {
       label: "Remover Seleção",
