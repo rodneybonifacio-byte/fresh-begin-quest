@@ -14,6 +14,7 @@ import type { IEmissao } from "../../../../types/IEmissao";
 import { formatCpfCnpj } from "../../../../utils/lib.formats";
 import { useLoadingSpinner } from "../../../../providers/LoadingSpinnerContext";
 import { ModalAtualizarPrecosEmMassa } from "./ModalAtualizarPrecosEmMassa";
+import { supabase } from "../../../../integrations/supabase/client";
 
 const emissaoService = new EmissaoService();
 
@@ -39,6 +40,7 @@ export default function GerenciarEtiquetas() {
   const [editableEmissao, setEditableEmissao] = useState<any>(null);
   const queryClient = useQueryClient();
 
+  // Query para buscar dados da API externa
   const { data, isLoading } = useQuery({
     queryKey: ["emissoes-gerenciar", page, appliedFilters],
     queryFn: async () => {
@@ -57,16 +59,92 @@ export default function GerenciarEtiquetas() {
       console.log('Quantidade de resultados (API):', response.data?.length);
       console.log('Total da API:', response.total);
 
-      // Atualizar o total filtrado
-      if (response.total !== undefined) {
-        setFilteredTotal(response.total);
-      } else if (response.data) {
-        setFilteredTotal(response.data.length);
-      }
-
       return response;
     }
   });
+
+  // Query para buscar etiquetas pendentes de correção do Supabase
+  const { data: etiquetasPendentes, isLoading: isLoadingPendentes } = useQuery({
+    queryKey: ["etiquetas-pendentes-correcao", page, appliedFilters],
+    queryFn: async () => {
+      let query = supabase
+        .from('etiquetas_pendentes_correcao')
+        .select('*', { count: 'exact' })
+        .range((page - 1) * 50, page * 50 - 1)
+        .order('criado_em', { ascending: false });
+
+      // Aplicar filtros
+      if (appliedFilters.remetente) {
+        query = query.ilike('remetente_nome', `%${appliedFilters.remetente}%`);
+      }
+      if (appliedFilters.dataInicio) {
+        query = query.gte('criado_em', appliedFilters.dataInicio);
+      }
+      if (appliedFilters.dataFim) {
+        query = query.lte('criado_em', appliedFilters.dataFim);
+      }
+
+      const { data, error, count } = await query;
+
+      if (error) {
+        console.error('Erro ao buscar etiquetas pendentes:', error);
+        return { data: [], count: 0 };
+      }
+
+      console.log('Etiquetas pendentes de correção:', data?.length);
+      return { data: data || [], count: count || 0 };
+    }
+  });
+
+  // Combinar dados da API externa com dados locais do Supabase
+  const combinedData = {
+    data: [
+      ...(data?.data || []),
+      ...(etiquetasPendentes?.data?.map((pendente: any) => ({
+        id: pendente.id,
+        codigoObjeto: null, // Etiquetas pendentes ainda não têm código
+        transportadora: pendente.servico_frete || '-',
+        servico: pendente.servico_frete,
+        remetenteNome: pendente.remetente_nome,
+        remetenteCpfCnpj: pendente.remetente_cpf_cnpj,
+        remetenteLocalidade: '',
+        remetenteUf: '',
+        cliente: { nome: '', cpfCnpj: '' },
+        destinatario: {
+          nome: pendente.destinatario_nome,
+          cpfCnpj: pendente.destinatario_cpf_cnpj,
+          celular: pendente.destinatario_celular,
+          endereco: {
+            cep: pendente.destinatario_cep,
+            logradouro: pendente.destinatario_logradouro,
+            numero: pendente.destinatario_numero,
+            complemento: pendente.destinatario_complemento,
+            bairro: pendente.destinatario_bairro,
+            localidade: pendente.destinatario_cidade,
+            uf: pendente.destinatario_estado,
+          }
+        },
+        embalagem: {
+          altura: pendente.altura,
+          largura: pendente.largura,
+          comprimento: pendente.comprimento,
+          peso: pendente.peso,
+        },
+        valorDeclarado: pendente.valor_declarado,
+        observacao: pendente.observacao,
+        status: 'ERRO_PENDENTE_CORRECAO',
+        mensagensErrorPostagem: pendente.motivo_erro,
+        criadoEm: pendente.criado_em,
+      })) || [])
+    ],
+    total: (data?.total || 0) + (etiquetasPendentes?.count || 0)
+  };
+
+  // Atualizar o total filtrado
+  const totalCombinado = combinedData.total;
+  if (filteredTotal !== totalCombinado) {
+    setFilteredTotal(totalCombinado);
+  }
 
   const deleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
