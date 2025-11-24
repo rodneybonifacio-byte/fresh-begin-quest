@@ -258,26 +258,26 @@ const FinanceiroFaturasAReceber = () => {
         >
             {isLoading ? <LoadSpinner mensagem="Carregando..." /> : null}
             
-            {/* Painel de Debug */}
+            {/* Painel de Debug - Oculto em mobile */}
             {debugInfo && (
-                <div className="mb-4 p-4 rounded-lg border-2 bg-slate-50 dark:bg-slate-900">
+                <div className="mb-4 p-3 sm:p-4 rounded-lg border-2 bg-slate-50 dark:bg-slate-900 overflow-hidden">
                     <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                            🔍 Debug - Último Fechamento
+                        <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                            🔍 Debug
                         </h3>
                         <button
                             onClick={() => setDebugInfo(null)}
-                            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                            className="min-w-[40px] min-h-[40px] flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                         >
                             ✕
                         </button>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs sm:text-sm">
                         <div className="space-y-2">
                             <div className="flex items-center gap-2">
-                                <span className="font-semibold text-slate-600 dark:text-slate-400">HTTP Code:</span>
-                                <span className={`font-mono px-2 py-1 rounded ${
+                                <span className="font-semibold text-slate-600 dark:text-slate-400">HTTP:</span>
+                                <span className={`font-mono px-2 py-1 rounded text-xs ${
                                     debugInfo.httpCode === 200 
                                         ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                                         : debugInfo.httpCode === 401
@@ -290,12 +290,12 @@ const FinanceiroFaturasAReceber = () => {
                             
                             <div>
                                 <span className="font-semibold text-slate-600 dark:text-slate-400">Mensagem:</span>
-                                <p className="text-slate-900 dark:text-slate-100 mt-1">{debugInfo.mensagem}</p>
+                                <p className="text-slate-900 dark:text-slate-100 mt-1 break-words">{debugInfo.mensagem}</p>
                             </div>
                             
                             <div>
                                 <span className="font-semibold text-slate-600 dark:text-slate-400">Timestamp:</span>
-                                <p className="text-slate-900 dark:text-slate-100 mt-1">
+                                <p className="text-slate-900 dark:text-slate-100 mt-1 text-xs">
                                     {debugInfo.timestamp?.toLocaleString('pt-BR')}
                                 </p>
                             </div>
@@ -303,8 +303,8 @@ const FinanceiroFaturasAReceber = () => {
                         
                         <div className="space-y-2">
                             <div>
-                                <span className="font-semibold text-slate-600 dark:text-slate-400">Payload Enviado:</span>
-                                <pre className="text-xs bg-slate-100 dark:bg-slate-800 p-2 rounded mt-1 overflow-x-auto">
+                                <span className="font-semibold text-slate-600 dark:text-slate-400">Payload:</span>
+                                <pre className="text-xs bg-slate-100 dark:bg-slate-800 p-2 rounded mt-1 overflow-x-auto max-h-32">
                                     {JSON.stringify(debugInfo.payload, null, 2)}
                                 </pre>
                             </div>
@@ -314,7 +314,7 @@ const FinanceiroFaturasAReceber = () => {
                                     <span className="font-semibold text-slate-600 dark:text-slate-400">
                                         {debugInfo.httpCode === 200 ? 'Resposta:' : 'Erro:'}
                                     </span>
-                                    <pre className="text-xs bg-slate-100 dark:bg-slate-800 p-2 rounded mt-1 overflow-x-auto max-h-40">
+                                    <pre className="text-xs bg-slate-100 dark:bg-slate-800 p-2 rounded mt-1 overflow-x-auto max-h-32">
                                         {JSON.stringify(debugInfo.response, null, 2)}
                                     </pre>
                                 </div>
@@ -324,19 +324,21 @@ const FinanceiroFaturasAReceber = () => {
                 </div>
             )}
             
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
                 <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col gap-4">
-                    <TabsList className="flex gap-4 bg-white dark:bg-slate-800 w-full p-4 rounded-xl border border-input dark:border-slate-600">
+                    <TabsList className="flex gap-2 bg-white dark:bg-slate-800 w-full p-2 rounded-xl border border-input dark:border-slate-600">
                         <TabItem value="faturamentos" label="Pendentes" />
                         <TabItem value="finalizados" label="Finalizados" />
                     </TabsList>
                 </Tabs>
                 
                 {tab === 'faturamentos' && (
-                    <RealtimeStatusIndicator 
-                        isConnected={true}
-                        lastUpdate={lastUpdate}
-                    />
+                    <div className="flex justify-center sm:justify-end">
+                        <RealtimeStatusIndicator 
+                            isConnected={true}
+                            lastUpdate={lastUpdate}
+                        />
+                    </div>
                 )}
             </div>
             {!isLoading && !isError && faturas && faturas.data.length > 0 && (
