@@ -3,6 +3,7 @@ import { isValid as isValidCpf, strip as stripCpf, generate as generateCpf } fro
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Content, type ContentButtonProps } from "../../Content";
 import { EmissaoService } from "../../../../services/EmissaoService";
+import { supabase } from "../../../../integrations/supabase/client";
 import { DataTable, type Column } from "../../../../components/DataTable";
 import { Trash2, Filter, X, DollarSign, Eye, RefreshCw, FileText, User, Calendar, Activity } from "lucide-react";
 import { toast } from "sonner";
@@ -57,14 +58,83 @@ export default function GerenciarEtiquetas() {
       console.log('Quantidade de resultados (API):', response.data?.length);
       console.log('Total da API:', response.total);
 
-      // Atualizar o total filtrado
-      if (response.total !== undefined) {
-        setFilteredTotal(response.total);
-      } else if (response.data) {
-        setFilteredTotal(response.data.length);
+      // Buscar etiquetas pendentes de correção do Supabase
+      let supabaseQuery = supabase
+        .from('etiquetas_pendentes_correcao')
+        .select('*', { count: 'exact' })
+        .range((page - 1) * 50, page * 50 - 1);
+
+      if (appliedFilters.remetente) {
+        supabaseQuery = supabaseQuery.ilike('remetente_nome', `%${appliedFilters.remetente}%`);
+      }
+      if (appliedFilters.dataInicio) {
+        supabaseQuery = supabaseQuery.gte('criado_em', appliedFilters.dataInicio);
+      }
+      if (appliedFilters.dataFim) {
+        supabaseQuery = supabaseQuery.lte('criado_em', appliedFilters.dataFim);
       }
 
-      return response;
+      const { data: pendentesData, error: pendentesError, count: pendentesCount } = await supabaseQuery;
+      
+      if (pendentesError) {
+        console.error('Erro ao buscar etiquetas pendentes:', pendentesError);
+      }
+
+      console.log('Etiquetas pendentes de correção:', pendentesData?.length || 0);
+
+      // Converter etiquetas pendentes para formato IEmissao
+      const pendentesFormatted: IEmissao[] = (pendentesData || []).map(p => ({
+        id: p.id,
+        codigoObjeto: 'PENDENTE_' + p.id.substring(0, 8),
+        transportadora: 'Correios',
+        servico: p.servico_frete || 'PAC',
+        remetenteId: '',
+        remetenteNome: p.remetente_nome || '',
+        remetenteCpfCnpj: p.remetente_cpf_cnpj || '',
+        cliente: { nome: 'PENDENTE CORREÇÃO', cpfCnpj: '' },
+        destinatario: {
+          nome: p.destinatario_nome,
+          cpfCnpj: p.destinatario_cpf_cnpj || '',
+          celular: p.destinatario_celular || '',
+          endereco: {
+            cep: p.destinatario_cep,
+            logradouro: p.destinatario_logradouro || '',
+            numero: p.destinatario_numero || '',
+            complemento: p.destinatario_complemento || '',
+            bairro: p.destinatario_bairro || '',
+            localidade: p.destinatario_cidade || '',
+            uf: p.destinatario_estado || ''
+          }
+        },
+        embalagem: {
+          altura: p.altura || 0,
+          largura: p.largura || 0,
+          comprimento: p.comprimento || 0,
+          peso: p.peso || 0
+        },
+        valorDeclarado: p.valor_declarado || 0,
+        valorNotaFiscal: 0,
+        observacao: p.observacao || '',
+        status: 'ERRO_PENDENTE_CORRECAO',
+        mensagensErrorPostagem: p.motivo_erro,
+        criadoEm: p.criado_em,
+        cienteObjetoNaoProibido: true,
+        cotacao: null,
+        logisticaReversa: false,
+        _isPendente: true
+      } as any));
+
+      // Combinar dados
+      const combinedData = [...(response.data || []), ...pendentesFormatted];
+      const totalCombined = (response.total || response.data?.length || 0) + (pendentesCount || 0);
+
+      // Atualizar o total filtrado
+      setFilteredTotal(totalCombined);
+
+      return {
+        data: combinedData,
+        total: totalCombined
+      };
     }
   });
 
