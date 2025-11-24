@@ -10,11 +10,14 @@ import { ptBR } from "date-fns/locale";
 import { StatusBadgeEmissao } from "../../../../components/StatusBadgeEmissao";
 import type { IEmissao } from "../../../../types/IEmissao";
 import { formatCpfCnpj } from "../../../../utils/lib.formats";
+import { useLoadingSpinner } from "../../../../providers/LoadingSpinnerContext";
 
 const emissaoService = new EmissaoService();
 
 export default function GerenciarEtiquetas() {
+  const { setIsLoading: setGlobalLoading } = useLoadingSpinner();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectAllMode, setSelectAllMode] = useState<'none' | 'page' | 'all'>('none');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     remetente: "",
@@ -65,10 +68,37 @@ export default function GerenciarEtiquetas() {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked && data?.data) {
-      const allIds = data.data.map((item: IEmissao) => item.id || "");
-      setSelectedIds(allIds.filter(Boolean));
+      const pageIds = data.data.map((item: IEmissao) => item.id || "").filter(Boolean);
+      setSelectedIds(pageIds);
+      setSelectAllMode('page');
     } else {
       setSelectedIds([]);
+      setSelectAllMode('none');
+    }
+  };
+
+  const handleSelectAllFiltered = async () => {
+    try {
+      setGlobalLoading(true);
+      const params: Record<string, string | number> = {
+        limit: 10000 // Limite alto para pegar todos
+      };
+      
+      if (appliedFilters.status) params.status = appliedFilters.status;
+      if (appliedFilters.dataInicio) params.dataIni = appliedFilters.dataInicio;
+      if (appliedFilters.dataFim) params.dataFim = appliedFilters.dataFim;
+      if (appliedFilters.remetente) params.remetenteNome = appliedFilters.remetente;
+
+      const response = await emissaoService.getAll(params, 'admin');
+      const allIds = response.data?.map((item: IEmissao) => item.id || "").filter(Boolean) || [];
+      
+      setSelectedIds(allIds);
+      setSelectAllMode('all');
+      toast.success(`${allIds.length} etiquetas selecionadas`);
+    } catch (error) {
+      toast.error("Erro ao selecionar todas as etiquetas");
+    } finally {
+      setGlobalLoading(false);
     }
   };
 
@@ -86,7 +116,11 @@ export default function GerenciarEtiquetas() {
       return;
     }
 
-    if (confirm(`Deseja realmente excluir ${selectedIds.length} etiqueta(s)?`)) {
+    const message = selectAllMode === 'all' 
+      ? `Deseja realmente excluir TODAS as ${selectedIds.length} etiquetas filtradas?`
+      : `Deseja realmente excluir ${selectedIds.length} etiqueta(s)?`;
+
+    if (confirm(message)) {
       deleteMutation.mutate(selectedIds);
     }
   };
@@ -192,6 +226,11 @@ export default function GerenciarEtiquetas() {
       bgColor: "bg-gray-200 hover:bg-gray-300 text-gray-800"
     },
     {
+      label: selectAllMode === 'all' ? "Todas Selecionadas" : "Selecionar Todas Filtradas",
+      onClick: handleSelectAllFiltered,
+      bgColor: selectAllMode === 'all' ? "bg-green-500 text-white" : "bg-blue-500 hover:bg-blue-600 text-white"
+    },
+    {
       label: `Excluir Selecionadas (${selectedIds.length})`,
       icon: <Trash2 className="h-4 w-4" />,
       onClick: handleDelete,
@@ -269,6 +308,28 @@ export default function GerenciarEtiquetas() {
               Limpar
             </button>
           </div>
+        </div>
+      )}
+
+      {selectAllMode === 'page' && selectedIds.length > 0 && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
+          <p className="text-sm text-blue-900 dark:text-blue-100">
+            {selectedIds.length} etiquetas selecionadas nesta página. 
+            <button 
+              onClick={handleSelectAllFiltered}
+              className="ml-2 font-semibold underline hover:no-underline"
+            >
+              Selecionar todas as etiquetas filtradas
+            </button>
+          </p>
+        </div>
+      )}
+
+      {selectAllMode === 'all' && (
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3 mb-4">
+          <p className="text-sm text-green-900 dark:text-green-100">
+            ✓ Todas as {selectedIds.length} etiquetas filtradas estão selecionadas
+          </p>
         </div>
       )}
 
