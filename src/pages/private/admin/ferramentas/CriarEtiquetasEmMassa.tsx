@@ -334,9 +334,14 @@ export default function CriarEtiquetasEmMassa() {
         enviosProcessados.push(envio);
       }
 
+      // Salvar etiquetas com erro ANTES de verificar se há envios válidos
+      if (etiquetasComErro.length > 0) {
+        await salvarEtiquetasComErro(etiquetasComErro, cpfCnpjRemetenteClean);
+      }
+
       if (enviosProcessados.length === 0) {
-        addLog("Nenhum envio válido para processar", "error");
-        toast.error("Nenhum registro válido encontrado");
+        addLog(`Todos os ${etiquetasComErro.length} registros falharam e foram salvos no Gerenciador para correção`, "info");
+        toast.info(`${etiquetasComErro.length} etiquetas com erro foram salvas no Gerenciador de Etiquetas`);
         setIsProcessing(false);
         return;
       }
@@ -376,11 +381,6 @@ export default function CriarEtiquetasEmMassa() {
         const pdfFinal = await concatenarPdfs(pdfArray);
         setPdfBase64(pdfFinal);
         addLog(`PDF único gerado com sucesso!`, "success");
-      }
-
-      // Salvar etiquetas com erro para correção posterior
-      if (etiquetasComErro.length > 0) {
-        await salvarEtiquetasComErro(etiquetasComErro, cpfCnpjRemetenteClean);
       }
 
       const totalErros = etiquetasComErro.length;
