@@ -3,8 +3,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Content, type ContentButtonProps } from "../../Content";
 import { EmissaoService } from "../../../../services/EmissaoService";
 import { DataTable, type Column } from "../../../../components/DataTable";
-import { Trash2, Filter, X, DollarSign, Calendar, User, Activity, FileText } from "lucide-react";
+import { Trash2, Filter, X, DollarSign, Calendar, User, Activity, FileText, Eye } from "lucide-react";
 import { toast } from "sonner";
+import { ModalCustom } from "../../../../components/modal";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { StatusBadgeEmissao } from "../../../../components/StatusBadgeEmissao";
@@ -31,6 +32,8 @@ export default function GerenciarEtiquetas() {
   const [appliedFilters, setAppliedFilters] = useState(filters);
   const [page, setPage] = useState(1);
   const [filteredTotal, setFilteredTotal] = useState<number>(0);
+  const [selectedEmissaoDetail, setSelectedEmissaoDetail] = useState<IEmissao | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -436,6 +439,22 @@ export default function GerenciarEtiquetas() {
       bgColor: selectAllMode === 'all' ? "bg-green-500 text-white" : "bg-blue-500 hover:bg-blue-600 text-white"
     },
     {
+      label: "Ver Detalhes",
+      icon: <Eye className="h-4 w-4" />,
+      onClick: () => {
+        if (selectedIds.length === 1) {
+          const emissao = data?.data?.find((e: IEmissao) => e.id === selectedIds[0]);
+          if (emissao) {
+            setSelectedEmissaoDetail(emissao);
+            setShowDetailModal(true);
+          }
+        } else {
+          toast.warning("Selecione apenas uma etiqueta para ver detalhes");
+        }
+      },
+      bgColor: selectedIds.length !== 1 ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-indigo-500 hover:bg-indigo-600 text-white"
+    },
+    {
       label: "Remover Seleção",
       icon: <X className="h-4 w-4" />,
       onClick: () => {
@@ -670,6 +689,123 @@ export default function GerenciarEtiquetas() {
           setSelectAllMode('none');
         }}
       />
+
+      {showDetailModal && selectedEmissaoDetail && (
+        <ModalCustom
+          onCancel={() => {
+            setShowDetailModal(false);
+            setSelectedEmissaoDetail(null);
+          }}
+          title="Detalhes da Etiqueta"
+          size="large"
+        >
+          <div className="space-y-4">
+            <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg">
+              <h3 className="font-semibold text-lg mb-3">Dados do Destinatário</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Nome</p>
+                  <p className="font-medium">{selectedEmissaoDetail.destinatario?.nome || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">CPF/CNPJ</p>
+                  <p className="font-medium">{selectedEmissaoDetail.destinatario?.cpfCnpj ? formatCpfCnpj(selectedEmissaoDetail.destinatario.cpfCnpj) : '-'}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Endereço</p>
+                  <p className="font-medium">
+                    {selectedEmissaoDetail.destinatario?.endereco?.logradouro || '-'}, {selectedEmissaoDetail.destinatario?.endereco?.numero || '-'} 
+                    {selectedEmissaoDetail.destinatario?.endereco?.complemento ? ` - ${selectedEmissaoDetail.destinatario.endereco.complemento}` : ''}
+                    <br />
+                    {selectedEmissaoDetail.destinatario?.endereco?.bairro || '-'}, {selectedEmissaoDetail.destinatario?.endereco?.localidade || '-'}-{selectedEmissaoDetail.destinatario?.endereco?.uf || '-'} 
+                    {' '}{selectedEmissaoDetail.destinatario?.endereco?.cep || '-'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg">
+              <h3 className="font-semibold text-lg mb-3">Dados do Remetente</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Nome</p>
+                  <p className="font-medium">{selectedEmissaoDetail.remetenteNome || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">CPF/CNPJ</p>
+                  <p className="font-medium">{selectedEmissaoDetail.remetenteCpfCnpj ? formatCpfCnpj(selectedEmissaoDetail.remetenteCpfCnpj) : '-'}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg">
+              <h3 className="font-semibold text-lg mb-3">Dados do Pacote e Frete</h3>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Código Objeto</p>
+                  <p className="font-medium">{selectedEmissaoDetail.codigoObjeto || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Transportadora</p>
+                  <p className="font-medium">{selectedEmissaoDetail.transportadora || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Serviço</p>
+                  <p className="font-medium">{selectedEmissaoDetail.servico || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Valor</p>
+                  <p className="font-medium text-green-600">{selectedEmissaoDetail.valor ? `R$ ${selectedEmissaoDetail.valor}` : '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Valor Postagem</p>
+                  <p className="font-medium text-orange-600">{selectedEmissaoDetail.valorPostagem ? `R$ ${selectedEmissaoDetail.valorPostagem}` : '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Status</p>
+                  <StatusBadgeEmissao 
+                    status={selectedEmissaoDetail.status} 
+                    mensagensErrorPostagem={selectedEmissaoDetail.mensagensErrorPostagem || ""} 
+                    handleOnViewErroPostagem={() => {}} 
+                  />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Dimensões (A×L×C)</p>
+                  <p className="font-medium">
+                    {selectedEmissaoDetail.embalagem?.altura || '-'}×{selectedEmissaoDetail.embalagem?.largura || '-'}×{selectedEmissaoDetail.embalagem?.comprimento || '-'} cm
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Peso</p>
+                  <p className="font-medium">{selectedEmissaoDetail.embalagem?.peso || '-'} g</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Data Criação</p>
+                  <p className="font-medium">
+                    {selectedEmissaoDetail.criadoEm ? format(new Date(selectedEmissaoDetail.criadoEm), "dd/MM/yyyy HH:mm", { locale: ptBR }) : '-'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {selectedEmissaoDetail.cliente && (
+              <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg">
+                <h3 className="font-semibold text-lg mb-3">Dados do Cliente</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Nome</p>
+                    <p className="font-medium">{selectedEmissaoDetail.cliente.nome || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">CPF/CNPJ</p>
+                    <p className="font-medium">{selectedEmissaoDetail.cliente.cpfCnpj ? formatCpfCnpj(selectedEmissaoDetail.cliente.cpfCnpj) : '-'}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </ModalCustom>
+      )}
     </Content>
   );
 }
