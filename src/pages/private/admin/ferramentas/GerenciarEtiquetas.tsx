@@ -81,6 +81,7 @@ export default function GerenciarEtiquetas() {
       }
 
       console.log('Etiquetas pendentes de correção:', pendentesData?.length || 0);
+      console.log('Dados pendentes completos:', pendentesData);
 
       // Converter etiquetas pendentes para formato IEmissao
       const pendentesFormatted: IEmissao[] = (pendentesData || []).map(p => ({
@@ -127,6 +128,14 @@ export default function GerenciarEtiquetas() {
       // Combinar dados
       const combinedData = [...(response.data || []), ...pendentesFormatted];
       const totalCombined = (response.total || response.data?.length || 0) + (pendentesCount || 0);
+
+      console.log('📊 DADOS COMBINADOS FINAIS:', {
+        apiData: response.data?.length || 0,
+        pendentesFormatted: pendentesFormatted.length,
+        combinedTotal: combinedData.length,
+        totalCombined
+      });
+      console.log('🎯 Combined data sample:', combinedData.slice(0, 3));
 
       // Atualizar o total filtrado
       setFilteredTotal(totalCombined);
