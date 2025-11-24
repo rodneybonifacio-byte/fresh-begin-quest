@@ -8,16 +8,6 @@ import { EmissaoService } from "../../../../services/EmissaoService";
 
 const SENDER_CNPJ = "15808095000303";
 
-const SENDER_ADDRESS = {
-  logradouro: "RUA MARIA MARCOLINA",
-  numero: "748",
-  complemento: "",
-  bairro: "BRÁS",
-  cep: "03011000",
-  localidade: "SÃO PAULO",
-  uf: "SP"
-};
-
 const viacepService = new ViacepService();
 
 function gerarCPFValido(): string {
@@ -132,13 +122,13 @@ export default function GerarEtiquetasRapido() {
             comprimento: Number(row.comprimento) || 20,
             peso: Number(row.peso) || 300,
             logradouro: String(row.logradouro || '').trim(),
-            numero: numero,
-            complemento: String(row.complemento || '').trim(),
-            bairro: endereco.bairro,
-            cidade: endereco.localidade,
-            estado: endereco.uf,
+            numero: parseInt(numero) || 1,
+            complemento: row.complemento ? String(row.complemento).trim() : undefined,
+            bairro: endereco.bairro || 'Centro',
+            cidade: endereco.localidade || '',
+            estado: endereco.uf || '',
             nomeDestinatario: String(row.nomeDestinatario || '').trim(),
-            cpfCnpj: cpfCnpjDestinatario,
+            cpfCnpj: Number(cpfCnpjDestinatario),
             valor_frete: Number(row.valor_frete) || 0
           };
           
@@ -155,26 +145,37 @@ export default function GerarEtiquetasRapido() {
       addLog("📤 Enviando para API de importação...");
       
       const payload = {
-        cpfCnpj: SENDER_CNPJ,
-        remetente: {
-          nome: "ÓPERA KIDS VAREJO",
-          cpfCnpj: SENDER_CNPJ,
-          telefone: "",
-          email: "",
-          ...SENDER_ADDRESS
-        },
-        etiquetas: dadosProcessados
+        cpfCnpj: SENDER_CNPJ.replace(/\D/g, ''),
+        data: dadosProcessados
       };
       
+      addLog(`📦 Enviando ${dadosProcessados.length} registros para a API...`);
       const resultado = await emissaoService.processarPedidosImportados(payload);
       
       addLog(`✅ API respondeu com sucesso!`);
       
-      if (resultado?.emissoes) {
-        const ids = resultado.emissoes.map((e: any) => e.id).filter(Boolean);
-        setIdsGerados(ids);
-        addLog(`🎉 ${ids.length} etiquetas geradas com sucesso!`);
-        toast.success(`${ids.length} etiquetas geradas!`);
+      // Trata resposta da API - tentando diferentes formatos de resposta
+      let idsEtiquetas: string[] = [];
+      
+      if (resultado?.etiquetas_criadas && Array.isArray(resultado.etiquetas_criadas)) {
+        idsEtiquetas = resultado.etiquetas_criadas;
+      } else if (resultado?.data?.etiquetas_criadas && Array.isArray(resultado.data.etiquetas_criadas)) {
+        idsEtiquetas = resultado.data.etiquetas_criadas;
+      } else if (resultado?.ids && Array.isArray(resultado.ids)) {
+        idsEtiquetas = resultado.ids;
+      } else if (resultado?.data && Array.isArray(resultado.data)) {
+        idsEtiquetas = resultado.data.map((item: any) => item.id).filter(Boolean);
+      } else if (resultado?.emissoes && Array.isArray(resultado.emissoes)) {
+        idsEtiquetas = resultado.emissoes.map((e: any) => e.id).filter(Boolean);
+      }
+      
+      if (idsEtiquetas.length > 0) {
+        setIdsGerados(idsEtiquetas);
+        addLog(`🎉 ${idsEtiquetas.length} etiquetas geradas com sucesso!`);
+        toast.success(`${idsEtiquetas.length} etiquetas geradas!`);
+      } else {
+        addLog('⚠️ Etiquetas processadas mas IDs não retornados pela API');
+        toast.warning('Importação concluída, mas IDs não foram retornados');
       }
       
     } catch (error: any) {
