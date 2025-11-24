@@ -471,45 +471,60 @@ export default function GerenciarEtiquetas() {
     try {
       setGlobalLoading(true);
       
-      // Preparar payload para criar nova emissão (será implementado com cotação)
-      // const novaEmissao = {
-      //   remetenteId: editableEmissao.remetenteId,
-      //   destinatario: {
-      //     nome: editableEmissao.destinatarioNome,
-      //     cpfCnpj: editableEmissao.destinatarioCpfCnpj,
-      //     celular: editableEmissao.destinatarioCelular,
-      //     endereco: {
-      //       cep: editableEmissao.cep,
-      //       logradouro: editableEmissao.logradouro,
-      //       numero: editableEmissao.numero,
-      //       complemento: editableEmissao.complemento,
-      //       bairro: editableEmissao.bairro,
-      //       localidade: editableEmissao.localidade,
-      //       uf: editableEmissao.uf,
-      //     }
-      //   },
-      //   embalagem: {
-      //     altura: Number(editableEmissao.altura),
-      //     largura: Number(editableEmissao.largura),
-      //     comprimento: Number(editableEmissao.comprimento),
-      //     peso: Number(editableEmissao.peso),
-      //   },
-      //   valorDeclarado: Number(editableEmissao.valorDeclarado),
-      //   observacao: editableEmissao.observacao,
-      //   cienteObjetoNaoProibido: true,
-      //   logisticaReversa: "N",
-      // };
+      // Preparar dados no formato do endpoint de criação em massa
+      const dadosParaImportar = {
+        cpfCnpj: "15808095000303", // CNPJ fixo ÓPERA KIDS VAREJO
+        dados: [
+          {
+            nome: editableEmissao.destinatarioNome?.trim(),
+            cpf_cnpj: editableEmissao.destinatarioCpfCnpj?.replace(/\D/g, ''),
+            telefone: editableEmissao.destinatarioCelular?.replace(/\D/g, ''),
+            cep: editableEmissao.cep?.replace(/\D/g, ''),
+            endereco: editableEmissao.logradouro?.trim(),
+            numero: editableEmissao.numero?.trim(),
+            complemento: editableEmissao.complemento?.trim() || '',
+            bairro: editableEmissao.bairro?.trim(),
+            cidade: editableEmissao.localidade?.trim(),
+            estado: editableEmissao.uf?.toUpperCase().trim(),
+            altura: Number(editableEmissao.altura),
+            largura: Number(editableEmissao.largura),
+            comprimento: Number(editableEmissao.comprimento),
+            peso: Number(editableEmissao.peso),
+            valor_declarado: Number(editableEmissao.valorDeclarado),
+            servico_frete: "PAC", // Padrão, será recalculado pela API
+            observacao: editableEmissao.observacao?.trim() || ''
+          }
+        ]
+      };
 
-      // Aqui você chamaria o serviço para criar a emissão
-      // await emissaoService.create(novaEmissao);
-      
-      toast.info("Funcionalidade de regerar etiqueta será implementada com cotação de frete");
+      console.log('Enviando dados para regerar:', dadosParaImportar);
+
+      // Chamar API de importação em massa
+      const response = await fetch('https://envios.brhubb.com.br/api/importacao/multipla', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dadosParaImportar)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erro ao regerar etiqueta');
+      }
+
+      const result = await response.json();
+      console.log('Resultado da regeração:', result);
+
+      toast.success('Etiqueta regerada com sucesso!');
       setShowRegerarModal(false);
       setEditableEmissao(null);
+      setSelectedIds([]);
+      setSelectAllMode('none');
       queryClient.invalidateQueries({ queryKey: ["emissoes-gerenciar"] });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao regerar etiqueta:', error);
-      toast.error("Erro ao regerar etiqueta");
+      toast.error(error.message || "Erro ao regerar etiqueta");
     } finally {
       setGlobalLoading(false);
     }
