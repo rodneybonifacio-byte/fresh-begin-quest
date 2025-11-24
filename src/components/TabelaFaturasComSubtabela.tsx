@@ -19,6 +19,8 @@ interface TabelaFaturasComSubtabelaProps {
     imprimirFaturaPdf: (fatura: IFatura) => void;
     realizarFechamento: (fatura: IFatura) => void;
     emitirBoleto: (fatura: IFatura) => void;
+    verificarFechamentoExistente: (faturaId: string) => any;
+    visualizarFechamento: (fatura: IFatura) => void;
 }
 
 export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps> = ({
@@ -30,6 +32,8 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
     imprimirFaturaPdf,
     realizarFechamento,
     emitirBoleto,
+    verificarFechamentoExistente,
+    visualizarFechamento,
 }) => {
     const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
 
@@ -165,10 +169,16 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
             actionTitle={(row) => `${row.nome ?? row.cliente.nome} - ${row.cpfCnpj ?? row.cliente.cpfCnpj}`}
             actions={[
                 {
+                    label: 'Visualizar Boleto',
+                    icon: <Eye size={16} />,
+                    onClick: (row) => visualizarFechamento(row),
+                    show: (row) => !!(verificarFechamentoExistente(row.id)) && (!row.faturas || row.faturas.length === 0) && (row.status === 'PENDENTE' || row.status === 'PAGO_PARCIAL'),
+                },
+                {
                     label: 'Realizar Fechamento',
                     icon: <CheckCircle size={16} />,
                     onClick: (row) => realizarFechamento(row),
-                    show: (row) => (!row.faturas || row.faturas.length === 0) && (row.status === 'PENDENTE' || row.status === 'PAGO_PARCIAL'),
+                    show: (row) => !verificarFechamentoExistente(row.id) && (!row.faturas || row.faturas.length === 0) && (row.status === 'PENDENTE' || row.status === 'PAGO_PARCIAL'),
                 },
                 {
                     label: 'Emitir Boleto',
