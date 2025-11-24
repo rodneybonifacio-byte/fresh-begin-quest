@@ -105,19 +105,20 @@ serve(async (req) => {
     console.log('📋 Dados recebidos:', { nossoNumero, motivoCancelamento });
 
     // Configurar certificados para mTLS
-    const clientCert = formatPemCert(Deno.env.get('BANCO_INTER_CLIENT_CERT') || '');
-    const clientKey = formatPemCert(Deno.env.get('BANCO_INTER_CLIENT_KEY') || '');
-    const caCert = formatPemCert(Deno.env.get('BANCO_INTER_CA_CERT') || '');
-
-    if (!clientCert || !clientKey || !caCert) {
-      throw new Error('Certificados não configurados corretamente');
-    }
-
-    // Criar cliente HTTP com mTLS
+    const cert = Deno.env.get('BANCO_INTER_CLIENT_CERT')!;
+    const key = Deno.env.get('BANCO_INTER_CLIENT_KEY')!;
+    const caCert = Deno.env.get('BANCO_INTER_CA_CERT')!;
+    
+    console.log('🔧 Formatando certificados...');
+    const certFixed = formatPemCert(cert);
+    const keyFixed = formatPemCert(key);
+    const caCertFixed = formatPemCert(caCert);
+    
+    console.log('🌐 Criando cliente HTTP com mTLS...');
     httpClient = Deno.createHttpClient({
-      certChain: clientCert,
-      privateKey: clientKey,
-      caCerts: [caCert],
+      cert: certFixed,
+      key: keyFixed,
+      caCerts: [caCertFixed]
     });
 
     // Obter token OAuth
