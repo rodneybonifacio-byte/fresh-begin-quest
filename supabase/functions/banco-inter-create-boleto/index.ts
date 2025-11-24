@@ -181,21 +181,26 @@ serve(async (req) => {
       console.log('✅ Token obtido com sucesso');
 
     // Preparar dados do boleto
-    const cpfCnpj = body.pagadorCpfCnpj.replace(/\D/g, '');
+    const cpfCnpj = body.pagadorCpfCnpj?.replace(/\D/g, '') || '';
+    
+    if (!cpfCnpj) {
+      throw new Error('CPF/CNPJ do pagador é obrigatório');
+    }
+    
     const tipoPessoa = cpfCnpj.length === 11 ? 'FISICA' : 'JURIDICA';
+    
+    // Limitar seuNumero a 15 caracteres (pegar os últimos 15 do UUID)
+    const seuNumero = body.faturaId.slice(-15);
 
     const boletoData = {
-      seuNumero: body.faturaId,
+      seuNumero: seuNumero,
       valorNominal: body.valorCobrado,
       dataVencimento: dataVencimento,
       numDiasAgenda: 60,
       pagador: {
+        cpfCnpj: cpfCnpj,
         tipoPessoa: tipoPessoa,
         nome: body.pagadorNome,
-        ...(tipoPessoa === 'FISICA' 
-          ? { cpf: cpfCnpj }
-          : { cnpj: cpfCnpj }
-        ),
         ...(body.pagadorEndereco && {
           endereco: body.pagadorEndereco.logradouro,
           numero: body.pagadorEndereco.numero,
@@ -231,6 +236,7 @@ serve(async (req) => {
 
     console.log('📝 Dados do boleto preparados');
     console.log('📋 Payload do boleto:', JSON.stringify(boletoData, null, 2));
+    console.log('🔍 CPF/CNPJ:', cpfCnpj, '| Tipo:', tipoPessoa, '| seuNumero:', seuNumero);
 
     // Emitir boleto via API do Banco Inter com mTLS (usando o mesmo httpClient)
     const boletoUrl = 'https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas';
