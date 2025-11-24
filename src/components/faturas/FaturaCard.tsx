@@ -100,23 +100,23 @@ export const FaturaCard: React.FC<FaturaCardProps> = ({
                 </div>
             </div>
 
-            {/* Ações */}
+            {/* Ações - Faturas Principais */}
             {!temSubfaturas && (
-                <div className="px-4 pb-4 flex flex-wrap gap-2">
+                <div className="px-4 pb-4 flex flex-col gap-2">
                     {temFechamento && isPendente && (
                         <button
                             onClick={() => onVisualizarFechamento(fatura)}
-                            className="flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors"
+                            className="w-full min-h-[44px] flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors"
                         >
                             <Eye size={16} />
-                            Ver Boleto
+                            Visualizar Boleto
                         </button>
                     )}
                     
                     {!temFechamento && isPendente && (
                         <button
                             onClick={() => onRealizarFechamento(fatura)}
-                            className="flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-medium transition-colors"
+                            className="w-full min-h-[44px] flex items-center justify-center gap-2 px-4 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-medium transition-colors"
                         >
                             <CheckCircle size={16} />
                             Realizar Fechamento
@@ -126,17 +126,17 @@ export const FaturaCard: React.FC<FaturaCardProps> = ({
                     {isPendente && (
                         <button
                             onClick={() => onConfirmarPagamento(fatura)}
-                            className="flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-sm font-medium transition-colors"
+                            className="w-full min-h-[44px] flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-sm font-medium transition-colors"
                         >
                             <CreditCard size={16} />
-                            Confirmar Pgto
+                            Confirmar Pagamento
                         </button>
                     )}
                     
                     {temFechamento && isPendente && (
                         <button
                             onClick={() => onCancelarBoleto(fatura)}
-                            className="flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors"
+                            className="w-full min-h-[44px] flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors"
                         >
                             <XCircle size={16} />
                             Cancelar Boleto
@@ -192,44 +192,48 @@ export const FaturaCard: React.FC<FaturaCardProps> = ({
                                     </div>
 
                                     {/* Ações da Subfatura */}
-                                    <div className="mt-3 flex flex-wrap gap-2">
+                                    <div className="mt-3 flex flex-col gap-2">
+                                        {/* Visualizar Boleto - Aparece se já tem fechamento */}
                                         {verificarFechamentoExistente(subfatura.id) && (subfatura.status === 'PENDENTE' || subfatura.status === 'PAGO_PARCIAL') && (
                                             <button
                                                 onClick={() => onVisualizarFechamento(subfatura)}
-                                                className="flex-1 min-w-[100px] flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs font-medium transition-colors"
+                                                className="w-full min-h-[44px] flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors"
                                             >
-                                                <Eye size={14} />
-                                                Ver
+                                                <Eye size={16} />
+                                                Visualizar Boleto
                                             </button>
                                         )}
                                         
+                                        {/* Realizar Fechamento - Aparece se NÃO tem fechamento */}
                                         {!verificarFechamentoExistente(subfatura.id) && (subfatura.status === 'PENDENTE' || subfatura.status === 'PAGO_PARCIAL') && (
                                             <button
                                                 onClick={() => onRealizarFechamento(subfatura)}
-                                                className="flex-1 min-w-[100px] flex items-center justify-center gap-1.5 px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs font-medium transition-colors"
+                                                className="w-full min-h-[44px] flex items-center justify-center gap-2 px-4 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-medium transition-colors"
                                             >
-                                                <CheckCircle size={14} />
-                                                Fechar
+                                                <CheckCircle size={16} />
+                                                Realizar Fechamento
                                             </button>
                                         )}
                                         
+                                        {/* Confirmar Pagamento - Sempre aparece para pendentes */}
                                         {(subfatura.status === 'PENDENTE' || subfatura.status === 'PAGO_PARCIAL') && (
                                             <button
                                                 onClick={() => onConfirmarPagamento(subfatura)}
-                                                className="flex-1 min-w-[100px] flex items-center justify-center gap-1.5 px-3 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-xs font-medium transition-colors"
+                                                className="w-full min-h-[44px] flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-sm font-medium transition-colors"
                                             >
-                                                <CreditCard size={14} />
-                                                Pagar
+                                                <CreditCard size={16} />
+                                                Confirmar Pagamento
                                             </button>
                                         )}
                                         
+                                        {/* Cancelar Boleto - Aparece se já tem fechamento */}
                                         {verificarFechamentoExistente(subfatura.id) && (subfatura.status === 'PENDENTE' || subfatura.status === 'PAGO_PARCIAL') && (
                                             <button
                                                 onClick={() => onCancelarBoleto(subfatura)}
-                                                className="flex-1 min-w-[100px] flex items-center justify-center gap-1.5 px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-medium transition-colors"
+                                                className="w-full min-h-[44px] flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors"
                                             >
-                                                <XCircle size={14} />
-                                                Cancelar
+                                                <XCircle size={16} />
+                                                Cancelar Boleto
                                             </button>
                                         )}
                                     </div>
