@@ -176,7 +176,7 @@ export const ModalVisualizarFechamento: React.FC<ModalVisualizarFechamentoProps>
                 </div>
 
                 {/* Botões de ação */}
-                <div className="flex gap-2 justify-end p-4 border-t border-border">
+                <div className="flex gap-3 justify-end p-4 border-t border-border">
                     {mergedPdfUrl && !error && (
                         <ButtonComponent variant="primary" onClick={handleDownload} className="gap-2">
                             <Download size={18} />
@@ -187,10 +187,11 @@ export const ModalVisualizarFechamento: React.FC<ModalVisualizarFechamentoProps>
                     <ButtonComponent 
                         variant="secondary"
                         disabled
-                        className="gap-2 opacity-50 cursor-not-allowed"
+                        className="gap-2 bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                        Notificar WhatsApp (Em breve)
+                        Notificar via WhatsApp
+                        <span className="text-xs ml-1">(Em breve)</span>
                     </ButtonComponent>
                 </div>
             </div>
