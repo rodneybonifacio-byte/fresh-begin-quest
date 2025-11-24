@@ -37,9 +37,11 @@ export default function GerenciarEtiquetas() {
       if (appliedFilters.status) params.status = appliedFilters.status;
       if (appliedFilters.dataInicio) params.dataIni = appliedFilters.dataInicio;
       if (appliedFilters.dataFim) params.dataFim = appliedFilters.dataFim;
-      if (appliedFilters.remetente) params.busca = appliedFilters.remetente;
+      if (appliedFilters.remetente) params.remetenteNome = appliedFilters.remetente;
 
+      console.log('Parâmetros enviados para API:', params);
       const response = await emissaoService.getAll(params, 'admin');
+      console.log('Quantidade de resultados:', response.data?.length);
       return response;
     }
   });
