@@ -202,6 +202,17 @@ const FinanceiroFaturasAReceber = () => {
             
             toast.success('Fechamento realizado com sucesso!');
             
+            // Salvar dados do fechamento no localStorage
+            const fechamentoData = {
+                faturaPdf: result.fatura_pdf,
+                boletoPdf: result.boleto_pdf,
+                codigoFatura: codigoFatura,
+                nomeCliente: nomeCliente,
+                boletoInfo: result.boleto_info,
+                timestamp: new Date().toISOString()
+            };
+            localStorage.setItem(`fechamento_${faturaId}`, JSON.stringify(fechamentoData));
+            
             // Abrir modal com os PDFs separados
             setIsModalFechamento({
                 isOpen: true,
@@ -231,6 +242,25 @@ const FinanceiroFaturasAReceber = () => {
 
     const handleEmitirBoleto = (fatura: IFatura) => {
         setIsModalBoleto({ isOpen: true, fatura });
+    };
+
+    const verificarFechamentoExistente = (faturaId: string) => {
+        const fechamento = localStorage.getItem(`fechamento_${faturaId}`);
+        return fechamento ? JSON.parse(fechamento) : null;
+    };
+
+    const handleVisualizarFechamento = (fatura: IFatura) => {
+        const fechamentoData = verificarFechamentoExistente(fatura.id);
+        if (fechamentoData) {
+            setIsModalFechamento({
+                isOpen: true,
+                faturaPdf: fechamentoData.faturaPdf,
+                boletoPdf: fechamentoData.boletoPdf,
+                codigoFatura: fechamentoData.codigoFatura,
+                nomeCliente: fechamentoData.nomeCliente,
+                boletoInfo: fechamentoData.boletoInfo
+            });
+        }
     };
 
     return (
@@ -335,6 +365,8 @@ const FinanceiroFaturasAReceber = () => {
                         imprimirFaturaPdf={handleEnviarEImprimir}
                         realizarFechamento={handleRealizarFechamento}
                         emitirBoleto={handleEmitirBoleto}
+                        verificarFechamentoExistente={verificarFechamentoExistente}
+                        visualizarFechamento={handleVisualizarFechamento}
                     />
 
                     <div className="py-3">

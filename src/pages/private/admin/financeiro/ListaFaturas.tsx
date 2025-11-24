@@ -10,9 +10,21 @@ interface IListaFaturasProps {
     imprimirFaturaPdf: (fatura: IFatura) => void;
     realizarFechamento: (fatura: IFatura) => void;
     emitirBoleto: (fatura: IFatura) => void;
+    verificarFechamentoExistente: (faturaId: string) => any;
+    visualizarFechamento: (fatura: IFatura) => void;
 }
 
-export const ListaFaturas: React.FC<IListaFaturasProps> = ({ data, setIsModalConfirmaPagamento, notificaViaWhatsApp, estaAtrasada, imprimirFaturaPdf, realizarFechamento, emitirBoleto }) => {
+export const ListaFaturas: React.FC<IListaFaturasProps> = ({ 
+    data, 
+    setIsModalConfirmaPagamento, 
+    notificaViaWhatsApp, 
+    estaAtrasada, 
+    imprimirFaturaPdf, 
+    realizarFechamento, 
+    emitirBoleto,
+    verificarFechamentoExistente,
+    visualizarFechamento
+}) => {
     const { layout } = useLayout();
     return (
         <TabelaFaturasCliente
@@ -24,6 +36,8 @@ export const ListaFaturas: React.FC<IListaFaturasProps> = ({ data, setIsModalCon
             imprimirFaturaPdf={imprimirFaturaPdf}
             realizarFechamento={realizarFechamento}
             emitirBoleto={emitirBoleto}
+            verificarFechamentoExistente={verificarFechamentoExistente}
+            visualizarFechamento={visualizarFechamento}
         />
     );
 };
