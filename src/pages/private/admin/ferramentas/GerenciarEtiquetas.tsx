@@ -38,6 +38,8 @@ export default function GerenciarEtiquetas() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showRegerarModal, setShowRegerarModal] = useState(false);
   const [editableEmissao, setEditableEmissao] = useState<any>(null);
+  const [showDebugModal, setShowDebugModal] = useState(false);
+  const [debugData, setDebugData] = useState<any>(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -136,6 +138,15 @@ export default function GerenciarEtiquetas() {
         totalCombined
       });
       console.log('🎯 Combined data sample:', combinedData.slice(0, 3));
+
+      // Salvar dados de debug
+      setDebugData({
+        pendentesData,
+        pendentesFormatted,
+        combinedData,
+        apiData: response.data,
+        totalCombined
+      });
 
       // Atualizar o total filtrado
       setFilteredTotal(totalCombined);
@@ -1085,6 +1096,47 @@ export default function GerenciarEtiquetas() {
                 </div>
               </div>
             )}
+          </div>
+        </ModalCustom>
+      )}
+
+      {showDebugModal && (
+        <ModalCustom
+          onCancel={() => setShowDebugModal(false)}
+          title="🔍 Debug - Dados Pendentes do Supabase"
+          size="large"
+        >
+          <div className="space-y-4 max-h-[600px] overflow-y-auto">
+            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+              <h3 className="font-bold mb-2">📊 Resumo</h3>
+              <div className="space-y-1 text-sm">
+                <p><strong>Pendentes do Supabase:</strong> {debugData?.pendentesData?.length || 0}</p>
+                <p><strong>Pendentes Formatados:</strong> {debugData?.pendentesFormatted?.length || 0}</p>
+                <p><strong>Dados da API:</strong> {debugData?.apiData?.length || 0}</p>
+                <p><strong>Total Combinado:</strong> {debugData?.combinedData?.length || 0}</p>
+              </div>
+            </div>
+
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg">
+              <h3 className="font-bold mb-2">⚠️ Dados Brutos do Supabase</h3>
+              <pre className="text-xs bg-white dark:bg-slate-800 p-3 rounded overflow-x-auto">
+                {JSON.stringify(debugData?.pendentesData, null, 2)}
+              </pre>
+            </div>
+
+            <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
+              <h3 className="font-bold mb-2">✅ Dados Formatados</h3>
+              <pre className="text-xs bg-white dark:bg-slate-800 p-3 rounded overflow-x-auto">
+                {JSON.stringify(debugData?.pendentesFormatted, null, 2)}
+              </pre>
+            </div>
+
+            <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
+              <h3 className="font-bold mb-2">🔗 Dados Combinados (primeiros 3)</h3>
+              <pre className="text-xs bg-white dark:bg-slate-800 p-3 rounded overflow-x-auto">
+                {JSON.stringify(debugData?.combinedData?.slice(0, 3), null, 2)}
+              </pre>
+            </div>
           </div>
         </ModalCustom>
       )}
