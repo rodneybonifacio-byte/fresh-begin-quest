@@ -60,11 +60,10 @@ export default function GerenciarEtiquetas() {
       console.log('Quantidade de resultados (API):', response.data?.length);
       console.log('Total da API:', response.total);
 
-      // Buscar etiquetas pendentes de correção do Supabase
+      // Buscar TODAS as etiquetas pendentes de correção do Supabase (sem paginação)
       let supabaseQuery = supabase
         .from('etiquetas_pendentes_correcao')
-        .select('*', { count: 'exact' })
-        .range((page - 1) * 50, page * 50 - 1);
+        .select('*', { count: 'exact' });
 
       if (appliedFilters.remetente) {
         supabaseQuery = supabaseQuery.ilike('remetente_nome', `%${appliedFilters.remetente}%`);
@@ -1137,7 +1136,8 @@ export default function GerenciarEtiquetas() {
                   <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead className="bg-gray-50 dark:bg-slate-700">
                       <tr>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">ID</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Ação</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Linha</th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Remetente</th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Destinatário</th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">CEP</th>
@@ -1150,8 +1150,43 @@ export default function GerenciarEtiquetas() {
                     <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-gray-700">
                       {debugData.pendentesData.map((item: any) => (
                         <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-slate-700">
+                          <td className="px-3 py-2 text-xs">
+                            <button
+                              onClick={() => {
+                                // Converter dados pendentes para formato editável
+                                const emissaoParaEditar = {
+                                  id: item.id,
+                                  remetenteId: '',
+                                  remetenteNome: item.remetente_nome,
+                                  remetenteCpfCnpj: item.remetente_cpf_cnpj,
+                                  destinatarioNome: item.destinatario_nome,
+                                  destinatarioCpfCnpj: item.destinatario_cpf_cnpj,
+                                  destinatarioCelular: item.destinatario_celular,
+                                  cep: item.destinatario_cep,
+                                  logradouro: item.destinatario_logradouro,
+                                  numero: item.destinatario_numero,
+                                  complemento: item.destinatario_complemento,
+                                  bairro: item.destinatario_bairro,
+                                  cidade: item.destinatario_cidade,
+                                  uf: item.destinatario_estado,
+                                  altura: item.altura,
+                                  largura: item.largura,
+                                  comprimento: item.comprimento,
+                                  peso: item.peso,
+                                  valorDeclarado: item.valor_declarado,
+                                  observacao: item.observacao
+                                };
+                                setEditableEmissao(emissaoParaEditar);
+                                setShowDebugModal(false);
+                                setShowRegerarModal(true);
+                              }}
+                              className="bg-teal-500 hover:bg-teal-600 text-white px-2 py-1 rounded text-xs"
+                            >
+                              Regerar
+                            </button>
+                          </td>
                           <td className="px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
-                            {item.id.substring(0, 8)}...
+                            #{item.linha_original || '-'}
                           </td>
                           <td className="px-3 py-2 text-xs text-gray-900 dark:text-gray-100">
                             {item.remetente_nome || '-'}
