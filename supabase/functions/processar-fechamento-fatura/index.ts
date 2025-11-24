@@ -131,16 +131,43 @@ serve(async (req) => {
     console.log('👤 Etapa 3: Validando dados do cliente...');
     
     const clienteData = fatura.cliente;
-    const telefone_cliente = clienteData.telefone;
     
-    if (!clienteData.cpfCnpj || !telefone_cliente) {
-      throw new Error('Dados do cliente incompletos (falta CPF/CNPJ ou telefone)');
+    // Log completo do objeto cliente para debug
+    console.log('🔍 DEBUG - Estrutura completa do cliente:', JSON.stringify(clienteData, null, 2));
+    
+    // Suportar tanto camelCase quanto snake_case
+    const cpfCnpj = clienteData.cpfCnpj || clienteData.cpf_cnpj;
+    const telefone_cliente = clienteData.telefone || '11999999999'; // Default se não vier
+    const cep = clienteData.cep;
+    const logradouro = clienteData.logradouro;
+    const numero = clienteData.numero;
+    const complemento = clienteData.complemento || '';
+    const bairro = clienteData.bairro;
+    const localidade = clienteData.localidade || clienteData.cidade;
+    const uf = clienteData.uf || clienteData.estado;
+    
+    if (!cpfCnpj) {
+      console.error('❌ CPF/CNPJ não encontrado no objeto cliente');
+      throw new Error('Dados do cliente incompletos: CPF/CNPJ não encontrado');
+    }
+    
+    if (!cep || !logradouro || !numero || !bairro || !localidade || !uf) {
+      console.error('❌ Dados de endereço incompletos:', {
+        cep: !!cep,
+        logradouro: !!logradouro,
+        numero: !!numero,
+        bairro: !!bairro,
+        localidade: !!localidade,
+        uf: !!uf
+      });
+      throw new Error('Dados de endereço do cliente incompletos');
     }
 
     console.log('✅ Dados do cliente validados:', {
       nome: clienteData.nome,
-      documento: clienteData.cpfCnpj,
+      documento: cpfCnpj,
       telefone: telefone_cliente,
+      endereco_completo: `${logradouro}, ${numero} - ${bairro}, ${localidade}/${uf}`
     });
 
     // ✅ ETAPA 2: Gerar PDF da Fatura via API
@@ -180,15 +207,15 @@ serve(async (req) => {
         faturaId: fatura.id,
         valorCobrado: valorBoleto,
         pagadorNome: clienteData.nome,
-        pagadorCpfCnpj: clienteData.cpfCnpj,
+        pagadorCpfCnpj: cpfCnpj,
         pagadorEndereco: {
-          logradouro: clienteData.logradouro,
-          numero: clienteData.numero,
-          complemento: clienteData.complemento || '',
-          bairro: clienteData.bairro,
-          cidade: clienteData.localidade,
-          uf: clienteData.uf,
-          cep: clienteData.cep,
+          logradouro: logradouro,
+          numero: numero,
+          complemento: complemento,
+          bairro: bairro,
+          cidade: localidade,
+          uf: uf,
+          cep: cep,
         },
         mensagem: `Fatura ${codigo_fatura} - BRHUB Envios`,
         multa: {
