@@ -61,21 +61,34 @@ export default function GerenciarEtiquetas() {
       console.log('Total da API:', response.total);
 
       // Buscar TODAS as etiquetas pendentes de correção do Supabase (sem paginação)
+      console.log('🔍 Buscando TODAS etiquetas pendentes do Supabase (sem filtros de paginação)...');
+      
       let supabaseQuery = supabase
         .from('etiquetas_pendentes_correcao')
         .select('*', { count: 'exact' });
 
+      console.log('Filtros aplicados:', appliedFilters);
+
       if (appliedFilters.remetente) {
+        console.log('Aplicando filtro de remetente:', appliedFilters.remetente);
         supabaseQuery = supabaseQuery.ilike('remetente_nome', `%${appliedFilters.remetente}%`);
       }
       if (appliedFilters.dataInicio) {
+        console.log('Aplicando filtro dataInicio:', appliedFilters.dataInicio);
         supabaseQuery = supabaseQuery.gte('criado_em', appliedFilters.dataInicio);
       }
       if (appliedFilters.dataFim) {
+        console.log('Aplicando filtro dataFim:', appliedFilters.dataFim);
         supabaseQuery = supabaseQuery.lte('criado_em', appliedFilters.dataFim);
       }
 
       const { data: pendentesData, error: pendentesError, count: pendentesCount } = await supabaseQuery;
+      
+      console.log('📦 Resultado Supabase:', {
+        total_encontrado: pendentesCount,
+        registros_retornados: pendentesData?.length,
+        erro: pendentesError
+      });
       
       if (pendentesError) {
         console.error('Erro ao buscar etiquetas pendentes:', pendentesError);
