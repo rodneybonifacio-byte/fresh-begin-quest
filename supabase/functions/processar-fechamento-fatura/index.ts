@@ -92,6 +92,7 @@ serve(async (req) => {
     console.log('🚀 Iniciando fechamento da fatura:', codigo_fatura);
     console.log('📋 Cliente:', nome_cliente);
     console.log('🆔 Fatura ID:', fatura_id);
+    console.log('🔄 VERSÃO DA FUNÇÃO: 2.0 - DEBUG ATIVADO');
 
     // ✅ ETAPA 1: Buscar dados completos da fatura via API Backend
     console.log('📊 Etapa 1: Buscando dados completos da fatura...');
@@ -116,6 +117,8 @@ serve(async (req) => {
     const faturaDataResponse = await faturaResponse.json();
     const fatura = faturaDataResponse.data;
 
+    console.log('🔍 DEBUG - Resposta completa da API:', JSON.stringify(faturaDataResponse, null, 2));
+
     if (!fatura) {
       throw new Error('Fatura não encontrada');
     }
@@ -126,6 +129,8 @@ serve(async (req) => {
       valor: fatura.totalFaturado,
       periodo: `${fatura.periodoInicial} - ${fatura.periodoFinal}`,
     });
+    
+    console.log('🔍 DEBUG - Objeto fatura.cliente:', JSON.stringify(fatura.cliente, null, 2));
 
     // ✅ ETAPA 3: Extrair cadastro completo do cliente
     console.log('👤 Etapa 3: Validando dados do cliente...');
