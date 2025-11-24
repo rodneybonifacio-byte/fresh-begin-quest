@@ -9,6 +9,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { StatusBadgeEmissao } from "../../../../components/StatusBadgeEmissao";
 import type { IEmissao } from "../../../../types/IEmissao";
+import { formatCpfCnpj } from "../../../../utils/lib.formats";
 
 const emissaoService = new EmissaoService();
 
@@ -39,9 +40,6 @@ export default function GerenciarEtiquetas() {
       if (appliedFilters.remetente) params.busca = appliedFilters.remetente;
 
       const response = await emissaoService.getAll(params, 'admin');
-      console.log('Dados retornados da API:', response);
-      console.log('Primeiro item:', response.data?.[0]);
-      console.log('Remetente do primeiro item:', response.data?.[0]?.remetente);
       return response;
     }
   });
@@ -128,16 +126,48 @@ export default function GerenciarEtiquetas() {
       accessor: (item: IEmissao) => item.codigoObjeto || "-"
     },
     {
+      header: "Transportadora",
+      accessor: (item: IEmissao) => (
+        <div className="flex flex-col gap-0.5">
+          <span className="font-medium">{item.transportadora}</span>
+          {item.transportadora?.toLocaleUpperCase() === 'CORREIOS' && (
+            <small className="text-slate-500 dark:text-slate-400">{item.servico}</small>
+          )}
+        </div>
+      )
+    },
+    {
       header: "Remetente",
-      accessor: (item: IEmissao) => item.remetente?.nome || "-"
+      accessor: (item: IEmissao) => (
+        <div className="flex flex-col gap-0.5">
+          <span className="font-medium">{item.remetenteNome}</span>
+          <small className="text-slate-500 dark:text-slate-400">
+            {(item as any).remetenteLocalidade} - {(item as any).remetenteUf}
+          </small>
+        </div>
+      )
+    },
+    {
+      header: "Cliente",
+      accessor: (item: IEmissao) => (
+        <div className="flex flex-col gap-0.5">
+          <span className="font-medium text-sm">{item.cliente?.nome}</span>
+          <small className="text-slate-500 dark:text-slate-400">
+            {formatCpfCnpj(item.cliente?.cpfCnpj || '')}
+          </small>
+        </div>
+      )
     },
     {
       header: "Destinatário",
-      accessor: (item: IEmissao) => item.destinatario?.nome || "-"
-    },
-    {
-      header: "Serviço",
-      accessor: (item: IEmissao) => item.servico || "-"
+      accessor: (item: IEmissao) => (
+        <div className="flex flex-col gap-0.5">
+          <span className="font-medium">{item.destinatario?.nome}</span>
+          <small className="text-slate-500 dark:text-slate-400">
+            {item.destinatario?.endereco?.localidade || ''} - {item.destinatario?.endereco?.uf || ''}
+          </small>
+        </div>
+      )
     },
     {
       header: "Status",
