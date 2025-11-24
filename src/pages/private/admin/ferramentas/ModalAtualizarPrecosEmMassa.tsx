@@ -9,6 +9,7 @@ import { useLoadingSpinner } from '../../../../providers/LoadingSpinnerContext';
 import { EmissaoService } from '../../../../services/EmissaoService';
 import { formatCurrency, formatNumberString } from '../../../../utils/formatCurrency';
 import { toast } from 'sonner';
+import { useState } from 'react';
 
 const schemaAtualizarPrecosEmMassa = yup.object().shape({
   tipoAtualizacao: yup.string().oneOf(['VALOR_VENDA', 'VALOR_CUSTO']).required('Selecione o tipo de atualização'),
@@ -25,6 +26,14 @@ interface ModalAtualizarPrecosEmMassaProps {
   onSuccess: () => void;
 }
 
+interface PreviewItem {
+  emissaoId: string;
+  codigoObjeto?: string;
+  valorVendaAtual: number;
+  valorCustoAtual: number;
+  novoValor: number;
+}
+
 export const ModalAtualizarPrecosEmMassa = ({ 
   isOpen, 
   selectedIds, 
@@ -34,6 +43,8 @@ export const ModalAtualizarPrecosEmMassa = ({
   const { setIsLoading } = useLoadingSpinner();
   const queryClient = useQueryClient();
   const service = new EmissaoService();
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewData, setPreviewData] = useState<PreviewItem[]>([]);
 
   const methods = useForm<FormAtualizarPrecosEmMassa>({
     defaultValues: {
@@ -178,12 +189,74 @@ export const ModalAtualizarPrecosEmMassa = ({
     }
   });
 
-  const handleOnAtualizarPrecos = async (formData: FormAtualizarPrecosEmMassa) => {
+  const handleGeneratePreview = async (formData: FormAtualizarPrecosEmMassa) => {
+    try {
+      setIsLoading(true);
+      
+      // Buscar dados das emissões selecionadas
+      const fetchPromises = selectedIds.map(async (id) => {
+        try {
+          const response = await service.getById(id);
+          return { id, data: response.data };
+        } catch (err) {
+          console.error(`Erro ao buscar emissão ${id}:`, err);
+          return null;
+        }
+      });
+      
+      const fetchedData = await Promise.all(fetchPromises);
+      const preview: PreviewItem[] = [];
+      
+      fetchedData.forEach((item) => {
+        if (item) {
+          const emissaoData = item.data;
+          const valorVendaAtual = parseFloat(String(emissaoData.valor || emissaoData.valorPostagem || '0'));
+          const valorCustoAtual = parseFloat(String(emissaoData.valorPostagem || '0'));
+          
+          let novoValor: number;
+          
+          if (formData.modoAtualizacao === 'PERCENTUAL') {
+            const percentual = parseFloat(formData.valor.replace(',', '.'));
+            const valorBase = formData.tipoAtualizacao === 'VALOR_VENDA' ? valorVendaAtual : valorCustoAtual;
+            novoValor = valorBase * (1 + percentual / 100);
+          } else {
+            novoValor = parseFloat(formatNumberString(formData.valor || ''));
+          }
+          
+          preview.push({
+            emissaoId: item.id,
+            codigoObjeto: emissaoData.codigoObjeto,
+            valorVendaAtual,
+            valorCustoAtual,
+            novoValor,
+          });
+        }
+      });
+      
+      setPreviewData(preview);
+      setShowPreview(true);
+      setIsLoading(false);
+    } catch (error) {
+      console.error(error);
+      toast.error('Erro ao gerar prévia');
+      setIsLoading(false);
+    }
+  };
+
+  const handleConfirmUpdate = async () => {
+    const formData = methods.getValues();
     try {
       await mutation.mutateAsync(formData);
+      setShowPreview(false);
+      setPreviewData([]);
     } catch (error) {
       console.error(error);
     }
+  };
+
+  const handleBackToForm = () => {
+    setShowPreview(false);
+    setPreviewData([]);
   };
 
   if (!isOpen) return null;
@@ -193,10 +266,11 @@ export const ModalAtualizarPrecosEmMassa = ({
       title="Atualizar Preços em Massa" 
       description={`Atualizar preços de ${selectedIds.length} etiqueta(s) selecionada(s)`} 
       onCancel={onClose} 
-      size="small"
+      size={showPreview ? "large" : "small"}
     >
       <FormProvider {...methods}>
-        <form onSubmit={handleSubmit(handleOnAtualizarPrecos)} className="flex flex-col gap-4">
+        {!showPreview ? (
+          <form onSubmit={handleSubmit(handleGeneratePreview)} className="flex flex-col gap-4">
           {/* Tipo de atualização */}
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -286,15 +360,63 @@ export const ModalAtualizarPrecosEmMassa = ({
             )}
           </div>
 
-          <div className="flex justify-end gap-2">
-            <ButtonComponent type="button" onClick={onClose} className="bg-gray-200 text-gray-800 hover:bg-gray-300">
-              Cancelar
-            </ButtonComponent>
-            <ButtonComponent type="submit">
-              Atualizar {selectedIds.length} Etiqueta(s)
-            </ButtonComponent>
+            <div className="flex justify-end gap-2">
+              <ButtonComponent type="button" onClick={onClose} className="bg-gray-200 text-gray-800 hover:bg-gray-300">
+                Cancelar
+              </ButtonComponent>
+              <ButtonComponent type="submit">
+                Gerar Prévia
+              </ButtonComponent>
+            </div>
+          </form>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <div className="text-sm text-muted-foreground mb-2">
+              Prévia das alterações que serão aplicadas:
+            </div>
+            
+            <div className="max-h-[500px] overflow-y-auto border rounded-lg">
+              <table className="w-full">
+                <thead className="bg-muted sticky top-0">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium">Código</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium">Preço Venda Atual</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium">Preço Custo Atual</th>
+                    <th className="px-4 py-2 text-right text-xs font-medium">
+                      Novo {watch('tipoAtualizacao') === 'VALOR_VENDA' ? 'Preço Venda' : 'Preço Custo'}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {previewData.map((item, index) => (
+                    <tr key={item.emissaoId} className={index % 2 === 0 ? 'bg-background' : 'bg-muted/50'}>
+                      <td className="px-4 py-2 text-sm">{item.codigoObjeto || item.emissaoId.slice(0, 8)}</td>
+                      <td className="px-4 py-2 text-sm text-right">R$ {item.valorVendaAtual.toFixed(2)}</td>
+                      <td className="px-4 py-2 text-sm text-right">R$ {item.valorCustoAtual.toFixed(2)}</td>
+                      <td className="px-4 py-2 text-sm text-right font-semibold text-primary">
+                        R$ {item.novoValor.toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex justify-between items-center pt-4 border-t">
+              <div className="text-sm text-muted-foreground">
+                Total de {previewData.length} etiqueta(s) serão atualizadas
+              </div>
+              <div className="flex gap-2">
+                <ButtonComponent type="button" onClick={handleBackToForm} className="bg-gray-200 text-gray-800 hover:bg-gray-300">
+                  Voltar
+                </ButtonComponent>
+                <ButtonComponent type="button" onClick={handleConfirmUpdate}>
+                  Confirmar Atualização
+                </ButtonComponent>
+              </div>
+            </div>
           </div>
-        </form>
+        )}
       </FormProvider>
     </ModalCustom>
   );
