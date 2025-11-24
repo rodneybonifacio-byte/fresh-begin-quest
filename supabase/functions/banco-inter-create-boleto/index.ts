@@ -220,20 +220,12 @@ serve(async (req) => {
         }
       }),
       multa: {
-        codigoMulta: body.multa?.tipo === 'PERCENTUAL' ? 'PERCENTUAL' : 'VALORFIXO',
-        ...(body.multa?.tipo === 'PERCENTUAL'
-          ? { taxa: body.multa?.valor || 10 }
-          : { valor: body.multa?.valor || 0 }
-        ),
-        data: dataVencimento,
+        codigo: 'PERCENTUAL',
+        taxa: 2, // 2% de multa
       },
       mora: {
-        codigoMora: body.juros?.tipo === 'PERCENTUAL_DIA' ? 'TAXAMENSAL' : 'VALORDIA',
-        ...(body.juros?.tipo === 'PERCENTUAL_DIA'
-          ? { taxa: body.juros?.valor || 1 }
-          : { valor: body.juros?.valor || 0 }
-        ),
-        data: dataVencimento,
+        codigo: 'TAXAMENSAL',
+        taxa: 1, // 1% ao mês (proporcional por dia)
       },
     };
 
