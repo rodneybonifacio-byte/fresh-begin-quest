@@ -34,7 +34,19 @@ const FinanceiroFaturasAReceber = () => {
 
     const [isModalConfirmaPagamento, setIsModalConfirmaPagamento] = useState<{ isOpen: boolean; fatura: IFatura }>({ isOpen: false, fatura: {} as IFatura });
     const [isModalBoleto, setIsModalBoleto] = useState<{ isOpen: boolean; fatura: IFatura }>({ isOpen: false, fatura: {} as IFatura });
-    const [isModalFechamento, setIsModalFechamento] = useState<{ isOpen: boolean; pdfBase64: string; codigoFatura: string }>({ isOpen: false, pdfBase64: '', codigoFatura: '' });
+    const [isModalFechamento, setIsModalFechamento] = useState<{ 
+        isOpen: boolean; 
+        faturaPdf?: string; 
+        boletoPdf?: string | null; 
+        codigoFatura?: string;
+        nomeCliente?: string;
+        boletoInfo?: any;
+    }>({ 
+        isOpen: false, 
+        faturaPdf: '', 
+        boletoPdf: null, 
+        codigoFatura: '' 
+    });
     const [debugInfo, setDebugInfo] = useState<{
         httpCode?: number;
         mensagem?: string;
@@ -190,11 +202,14 @@ const FinanceiroFaturasAReceber = () => {
             
             toast.success('Fechamento realizado com sucesso!');
             
-            // Abrir modal com o PDF concatenado
+            // Abrir modal com os PDFs separados
             setIsModalFechamento({
                 isOpen: true,
-                pdfBase64: result.arquivo_final_pdf,
-                codigoFatura: codigoFatura
+                faturaPdf: result.fatura_pdf,
+                boletoPdf: result.boleto_pdf,
+                codigoFatura: codigoFatura,
+                nomeCliente: nomeCliente,
+                boletoInfo: result.boleto_info
             });
         } catch (error: any) {
             console.error('Erro ao realizar fechamento:', error);
@@ -343,9 +358,12 @@ const FinanceiroFaturasAReceber = () => {
                     
                     <ModalVisualizarFechamento
                         isOpen={isModalFechamento.isOpen}
-                        onClose={() => setIsModalFechamento({ isOpen: false, pdfBase64: '', codigoFatura: '' })}
-                        pdfBase64={isModalFechamento.pdfBase64}
-                        codigoFatura={isModalFechamento.codigoFatura}
+                        onClose={() => setIsModalFechamento({ isOpen: false })}
+                        faturaPdf={isModalFechamento.faturaPdf || ''}
+                        boletoPdf={isModalFechamento.boletoPdf}
+                        codigoFatura={isModalFechamento.codigoFatura || ''}
+                        nomeCliente={isModalFechamento.nomeCliente}
+                        boletoInfo={isModalFechamento.boletoInfo}
                     />
                 </>
             )}

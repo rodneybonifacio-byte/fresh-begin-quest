@@ -28,7 +28,19 @@ const FaturaViewDetail = () => {
     const [subfatura] = useParams().subfatura ? [useParams().subfatura] : [];
     const [fatura, setFatura] = useState<FaturaDto>({} as FaturaDto);
     const [isProcessing, setIsProcessing] = useState(false);
-    const [isModalFechamento, setIsModalFechamento] = useState<{ isOpen: boolean; pdfBase64: string; codigoFatura: string }>({ isOpen: false, pdfBase64: '', codigoFatura: '' });
+    const [isModalFechamento, setIsModalFechamento] = useState<{ 
+        isOpen: boolean; 
+        faturaPdf?: string; 
+        boletoPdf?: string | null; 
+        codigoFatura?: string;
+        nomeCliente?: string;
+        boletoInfo?: any;
+    }>({ 
+        isOpen: false, 
+        faturaPdf: '', 
+        boletoPdf: null, 
+        codigoFatura: '' 
+    });
 
     const service = new FaturaService()
 
@@ -62,11 +74,14 @@ const FaturaViewDetail = () => {
             );
             toast.success("Fechamento realizado com sucesso!");
             
-            // Abrir modal com o PDF concatenado
+            // Abrir modal com os PDFs separados
             setIsModalFechamento({
                 isOpen: true,
-                pdfBase64: resultado.arquivo_final_pdf,
-                codigoFatura: fatura.codigo
+                faturaPdf: resultado.fatura_pdf,
+                boletoPdf: resultado.boleto_pdf,
+                codigoFatura: fatura.codigo,
+                nomeCliente: fatura.cliente.nome,
+                boletoInfo: resultado.boleto_info
             });
         } catch (error: any) {
             toast.error(error?.message || "Erro ao realizar fechamento da fatura");
@@ -188,9 +203,12 @@ const FaturaViewDetail = () => {
             
             <ModalVisualizarFechamento
                 isOpen={isModalFechamento.isOpen}
-                onClose={() => setIsModalFechamento({ isOpen: false, pdfBase64: '', codigoFatura: '' })}
-                pdfBase64={isModalFechamento.pdfBase64}
-                codigoFatura={isModalFechamento.codigoFatura}
+                onClose={() => setIsModalFechamento({ isOpen: false })}
+                faturaPdf={isModalFechamento.faturaPdf || ''}
+                boletoPdf={isModalFechamento.boletoPdf}
+                codigoFatura={isModalFechamento.codigoFatura || ''}
+                nomeCliente={isModalFechamento.nomeCliente}
+                boletoInfo={isModalFechamento.boletoInfo}
             />
         </Content>
     )
