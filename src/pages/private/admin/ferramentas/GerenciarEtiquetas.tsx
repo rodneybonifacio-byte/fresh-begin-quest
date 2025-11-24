@@ -43,7 +43,7 @@ export default function GerenciarEtiquetas() {
   const [todasPendentes, setTodasPendentes] = useState<any[]>([]);
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data: queryResult, isLoading } = useQuery({
     queryKey: ["emissoes-gerenciar", page, appliedFilters],
     queryFn: async () => {
       const params: Record<string, string | number> = {
@@ -171,6 +171,10 @@ export default function GerenciarEtiquetas() {
     }
   });
 
+  // Extrair dados da query
+  const data = queryResult?.data || [];
+  
+
   const deleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
       const batchSize = 10; // Processar 10 por vez
@@ -290,11 +294,11 @@ export default function GerenciarEtiquetas() {
   });
 
   const handleSelectAll = (checked: boolean) => {
-    if (checked && data?.data) {
+    if (checked && data) {
       const pageIds: string[] = [];
       const meta: Record<string, { codigoObjeto: string }> = {};
 
-      data.data.forEach((item: IEmissao) => {
+      data.forEach((item: IEmissao) => {
         if (!item.id || !item.codigoObjeto) return;
         pageIds.push(item.id);
         meta[item.id] = { codigoObjeto: item.codigoObjeto };
@@ -368,7 +372,7 @@ export default function GerenciarEtiquetas() {
       }
 
       // garantir meta usando dados da página atual
-      const fromPage = data?.data?.find((e: IEmissao) => e.id === id);
+      const fromPage = data?.find((e: IEmissao) => e.id === id);
       if (fromPage?.codigoObjeto) {
         setSelectedMeta(prev => ({
           ...prev,
@@ -444,7 +448,7 @@ export default function GerenciarEtiquetas() {
       header: (
         <input
           type="checkbox"
-          checked={data?.data ? (selectedIds.length > 0 && selectedIds.length === data.data.length) : false}
+          checked={data ? (selectedIds.length > 0 && selectedIds.length === data.length) : false}
           onChange={(e) => handleSelectAll(e.target.checked)}
           className="rounded border-gray-300"
         />
@@ -530,7 +534,7 @@ export default function GerenciarEtiquetas() {
   ];
 
   // Verificar se há etiquetas canceladas selecionadas
-  const hasCanceledSelected = selectedIds.length > 0 && data?.data?.some((item: IEmissao) => 
+  const hasCanceledSelected = selectedIds.length > 0 && data?.some((item: IEmissao) => 
     selectedIds.includes(item.id || "") && item.status === "CANCELADO"
   );
 
@@ -548,7 +552,7 @@ export default function GerenciarEtiquetas() {
       return;
     }
     
-    const emissao = data?.data?.find((e: IEmissao) => e.id === selectedIds[0]);
+    const emissao = data?.find((e: IEmissao) => e.id === selectedIds[0]);
     if (!emissao) {
       toast.error("Etiqueta não encontrada");
       return;
@@ -769,7 +773,7 @@ export default function GerenciarEtiquetas() {
       icon: <Eye className="h-4 w-4" />,
       onClick: () => {
         if (selectedIds.length === 1) {
-          const emissao = data?.data?.find((e: IEmissao) => e.id === selectedIds[0]);
+          const emissao = data?.find((e: IEmissao) => e.id === selectedIds[0]);
           if (emissao) {
             setSelectedEmissaoDetail(emissao);
             setShowDetailModal(true);
@@ -988,7 +992,7 @@ export default function GerenciarEtiquetas() {
 
       <DataTable
         columns={columns}
-        data={data?.data || []}
+        data={data || []}
         rowKey={(item) => item.id || ""}
       />
 
@@ -1001,11 +1005,11 @@ export default function GerenciarEtiquetas() {
           Anterior
         </button>
         <span className="flex items-center px-4 text-sm">
-          Página {page} • {data?.data?.length || 0} de {filteredTotal} registros
+          Página {page} • {data?.length || 0} de {filteredTotal} registros
         </span>
         <button
           className="px-4 py-2 bg-gray-200 dark:bg-slate-700 rounded-md hover:bg-gray-300 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={!data?.data?.length || data.data.length < 50}
+          disabled={!data?.length || data.length < 50}
           onClick={() => setPage(p => p + 1)}
         >
           Próxima
