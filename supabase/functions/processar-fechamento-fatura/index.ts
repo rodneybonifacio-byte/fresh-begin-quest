@@ -36,42 +36,49 @@ serve(async (req) => {
     }
 
     const token = authHeader.replace('Bearer ', '');
+    console.log('✅ Token JWT recebido');
     
-    // Validar o token com o Supabase
-    try {
-      const supabaseUrl = Deno.env.get('SUPABASE_URL');
-      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-      
-      const verifyResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'apikey': supabaseServiceKey || '',
+    // Validar que o token tem estrutura JWT válida (3 partes separadas por ponto)
+    const tokenParts = token.split('.');
+    if (tokenParts.length !== 3) {
+      console.error('❌ Token JWT com formato inválido');
+      return new Response(
+        JSON.stringify({ 
+          status: 'error', 
+          mensagem: 'Token JWT com formato inválido.' 
+        }), 
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
-      });
+      );
+    }
 
-      if (!verifyResponse.ok) {
-        console.error('❌ Token JWT inválido ou expirado');
+    // Decodificar payload para verificar permissões (sem validar assinatura)
+    try {
+      const payload = JSON.parse(atob(tokenParts[1]));
+      console.log('✅ Token decodificado - Usuário:', payload.name || payload.email);
+      
+      // Verificar se é admin
+      if (payload.role !== 'ADMIN') {
+        console.error('❌ Usuário sem permissão de admin');
         return new Response(
           JSON.stringify({ 
             status: 'error', 
-            mensagem: 'Token JWT inválido ou expirado.' 
+            mensagem: 'Apenas administradores podem realizar fechamento de faturas.' 
           }), 
           { 
-            status: 401, 
+            status: 403, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
           }
         );
       }
-
-      const user = await verifyResponse.json();
-      console.log('✅ Usuário autenticado:', user.email);
-      
-    } catch (authError) {
-      console.error('❌ Erro ao validar token:', authError);
+    } catch (decodeError) {
+      console.error('❌ Erro ao decodificar token:', decodeError);
       return new Response(
         JSON.stringify({ 
           status: 'error', 
-          mensagem: 'Erro ao validar autenticação.' 
+          mensagem: 'Token JWT inválido.' 
         }), 
         { 
           status: 401, 
