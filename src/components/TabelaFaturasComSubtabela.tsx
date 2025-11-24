@@ -8,7 +8,7 @@ import { formatCpfCnpj } from '../utils/lib.formats';
 import { formatarDataVencimento } from '../utils/date-utils';
 import { StatusBadge } from './StatusBadge';
 import { CopiadorDeId } from './CopiadorDeId';
-import { Eye, CheckCircle, CreditCard, MessageCircle } from 'lucide-react';
+import { Eye, CheckCircle, CreditCard, MessageCircle, XCircle } from 'lucide-react';
 
 interface TabelaFaturasComSubtabelaProps {
     faturas: IFatura[];
@@ -18,6 +18,7 @@ interface TabelaFaturasComSubtabelaProps {
     realizarFechamento: (fatura: IFatura) => void;
     verificarFechamentoExistente: (faturaId: string) => any;
     visualizarFechamento: (fatura: IFatura) => void;
+    cancelarBoleto: (fatura: IFatura) => void;
 }
 
 export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps> = ({
@@ -28,6 +29,7 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
     realizarFechamento,
     verificarFechamentoExistente,
     visualizarFechamento,
+    cancelarBoleto,
 }) => {
     const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
 
@@ -105,6 +107,12 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
                         icon: <MessageCircle size={16} />,
                         onClick: (row) => notificaViaWhatsApp(row, 'ATRASADA'),
                         show: (row) => estaAtrasada(row),
+                    },
+                    {
+                        label: 'Cancelar Boleto',
+                        icon: <XCircle size={16} />,
+                        onClick: (row) => cancelarBoleto(row),
+                        show: (row) => !!(verificarFechamentoExistente(row.id)) && (row.status === 'PENDENTE' || row.status === 'PAGO_PARCIAL'),
                     },
                 ]}
                 rowKey={(row) => row.id}
@@ -191,6 +199,12 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
                     icon: <MessageCircle size={16} />,
                     onClick: (row) => notificaViaWhatsApp(row, 'ATRASADA'),
                     show: (row) => !(row.faturas && row.faturas.length > 0) && estaAtrasada(row),
+                },
+                {
+                    label: 'Cancelar Boleto',
+                    icon: <XCircle size={16} />,
+                    onClick: (row) => cancelarBoleto(row),
+                    show: (row) => !!(verificarFechamentoExistente(row.id)) && (!row.faturas || row.faturas.length === 0) && (row.status === 'PENDENTE' || row.status === 'PAGO_PARCIAL'),
                 },
             ]}
             subTable={{

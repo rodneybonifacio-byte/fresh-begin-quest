@@ -10,6 +10,7 @@ interface TabelaFaturasClienteProps {
     realizarFechamento: (fatura: IFatura) => void;
     verificarFechamentoExistente: (faturaId: string) => any;
     visualizarFechamento: (fatura: IFatura) => void;
+    cancelarBoleto: (fatura: IFatura) => void;
 }
 
 export const TabelaFaturasCliente: React.FC<TabelaFaturasClienteProps> = ({
@@ -20,6 +21,7 @@ export const TabelaFaturasCliente: React.FC<TabelaFaturasClienteProps> = ({
     realizarFechamento,
     verificarFechamentoExistente,
     visualizarFechamento,
+    cancelarBoleto,
 }) => {
     return (
         <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm overflow-visible">
@@ -31,6 +33,7 @@ export const TabelaFaturasCliente: React.FC<TabelaFaturasClienteProps> = ({
                 realizarFechamento={realizarFechamento}
                 verificarFechamentoExistente={verificarFechamentoExistente}
                 visualizarFechamento={visualizarFechamento}
+                cancelarBoleto={cancelarBoleto}
             />
         </div>
     );

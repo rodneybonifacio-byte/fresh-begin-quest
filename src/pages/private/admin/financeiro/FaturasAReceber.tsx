@@ -21,6 +21,7 @@ import { formatCurrencyWithCents } from '../../../../utils/formatCurrency';
 import { ModalEmitirBoleto } from '../../../../components/ModalEmitirBoleto';
 import { ModalVisualizarFechamento } from '../../../../components/ModalVisualizarFechamento';
 import { toast } from 'sonner';
+import { BoletoService } from '../../../../services/BoletoService';
 
 const FinanceiroFaturasAReceber = () => {
     const { setIsLoading } = useLoadingSpinner();
@@ -126,6 +127,39 @@ const FinanceiroFaturasAReceber = () => {
             setIsLoading(true);
             await service.notificaViaWhatsApp(fatura.id, tipoNotificacao);
             toastSuccess('Notificação enviada com sucesso!');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleCancelarBoleto = async (fatura: IFatura) => {
+        const fechamento = verificarFechamentoExistente(fatura.id);
+        
+        if (!fechamento?.boletoInfo?.nossoNumero) {
+            toast.error('Boleto não encontrado para esta fatura');
+            return;
+        }
+
+        const confirmar = window.confirm(
+            `Tem certeza que deseja cancelar o boleto da fatura ${fatura.codigo}?\n\nEsta ação não pode ser desfeita.`
+        );
+
+        if (!confirmar) return;
+
+        try {
+            setIsLoading(true);
+            const boletoService = new BoletoService();
+            await boletoService.cancelar(fechamento.boletoInfo.nossoNumero, 'OUTROS');
+            
+            // Remover dados do fechamento do localStorage
+            localStorage.removeItem(`fechamento_${fatura.id}`);
+            
+            toast.success('Boleto cancelado com sucesso!');
+            
+            // Recarregar dados
+            window.location.reload();
+        } catch (error: any) {
+            toast.error(error.message || 'Erro ao cancelar boleto');
         } finally {
             setIsLoading(false);
         }
@@ -328,6 +362,7 @@ const FinanceiroFaturasAReceber = () => {
                         realizarFechamento={handleRealizarFechamento}
                         verificarFechamentoExistente={verificarFechamentoExistente}
                         visualizarFechamento={handleVisualizarFechamento}
+                        cancelarBoleto={handleCancelarBoleto}
                     />
 
                     <div className="py-3">
