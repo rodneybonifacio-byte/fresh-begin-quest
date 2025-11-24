@@ -197,7 +197,6 @@ export default function CriarEtiquetasEmMassa() {
       addLog(`Salvando ${etiquetasComErro.length} etiquetas com erro no Supabase para correção posterior...`, "info");
 
       // Obter cliente_id do JWT token
-      const { data: { user } } = await getSupabaseWithAuth().auth.getUser();
       const token = (await getSupabaseWithAuth().auth.getSession()).data.session?.access_token;
       const decoded: any = token ? JSON.parse(atob(token.split('.')[1])) : null;
       const clienteId = decoded?.clienteId;
