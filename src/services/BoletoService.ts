@@ -77,10 +77,22 @@ export class BoletoService extends BaseService<any> {
         return response;
     }
 
-    async cancelar(nossoNumero: string, motivo: string): Promise<void> {
-        await this.httpClient.post(`${this.endpoint}/cancelar/${nossoNumero}`, {
-            motivo,
+    async cancelar(nossoNumero: string, motivoCancelamento: string = 'OUTROS'): Promise<void> {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        
+        const response = await fetch(`${supabaseUrl}/functions/v1/banco-inter-cancel-boleto`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({ nossoNumero, motivoCancelamento }),
         });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Erro ao cancelar boleto');
+        }
     }
 
     async configurarWebhook(url: string): Promise<void> {
