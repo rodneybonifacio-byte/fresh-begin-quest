@@ -32,6 +32,12 @@ interface EnvioData {
   estado?: string;
 }
 
+interface EtiquetaComErro {
+  envio: EnvioData;
+  motivo: string;
+  linhaOriginal: number;
+}
+
 export default function CriarEtiquetasEmMassa() {
   const [remetenteCpfCnpj, setRemetenteCpfCnpj] = useState("");
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -182,6 +188,45 @@ export default function CriarEtiquetasEmMassa() {
     return btoa(String.fromCharCode(...mergedPdfBytes));
   };
 
+  const salvarEtiquetasComErro = async (etiquetasComErro: EtiquetaComErro[], cpfCnpjRemetente: string) => {
+    if (etiquetasComErro.length === 0) return;
+
+    try {
+      addLog(`Salvando ${etiquetasComErro.length} etiquetas com erro para correção posterior...`, "info");
+
+      // Preparar dados para envio individual (sem validações rigorosas, apenas salvar)
+      const enviosParaSalvar = etiquetasComErro.map(erro => erro.envio);
+
+      const payload = {
+        cpfCnpj: cpfCnpjRemetente,
+        status: "erro_pendente_correcao", // Status especial
+        salvarSemValidacao: true, // Flag para API saber que deve salvar mesmo com erros
+        data: enviosParaSalvar.map((e) => ({
+          ...e,
+          cpfCnpj: Number(e.cpfCnpj) || 0, // Mesmo que inválido, tenta salvar
+          observacao: `ERRO IMPORTAÇÃO - ${etiquetasComErro.find(err => err.envio === e)?.motivo || 'Requer correção'}`,
+        })),
+      };
+
+      await axios.post(
+        "https://envios.brhubb.com.br/api/importacao/multipla",
+        payload,
+        {
+          headers: {
+            "API-Version": "3.0.0",
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      addLog(`✓ ${etiquetasComErro.length} etiquetas com erro salvas no gerenciador para correção`, "success");
+      toast.info(`${etiquetasComErro.length} etiquetas com erro foram salvas para correção posterior`);
+    } catch (error: any) {
+      addLog(`Erro ao salvar etiquetas com erro: ${error.message}`, "warning");
+      console.error("Erro salvamento etiquetas com erro:", error);
+    }
+  };
+
   const processarPlanilha = async (file: File) => {
     setIsProcessing(true);
     setLogs([]);
@@ -207,6 +252,7 @@ export default function CriarEtiquetasEmMassa() {
       }
 
       const enviosProcessados: EnvioData[] = [];
+      const etiquetasComErro: EtiquetaComErro[] = [];
       let errosCep = 0;
 
       for (let i = 0; i < rows.length; i++) {
@@ -217,10 +263,36 @@ export default function CriarEtiquetasEmMassa() {
 
         const dadosCep = await consultarCep(row.cep);
         
-        // Se não conseguir bairro/cidade/estado válidos, não envia esse registro
+        // Se não conseguir bairro/cidade/estado válidos, salvar como erro
         if (!dadosCep || !dadosCep.bairro || !dadosCep.cidade || !dadosCep.estado) {
-          addLog(`Linha ${linhaNum} – Erro ao consultar CEP ${row.cep} (bairro/cidade/estado obrigatórios)`, "error");
+          addLog(`Linha ${linhaNum} – Erro ao consultar CEP ${row.cep} (será salvo para correção)`, "warning");
           errosCep++;
+          
+          // Salvar com dados parciais para correção posterior
+          const envioComErro: EnvioData = {
+            servico_frete: row.servico_frete?.toString().toUpperCase() || "PAC",
+            cep: limparCpfCnpj(row.cep),
+            altura: parseInt(row.altura) || 0,
+            largura: parseInt(row.largura) || 0,
+            comprimento: parseInt(row.comprimento) || 0,
+            peso: parseInt(row.peso) || 0,
+            logradouro: row.logradouro?.toString().trim() || "",
+            numero: parseInt(row.numero) || 1,
+            complemento: row.complemento?.toString().trim() || "",
+            nomeDestinatario: row.nomeDestinatario?.toString().trim() || "",
+            cpfCnpj: limparCpfCnpj(row.cpfCnpj) || "00000000000",
+            valor_frete: parseFloat(row.valor_frete) || 0,
+            bairro: "",
+            cidade: "",
+            estado: ""
+          };
+          
+          etiquetasComErro.push({
+            envio: envioComErro,
+            motivo: `CEP ${row.cep} inválido - bairro/cidade/estado não encontrados`,
+            linhaOriginal: linhaNum
+          });
+          
           continue;
         }
  
@@ -285,7 +357,16 @@ export default function CriarEtiquetasEmMassa() {
             pdfArray.push(item.pdf_etiqueta);
             addLog(`Etiqueta ${idx + 1} gerada com sucesso`, "success");
           } else {
-            addLog(`Etiqueta ${idx + 1} – Falha na geração`, "error");
+            // Etiqueta falhou na geração - salvar para correção
+            addLog(`Etiqueta ${idx + 1} – Falha na geração (será salva para correção)`, "warning");
+            
+            if (enviosProcessados[idx]) {
+              etiquetasComErro.push({
+                envio: enviosProcessados[idx],
+                motivo: item.erro || item.mensagem || "Falha na geração da etiqueta pela API",
+                linhaOriginal: idx + 1
+              });
+            }
           }
         });
       }
@@ -297,8 +378,21 @@ export default function CriarEtiquetasEmMassa() {
         addLog(`PDF único gerado com sucesso!`, "success");
       }
 
-      addLog(`Importação finalizada: ${pdfArray.length} etiquetas geradas, ${errosCep} erros de CEP, ${enviosProcessados.length - pdfArray.length} falhas de geração`, "info");
-      toast.success(`${pdfArray.length} etiquetas geradas com sucesso!`);
+      // Salvar etiquetas com erro para correção posterior
+      if (etiquetasComErro.length > 0) {
+        await salvarEtiquetasComErro(etiquetasComErro, cpfCnpjRemetenteClean);
+      }
+
+      const totalErros = etiquetasComErro.length;
+      addLog(`Importação finalizada: ${pdfArray.length} etiquetas geradas, ${totalErros} salvas para correção`, "info");
+      
+      if (pdfArray.length > 0) {
+        toast.success(`${pdfArray.length} etiquetas geradas com sucesso!`);
+      }
+      
+      if (totalErros > 0) {
+        toast.info(`${totalErros} etiquetas com erro foram salvas no Gerenciador para correção`);
+      }
 
     } catch (error: any) {
       console.error("Erro no processamento:", error);
