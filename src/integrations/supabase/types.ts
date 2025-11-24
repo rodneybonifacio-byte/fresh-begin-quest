@@ -14,6 +14,96 @@ export type Database = {
   }
   public: {
     Tables: {
+      etiquetas_pendentes_correcao: {
+        Row: {
+          altura: number | null
+          atualizado_em: string | null
+          cliente_id: string
+          comprimento: number | null
+          criado_em: string | null
+          destinatario_bairro: string | null
+          destinatario_celular: string | null
+          destinatario_cep: string
+          destinatario_cidade: string | null
+          destinatario_complemento: string | null
+          destinatario_cpf_cnpj: string | null
+          destinatario_estado: string | null
+          destinatario_logradouro: string | null
+          destinatario_nome: string
+          destinatario_numero: string | null
+          id: string
+          largura: number | null
+          linha_original: number | null
+          motivo_erro: string
+          observacao: string | null
+          peso: number | null
+          remetente_cpf_cnpj: string
+          remetente_nome: string | null
+          servico_frete: string | null
+          tentativas_correcao: number | null
+          valor_declarado: number | null
+          valor_frete: number | null
+        }
+        Insert: {
+          altura?: number | null
+          atualizado_em?: string | null
+          cliente_id: string
+          comprimento?: number | null
+          criado_em?: string | null
+          destinatario_bairro?: string | null
+          destinatario_celular?: string | null
+          destinatario_cep: string
+          destinatario_cidade?: string | null
+          destinatario_complemento?: string | null
+          destinatario_cpf_cnpj?: string | null
+          destinatario_estado?: string | null
+          destinatario_logradouro?: string | null
+          destinatario_nome: string
+          destinatario_numero?: string | null
+          id?: string
+          largura?: number | null
+          linha_original?: number | null
+          motivo_erro: string
+          observacao?: string | null
+          peso?: number | null
+          remetente_cpf_cnpj: string
+          remetente_nome?: string | null
+          servico_frete?: string | null
+          tentativas_correcao?: number | null
+          valor_declarado?: number | null
+          valor_frete?: number | null
+        }
+        Update: {
+          altura?: number | null
+          atualizado_em?: string | null
+          cliente_id?: string
+          comprimento?: number | null
+          criado_em?: string | null
+          destinatario_bairro?: string | null
+          destinatario_celular?: string | null
+          destinatario_cep?: string
+          destinatario_cidade?: string | null
+          destinatario_complemento?: string | null
+          destinatario_cpf_cnpj?: string | null
+          destinatario_estado?: string | null
+          destinatario_logradouro?: string | null
+          destinatario_nome?: string
+          destinatario_numero?: string | null
+          id?: string
+          largura?: number | null
+          linha_original?: number | null
+          motivo_erro?: string
+          observacao?: string | null
+          peso?: number | null
+          remetente_cpf_cnpj?: string
+          remetente_nome?: string | null
+          servico_frete?: string | null
+          tentativas_correcao?: number | null
+          valor_declarado?: number | null
+          valor_frete?: number | null
+        }
+        Relationships: []
+      }
       recargas_pix: {
         Row: {
           cliente_id: string
