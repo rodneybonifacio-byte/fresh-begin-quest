@@ -243,71 +243,98 @@ serve(async (req) => {
     };
 
     console.log('📝 Dados do boleto preparados');
+    console.log('📋 Payload do boleto:', JSON.stringify(boletoData, null, 2));
 
-    // Emitir boleto via API do Banco Inter
-    const boletoUrl = 'https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas';
+    // Criar cliente HTTP com mTLS para emissão do boleto
+    const cert = Deno.env.get('BANCO_INTER_CLIENT_CERT')!;
+    const key = Deno.env.get('BANCO_INTER_CLIENT_KEY')!;
+    const caCert = Deno.env.get('BANCO_INTER_CA_CERT')!;
     
-    const boletoResponse = await fetch(boletoUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify(boletoData),
+    const certFixed = formatPemCert(cert);
+    const keyFixed = formatPemCert(key);
+    const caCertFixed = formatPemCert(caCert);
+    
+    const httpClient = Deno.createHttpClient({
+      cert: certFixed,
+      key: keyFixed,
+      caCerts: [caCertFixed]
     });
 
-    if (!boletoResponse.ok) {
-      const errorText = await boletoResponse.text();
-      console.error('❌ Erro ao emitir boleto:', errorText);
-      throw new Error(`Erro ao emitir boleto: ${boletoResponse.status} - ${errorText}`);
-    }
+    try {
+      // Emitir boleto via API do Banco Inter com mTLS
+      const boletoUrl = 'https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas';
+      
+      console.log('🌐 Enviando requisição para emitir boleto com mTLS...');
+      const boletoResponse = await fetch(boletoUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(boletoData),
+        client: httpClient,
+      } as any);
 
-    const boletoResult = await boletoResponse.json();
-    console.log('✅ Boleto emitido:', boletoResult.nossoNumero);
+      console.log('📡 Resposta da API - Status:', boletoResponse.status);
 
-    // Aguardar alguns segundos para o boleto estar disponível no sistema
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    // Buscar PDF do boleto
-    const pdfUrl = `https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas/${boletoResult.nossoNumero}/pdf`;
-    
-    const pdfResponse = await fetch(pdfUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Accept': 'application/pdf',
-      },
-    });
-
-    if (!pdfResponse.ok) {
-      console.warn('⚠️ Não foi possível obter o PDF do boleto');
-    }
-
-    const pdfBuffer = pdfResponse.ok ? await pdfResponse.arrayBuffer() : null;
-    const pdfBase64 = pdfBuffer 
-      ? btoa(String.fromCharCode(...new Uint8Array(pdfBuffer)))
-      : null;
-
-    const resultado = {
-      nossoNumero: boletoResult.nossoNumero,
-      seuNumero: boletoResult.seuNumero,
-      codigoBarras: boletoResult.codigoBarras,
-      linhaDigitavel: boletoResult.linhaDigitavel,
-      pdf: pdfBase64,
-      dataVencimento: dataVencimento,
-      valor: body.valorCobrado,
-      status: 'EMITIDO',
-    };
-
-    console.log('✅ Boleto processado com sucesso');
-
-    return new Response(
-      JSON.stringify(resultado),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
+      if (!boletoResponse.ok) {
+        const errorText = await boletoResponse.text();
+        console.error('❌ Erro ao emitir boleto:', errorText);
+        httpClient.close();
+        throw new Error(`Erro ao emitir boleto: ${boletoResponse.status} - ${errorText}`);
       }
-    );
+
+      const boletoResult = await boletoResponse.json();
+      console.log('✅ Boleto emitido:', boletoResult.nossoNumero);
+
+      // Aguardar alguns segundos para o boleto estar disponível no sistema
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Buscar PDF do boleto com mTLS
+      const pdfUrl = `https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas/${boletoResult.nossoNumero}/pdf`;
+      
+      console.log('📄 Baixando PDF do boleto com mTLS...');
+      const pdfResponse = await fetch(pdfUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/pdf',
+        },
+        client: httpClient,
+      } as any);
+
+      if (!pdfResponse.ok) {
+        console.warn('⚠️ Não foi possível obter o PDF do boleto');
+      }
+
+      const pdfBuffer = pdfResponse.ok ? await pdfResponse.arrayBuffer() : null;
+      const pdfBase64 = pdfBuffer 
+        ? btoa(String.fromCharCode(...new Uint8Array(pdfBuffer)))
+        : null;
+
+      const resultado = {
+        nossoNumero: boletoResult.nossoNumero,
+        seuNumero: boletoResult.seuNumero,
+        codigoBarras: boletoResult.codigoBarras,
+        linhaDigitavel: boletoResult.linhaDigitavel,
+        pdf: pdfBase64,
+        dataVencimento: dataVencimento,
+        valor: body.valorCobrado,
+        status: 'EMITIDO',
+      };
+
+      console.log('✅ Boleto processado com sucesso');
+
+      return new Response(
+        JSON.stringify(resultado),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
+    } finally {
+      httpClient.close();
+    }
 
   } catch (error: any) {
     console.error('❌ Erro ao emitir boleto:', error);
