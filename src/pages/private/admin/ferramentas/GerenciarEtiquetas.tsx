@@ -111,6 +111,63 @@ export default function GerenciarEtiquetas() {
     }
   });
 
+  const reactivateMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const batchSize = 10;
+      const results: any[] = [];
+      const errors: any[] = [];
+      
+      for (let i = 0; i < ids.length; i += batchSize) {
+        const batch = ids.slice(i, i + batchSize);
+        console.log(`Reativando lote ${i / batchSize + 1}:`, batch);
+        
+        try {
+          const promises = batch.map(id => {
+            const meta = selectedMeta[id];
+            if (!meta?.codigoObjeto) {
+              console.warn(`Sem codigoObjeto para id ${id}, pulando.`);
+              errors.push({ id, error: 'Sem codigoObjeto' });
+              return Promise.resolve(null);
+            }
+
+            // Chamada para reativar - ajustar endpoint quando disponível
+            return emissaoService.reprocessarEmissao(id)
+              .catch(err => {
+                console.error(`Erro ao reativar ${id}:`, err);
+                errors.push({ id, error: err });
+                return null;
+              });
+          });
+
+          const batchResults = await Promise.all(promises);
+          results.push(...batchResults.filter(r => r !== null));
+        } catch (error) {
+          console.error(`Erro no lote ${i / batchSize + 1}:`, error);
+          errors.push({ batch, error });
+        }
+      }
+      
+      console.log(`Total reativado: ${results.length}, Erros: ${errors.length}`);
+      return { results, errors };
+    },
+    onSuccess: (data) => {
+      const { results, errors } = data;
+      if (errors.length > 0) {
+        toast.warning(`${results.length} reativadas com sucesso. ${errors.length} com erro.`);
+        console.error('Erros detalhados:', errors);
+      } else {
+        toast.success(`${results.length} etiquetas reativadas com sucesso!`);
+      }
+      setSelectedIds([]);
+      setSelectAllMode('none');
+      queryClient.invalidateQueries({ queryKey: ["emissoes-gerenciar"] });
+    },
+    onError: (error) => {
+      console.error('Erro geral na reativação:', error);
+      toast.error("Erro ao reativar etiquetas");
+    }
+  });
+
   const handleSelectAll = (checked: boolean) => {
     if (checked && data?.data) {
       const pageIds: string[] = [];
@@ -222,6 +279,21 @@ export default function GerenciarEtiquetas() {
     }
   };
 
+  const handleReactivate = () => {
+    if (selectedIds.length === 0) {
+      toast.warning("Selecione pelo menos uma etiqueta");
+      return;
+    }
+
+    const message = selectAllMode === 'all'
+      ? `Deseja realmente reativar TODAS as ${selectedIds.length} etiquetas filtradas?`
+      : `Deseja realmente reativar ${selectedIds.length} etiqueta(s) cancelada(s)?`;
+
+    if (confirm(message)) {
+      reactivateMutation.mutate(selectedIds);
+    }
+  };
+
   const handleApplyFilters = () => {
     setAppliedFilters(filters);
     setPage(1);
@@ -315,6 +387,11 @@ export default function GerenciarEtiquetas() {
     }
   ];
 
+  // Verificar se há etiquetas canceladas selecionadas
+  const hasCanceledSelected = selectedIds.length > 0 && data?.data?.some((item: IEmissao) => 
+    selectedIds.includes(item.id || "") && item.status === "CANCELADO"
+  );
+
   const buttons: ContentButtonProps[] = [
     {
       label: "Filtros",
@@ -332,6 +409,12 @@ export default function GerenciarEtiquetas() {
       icon: <Trash2 className="h-4 w-4" />,
       onClick: handleDelete,
       bgColor: selectedIds.length === 0 || deleteMutation.isPending ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-red-500 hover:bg-red-600 text-white"
+    },
+    {
+      label: `Reativar Canceladas (${selectedIds.length})`,
+      onClick: handleReactivate,
+      bgColor: selectedIds.length === 0 || reactivateMutation.isPending ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-green-500 hover:bg-green-600 text-white",
+      isShow: !hasCanceledSelected // Ocultar quando NÃO há canceladas
     }
   ];
 
