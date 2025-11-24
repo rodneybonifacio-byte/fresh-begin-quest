@@ -35,6 +35,13 @@ const FinanceiroFaturasAReceber = () => {
     const [isModalConfirmaPagamento, setIsModalConfirmaPagamento] = useState<{ isOpen: boolean; fatura: IFatura }>({ isOpen: false, fatura: {} as IFatura });
     const [isModalBoleto, setIsModalBoleto] = useState<{ isOpen: boolean; fatura: IFatura }>({ isOpen: false, fatura: {} as IFatura });
     const [isModalFechamento, setIsModalFechamento] = useState<{ isOpen: boolean; pdfBase64: string; codigoFatura: string }>({ isOpen: false, pdfBase64: '', codigoFatura: '' });
+    const [debugInfo, setDebugInfo] = useState<{
+        httpCode?: number;
+        mensagem?: string;
+        payload?: any;
+        response?: any;
+        timestamp?: Date;
+    } | null>(null);
     const [page, setPage] = useState<number>(1);
     const perPage = config.pagination.perPage;
 
@@ -146,13 +153,37 @@ const FinanceiroFaturasAReceber = () => {
     };
 
     const handleRealizarFechamento = async (fatura: IFatura) => {
+        const nomeCliente = fatura.nome ?? fatura.cliente.nome;
+        const codigoFatura = fatura.codigo || '';
+        
+        const payload = {
+            codigo_fatura: codigoFatura,
+            nome_cliente: nomeCliente,
+            telefone_cliente: ''
+        };
+
         try {
             setIsLoading(true);
             
-            const nomeCliente = fatura.nome ?? fatura.cliente.nome;
-            const codigoFatura = fatura.codigo || '';
+            // Registrar início da chamada
+            setDebugInfo({
+                httpCode: undefined,
+                mensagem: 'Iniciando fechamento...',
+                payload: payload,
+                response: null,
+                timestamp: new Date()
+            });
 
             const result = await service.realizarFechamento(codigoFatura, nomeCliente, '');
+            
+            // Registrar sucesso
+            setDebugInfo({
+                httpCode: 200,
+                mensagem: 'Fechamento realizado com sucesso',
+                payload: payload,
+                response: result,
+                timestamp: new Date()
+            });
             
             toast.success('Fechamento realizado com sucesso!');
             
@@ -164,8 +195,17 @@ const FinanceiroFaturasAReceber = () => {
             });
         } catch (error: any) {
             console.error('Erro ao realizar fechamento:', error);
+            
+            // Registrar erro detalhado
+            setDebugInfo({
+                httpCode: error?.status || error?.code || 500,
+                mensagem: error?.message || 'Erro desconhecido',
+                payload: payload,
+                response: error,
+                timestamp: new Date()
+            });
+            
             toast.error(error?.message || 'Erro ao realizar fechamento');
-            throw error;
         } finally {
             setIsLoading(false);
         }
@@ -182,6 +222,72 @@ const FinanceiroFaturasAReceber = () => {
             data={faturas?.data && faturas.data.length > 0 ? faturas.data : []}
         >
             {isLoading ? <LoadSpinner mensagem="Carregando..." /> : null}
+            
+            {/* Painel de Debug */}
+            {debugInfo && (
+                <div className="mb-4 p-4 rounded-lg border-2 bg-slate-50 dark:bg-slate-900">
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                            🔍 Debug - Último Fechamento
+                        </h3>
+                        <button
+                            onClick={() => setDebugInfo(null)}
+                            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                                <span className="font-semibold text-slate-600 dark:text-slate-400">HTTP Code:</span>
+                                <span className={`font-mono px-2 py-1 rounded ${
+                                    debugInfo.httpCode === 200 
+                                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                        : debugInfo.httpCode === 401
+                                        ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                        : 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+                                }`}>
+                                    {debugInfo.httpCode || 'N/A'}
+                                </span>
+                            </div>
+                            
+                            <div>
+                                <span className="font-semibold text-slate-600 dark:text-slate-400">Mensagem:</span>
+                                <p className="text-slate-900 dark:text-slate-100 mt-1">{debugInfo.mensagem}</p>
+                            </div>
+                            
+                            <div>
+                                <span className="font-semibold text-slate-600 dark:text-slate-400">Timestamp:</span>
+                                <p className="text-slate-900 dark:text-slate-100 mt-1">
+                                    {debugInfo.timestamp?.toLocaleString('pt-BR')}
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                            <div>
+                                <span className="font-semibold text-slate-600 dark:text-slate-400">Payload Enviado:</span>
+                                <pre className="text-xs bg-slate-100 dark:bg-slate-800 p-2 rounded mt-1 overflow-x-auto">
+                                    {JSON.stringify(debugInfo.payload, null, 2)}
+                                </pre>
+                            </div>
+                            
+                            {debugInfo.response && (
+                                <div>
+                                    <span className="font-semibold text-slate-600 dark:text-slate-400">
+                                        {debugInfo.httpCode === 200 ? 'Resposta:' : 'Erro:'}
+                                    </span>
+                                    <pre className="text-xs bg-slate-100 dark:bg-slate-800 p-2 rounded mt-1 overflow-x-auto max-h-40">
+                                        {JSON.stringify(debugInfo.response, null, 2)}
+                                    </pre>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
             
             <div className="flex items-center justify-between mb-4">
                 <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col gap-4">
