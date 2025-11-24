@@ -289,8 +289,7 @@ serve(async (req) => {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
-          'Accept': 'application/pdf',
-          'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
         client: httpClient,
       } as any);
@@ -326,14 +325,22 @@ serve(async (req) => {
         );
       }
 
-      const pdfBuffer = await pdfResponse.arrayBuffer();
+      // A API retorna JSON com o PDF em base64
+      const pdfData = await pdfResponse.json();
+      console.log('📋 Estrutura da resposta PDF:', Object.keys(pdfData));
       
-      // Validar que recebemos um PDF válido
-      if (!pdfBuffer || pdfBuffer.byteLength === 0) {
-        throw new Error('PDF do boleto está vazio');
+      let pdfBase64;
+      
+      // O PDF pode vir em diferentes formatos na resposta
+      if (pdfData.pdf) {
+        pdfBase64 = pdfData.pdf;
+      } else if (pdfData.arquivo) {
+        pdfBase64 = pdfData.arquivo;
+      } else if (typeof pdfData === 'string') {
+        pdfBase64 = pdfData;
+      } else {
+        throw new Error('Formato de PDF não reconhecido na resposta');
       }
-      
-      const pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(pdfBuffer)));
 
       const resultado = {
         nossoNumero: boletoId,
