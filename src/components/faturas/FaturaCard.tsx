@@ -9,6 +9,7 @@ import { formatarDataVencimento } from '../../utils/date-utils';
 import { StatusBadge } from '../StatusBadge';
 import { CopiadorDeId } from '../CopiadorDeId';
 import { toast } from 'sonner';
+import { supabase } from '../../integrations/supabase/client';
 
 interface FaturaCardProps {
     fatura: IFatura;
@@ -48,19 +49,60 @@ export const FaturaCard: React.FC<FaturaCardProps> = ({
                 return;
             }
 
-            // Usar o PDF do boleto como prioridade, ou fatura se não houver boleto
             const pdfBase64 = fechamentoData.boletoPdf || fechamentoData.faturaPdf;
 
+            // Buscar celular do remetente
+            let celularRemetente = '';
+            try {
+                const remetenteResponse = await fetch(`https://envios.brhubb.com.br/api/remetente/${faturaItem.cpfCnpj ?? faturaItem.cliente?.cpfCnpj}`);
+                if (remetenteResponse.ok) {
+                    const remetentes = await remetenteResponse.json();
+                    if (remetentes && remetentes.length > 0) {
+                        celularRemetente = remetentes[0].celular || '';
+                    }
+                }
+            } catch (error) {
+                console.warn('Não foi possível buscar celular do remetente:', error);
+            }
+
+            // Converter base64 para Blob e fazer upload para Storage
+            const base64Data = pdfBase64.includes('base64,') ? pdfBase64.split('base64,')[1] : pdfBase64;
+            const byteCharacters = atob(base64Data);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: 'application/pdf' });
+
+            // Upload para Supabase Storage
+            const fileName = `faturas/fatura_${faturaItem.id}_${Date.now()}.pdf`;
+            const { error: uploadError } = await supabase.storage
+                .from('faturas')
+                .upload(fileName, blob, {
+                    contentType: 'application/pdf',
+                    upsert: false
+                });
+
+            if (uploadError) {
+                throw new Error('Erro ao fazer upload do PDF: ' + uploadError.message);
+            }
+
+            // Obter URL pública
+            const { data: { publicUrl } } = supabase.storage
+                .from('faturas')
+                .getPublicUrl(fileName);
+
             const payload = {
-                celular_cliente: fechamentoData.telefoneCliente || '',
+                celular_cliente: celularRemetente,
                 nome_cliente: fechamentoData.nomeCliente || faturaItem.cliente?.nome || faturaItem.nome || '',
-                pdf_base64: pdfBase64
+                pdf_url: publicUrl
             };
 
             console.log('📤 Enviando fatura para webhook:', { 
                 celular: payload.celular_cliente,
                 nome: payload.nome_cliente,
-                pdfLength: pdfBase64?.length 
+                pdf_url: payload.pdf_url 
             });
 
             const response = await fetch(
