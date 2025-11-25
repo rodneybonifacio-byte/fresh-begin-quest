@@ -47,10 +47,16 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
             const pdfBase64 = fechamentoData.boletoPdf || fechamentoData.faturaPdf;
 
             const payload = {
-                celular_cliente: '',
+                celular_cliente: fechamentoData.telefoneCliente || '',
                 nome_cliente: fechamentoData.nomeCliente || fatura.cliente?.nome || fatura.nome || '',
                 pdf_base64: pdfBase64
             };
+
+            console.log('📤 Enviando fatura para webhook:', { 
+                celular: payload.celular_cliente,
+                nome: payload.nome_cliente,
+                pdfLength: pdfBase64?.length 
+            });
 
             const response = await fetch(
                 'https://api.datacrazy.io/v1/crm/api/crm/flows/webhooks/ab52ed88-dd1c-4bd2-a198-d1845e59e058/d965a334-7b87-4241-b3f2-d1026752f3e7',
@@ -66,11 +72,17 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
             if (response.ok) {
                 toast.success('Fatura enviada com sucesso!');
             } else {
-                throw new Error('Erro ao enviar fatura');
+                const errorData = await response.json().catch(() => ({}));
+                console.error('❌ Erro do webhook:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    data: errorData
+                });
+                throw new Error(`Erro ${response.status}: ${errorData.message || response.statusText || 'Webhook não encontrado'}`);
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erro ao enviar fatura:', error);
-            toast.error('Erro ao enviar fatura para o webhook');
+            toast.error(error.message || 'Erro ao enviar fatura para o webhook');
         }
     };
 
