@@ -38,15 +38,18 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
         try {
             const fechamentoData = verificarFechamentoExistente(fatura.id);
             
-            if (!fechamentoData || !fechamentoData.arquivo_final_pdf) {
+            if (!fechamentoData || (!fechamentoData.faturaPdf && !fechamentoData.boletoPdf)) {
                 toast.error('PDF da fatura não encontrado. Realize o fechamento primeiro.');
                 return;
             }
 
+            // Usar o PDF do boleto como prioridade, ou fatura se não houver boleto
+            const pdfBase64 = fechamentoData.boletoPdf || fechamentoData.faturaPdf;
+
             const payload = {
                 celular_cliente: '',
-                nome_cliente: fatura.cliente?.nome || fatura.nome || '',
-                pdf_base64: fechamentoData.arquivo_final_pdf
+                nome_cliente: fechamentoData.nomeCliente || fatura.cliente?.nome || fatura.nome || '',
+                pdf_base64: pdfBase64
             };
 
             const response = await fetch(
