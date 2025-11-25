@@ -37,12 +37,17 @@ export const FormularioDinamico = ({ schema }: { schema: FormSchema }) => {
         mutationFn: async (data: Record<string, string>) => {
             setIsLoading(true);
             return service.create({ credenciais: { ...data }, plataforma: schema.plataforma });
-        }, onSuccess: () => {
+        }, 
+        onSuccess: (response) => {
             setIsLoading(false);
+            // Mostrar webhook URL para o usuário copiar
+            if (response.data?.webhookUrl) {
+                alert(`Integração criada! Configure o webhook na sua ${schema.plataforma}:\n\n${response.data.webhookUrl}`);
+            }
         },
-        onError: () => {
+        onError: (error: any) => {
             setIsLoading(false);
-            throw new Error('Erro ao salvar os dados');
+            console.error('Erro ao salvar integração:', error);
         }
     });
 
