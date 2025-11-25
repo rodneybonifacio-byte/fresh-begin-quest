@@ -16,16 +16,17 @@ const mockFormSchemas: FormSchema[] = [
             { label: "Shop URL", name: "shopUrl", type: "input", required: true },
         ]
     },
-    // {
-    //     image: "/Nuvemshop-logo.png",
-    //     conected: true,
-    //     descricao: "Integre sua conta com as plataformas de e-commerce mais populares do Brasil.",
-    //     plataforma: "shopify",
-    //     formulario: [
-    //         { label: "Access Token", name: "accessToken", type: "input", required: true },
-    //         { label: "Shop URL", name: "shopUrl", type: "input", required: true },
-    //     ]
-    // }
+    {
+        image: "/Nuvemshop-logo.png",
+        conected: false,
+        descricao: "Integre sua loja Nuvemshop e receba pedidos automaticamente para gerar etiquetas no BRHUB Envios.",
+        plataforma: "nuvemshop",
+        formulario: [
+            { label: "User ID", name: "userId", type: "input", required: true, description: "ID do usuário da sua loja Nuvemshop" },
+            { label: "Access Token", name: "accessToken", type: "input", required: true, description: "Token de acesso da API Nuvemshop" },
+            { label: "Store ID", name: "storeId", type: "input", required: true, description: "ID da sua loja Nuvemshop" },
+        ]
+    }
 ];
 
 const Integracoes = () => {
