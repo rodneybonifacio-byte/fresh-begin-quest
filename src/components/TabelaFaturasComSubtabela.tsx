@@ -8,7 +8,8 @@ import { formatCpfCnpj } from '../utils/lib.formats';
 import { formatarDataVencimento } from '../utils/date-utils';
 import { StatusBadge } from './StatusBadge';
 import { CopiadorDeId } from './CopiadorDeId';
-import { Eye, CheckCircle, CreditCard, MessageCircle, XCircle } from 'lucide-react';
+import { Eye, CheckCircle, CreditCard, MessageCircle, XCircle, Send } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface TabelaFaturasComSubtabelaProps {
     faturas: IFatura[];
@@ -31,6 +32,43 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
 
     const toggleExpand = (rowId: string) => {
         setExpandedRows((prev) => ({ ...prev, [rowId]: !prev[rowId] }));
+    };
+
+    const enviarFaturaWebhook = async (fatura: IFatura) => {
+        try {
+            const fechamentoData = verificarFechamentoExistente(fatura.id);
+            
+            if (!fechamentoData || !fechamentoData.arquivo_final_pdf) {
+                toast.error('PDF da fatura não encontrado. Realize o fechamento primeiro.');
+                return;
+            }
+
+            const payload = {
+                celular_cliente: '',
+                nome_cliente: fatura.cliente?.nome || fatura.nome || '',
+                pdf_base64: fechamentoData.arquivo_final_pdf
+            };
+
+            const response = await fetch(
+                'https://api.datacrazy.io/v1/crm/api/crm/flows/webhooks/ab52ed88-dd1c-4bd2-a198-d1845e59e058/d965a334-7b87-4241-b3f2-d1026752f3e7',
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                }
+            );
+
+            if (response.ok) {
+                toast.success('Fatura enviada com sucesso!');
+            } else {
+                throw new Error('Erro ao enviar fatura');
+            }
+        } catch (error) {
+            console.error('Erro ao enviar fatura:', error);
+            toast.error('Erro ao enviar fatura para o webhook');
+        }
     };
 
     const renderSubTable = (subData: IFatura[]) => {
@@ -104,6 +142,12 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
                         icon: <XCircle size={16} />,
                         onClick: (row) => cancelarBoleto(row),
                         show: (row) => !!(verificarFechamentoExistente(row.id)) && (row.status === 'PENDENTE' || row.status === 'PAGO_PARCIAL'),
+                    },
+                    {
+                        label: 'Enviar Fatura',
+                        icon: <Send size={16} />,
+                        onClick: (row) => enviarFaturaWebhook(row),
+                        show: (row) => !!(verificarFechamentoExistente(row.id)),
                     },
                 ]}
                 rowKey={(row) => row.id}
@@ -186,12 +230,18 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
                     show: () => false,
                     disabled: true,
                 },
-                {
-                    label: 'Cancelar Boleto',
-                    icon: <XCircle size={16} />,
-                    onClick: (row) => cancelarBoleto(row),
-                    show: (row) => !!(verificarFechamentoExistente(row.id)) && (!row.faturas || row.faturas.length === 0) && (row.status === 'PENDENTE' || row.status === 'PAGO_PARCIAL'),
-                },
+                    {
+                        label: 'Cancelar Boleto',
+                        icon: <XCircle size={16} />,
+                        onClick: (row) => cancelarBoleto(row),
+                        show: (row) => !!(verificarFechamentoExistente(row.id)) && (!row.faturas || row.faturas.length === 0) && (row.status === 'PENDENTE' || row.status === 'PAGO_PARCIAL'),
+                    },
+                    {
+                        label: 'Enviar Fatura',
+                        icon: <Send size={16} />,
+                        onClick: (row) => enviarFaturaWebhook(row),
+                        show: (row) => !!(verificarFechamentoExistente(row.id)) && (!row.faturas || row.faturas.length === 0),
+                    },
             ]}
             subTable={{
                 hasSubData: (row) => !!(row.faturas && row.faturas.length > 0),

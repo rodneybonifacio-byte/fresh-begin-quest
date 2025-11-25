@@ -1,13 +1,14 @@
 import React from 'react';
 import { format } from 'date-fns';
 import Decimal from 'decimal.js';
-import { ChevronDown, ChevronUp, Eye, CheckCircle, CreditCard, XCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp, Eye, CheckCircle, CreditCard, XCircle, Send } from 'lucide-react';
 import type { IFatura } from '../../types/IFatura';
 import { calcularLucro, formatCurrencyWithCents } from '../../utils/formatCurrency';
 import { formatCpfCnpj } from '../../utils/lib.formats';
 import { formatarDataVencimento } from '../../utils/date-utils';
 import { StatusBadge } from '../StatusBadge';
 import { CopiadorDeId } from '../CopiadorDeId';
+import { toast } from 'sonner';
 
 interface FaturaCardProps {
     fatura: IFatura;
@@ -37,6 +38,43 @@ export const FaturaCard: React.FC<FaturaCardProps> = ({
     const isPendente = fatura.status === 'PENDENTE' || fatura.status === 'PAGO_PARCIAL';
 
     const lucro = Decimal(fatura.totalFaturado).minus(Decimal(fatura.totalCusto));
+
+    const enviarFaturaWebhook = async (faturaItem: IFatura) => {
+        try {
+            const fechamentoData = verificarFechamentoExistente(faturaItem.id);
+            
+            if (!fechamentoData || !fechamentoData.arquivo_final_pdf) {
+                toast.error('PDF da fatura não encontrado. Realize o fechamento primeiro.');
+                return;
+            }
+
+            const payload = {
+                celular_cliente: '',
+                nome_cliente: faturaItem.cliente?.nome || faturaItem.nome || '',
+                pdf_base64: fechamentoData.arquivo_final_pdf
+            };
+
+            const response = await fetch(
+                'https://api.datacrazy.io/v1/crm/api/crm/flows/webhooks/ab52ed88-dd1c-4bd2-a198-d1845e59e058/d965a334-7b87-4241-b3f2-d1026752f3e7',
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                }
+            );
+
+            if (response.ok) {
+                toast.success('Fatura enviada com sucesso!');
+            } else {
+                throw new Error('Erro ao enviar fatura');
+            }
+        } catch (error) {
+            console.error('Erro ao enviar fatura:', error);
+            toast.error('Erro ao enviar fatura para o webhook');
+        }
+    };
 
     return (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden">
@@ -142,6 +180,16 @@ export const FaturaCard: React.FC<FaturaCardProps> = ({
                             Cancelar Boleto
                         </button>
                     )}
+                    
+                    {temFechamento && (
+                        <button
+                            onClick={() => enviarFaturaWebhook(fatura)}
+                            className="w-full min-h-[44px] flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-medium transition-colors"
+                        >
+                            <Send size={16} />
+                            Enviar Fatura
+                        </button>
+                    )}
                 </div>
             )}
 
@@ -234,6 +282,17 @@ export const FaturaCard: React.FC<FaturaCardProps> = ({
                                             >
                                                 <XCircle size={16} />
                                                 Cancelar Boleto
+                                            </button>
+                                        )}
+                                        
+                                        {/* Enviar Fatura - Aparece se já tem fechamento */}
+                                        {verificarFechamentoExistente(subfatura.id) && (
+                                            <button
+                                                onClick={() => enviarFaturaWebhook(subfatura)}
+                                                className="w-full min-h-[44px] flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-medium transition-colors"
+                                            >
+                                                <Send size={16} />
+                                                Enviar Fatura
                                             </button>
                                         )}
                                     </div>

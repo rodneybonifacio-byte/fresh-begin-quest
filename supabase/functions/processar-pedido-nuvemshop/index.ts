@@ -1,3 +1,4 @@
+// @ts-ignore
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -10,7 +11,7 @@ interface ProcessarPedidoRequest {
   remetenteId: string;
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -20,6 +21,7 @@ serve(async (req) => {
     const { order, remetenteId }: ProcessarPedidoRequest = await req.json();
     console.log('🔄 [PROCESSAR] Iniciando processamento do pedido Nuvemshop:', order.number);
 
+    // @ts-ignore
     const baseApiUrl = Deno.env.get('BASE_API_URL');
     if (!baseApiUrl) {
       throw new Error('BASE_API_URL não configurada');
@@ -32,7 +34,9 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        // @ts-ignore
         email: Deno.env.get('API_ADMIN_EMAIL'),
+        // @ts-ignore
         senha: Deno.env.get('API_ADMIN_PASSWORD'),
       }),
     });
