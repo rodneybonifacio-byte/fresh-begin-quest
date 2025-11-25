@@ -104,6 +104,45 @@ export type Database = {
         }
         Relationships: []
       }
+      integracoes: {
+        Row: {
+          ativo: boolean | null
+          atualizado_em: string
+          cliente_id: string
+          credenciais: Json
+          criado_em: string
+          id: string
+          plataforma: string
+          remetente_id: string | null
+          store_id: string | null
+          webhook_url: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          atualizado_em?: string
+          cliente_id: string
+          credenciais: Json
+          criado_em?: string
+          id?: string
+          plataforma: string
+          remetente_id?: string | null
+          store_id?: string | null
+          webhook_url?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          atualizado_em?: string
+          cliente_id?: string
+          credenciais?: Json
+          criado_em?: string
+          id?: string
+          plataforma?: string
+          remetente_id?: string | null
+          store_id?: string | null
+          webhook_url?: string | null
+        }
+        Relationships: []
+      }
       recargas_pix: {
         Row: {
           cliente_id: string

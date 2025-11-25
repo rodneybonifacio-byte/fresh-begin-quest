@@ -1,5 +1,6 @@
 export interface IResponse<T> {
     data: T
+    message?: string
     total?: number
     meta?: PaginationMeta
 }
