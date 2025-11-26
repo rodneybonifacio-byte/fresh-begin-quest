@@ -42,8 +42,17 @@ export const SelecionarRemetente = ({
     const handleSyncData = async () => {
         try {
             toast.info('Sincronizando dados do backend...');
-            await refetch();
-            toast.success('Dados sincronizados com sucesso!');
+            const result = await refetch();
+            
+            // Se não tem remetente selecionado E existem remetentes, seleciona o primeiro
+            if (!remetenteSelecionado && result?.data?.remetentes && result.data.remetentes.length > 0) {
+                const primeiroRemetente = result.data.remetentes[0];
+                console.log('✅ Auto-selecionando primeiro remetente:', primeiroRemetente.nome);
+                onSelect(primeiroRemetente);
+                toast.success('Primeiro remetente selecionado automaticamente!');
+            } else {
+                toast.success('Dados sincronizados com sucesso!');
+            }
         } catch (error) {
             console.error('Erro ao sincronizar:', error);
             toast.error('Erro ao sincronizar dados');

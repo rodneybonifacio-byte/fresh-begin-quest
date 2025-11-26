@@ -34,8 +34,14 @@ const AppSidebar = observer(({
         {
             icon: Archive,
             label: 'Cadastros',
-            active: ['/app/destinatarios'].some(path => isPathActive(path)),
+            active: ['/app/destinatarios', '/app/remetentes'].some(path => isPathActive(path)),
             submenu: [
+                {
+                    icon: UsersRound,
+                    label: 'Remetentes',
+                    to: '/app/remetentes',
+                    active: isPathActive('/app/remetentes')
+                },
                 {
                     icon: UsersRound,
                     label: 'Destinatarios',

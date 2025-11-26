@@ -1,7 +1,7 @@
-import { ListaRemetente } from "./ListaRemetente";
+import { ListaRemetenteModern } from "./ListaRemetenteModern";
 
 export const Remetente = () => {
-    return <ListaRemetente />;
+    return <ListaRemetenteModern />;
 };
 
 export default Remetente;
