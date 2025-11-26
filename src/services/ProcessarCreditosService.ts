@@ -24,4 +24,28 @@ export class ProcessarCreditosService {
       throw error;
     }
   }
+
+  /**
+   * Corrige consumos incorretos (etiquetas em PRE_POSTADO que foram consumidas)
+   */
+  static async corrigirConsumosIncorretos(): Promise<any> {
+    try {
+      console.log('🔧 Executando correção de consumos incorretos...');
+      
+      const { data, error } = await supabase.functions.invoke('corrigir-consumos-incorretos', {
+        body: {}
+      });
+
+      if (error) {
+        console.error('❌ Erro ao corrigir consumos:', error);
+        throw error;
+      }
+
+      console.log('✅ Correção concluída:', data);
+      return data;
+    } catch (error) {
+      console.error('💥 Erro ao executar correção:', error);
+      throw error;
+    }
+  }
 }
