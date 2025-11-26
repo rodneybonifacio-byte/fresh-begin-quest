@@ -29,9 +29,14 @@ const schemaRemetente = yup.object().shape({
 
 type FormDataRemetente = yup.InferType<typeof schemaRemetente>;
 
-export const ModalCadastrarRemetente: React.FC<{ isOpen: boolean; onCancel: () => void }> = ({
+export const ModalCadastrarRemetente: React.FC<{ 
+    isOpen: boolean; 
+    onCancel: () => void;
+    showWelcomeMessage?: boolean;
+}> = ({
     isOpen,
     onCancel,
+    showWelcomeMessage = false,
 }) => {
     const queryClient = useQueryClient();
     const { setIsLoading } = useLoadingSpinner()
@@ -117,6 +122,29 @@ export const ModalCadastrarRemetente: React.FC<{ isOpen: boolean; onCancel: () =
             onCancel={onCancel}>
 
             <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)}>
+                {showWelcomeMessage && (
+                    <div className="bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-xl p-5 mb-4">
+                        <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                                🎉
+                            </div>
+                            <div className="space-y-2 flex-1">
+                                <h3 className="font-bold text-foreground text-lg">Bem-vindo ao BRHUB Envios!</h3>
+                                <p className="text-sm text-muted-foreground leading-relaxed">
+                                    Para começar a emitir etiquetas, você precisa cadastrar pelo menos <strong>um remetente</strong>. 
+                                    O remetente é o endereço de origem dos seus envios e <strong>essas informações aparecerão nas etiquetas impressas</strong>.
+                                </p>
+                                <div className="flex items-center gap-2 text-xs text-primary font-medium pt-1">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Preencha os dados abaixo para continuar
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
                 <h2 className="text-2xl font-bold mb-4">Adicionar Remetente</h2>
                 <div className="flex flex-col w-full gap-2">
                     <div className="grid grid-cols-1 md:grid-cols-6 gap-4">

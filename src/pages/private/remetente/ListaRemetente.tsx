@@ -10,7 +10,6 @@ import { formatCpfCnpj } from "../../../utils/lib.formats";
 import { RemetenteService } from "../../../services/RemetenteService";
 import type { IRemetente } from "../../../types/IRemetente";
 import { ModalCadastrarRemetente } from "./ModalCadastrarRemetente";
-import { ModalBoasVindasRemetente } from "./ModalBoasVindasRemetente";
 
 
 export const ListaRemetente = () => {
@@ -20,15 +19,16 @@ export const ListaRemetente = () => {
     const navigate = useNavigate();
 
     const [isModalOpenRemetente, setIsModalOpenRemetente] = useState<boolean>(false);
-    const [showBoasVindas, setShowBoasVindas] = useState<boolean>(false);
+    const [isFromAutoCadastro, setIsFromAutoCadastro] = useState<boolean>(false);
 
     const service = new RemetenteService();
 
-    // Detectar se veio do autocadastro
+    // Detectar se veio do autocadastro e abrir modal de cadastro automaticamente
     useEffect(() => {
         const fromCadastro = searchParams.get('from') === 'autocadastro';
         if (fromCadastro) {
-            setShowBoasVindas(true);
+            setIsFromAutoCadastro(true);
+            setIsModalOpenRemetente(true);
             // Limpar o parâmetro da URL
             navigate('/app/remetentes', { replace: true });
         }
@@ -102,14 +102,13 @@ export const ListaRemetente = () => {
                 </div>
             )}
 
-            <ModalCadastrarRemetente isOpen={isModalOpenRemetente} onCancel={() => setIsModalOpenRemetente(false)} />
-            <ModalBoasVindasRemetente 
-                isOpen={showBoasVindas} 
-                onClose={() => setShowBoasVindas(false)}
-                onCadastrar={() => {
-                    setShowBoasVindas(false);
-                    setIsModalOpenRemetente(true);
+            <ModalCadastrarRemetente 
+                isOpen={isModalOpenRemetente} 
+                onCancel={() => {
+                    setIsModalOpenRemetente(false);
+                    setIsFromAutoCadastro(false);
                 }}
+                showWelcomeMessage={isFromAutoCadastro}
             />
         </Content>
     );
