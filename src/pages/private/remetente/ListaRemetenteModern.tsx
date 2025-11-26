@@ -7,7 +7,6 @@ import { RemetenteSupabaseDirectService } from "../../../services/RemetenteSupab
 import type { IRemetente } from "../../../types/IRemetente";
 import { ModalCadastrarRemetente } from "./ModalCadastrarRemetente";
 import { useSearchParams, useNavigate } from "react-router-dom";
-
 export const ListaRemetenteModern = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
@@ -17,9 +16,16 @@ export const ListaRemetenteModern = () => {
 
     const service = new RemetenteSupabaseDirectService();
 
+    // Usar o usuário logado para evitar cache cruzado entre clientes
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
     const { data: remetentes, isLoading } = useFetchQuery<IRemetente[]>(
-        ['remetentes'],
-        async () => (await service.getAll()).data
+        ['remetentes', token],
+        async () => (await service.getAll()).data,
+        {
+            staleTime: 0,
+            gcTime: 0,
+        }
     );
 
     // Abrir modal automaticamente APENAS quando vier do autocadastro via URL
