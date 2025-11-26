@@ -18,7 +18,10 @@ export class RemetenteSupabaseDirectService {
 
             if (error) {
                 console.error('❌ Erro ao buscar remetentes:', error);
-                throw new Error(error.message);
+                // Se for erro de permissão ou não houver remetentes, retorna lista vazia silenciosamente
+                // ao invés de mostrar erro ao usuário
+                console.log('ℹ️ Retornando lista vazia de remetentes');
+                return { data: [] };
             }
 
             console.log('✅ Remetentes encontrados:', data?.data?.length || 0);
@@ -49,7 +52,9 @@ export class RemetenteSupabaseDirectService {
             };
         } catch (error) {
             console.error('❌ Erro ao buscar remetentes:', error);
-            throw error;
+            // Retorna lista vazia ao invés de propagar erro
+            console.log('ℹ️ Retornando lista vazia devido a erro');
+            return { data: [] };
         }
     }
 }
