@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Content, type ContentButtonProps } from "../Content";
 import { useFetchQuery } from "../../../hooks/useFetchQuery";
 import { TableCustom } from "../../../components/table";
@@ -9,15 +10,29 @@ import { formatCpfCnpj } from "../../../utils/lib.formats";
 import { RemetenteService } from "../../../services/RemetenteService";
 import type { IRemetente } from "../../../types/IRemetente";
 import { ModalCadastrarRemetente } from "./ModalCadastrarRemetente";
+import { ModalBoasVindasRemetente } from "./ModalBoasVindasRemetente";
 
 
 export const ListaRemetente = () => {
     const config = useGlobalConfig();
     const [page] = useState(config.pagination);
+    const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
 
     const [isModalOpenRemetente, setIsModalOpenRemetente] = useState<boolean>(false);
+    const [showBoasVindas, setShowBoasVindas] = useState<boolean>(false);
 
     const service = new RemetenteService();
+
+    // Detectar se veio do autocadastro
+    useEffect(() => {
+        const fromCadastro = searchParams.get('from') === 'autocadastro';
+        if (fromCadastro) {
+            setShowBoasVindas(true);
+            // Limpar o parâmetro da URL
+            navigate('/app/remetentes', { replace: true });
+        }
+    }, [searchParams, navigate]);
 
     const { data: remetentes, isLoading, isError } = useFetchQuery<IRemetente[]>(
         ['remetentes'],
@@ -88,6 +103,14 @@ export const ListaRemetente = () => {
             )}
 
             <ModalCadastrarRemetente isOpen={isModalOpenRemetente} onCancel={() => setIsModalOpenRemetente(false)} />
+            <ModalBoasVindasRemetente 
+                isOpen={showBoasVindas} 
+                onClose={() => setShowBoasVindas(false)}
+                onCadastrar={() => {
+                    setShowBoasVindas(false);
+                    setIsModalOpenRemetente(true);
+                }}
+            />
         </Content>
     );
 };
