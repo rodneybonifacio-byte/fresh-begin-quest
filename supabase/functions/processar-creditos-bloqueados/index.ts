@@ -134,9 +134,13 @@ Deno.serve(async (req) => {
 
         console.log(`📊 Status: ${statusEtiqueta.status}`)
 
+        // Normalizar status para evitar problemas de caixa/formato
+        const statusUpper = (statusEtiqueta.status || '').toUpperCase()
+        const isPrePostado = statusUpper === 'PRE_POSTADO'
+
         // 3. Verificar se deve consumir ou liberar
-        if (statusEtiqueta.status !== 'pre-postado') {
-          // Etiqueta foi postada - CONSUMIR crédito
+        if (!isPrePostado) {
+          // Etiqueta foi postada (POSTADO / EM_TRANSITO / ENTREGUE / etc) - CONSUMIR crédito
           console.log('✅ Etiqueta postada - consumindo crédito')
           
           const { error: consumirError } = await supabaseClient
@@ -153,13 +157,13 @@ Deno.serve(async (req) => {
             console.log('✅ Crédito consumido com sucesso')
           }
         } else {
-          // Etiqueta ainda está em pré-postado - verificar se expirou
+          // Etiqueta ainda está em pré-postado - verificar se expirou (regra 72h)
           const blockedUntil = new Date(etiqueta.blocked_until)
           const now = new Date()
 
           if (now >= blockedUntil) {
             // Expirou - LIBERAR crédito
-            console.log('⏰ Etiqueta expirou (72h) - liberando crédito')
+            console.log('⏰ Etiqueta em PRE_POSTADO e prazo de 72h expirado - liberando crédito')
             
             const { error: liberarError } = await supabaseClient
               .rpc('liberar_credito_bloqueado', {
@@ -172,12 +176,12 @@ Deno.serve(async (req) => {
               erros.push(`Etiqueta ${etiqueta.emissao_id}: erro ao liberar`)
             } else {
               liberadas++
-              console.log('✅ Crédito liberado com sucesso')
+              console.log('✅ Crédito liberado com sucesso (regra 72h)')
             }
           } else {
             // Ainda dentro das 72h - manter bloqueado
             const horasRestantes = Math.ceil((blockedUntil.getTime() - now.getTime()) / (1000 * 60 * 60))
-            console.log(`⏳ Ainda dentro do prazo (${horasRestantes}h restantes) - mantendo bloqueado`)
+            console.log(`⏳ Etiqueta em PRE_POSTADO ainda dentro do prazo (${horasRestantes}h restantes) - mantendo bloqueado`)
             mantidas++
           }
         }
