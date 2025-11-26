@@ -8,70 +8,51 @@ import type { IRemetente } from "../../../types/IRemetente";
 import { ModalCadastrarRemetente } from "./ModalCadastrarRemetente";
 import { useSearchParams, useNavigate } from "react-router-dom";
 export const ListaRemetenteModern = () => {
-    const [searchParams] = useSearchParams();
-    const navigate = useNavigate();
-    const [isModalOpenRemetente, setIsModalOpenRemetente] = useState<boolean>(false);
-    const [isFromAutoCadastro, setIsFromAutoCadastro] = useState<boolean>(false);
-    const [wasModalClosedManually, setWasModalClosedManually] = useState<boolean>(false);
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const [isModalOpenRemetente, setIsModalOpenRemetente] = useState<boolean>(false);
+  const [isFromAutoCadastro, setIsFromAutoCadastro] = useState<boolean>(false);
+  const [wasModalClosedManually, setWasModalClosedManually] = useState<boolean>(false);
+  const service = new RemetenteSupabaseDirectService();
 
-    const service = new RemetenteSupabaseDirectService();
+  // Usar o usuário logado para evitar cache cruzado entre clientes
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const {
+    data: remetentes,
+    isLoading
+  } = useFetchQuery<IRemetente[]>(['remetentes', token], async () => (await service.getAll()).data, {
+    staleTime: 0,
+    gcTime: 0
+  });
 
-    // Usar o usuário logado para evitar cache cruzado entre clientes
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-
-    const { data: remetentes, isLoading } = useFetchQuery<IRemetente[]>(
-        ['remetentes', token],
-        async () => (await service.getAll()).data,
-        {
-            staleTime: 0,
-            gcTime: 0,
-        }
-    );
-
-    // Abrir modal automaticamente se veio do autocadastro (apenas quando NÃO houver remetentes já carregados)
-    useEffect(() => {
-        const fromCadastro = searchParams.get('from') === 'autocadastro';
-
-        console.log('[Remetentes] efeito autocadastro', {
-            fromCadastro,
-            isModalOpenRemetente,
-            wasModalClosedManually,
-            remetentesCount: remetentes?.length ?? null,
-            isLoading,
-        });
-        
-        if (
-            fromCadastro &&
-            !isLoading &&
-            !isModalOpenRemetente &&
-            !wasModalClosedManually &&
-            remetentes &&
-            remetentes.length === 0
-        ) {
-            console.log('[Remetentes] Abrindo modal por fluxo de autocadastro (sem remetentes após carga)');
-            setIsFromAutoCadastro(true);
-            setIsModalOpenRemetente(true);
-            navigate('/app/remetentes', { replace: true });
-        }
-    }, [searchParams, navigate, isModalOpenRemetente, wasModalClosedManually, remetentes, isLoading]);
-
-    const formatEndereco = (remetente: IRemetente) => {
-        const { endereco } = remetente;
-        if (!endereco) return 'Endereço não informado';
-        
-        const partes = [
-            endereco.logradouro,
-            endereco.numero,
-            endereco.complemento,
-            endereco.bairro,
-            `${endereco.localidade}/${endereco.uf}`
-        ].filter(Boolean);
-        
-        return partes.join(', ');
-    };
-
-    return (
-        <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background">
+  // Abrir modal automaticamente se veio do autocadastro (apenas quando NÃO houver remetentes já carregados)
+  useEffect(() => {
+    const fromCadastro = searchParams.get('from') === 'autocadastro';
+    console.log('[Remetentes] efeito autocadastro', {
+      fromCadastro,
+      isModalOpenRemetente,
+      wasModalClosedManually,
+      remetentesCount: remetentes?.length ?? null,
+      isLoading
+    });
+    if (fromCadastro && !isLoading && !isModalOpenRemetente && !wasModalClosedManually && remetentes && remetentes.length === 0) {
+      console.log('[Remetentes] Abrindo modal por fluxo de autocadastro (sem remetentes após carga)');
+      setIsFromAutoCadastro(true);
+      setIsModalOpenRemetente(true);
+      navigate('/app/remetentes', {
+        replace: true
+      });
+    }
+  }, [searchParams, navigate, isModalOpenRemetente, wasModalClosedManually, remetentes, isLoading]);
+  const formatEndereco = (remetente: IRemetente) => {
+    const {
+      endereco
+    } = remetente;
+    if (!endereco) return 'Endereço não informado';
+    const partes = [endereco.logradouro, endereco.numero, endereco.complemento, endereco.bairro, `${endereco.localidade}/${endereco.uf}`].filter(Boolean);
+    return partes.join(', ');
+  };
+  return <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background">
             {/* Header */}
             <div className="sticky top-0 z-40 bg-card/95 backdrop-blur-lg border-b border-border shadow-lg">
                 <div className="container mx-auto px-4 py-6">
@@ -88,10 +69,7 @@ export const ListaRemetenteModern = () => {
                             </p>
                         </div>
                         
-                        <button
-                            onClick={() => setIsModalOpenRemetente(true)}
-                            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors shadow-lg hover:shadow-xl"
-                        >
+                        <button onClick={() => setIsModalOpenRemetente(true)} className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors shadow-lg hover:shadow-xl text-slate-50">
                             <Plus size={20} />
                             <span className="hidden sm:inline">Adicionar Remetente</span>
                         </button>
@@ -103,13 +81,8 @@ export const ListaRemetenteModern = () => {
             <div className="container mx-auto px-4 py-8">
                 {isLoading && <LoadSpinner mensagem="Carregando remetentes..." />}
                 
-                {!isLoading && remetentes && remetentes.length > 0 && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {remetentes.map((remetente) => (
-                            <div
-                                key={remetente.id}
-                                className="bg-card border border-border rounded-xl p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02]"
-                            >
+                {!isLoading && remetentes && remetentes.length > 0 && <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {remetentes.map(remetente => <div key={remetente.id} className="bg-card border border-border rounded-xl p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02]">
                                 {/* Header do Card */}
                                 <div className="flex items-start justify-between mb-4">
                                     <div className="flex-1">
@@ -127,19 +100,15 @@ export const ListaRemetenteModern = () => {
 
                                 {/* Informações de Contato */}
                                 <div className="space-y-3 text-sm">
-                                    {remetente.email && (
-                                        <div className="flex items-center gap-2 text-muted-foreground">
+                                    {remetente.email && <div className="flex items-center gap-2 text-muted-foreground">
                                             <Mail size={16} className="flex-shrink-0" />
                                             <span className="truncate">{remetente.email}</span>
-                                        </div>
-                                    )}
+                                        </div>}
                                     
-                                    {remetente.celular && (
-                                        <div className="flex items-center gap-2 text-muted-foreground">
+                                    {remetente.celular && <div className="flex items-center gap-2 text-muted-foreground">
                                             <Phone size={16} className="flex-shrink-0" />
                                             <span>{remetente.celular}</span>
-                                        </div>
-                                    )}
+                                        </div>}
                                     
                                     <div className="flex items-start gap-2 text-muted-foreground pt-2 border-t border-border">
                                         <MapPin size={16} className="flex-shrink-0 mt-0.5" />
@@ -148,13 +117,10 @@ export const ListaRemetenteModern = () => {
                                         </span>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
+                            </div>)}
+                    </div>}
 
-                {!isLoading && (!remetentes || remetentes.length === 0) && (
-                    <div className="flex flex-col items-center justify-center py-16 px-4">
+                {!isLoading && (!remetentes || remetentes.length === 0) && <div className="flex flex-col items-center justify-center py-16 px-4">
                         <div className="p-6 bg-muted/50 rounded-full mb-6">
                             <User size={64} className="text-muted-foreground" />
                         </div>
@@ -164,26 +130,17 @@ export const ListaRemetenteModern = () => {
                         <p className="text-muted-foreground text-center max-w-md mb-6">
                             Adicione seu primeiro remetente para começar a emitir etiquetas de envio.
                         </p>
-                        <button
-                            onClick={() => setIsModalOpenRemetente(true)}
-                            className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors shadow-lg"
-                        >
+                        <button onClick={() => setIsModalOpenRemetente(true)} className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors shadow-lg">
                             <Plus size={20} />
                             Adicionar Primeiro Remetente
                         </button>
-                    </div>
-                )}
+                    </div>}
             </div>
 
-            <ModalCadastrarRemetente 
-                isOpen={isModalOpenRemetente} 
-                onCancel={() => {
-                    setIsModalOpenRemetente(false);
-                    setIsFromAutoCadastro(false);
-                    setWasModalClosedManually(true);
-                }}
-                showWelcomeMessage={isFromAutoCadastro}
-            />
-        </div>
-    );
+            <ModalCadastrarRemetente isOpen={isModalOpenRemetente} onCancel={() => {
+      setIsModalOpenRemetente(false);
+      setIsFromAutoCadastro(false);
+      setWasModalClosedManually(true);
+    }} showWelcomeMessage={isFromAutoCadastro} />
+        </div>;
 };
