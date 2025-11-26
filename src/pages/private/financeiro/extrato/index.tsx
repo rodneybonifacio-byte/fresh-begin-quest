@@ -133,6 +133,25 @@ export default function ExtratoCreditos() {
         }
     };
 
+    const corrigirConsumosIncorretos = async () => {
+        try {
+            toast.loading('Corrigindo consumos incorretos...', { id: 'corrigir-consumos' });
+            
+            const resultado = await ProcessarCreditosService.corrigirConsumosIncorretos();
+            
+            toast.success(`Correção concluída! ${resultado.corrigidas || 0} transações corrigidas, ${resultado.corretas || 0} já estavam corretas.`, { 
+                id: 'corrigir-consumos',
+                duration: 5000 
+            });
+            
+            // Recarregar dados após correção
+            await carregarDados();
+        } catch (error) {
+            console.error('Erro ao corrigir consumos:', error);
+            toast.error('Erro ao corrigir consumos incorretos', { id: 'corrigir-consumos' });
+        }
+    };
+
     const transacoesFiltradas = transacoes.filter(t => {
         if (filtroTipo === 'todos') return true;
         if (filtroTipo === 'bloqueado') {
@@ -175,6 +194,14 @@ export default function ExtratoCreditos() {
                     >
                         <RefreshCw className="w-4 h-4" />
                         <span className="text-sm font-medium">Processar Créditos</span>
+                    </button>
+                    <button
+                        onClick={corrigirConsumosIncorretos}
+                        className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2 shadow-sm"
+                        title="Corrigir transações consumidas incorretamente (etiquetas em PRE_POSTADO que foram consumidas)"
+                    >
+                        <AlertCircle className="w-4 h-4" />
+                        <span className="text-sm font-medium">Corrigir Consumos</span>
                     </button>
                 </div>
 
