@@ -23,6 +23,7 @@ const RelatorioDesempenho = lazy(() => import('../pages/site/RelatorioDesempenho
 const FaturaSimple = lazy(() => import('../pages/site/FaturaSimple'));
 const VisualizarPdf = lazy(() => import('../pages/site/VisualizarPdf'));
 const CadastroCliente = lazy(() => import('../pages/site/cadastro/cadastro-cliente').then(module => ({ default: module.CadastroCliente })));
+const CadastroRemetente = lazy(() => import('../pages/site/cadastro/cadastro-remetente').then(module => ({ default: module.CadastroRemetente })));
 
 // Loading component
 const LoadingFallback = () => (
@@ -61,6 +62,7 @@ export const RouterBase = () => {
                         <Route path="/login" element={<Login />} />
                         <Route path="/recuperar-senha" element={<RecuperarSenha />} />
                         <Route path="/cadastro-cliente" element={<CadastroCliente />} />
+                        <Route path="/cadastro-remetente" element={<CadastroRemetente />} />
                     </Route>
 
                     {/* Grupo /app */}
