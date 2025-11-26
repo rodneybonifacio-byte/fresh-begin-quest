@@ -2,14 +2,14 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../../../../providers/AuthContext";
 import { CreditoService, ITransacaoCredito } from "../../../../services/CreditoService";
 import { formatCurrencyWithCents } from "../../../../utils/formatCurrency";
-import { Receipt, ArrowUpCircle, ArrowDownCircle, Clock, AlertCircle, Filter, RefreshCw } from "lucide-react";
+import { Receipt, ArrowUpCircle, ArrowDownCircle, Clock, AlertCircle, Filter } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "../../../../integrations/supabase/client";
 import { useRecargaPixRealtime } from "../../../../hooks/useRecargaPixRealtime";
 import { toast } from "sonner";
 import { ExplicacaoRegraBloqueio } from "../../../../components/ExplicacaoRegraBloqueio";
-import { ProcessarCreditosService } from "../../../../services/ProcessarCreditosService";
+
 
 export default function ExtratoCreditos() {
     const { user } = useAuth();
@@ -88,12 +88,14 @@ export default function ExtratoCreditos() {
                 service.calcularCreditosConsumidos(user.clienteId)
             ]);
             
+            // Recargas são todas do tipo recarga (incluindo estornos que também são recargas)
             const totalRecargas = extratoData
                 .filter(t => t.tipo === 'recarga')
                 .reduce((acc, t) => acc + Number(t.valor), 0);
             
             const quantidadeRecargas = extratoData.filter(t => t.tipo === 'recarga').length;
             const quantidadeBloqueados = extratoData.filter(t => t.status === 'bloqueado').length;
+            // Consumidos são apenas os que foram efetivamente consumidos (status='consumido')
             const quantidadeConsumos = extratoData.filter(t => t.tipo === 'consumo' && t.status === 'consumido').length;
             
             setTransacoes(extratoData);
@@ -114,43 +116,6 @@ export default function ExtratoCreditos() {
         }
     };
 
-    const processarCreditosBloqueados = async () => {
-        try {
-            toast.loading('Processando créditos bloqueados...', { id: 'processar-creditos' });
-            
-            const resultado = await ProcessarCreditosService.executarProcessamento();
-            
-            toast.success(`Processamento concluído! ${resultado.consumidas || 0} consumidas, ${resultado.liberadas || 0} liberadas, ${resultado.mantidas || 0} mantidas.`, { 
-                id: 'processar-creditos',
-                duration: 5000 
-            });
-            
-            // Recarregar dados após processamento
-            await carregarDados();
-        } catch (error) {
-            console.error('Erro ao processar créditos:', error);
-            toast.error('Erro ao processar créditos bloqueados', { id: 'processar-creditos' });
-        }
-    };
-
-    const corrigirConsumosIncorretos = async () => {
-        try {
-            toast.loading('Corrigindo consumos incorretos...', { id: 'corrigir-consumos' });
-            
-            const resultado = await ProcessarCreditosService.corrigirConsumosIncorretos();
-            
-            toast.success(`Correção concluída! ${resultado.corrigidas || 0} transações corrigidas, ${resultado.corretas || 0} já estavam corretas.`, { 
-                id: 'corrigir-consumos',
-                duration: 5000 
-            });
-            
-            // Recarregar dados após correção
-            await carregarDados();
-        } catch (error) {
-            console.error('Erro ao corrigir consumos:', error);
-            toast.error('Erro ao corrigir consumos incorretos', { id: 'corrigir-consumos' });
-        }
-    };
 
     const transacoesFiltradas = transacoes.filter(t => {
         if (filtroTipo === 'todos') return true;
@@ -187,22 +152,6 @@ export default function ExtratoCreditos() {
                         <h1 className="text-3xl font-bold text-foreground">Extrato de Créditos</h1>
                         <p className="text-muted-foreground">Histórico completo de transações</p>
                     </div>
-                    <button
-                        onClick={processarCreditosBloqueados}
-                        className="ml-auto px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2 shadow-sm"
-                        title="Processar créditos bloqueados (verifica status das etiquetas e consome/libera créditos)"
-                    >
-                        <RefreshCw className="w-4 h-4" />
-                        <span className="text-sm font-medium">Processar Créditos</span>
-                    </button>
-                    <button
-                        onClick={corrigirConsumosIncorretos}
-                        className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2 shadow-sm"
-                        title="Corrigir transações consumidas incorretamente (etiquetas em PRE_POSTADO que foram consumidas)"
-                    >
-                        <AlertCircle className="w-4 h-4" />
-                        <span className="text-sm font-medium">Corrigir Consumos</span>
-                    </button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
