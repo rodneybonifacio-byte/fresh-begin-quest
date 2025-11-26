@@ -1,5 +1,11 @@
 project_id = "xikvfybxthvqhpjbrszp"
 
+[functions.processar-creditos-bloqueados]
+verify_jwt = false
+
+[functions._cron.processar-creditos]
+verify_jwt = false
+
 [functions.banco-inter-create-charge]
 verify_jwt = false
 
