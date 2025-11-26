@@ -136,28 +136,16 @@ export const Login = () => {
 
                     <div className="mt-6 pt-6 border-t border-border">
                         <div className="text-center mb-4">
-                            <span className="text-sm text-muted-foreground">Novo por aqui? Cadastre-se como:</span>
+                            <span className="text-sm text-muted-foreground">Novo por aqui?</span>
                         </div>
                         
-                        <div className="flex flex-col gap-3">
-                            <ButtonComponent 
-                                type="button"
-                                disabled={true}
-                                onClick={() => navigate('/cadastro-cliente')}
-                                className="w-full bg-secondary hover:bg-secondary/80 text-secondary-foreground py-3 rounded-xl font-semibold transition-all hover:-translate-y-0.5 opacity-60 cursor-not-allowed"
-                            >
-                                Criar Conta - Cliente
-                                <span className="ml-2 text-xs">(em breve)</span>
-                            </ButtonComponent>
-                            
-                            <ButtonComponent 
-                                type="button"
-                                onClick={() => navigate('/cadastro-remetente')}
-                                className="w-full bg-accent hover:bg-accent/90 text-accent-foreground py-3 rounded-xl font-semibold transition-all hover:-translate-y-0.5 shadow-md hover:shadow-lg"
-                            >
-                                Criar Conta - Remetente
-                            </ButtonComponent>
-                        </div>
+                        <ButtonComponent 
+                            type="button"
+                            onClick={() => navigate('/cadastro-cliente')}
+                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-3 rounded-xl font-semibold transition-all hover:-translate-y-0.5 shadow-md hover:shadow-lg"
+                        >
+                            Criar Conta
+                        </ButtonComponent>
                     </div>
                 </div>
             </div>
