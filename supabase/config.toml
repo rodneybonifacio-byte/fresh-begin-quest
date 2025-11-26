@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.banco-inter-create-boleto]
 verify_jwt = false
+
+[functions.cancelar-etiqueta-admin]
+verify_jwt = false

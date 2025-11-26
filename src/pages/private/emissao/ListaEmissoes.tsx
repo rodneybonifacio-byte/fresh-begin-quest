@@ -145,23 +145,27 @@ export const ListaEmissoes = () => {
 
         setIsLoading(true);
         try {
-            // Cancelar etiqueta via API com código e motivo
-            await service.cancelarEmissao({ 
-                codigoObjeto: emissao.codigoObjeto,
-                motivo: motivo.trim()
-            });
-
-            // Liberar crédito bloqueado
-            const { error } = await supabase.rpc('liberar_credito_bloqueado', {
-                p_emissao_id: emissao.id,
-                p_codigo_objeto: emissao.codigoObjeto
+            // Cancelar etiqueta usando edge function com credenciais de admin
+            const { data, error } = await supabase.functions.invoke('cancelar-etiqueta-admin', {
+                body: {
+                    codigoObjeto: emissao.codigoObjeto,
+                    motivo: motivo.trim(),
+                    emissaoId: emissao.id
+                }
             });
 
             if (error) {
-                console.error('Erro ao liberar crédito:', error);
-                toast.error('Etiqueta cancelada, mas houve erro ao extornar o crédito');
+                throw new Error(error.message);
+            }
+
+            if (!data.success) {
+                throw new Error(data.error || 'Erro ao cancelar etiqueta');
+            }
+
+            if (data.warning) {
+                toast.warning(data.warning);
             } else {
-                toast.success('Etiqueta cancelada e valor extornado com sucesso!');
+                toast.success(data.message || 'Etiqueta cancelada e valor extornado com sucesso!');
             }
 
             // Recarregar dados
