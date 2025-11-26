@@ -109,6 +109,8 @@ export const ModalCadastrarRemetente: React.FC<{
             queryClient.invalidateQueries({ queryKey: ["remetentes"] });
             queryClient.invalidateQueries({ queryKey: ["dados-usuario-completos"] });
             toast.success("Remetente cadastrado com sucesso!", { duration: 5000, position: "top-center" });
+            reset();
+            setCurrentStep(1);
             onCancel?.();
         },
         onError: (error) => {
@@ -123,8 +125,6 @@ export const ModalCadastrarRemetente: React.FC<{
         setIsLoading(true);
         try {
             await mutation.mutateAsync(data);
-            reset();
-            setCurrentStep(1); // Reset step on success
         } catch (error) {
             console.error(error);
         }
