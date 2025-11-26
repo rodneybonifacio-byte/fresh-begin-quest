@@ -44,9 +44,11 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
                 return;
             }
 
-            // Concatenar boleto + fatura se ambos existirem
-            let pdfBase64 = '';
+            // Criar blob do PDF (concatenado ou individual)
+            let blob: Blob;
+            
             if (fechamentoData.boletoPdf && fechamentoData.faturaPdf) {
+                // Concatenar boleto + fatura
                 const { PDFDocument } = await import('pdf-lib');
                 
                 const boletoPdfDoc = await PDFDocument.load(fechamentoData.boletoPdf);
@@ -60,10 +62,18 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
                 faturaCopiedPages.forEach((page) => mergedPdf.addPage(page));
                 
                 const mergedPdfBytes = await mergedPdf.save();
-                pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(mergedPdfBytes)));
+                blob = new Blob([new Uint8Array(mergedPdfBytes)], { type: 'application/pdf' });
             } else {
-                // Usar o PDF disponível (boleto ou fatura)
-                pdfBase64 = fechamentoData.boletoPdf || fechamentoData.faturaPdf;
+                // Converter base64 existente para Blob
+                const pdfBase64 = fechamentoData.boletoPdf || fechamentoData.faturaPdf;
+                const base64Data = pdfBase64.includes('base64,') ? pdfBase64.split('base64,')[1] : pdfBase64;
+                const byteCharacters = atob(base64Data);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                blob = new Blob([byteArray], { type: 'application/pdf' });
             }
 
             // Buscar celular do remetente
@@ -79,16 +89,6 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
             } catch (error) {
                 console.warn('Não foi possível buscar celular do remetente:', error);
             }
-
-            // Converter base64 para Blob e fazer upload para Storage
-            const base64Data = pdfBase64.includes('base64,') ? pdfBase64.split('base64,')[1] : pdfBase64;
-            const byteCharacters = atob(base64Data);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-                byteNumbers[i] = byteCharacters.charCodeAt(i);
-            }
-            const byteArray = new Uint8Array(byteNumbers);
-            const blob = new Blob([byteArray], { type: 'application/pdf' });
 
             // Upload para Supabase Storage
             const fileName = `fatura_${fatura.id}_${Date.now()}.pdf`;
