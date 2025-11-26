@@ -48,6 +48,11 @@ serve(async (req) => {
     if (remetentesResponse.ok) {
       remetentesData = await remetentesResponse.json();
       console.log('✅ Remetentes encontrados:', remetentesData.data?.length || 0);
+    } else if (remetentesResponse.status === 403) {
+      // 403 significa que o usuário não tem remetentes ou não tem permissão
+      // Tratamos como lista vazia ao invés de erro
+      console.log('ℹ️ Usuário sem remetentes cadastrados (403)');
+      remetentesData = { data: [] };
     } else {
       const errorText = await remetentesResponse.text();
       console.error('❌ Erro ao buscar remetentes:', errorText);
