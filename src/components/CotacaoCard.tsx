@@ -127,8 +127,8 @@ export const CotacaoCard = ({ cotacao, onSelect, isSelected = false, showSelectB
                         }}
                         className={`w-full py-3 px-6 rounded-xl text-base font-bold transition-all duration-300 shadow-md ${
                             isSelected
-                                ? 'bg-primary text-white shadow-primary/50 scale-105'
-                                : 'bg-secondary text-secondary-foreground hover:bg-primary hover:text-white hover:shadow-lg hover:scale-105'
+                                ? 'bg-primary text-primary-foreground shadow-primary/50 scale-105'
+                                : 'bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground hover:shadow-lg hover:scale-105'
                         }`}
                     >
                         {isSelected ? '✓ Frete Selecionado' : 'Selecionar Frete'}

@@ -6,7 +6,7 @@ const buttonVariants = tv({
     base: 'p-6 py-[14px] flex justify-center items-center gap-2 rounded-lg text-base font-medium disabled:bg-disabled disabled:text-disabledSecondary disabled:cursor-pointer',
     variants: {
         variant: {
-            primary: 'bg-primary text-white hover:bg-btnhover',
+            primary: 'bg-primary text-primary-foreground hover:bg-primary/90',
             secondary: 'bg-secondary text-neutral-50 hover:bg-secondary/80',
             ghost: 'bg-ghost text-primary hover:text-secondary'
         },

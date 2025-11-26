@@ -72,7 +72,7 @@ export const ModernHome = () => {
                             Venda mais com fretes <strong className="text-primary">até 80% mais baratos</strong> com a BRHUB: 
                             sem mensalidades ou taxas escondidas
                         </p>
-                        <button onClick={() => navigate('/app/emissao/adicionar')} className="bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-full text-lg font-bold shadow-2xl shadow-primary/40 transition-all duration-300 hover:scale-105 hover:shadow-primary/50">
+                        <button onClick={() => navigate('/app/emissao/adicionar')} className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-4 rounded-full text-lg font-bold shadow-2xl shadow-primary/40 transition-all duration-300 hover:scale-105 hover:shadow-primary/50">
                             Emitir frete com desconto
                         </button>
                     </div>
@@ -136,7 +136,7 @@ export const ModernHome = () => {
                                 </div>
                             </div>
 
-                            <button type="submit" disabled={isLoadingCotacao} className="w-full bg-primary hover:bg-primary/90 text-white py-4 rounded-xl font-bold text-lg shadow-2xl shadow-primary/40 transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed">
+                            <button type="submit" disabled={isLoadingCotacao} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-4 rounded-xl font-bold text-lg shadow-2xl shadow-primary/40 transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed">
                                 {isLoadingCotacao ? "Calculando..." : "Calcular frete com desconto"}
                             </button>
                         </form>
@@ -385,7 +385,7 @@ export const ModernHome = () => {
                     <p className="text-lg text-muted-foreground mb-8">
                         Comece agora mesmo a emitir fretes com desconto
                     </p>
-                    <button onClick={() => navigate('/app/emissao/adicionar')} className="bg-primary hover:bg-primary/90 text-white px-8 py-4 rounded-full text-lg font-bold shadow-2xl shadow-primary/40 transition-all duration-300 hover:scale-105 inline-flex items-center gap-2">
+                    <button onClick={() => navigate('/app/emissao/adicionar')} className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-4 rounded-full text-lg font-bold shadow-2xl shadow-primary/40 transition-all duration-300 hover:scale-105 inline-flex items-center gap-2">
                         <Plus className="h-5 w-5" />
                         Criar primeira etiqueta
                     </button>
