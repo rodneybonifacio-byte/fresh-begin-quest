@@ -45,21 +45,20 @@ export const ListaRemetente = () => {
         console.log('🔍 Verificando remetentes:', { 
             isLoading, 
             remetentesLength: remetentes?.length,
+            isError,
             isModalOpen: isModalOpenRemetente 
         });
 
-        if (!isLoading && remetentes !== undefined) {
-            if (remetentes.length === 0 && !isModalOpenRemetente) {
-                console.log('✅ Abrindo modal - usuário sem remetentes');
-                setIsModalOpenRemetente(true);
-            } else {
-                console.log('ℹ️ Modal não aberto:', {
-                    temRemetentes: remetentes.length > 0,
-                    modalJaAberto: isModalOpenRemetente
-                });
-            }
+        if (isLoading) return;
+
+        const qtdRemetentes = remetentes?.length ?? 0;
+
+        // Se não conseguiu carregar a lista (erro) ou não há remetentes, abre o modal
+        if ((isError || qtdRemetentes === 0) && !isModalOpenRemetente) {
+            console.log('✅ Abrindo modal - nenhum remetente disponível (lista vazia ou erro ao buscar)');
+            setIsModalOpenRemetente(true);
         }
-    }, [isLoading, remetentes]);
+    }, [isLoading, remetentes, isError, isModalOpenRemetente]);
 
     const contentButton: ContentButtonProps[] = [
         {
