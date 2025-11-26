@@ -1,6 +1,7 @@
 // @ts-nocheck
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -143,7 +144,50 @@ serve(async (req) => {
       throw new Error('Resposta inválida da API');
     }
 
-    console.log('✅ Remetente criado com sucesso!');
+    console.log('✅ Remetente criado com sucesso na API externa! Sincronizando com o banco...');
+
+    // 3. Sincronizar remetente no banco (tabela remetentes)
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('❌ Variáveis de ambiente do banco não configuradas');
+      throw new Error('Configuração do banco incompleta');
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const enderecoApi = remetenteResponse.endereco || requestBody.endereco || {};
+
+    const remetenteRow = {
+      id: remetenteResponse.id,
+      cliente_id: clienteId,
+      nome: remetenteResponse.nome?.trim() || requestBody.nome.trim(),
+      cpf_cnpj: (remetenteResponse.cpfCnpj || requestBody.cpfCnpj).replace(/\D/g, ''),
+      documento_estrangeiro: remetenteResponse.documentoEstrangeiro || requestBody.documentoEstrangeiro || null,
+      celular: remetenteResponse.celular || requestBody.celular || null,
+      telefone: remetenteResponse.telefone || requestBody.telefone || null,
+      email: remetenteResponse.email || requestBody.email.trim(),
+      cep: (enderecoApi.cep || '').toString().replace(/\D/g, ''),
+      logradouro: enderecoApi.logradouro || null,
+      numero: enderecoApi.numero || null,
+      complemento: enderecoApi.complemento || null,
+      bairro: enderecoApi.bairro || null,
+      localidade: enderecoApi.localidade || null,
+      uf: enderecoApi.uf || null,
+      sincronizado_em: new Date().toISOString(),
+    };
+
+    const { error: upsertError } = await supabase
+      .from('remetentes')
+      .upsert(remetenteRow, { onConflict: 'id' });
+
+    if (upsertError) {
+      console.error('❌ Erro ao sincronizar remetente no banco:', upsertError);
+      throw new Error('Remetente criado, mas falha ao sincronizar dados.');
+    }
+
+    console.log('✅ Remetente sincronizado com sucesso no banco!');
 
     return new Response(
       JSON.stringify({
