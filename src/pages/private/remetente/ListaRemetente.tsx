@@ -23,42 +23,45 @@ export const ListaRemetente = () => {
 
     const service = new RemetenteService();
 
-    // Detectar se veio do autocadastro e abrir modal de cadastro automaticamente
-    useEffect(() => {
-        const fromCadastro = searchParams.get('from') === 'autocadastro';
-        if (fromCadastro) {
-            setIsFromAutoCadastro(true);
-            setIsModalOpenRemetente(true);
-            // Limpar o parâmetro da URL
-            navigate('/app/remetentes', { replace: true });
-        }
-    }, [searchParams, navigate]);
-
     const { data: remetentes, isLoading, isError } = useFetchQuery<IRemetente[]>(
         ['remetentes'],
         async () => (await service.getAll()).data
     )
     const [data, setData] = useState<IRemetente[]>(); // Dados carregados
 
-    // Abrir modal automaticamente se não houver remetentes cadastrados
+    // Abrir modal automaticamente quando: 
+    // 1. Veio do autocadastro (parâmetro from=autocadastro na URL), OU
+    // 2. Não há remetentes cadastrados (lista vazia ou erro ao buscar)
     useEffect(() => {
+        const fromCadastro = searchParams.get('from') === 'autocadastro';
+        
         console.log('🔍 Verificando remetentes:', { 
-            isLoading, 
+            isLoading,
+            fromCadastro,
             remetentesLength: remetentes?.length,
             isError,
             isModalOpen: isModalOpenRemetente 
         });
 
-        if (isLoading) return;
+        if (isLoading || isModalOpenRemetente) return;
 
         const qtdRemetentes = remetentes?.length ?? 0;
+        const shouldOpenModal = fromCadastro || isError || qtdRemetentes === 0;
 
-        // Se não conseguiu carregar a lista (erro) ou não há remetentes, abre o modal
-        if ((isError || qtdRemetentes === 0) && !isModalOpenRemetente) {
-            console.log('✅ Abrindo modal - nenhum remetente disponível (lista vazia ou erro ao buscar)');
+        if (shouldOpenModal) {
+            console.log('✅ Abrindo modal:', {
+                motivo: fromCadastro ? 'veio do autocadastro' : (isError ? 'erro ao buscar' : 'sem remetentes')
+            });
+            
+            setIsFromAutoCadastro(fromCadastro);
             setIsModalOpenRemetente(true);
+            
+            // Limpar o parâmetro da URL se veio do autocadastro
+            if (fromCadastro) {
+                navigate('/app/remetentes', { replace: true });
+            }
         }
-    }, [isLoading, remetentes, isError, isModalOpenRemetente]);
+    }, [isLoading, remetentes, isError, searchParams, navigate, isModalOpenRemetente]);
 
     const contentButton: ContentButtonProps[] = [
         {
