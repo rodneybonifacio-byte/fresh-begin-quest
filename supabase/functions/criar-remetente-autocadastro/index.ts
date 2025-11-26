@@ -14,7 +14,7 @@ serve(async (req) => {
 
   try {
     const requestBody = await req.json();
-    console.log('📋 Recebendo requisição de cadastro de remetente:', { ...requestBody, senha: '***' });
+    console.log('📋 Recebendo requisição de cadastro de remetente:', { ...requestBody, senha: '***', apiToken: '***' });
 
     // Validar campos obrigatórios
     if (!requestBody.nome || !requestBody.cpfCnpj || !requestBody.email) {
@@ -24,6 +24,22 @@ serve(async (req) => {
     if (!requestBody.endereco || !requestBody.endereco.cep) {
       throw new Error('Endereço completo é obrigatório');
     }
+
+    // Validar token do usuário
+    if (!requestBody.apiToken) {
+      throw new Error('Token do usuário não fornecido');
+    }
+
+    // Decodificar o token do usuário para obter o clienteId
+    const userTokenPayload = JSON.parse(atob(requestBody.apiToken.split('.')[1]));
+    const clienteId = userTokenPayload.clienteId;
+
+    if (!clienteId) {
+      console.error('❌ clienteId não encontrado no token do usuário');
+      throw new Error('Falha ao obter ID do cliente do token');
+    }
+
+    console.log('✅ ClienteId do usuário:', clienteId);
 
     // Obter credenciais da API externa
     const apiBaseUrl = Deno.env.get('BASE_API_URL');
@@ -35,9 +51,9 @@ serve(async (req) => {
       throw new Error('Configuração do servidor incompleta');
     }
 
-    console.log('🔐 Fazendo login na API externa...');
+    console.log('🔐 Fazendo login com credenciais de admin na API externa...');
     
-    // 1. Fazer login para obter token
+    // 1. Fazer login com credenciais de admin para obter token com permissões
     const loginResponse = await fetch(`${apiBaseUrl}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -60,10 +76,11 @@ serve(async (req) => {
       throw new Error('Token de autenticação não recebido');
     }
 
-    console.log('✅ Login realizado com sucesso');
+    console.log('✅ Login admin realizado com sucesso');
 
-    // 2. Criar remetente na API externa
+    // 2. Criar remetente na API externa com clienteId do usuário
     const remetenteData = {
+      clienteId: clienteId, // ClienteId do usuário, não do admin
       nome: requestBody.nome.trim(),
       cpfCnpj: requestBody.cpfCnpj.replace(/\D/g, ''),
       documentoEstrangeiro: requestBody.documentoEstrangeiro || '',
@@ -81,13 +98,13 @@ serve(async (req) => {
       },
     };
 
-    console.log('📤 Enviando dados do remetente para API externa...');
+    console.log('📤 Enviando dados do remetente para API externa com clienteId:', clienteId);
 
     const createRemetenteResponse = await fetch(`${apiBaseUrl}/remetentes`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`,
+        'Authorization': `Bearer ${authToken}`, // Token admin para permissões
       },
       body: JSON.stringify(remetenteData),
     });
