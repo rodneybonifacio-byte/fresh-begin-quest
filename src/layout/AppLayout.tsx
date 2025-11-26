@@ -13,12 +13,27 @@ const AppLayoutContent = () => {
     const [verificacaoFeita, setVerificacaoFeita] = useState(false);
 
     useEffect(() => {
+        console.log('[AppLayout] useEffect disparado', { verificacaoFeita });
+
         const verificarRemetentes = async () => {
             const token = localStorage.getItem('token');
             const jaVerificouNessaSessao = sessionStorage.getItem('remetente_verificado');
+
+            console.log('[AppLayout] verificarRemetentes: início', {
+                temToken: !!token,
+                verificacaoFeita,
+                jaVerificouNessaSessao,
+            });
             
             // Só verifica se tiver token e ainda não verificou NESTA SESSÃO
             if (!token || verificacaoFeita || jaVerificouNessaSessao) {
+                console.log('[AppLayout] verificação ignorada', {
+                    motivo: !token
+                        ? 'sem_token'
+                        : verificacaoFeita
+                            ? 'verificacaoFeita_state'
+                            : 'sessionStorage_remetente_verificado',
+                });
                 return;
             }
 
@@ -29,7 +44,7 @@ const AppLayoutContent = () => {
 
                 console.log('🔍 AppLayout verificação:', {
                     quantidadeRemetentes: remetentes.length,
-                    remetentes: remetentes
+                    remetentes,
                 });
 
                 // Marca como verificado antes de decidir abrir modal
@@ -38,13 +53,13 @@ const AppLayoutContent = () => {
 
                 // Se não houver remetentes cadastrados, abre o modal explicativo
                 if (remetentes.length === 0) {
-                    console.log('⚠️ Nenhum remetente encontrado, abrindo modal');
+                    console.log('⚠️ [AppLayout] Nenhum remetente encontrado, abrindo modal GLOBAL');
                     setIsRemetenteModalOpen(true);
                 } else {
-                    console.log('✅ Remetente(s) encontrado(s), não abre modal');
+                    console.log('✅ [AppLayout] Remetente(s) encontrado(s), NÃO abre modal');
                 }
             } catch (error) {
-                console.error('❌ Erro ao verificar remetentes do cliente:', error);
+                console.error('❌ [AppLayout] Erro ao verificar remetentes do cliente:', error);
                 setVerificacaoFeita(true);
                 sessionStorage.setItem('remetente_verificado', 'true');
             }
@@ -52,6 +67,12 @@ const AppLayoutContent = () => {
 
         void verificarRemetentes();
     }, [verificacaoFeita]);
+
+    useEffect(() => {
+        console.log('[AppLayout] estado do modal global de remetente:', {
+            isRemetenteModalOpen,
+        });
+    }, [isRemetenteModalOpen]);
 
     return (
         <>
