@@ -189,10 +189,15 @@ serve(async (req: Request) => {
     const result = await response.json()
     console.log('✅ Cliente criado com sucesso:', result)
 
+    // Extrair o ID do cliente criado
+    const clienteId = result.data?.id || result.id
+    console.log('📋 Cliente ID:', clienteId)
+
     // 3. Criar o remetente com os mesmos dados
     console.log('📤 Criando remetente associado ao cliente...')
     
     const remetenteData = {
+      clienteId: clienteId,
       nome: clienteData.nomeEmpresa.trim(),
       cpfCnpj: clienteData.cpfCnpj,
       documentoEstrangeiro: '',
@@ -201,6 +206,8 @@ serve(async (req: Request) => {
       email: clienteData.email.trim(),
       endereco: clienteData.endereco,
     }
+
+    console.log('📤 Dados do remetente:', JSON.stringify(remetenteData, null, 2))
 
     const createRemetenteResponse = await fetch(`${baseApiUrl}/remetentes`, {
       method: 'POST',
@@ -212,10 +219,10 @@ serve(async (req: Request) => {
     })
 
     const remetenteResponseText = await createRemetenteResponse.text()
-    console.log('📥 Resposta do remetente:', remetenteResponseText.substring(0, 200))
+    console.log('📥 Resposta do remetente:', remetenteResponseText.substring(0, 500))
 
     if (!createRemetenteResponse.ok) {
-      console.error('⚠️ Erro ao criar remetente (não crítico):', remetenteResponseText)
+      console.error('⚠️ Erro ao criar remetente:', remetenteResponseText)
       // Não falhar todo o processo se remetente falhar
     } else {
       console.log('✅ Remetente criado com sucesso!')
