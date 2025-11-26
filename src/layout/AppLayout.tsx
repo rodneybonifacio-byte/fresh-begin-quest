@@ -10,9 +10,17 @@ const AppLayoutContent = () => {
     useSyncUserData();
 
     const [isRemetenteModalOpen, setIsRemetenteModalOpen] = useState(false);
+    const [verificacaoFeita, setVerificacaoFeita] = useState(false);
 
     useEffect(() => {
         const verificarRemetentes = async () => {
+            const token = localStorage.getItem('token');
+            
+            // Só verifica se tiver token e ainda não verificou
+            if (!token || verificacaoFeita) {
+                return;
+            }
+
             try {
                 const service = new RemetenteSupabaseDirectService();
                 const response = await service.getAll();
@@ -23,6 +31,9 @@ const AppLayoutContent = () => {
                     remetentes: remetentes
                 });
 
+                // Marca como verificado antes de decidir abrir modal
+                setVerificacaoFeita(true);
+
                 // Se não houver remetentes cadastrados, abre o modal explicativo
                 if (remetentes.length === 0) {
                     console.log('⚠️ Nenhum remetente encontrado, abrindo modal');
@@ -32,14 +43,12 @@ const AppLayoutContent = () => {
                 }
             } catch (error) {
                 console.error('❌ Erro ao verificar remetentes do cliente:', error);
-                // Se houver erro (ex: sem token, sem remetentes), abre modal
-                console.log('⚠️ Erro ao buscar remetentes, abrindo modal para cadastro');
-                setIsRemetenteModalOpen(true);
+                setVerificacaoFeita(true);
             }
         };
 
         void verificarRemetentes();
-    }, []);
+    }, [verificacaoFeita]);
 
     return (
         <>
