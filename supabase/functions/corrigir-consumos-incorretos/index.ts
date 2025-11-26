@@ -110,47 +110,27 @@ Deno.serve(async (req) => {
 
         const emissaoData = await emissaoResponse.json()
         const statusEtiqueta = (emissaoData.data?.status || '').toUpperCase()
-        const codigoObjeto = emissaoData.data?.codigoObjeto || null
 
         console.log(`📊 Status da etiqueta: ${statusEtiqueta}`)
 
-        // 4. Se está em PRE_POSTADO, foi consumida incorretamente - CORRIGIR
+        // 4. Se está em PRE_POSTADO, foi consumida incorretamente - DELETAR
         if (statusEtiqueta === 'PRE_POSTADO') {
-          console.log('❗ INCORRETA! Etiqueta em PRE_POSTADO foi consumida. Criando estorno...')
+          console.log('❗ INCORRETA! Etiqueta em PRE_POSTADO foi consumida. Deletando consumo incorreto...')
           
-          // Criar transação de estorno (recarga) para devolver o crédito
-          const { error: estornoError } = await supabaseClient
+          // Deletar a transação de consumo incorreta
+          const { error: deleteError } = await supabaseClient
             .from('transacoes_credito')
-            .insert({
-              cliente_id: transacao.cliente_id,
-              tipo: 'recarga',
-              valor: Math.abs(transacao.valor),
-              status: 'consumido',
-              descricao: `Estorno de consumo incorreto - Etiqueta ${codigoObjeto || transacao.emissao_id} (PRE_POSTADO expirada)`,
-              emissao_id: transacao.emissao_id,
-            })
+            .delete()
+            .eq('id', transacao.id)
 
-          if (estornoError) {
-            console.error('❌ Erro ao criar estorno:', estornoError)
-            erros.push(`Transação ${transacao.id}: erro ao criar estorno`)
+          if (deleteError) {
+            console.error('❌ Erro ao deletar transação:', deleteError)
+            erros.push(`Transação ${transacao.id}: erro ao deletar`)
             continue
           }
 
-          // Atualizar a transação original para registrar a correção
-          const { error: updateError } = await supabaseClient
-            .from('transacoes_credito')
-            .update({
-              descricao: `${transacao.descricao} [CORRIGIDO - era PRE_POSTADO]`,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', transacao.id)
-
-          if (updateError) {
-            console.error('❌ Erro ao atualizar transação:', updateError)
-          }
-
           corrigidas++
-          console.log(`✅ Estorno criado: R$ ${Math.abs(transacao.valor)}`)
+          console.log(`✅ Consumo incorreto deletado: R$ ${Math.abs(transacao.valor)}`)
         } else {
           console.log(`✅ Transação correta - Etiqueta realmente foi postada (${statusEtiqueta})`)
         }
