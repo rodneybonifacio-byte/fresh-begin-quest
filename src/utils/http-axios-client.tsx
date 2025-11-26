@@ -55,7 +55,8 @@ export class CustomHttpClient implements IHttpClient {
                 }
 
                 if (status === 403) {
-                    toastError('Você não tem permissão para acessar este recurso.');
+                    // Não mostra toast automaticamente para permitir tratamento específico nos componentes
+                    console.warn('⚠️ Acesso negado (403) para:', error.config?.url);
                     throw new Error('Acesso negado.');
                 }
 
