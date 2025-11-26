@@ -17,29 +17,21 @@ export const ListaRemetenteModern = () => {
 
     const service = new RemetenteSupabaseDirectService();
 
-    const { data: remetentes, isLoading, isError } = useFetchQuery<IRemetente[]>(
+    const { data: remetentes, isLoading } = useFetchQuery<IRemetente[]>(
         ['remetentes'],
         async () => (await service.getAll()).data
     );
 
-    // Abrir modal automaticamente quando necessário
+    // Abrir modal automaticamente APENAS quando vier do autocadastro via URL
     useEffect(() => {
         const fromCadastro = searchParams.get('from') === 'autocadastro';
         
-        if (isLoading || isModalOpenRemetente || wasModalClosedManually) return;
-
-        const qtdRemetentes = remetentes?.length ?? 0;
-        const shouldOpenModal = fromCadastro || isError || qtdRemetentes === 0;
-
-        if (shouldOpenModal) {
-            setIsFromAutoCadastro(fromCadastro);
+        if (fromCadastro && !isModalOpenRemetente && !wasModalClosedManually) {
+            setIsFromAutoCadastro(true);
             setIsModalOpenRemetente(true);
-            
-            if (fromCadastro) {
-                navigate('/app/remetentes', { replace: true });
-            }
+            navigate('/app/remetentes', { replace: true });
         }
-    }, [isLoading, remetentes, isError, searchParams, navigate, isModalOpenRemetente, wasModalClosedManually]);
+    }, [searchParams, navigate, isModalOpenRemetente, wasModalClosedManually]);
 
     const formatEndereco = (remetente: IRemetente) => {
         const { endereco } = remetente;
