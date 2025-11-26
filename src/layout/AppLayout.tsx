@@ -15,9 +15,10 @@ const AppLayoutContent = () => {
     useEffect(() => {
         const verificarRemetentes = async () => {
             const token = localStorage.getItem('token');
+            const jaVerificouNessaSessao = sessionStorage.getItem('remetente_verificado');
             
-            // Só verifica se tiver token e ainda não verificou
-            if (!token || verificacaoFeita) {
+            // Só verifica se tiver token e ainda não verificou NESTA SESSÃO
+            if (!token || verificacaoFeita || jaVerificouNessaSessao) {
                 return;
             }
 
@@ -33,6 +34,7 @@ const AppLayoutContent = () => {
 
                 // Marca como verificado antes de decidir abrir modal
                 setVerificacaoFeita(true);
+                sessionStorage.setItem('remetente_verificado', 'true');
 
                 // Se não houver remetentes cadastrados, abre o modal explicativo
                 if (remetentes.length === 0) {
@@ -44,6 +46,7 @@ const AppLayoutContent = () => {
             } catch (error) {
                 console.error('❌ Erro ao verificar remetentes do cliente:', error);
                 setVerificacaoFeita(true);
+                sessionStorage.setItem('remetente_verificado', 'true');
             }
         };
 
