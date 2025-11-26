@@ -7,7 +7,7 @@ import { Paginacao } from "../../../components/paginacao";
 import { useGlobalConfig } from "../../../providers/GlobalConfigContext";
 import { LoadSpinner } from "../../../components/loading";
 import { formatCpfCnpj } from "../../../utils/lib.formats";
-import { RemetenteService } from "../../../services/RemetenteService";
+import { RemetenteSupabaseDirectService } from "../../../services/RemetenteSupabaseDirectService";
 import type { IRemetente } from "../../../types/IRemetente";
 import { ModalCadastrarRemetente } from "./ModalCadastrarRemetente";
 
@@ -22,7 +22,7 @@ export const ListaRemetente = () => {
     const [isFromAutoCadastro, setIsFromAutoCadastro] = useState<boolean>(false);
     const [wasModalClosedManually, setWasModalClosedManually] = useState<boolean>(false);
 
-    const service = new RemetenteService();
+    const service = new RemetenteSupabaseDirectService();
 
     const { data: remetentes, isLoading, isError } = useFetchQuery<IRemetente[]>(
         ['remetentes'],
