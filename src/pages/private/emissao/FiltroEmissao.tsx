@@ -191,7 +191,7 @@ export const FiltroEmissao = ({ onFiltrar, isDestinatario, isCodigoObjeto, onCan
             <div className="flex justify-start">
                 <button
                     onClick={handleFiltrar}
-                    className="px-4 py-2 bg-primary dark:bg-primary-dark text-white rounded-md hover:bg-primary/90 dark:hover:bg-primary-dark/90 transition duration-300 shadow-sm hover:shadow-md"
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition duration-300 shadow-sm hover:shadow-md"
                 >
                     Aplicar Filtros
                 </button>

@@ -144,7 +144,7 @@ export const ListaDestinatario = () => {
                             onClick={() => {
                                 handleFiltrar();
                             }}
-                            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-btnhover transition duration-300"
+                            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition duration-300"
                         >
                             Aplicar Filtros
                         </button>

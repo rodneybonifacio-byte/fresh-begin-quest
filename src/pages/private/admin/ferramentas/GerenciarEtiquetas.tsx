@@ -887,7 +887,7 @@ export default function GerenciarEtiquetas() {
           <div className="flex gap-2 mt-4">
             <button
               onClick={handleApplyFilters}
-              className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
             >
               Aplicar Filtros
             </button>

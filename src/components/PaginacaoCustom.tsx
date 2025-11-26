@@ -22,7 +22,7 @@ export const PaginacaoCustom: React.FC<PaginacaoProps> = ({ meta, onPageChange }
                 <button
                     onClick={handlePrev}
                     disabled={!meta?.prevPage}
-                    className="flex items-center justify-center min-w-[44px] min-h-[44px] px-4 py-2 bg-primary text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
+                    className="flex items-center justify-center min-w-[44px] min-h-[44px] px-4 py-2 bg-primary text-primary-foreground rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
                     aria-label="Página anterior"
                 >
                     <ArrowLeft className="w-5 h-5" />
@@ -30,7 +30,7 @@ export const PaginacaoCustom: React.FC<PaginacaoProps> = ({ meta, onPageChange }
                 <button
                     onClick={handleNext}
                     disabled={!meta?.nextPage}
-                    className="flex items-center justify-center min-w-[44px] min-h-[44px] px-4 py-2 bg-primary text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
+                    className="flex items-center justify-center min-w-[44px] min-h-[44px] px-4 py-2 bg-primary text-primary-foreground rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
                     aria-label="Próxima página"
                 >
                     <ArrowRight className="w-5 h-5" />
