@@ -32,15 +32,15 @@ export const SidebarItem: React.FC<SidebarItemProps & {
                 }`}>
                 <Icon className="w-5 h-5" />
                 {/* Desktop: mostra texto quando isSidebarOpen é true, Mobile: sempre mostra */}
-                <span className={`ml-3 flex-1 lg:${isSidebarOpen ? 'block' : 'hidden'}`}>
+                <span className={`ml-3 flex-1 ${isSidebarOpen ? 'block' : 'hidden lg:block'}`}>
                     {label}
                 </span>
                 {hasSubmenu && (
-                    <div className={`lg:${isSidebarOpen ? 'block' : 'hidden'} text-muted-foreground`}>
+                    <div className={isSidebarOpen ? 'block' : 'hidden lg:block'}>
                         {isSubmenuOpen ? (
-                            <ChevronDown className="w-4 h-4" />
+                            <ChevronDown className="w-4 h-4 text-muted-foreground" />
                         ) : (
-                            <ChevronRight className="w-4 h-4" />
+                            <ChevronRight className="w-4 h-4 text-muted-foreground" />
                         )}
                     </div>
                 )}
@@ -89,7 +89,7 @@ export const SidebarItem: React.FC<SidebarItemProps & {
                                                     to={item.to}
                                                     className={`flex items-center px-3 py-2 text-sm rounded-md transition-colors ${item.active
                                                         ? 'bg-accent text-primary'
-                                                        : 'text-muted-foreground hover:bg-accent'
+                                                        : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                                                         }`}
                                                 >
                                                     <item.icon className="w-4 h-4 mr-3" />
