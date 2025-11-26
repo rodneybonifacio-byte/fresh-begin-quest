@@ -44,8 +44,27 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
                 return;
             }
 
-            // Usar o PDF do boleto como prioridade, ou fatura se não houver boleto
-            const pdfBase64 = fechamentoData.boletoPdf || fechamentoData.faturaPdf;
+            // Concatenar boleto + fatura se ambos existirem
+            let pdfBase64 = '';
+            if (fechamentoData.boletoPdf && fechamentoData.faturaPdf) {
+                const { PDFDocument } = await import('pdf-lib');
+                
+                const boletoPdfDoc = await PDFDocument.load(fechamentoData.boletoPdf);
+                const faturaPdfDoc = await PDFDocument.load(fechamentoData.faturaPdf);
+                
+                const mergedPdf = await PDFDocument.create();
+                const boletoCopiedPages = await mergedPdf.copyPages(boletoPdfDoc, boletoPdfDoc.getPageIndices());
+                boletoCopiedPages.forEach((page) => mergedPdf.addPage(page));
+                
+                const faturaCopiedPages = await mergedPdf.copyPages(faturaPdfDoc, faturaPdfDoc.getPageIndices());
+                faturaCopiedPages.forEach((page) => mergedPdf.addPage(page));
+                
+                const mergedPdfBytes = await mergedPdf.save();
+                pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(mergedPdfBytes)));
+            } else {
+                // Usar o PDF disponível (boleto ou fatura)
+                pdfBase64 = fechamentoData.boletoPdf || fechamentoData.faturaPdf;
+            }
 
             // Buscar celular do remetente
             let celularRemetente = '';
