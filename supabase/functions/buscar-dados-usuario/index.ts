@@ -72,6 +72,10 @@ serve(async (req) => {
     if (destinatariosResponse.ok) {
       destinatariosData = await destinatariosResponse.json();
       console.log('✅ Destinatários encontrados:', destinatariosData.data?.length || 0);
+    } else if (destinatariosResponse.status === 403 || destinatariosResponse.status === 404) {
+      // 403/404 significa que a rota não existe ou usuário não tem destinatários
+      console.log('ℹ️ Usuário sem destinatários cadastrados ou rota não disponível');
+      destinatariosData = { data: [] };
     } else {
       const errorText = await destinatariosResponse.text();
       console.error('❌ Erro ao buscar destinatários:', errorText);
