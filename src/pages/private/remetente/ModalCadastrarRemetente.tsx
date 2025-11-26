@@ -6,8 +6,6 @@ import * as yup from "yup";
 import { ButtonComponent } from "../../../components/button";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLoadingSpinner } from "../../../providers/LoadingSpinnerContext";
-import type { IRemetente } from "../../../types/IRemetente";
-import { RemetenteService } from "../../../services/RemetenteService";
 import { toast } from "sonner";
 import { useAddress } from "../../../hooks/useAddress";
 import { formatCep, formatCpfCnpj } from "../../../utils/lib.formats";
@@ -43,30 +41,48 @@ export const ModalCadastrarRemetente: React.FC<{ isOpen: boolean; onCancel: () =
     });
     const { onBuscaCep } = useAddress();
 
-    const service = new RemetenteService();
-
     const mutation = useMutation({
         mutationFn: async (inputViewModel: FormDataRemetente) => {
+            // Usar edge function para cadastro automático
+            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+            const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+            
+            const response = await fetch(`${supabaseUrl}/functions/v1/criar-remetente-autocadastro`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${supabaseAnonKey}`,
+                },
+                body: JSON.stringify({
+                    nome: inputViewModel.nome,
+                    cpfCnpj: inputViewModel.cpfCnpj,
+                    documentoEstrangeiro: inputViewModel.documentoEstrangeiro ?? "",
+                    celular: inputViewModel.celular ?? "",
+                    telefone: inputViewModel.telefone ?? "",
+                    email: inputViewModel.email,
+                    endereco: {
+                        cep: inputViewModel.cep,
+                        logradouro: inputViewModel.logradouro,
+                        numero: inputViewModel.numero,
+                        complemento: inputViewModel.complemento ?? "",
+                        bairro: inputViewModel.bairro,
+                        localidade: inputViewModel.localidade,
+                        uf: inputViewModel.uf
+                    }
+                }),
+            });
 
-            const requestData: IRemetente = {
-                id: "",
-                nome: inputViewModel.nome,
-                cpfCnpj: inputViewModel.cpfCnpj,
-                documentoEstrangeiro: inputViewModel.documentoEstrangeiro ?? "",
-                celular: inputViewModel.celular ?? "",
-                telefone: inputViewModel.telefone ?? "",
-                email: inputViewModel.email,
-                endereco: {
-                    cep: inputViewModel.cep,
-                    logradouro: inputViewModel.logradouro,
-                    numero: inputViewModel.numero,
-                    complemento: inputViewModel.complemento ?? "",
-                    bairro: inputViewModel.bairro,
-                    localidade: inputViewModel.localidade,
-                    uf: inputViewModel.uf
+            const responseData = await response.json();
+
+            if (!response.ok) {
+                // Verificar se é erro de CPF/CNPJ duplicado
+                if (response.status === 409 || responseData.error?.toLowerCase().includes('já cadastrado')) {
+                    throw new Error('Este CPF/CNPJ já está cadastrado no sistema.');
                 }
+                throw new Error(responseData.error || 'Erro ao cadastrar remetente');
             }
-            return service.create(requestData);
+
+            return responseData;
         },
         onSuccess: () => {
             setIsLoading(false);
@@ -76,7 +92,9 @@ export const ModalCadastrarRemetente: React.FC<{ isOpen: boolean; onCancel: () =
         },
         onError: (error) => {
             setIsLoading(false);
-            console.log(error);
+            console.error('Erro ao cadastrar remetente:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Erro ao cadastrar remetente';
+            toast.error(errorMessage, { duration: 5000, position: "top-center" });
         },
     })
 
