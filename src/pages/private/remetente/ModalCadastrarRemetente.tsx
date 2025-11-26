@@ -52,6 +52,12 @@ export const ModalCadastrarRemetente: React.FC<{
             const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
             const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
             
+            // Obter token do usuário do localStorage
+            const apiToken = localStorage.getItem('token');
+            if (!apiToken) {
+                throw new Error('Token de autenticação não encontrado. Faça login novamente.');
+            }
+            
             const response = await fetch(`${supabaseUrl}/functions/v1/criar-remetente-autocadastro`, {
                 method: 'POST',
                 headers: {
@@ -59,6 +65,7 @@ export const ModalCadastrarRemetente: React.FC<{
                     'Authorization': `Bearer ${supabaseAnonKey}`,
                 },
                 body: JSON.stringify({
+                    apiToken: apiToken,
                     nome: inputViewModel.nome,
                     cpfCnpj: inputViewModel.cpfCnpj,
                     documentoEstrangeiro: inputViewModel.documentoEstrangeiro ?? "",
