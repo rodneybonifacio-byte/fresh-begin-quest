@@ -1,4 +1,4 @@
-import { Filter, Import, Plus, Printer, ReceiptText, BarChart3, Download, XCircle } from 'lucide-react';
+import { Filter, Import, Plus, Printer, ReceiptText, BarChart3, Download } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DataTable } from '../../../components/DataTable';
@@ -24,8 +24,6 @@ import { ModalViewDeclaracaoConteudo } from './ModalViewDeclaracaoConteudo';
 import { ModalViewErroPostagem } from './ModalViewErroPostagem';
 import { ModalViewPDF } from './ModalViewPDF';
 import { DashboardEmissoes } from './DashboardEmissoes';
-import { toast } from 'sonner';
-import { supabase } from '../../../integrations/supabase/client';
 
 export const ListaEmissoes = () => {
     const { user } = useAuth();
@@ -127,65 +125,6 @@ export const ListaEmissoes = () => {
         }
     };
 
-    const handleCancelarEtiqueta = async (emissao: IEmissao) => {
-        if (!emissao.id || !emissao.codigoObjeto) {
-            toast.error('Dados da emissão incompletos');
-            return;
-        }
-
-        const motivo = prompt('Informe o motivo do cancelamento (mínimo 10 caracteres):');
-        const motivoLimpo = motivo?.trim() || '';
-
-        if (!motivoLimpo) {
-            toast.error('É necessário informar um motivo para cancelar a etiqueta');
-            return;
-        }
-
-        if (motivoLimpo.length < 10) {
-            toast.error('O motivo deve ter pelo menos 10 caracteres.');
-            return;
-        }
-
-        if (!confirm('Tem certeza que deseja cancelar esta etiqueta? O valor será extornado automaticamente.')) {
-            return;
-        }
-
-        setIsLoading(true);
-        try {
-            // Cancelar etiqueta usando edge function com credenciais de admin
-            const { data, error } = await supabase.functions.invoke('cancelar-etiqueta-admin', {
-                body: {
-                    codigoObjeto: emissao.codigoObjeto,
-                    motivo: motivoLimpo,
-                    emissaoId: emissao.id
-                }
-            });
-
-            if (error) {
-                // Tentar extrair mensagem mais detalhada da resposta
-                const mensagemDetalhada = (data as any)?.error as string | undefined;
-                throw new Error(mensagemDetalhada || error.message);
-            }
-
-            if (!data?.success) {
-                throw new Error((data as any)?.error || 'Erro ao cancelar etiqueta');
-            }
-
-            if ((data as any).warning) {
-                toast.warning((data as any).warning as string);
-            } else {
-                toast.success((data as any).message as string || 'Etiqueta cancelada e valor extornado com sucesso!');
-            }
-
-            // Recarregar dados
-            window.location.reload();
-        } catch (error: any) {
-            console.error('Erro ao cancelar etiqueta:', error);
-            toast.error(error?.message || 'Erro ao cancelar etiqueta');
-        } finally {
-            setIsLoading(false);
-        }
-    };
 
     return (
         <Content
@@ -356,12 +295,6 @@ export const ListaEmissoes = () => {
                                         icon: <Printer size={16} className="text-blue-600" />,
                                         onClick: (row) => handleOnPDF(row, true),
                                         show: (row) => !row.mensagensErrorPostagem && !['ENTREGUE', 'EM_TRANSITO', 'POSTADO'].includes(row.status as string),
-                                    },
-                                    {
-                                        label: 'Cancelar Etiqueta',
-                                        icon: <XCircle size={16} className="text-red-600" />,
-                                        onClick: (row) => handleCancelarEtiqueta(row),
-                                        show: (row) => row.status === 'PRE_POSTADO',
                                     },
                                 ]}
                             />
