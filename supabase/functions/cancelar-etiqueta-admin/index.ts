@@ -86,22 +86,24 @@ serve(async (req) => {
 
     console.log('✅ Etiqueta cancelada com sucesso na API externa!');
 
-    // 3. Liberar crédito bloqueado
+    // 3. Deletar crédito bloqueado (cancelamento = volta para disponível)
     if (emissaoId) {
-      console.log('💰 Liberando crédito bloqueado...');
+      console.log('💰 Deletando crédito bloqueado...');
       const supabaseUrl = Deno.env.get('SUPABASE_URL');
       const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
       if (supabaseUrl && supabaseServiceKey) {
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
         
-        const { error: creditError } = await supabase.rpc('liberar_credito_bloqueado', {
-          p_emissao_id: emissaoId,
-          p_codigo_objeto: codigoObjeto
-        });
+        const { error: creditError } = await supabase
+          .from('transacoes_credito')
+          .delete()
+          .eq('emissao_id', emissaoId)
+          .eq('tipo', 'consumo')
+          .eq('status', 'bloqueado');
 
         if (creditError) {
-          console.error('❌ Erro ao liberar crédito:', creditError);
+          console.error('❌ Erro ao deletar bloqueio:', creditError);
           return new Response(
             JSON.stringify({
               success: true,
@@ -115,7 +117,7 @@ serve(async (req) => {
           );
         }
 
-        console.log('✅ Crédito liberado com sucesso!');
+        console.log('✅ Crédito bloqueado deletado com sucesso!');
       }
     }
 
