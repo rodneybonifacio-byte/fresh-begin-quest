@@ -13,7 +13,7 @@ import { ButtonComponent } from "../../../components/button";
 import { InputLabel } from "../../../components/input-label";
 import { getRedirectPathByRole } from "../../../utils/auth.utils";
 import { ThemeToggle } from "../../../components/theme/ThemeToggle";
-import { UsuarioDadosService } from "../../../services/UsuarioDadosService";
+import { RemetenteSupabaseDirectService } from "../../../services/RemetenteSupabaseDirectService";
 const loginSchame = yup.object({
   email: yup.string().required("Informe seu email."),
   password: yup.string().required("Informa sua password.")
@@ -63,16 +63,17 @@ export const Login = () => {
         }
 
         // Verificar via backend se o usuário já possui remetentes cadastrados
-        const usuarioDadosService = new UsuarioDadosService();
-        let hasRemetentes = false;
+        const remetenteService = new RemetenteSupabaseDirectService();
+        let hasRemetentes = true;
 
         try {
-          const dados = await usuarioDadosService.buscarDadosCompletos();
-          hasRemetentes = Array.isArray(dados.remetentes) && dados.remetentes.length > 0;
+          const responseRemetentes = await remetenteService.getAll();
+          const lista = responseRemetentes?.data ?? [];
+          hasRemetentes = lista.length > 0;
         } catch (err) {
-          console.error('Erro ao buscar dados completos do usuário para verificar remetentes:', err);
-          // Em caso de erro, consideramos que não há remetentes para forçar o fluxo de cadastro
-          hasRemetentes = false;
+          console.error('Erro ao buscar remetentes diretos para verificar cadastro:', err);
+          // Em caso de erro, NÃO forçamos o fluxo de cadastro para não atrapalhar quem já tem remetente
+          hasRemetentes = true;
         }
 
         if (!hasRemetentes) {
