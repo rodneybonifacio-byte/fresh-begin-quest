@@ -40,6 +40,13 @@ export const ListaRemetente = () => {
     )
     const [data, setData] = useState<IRemetente[]>(); // Dados carregados
 
+    // Abrir modal automaticamente se não houver remetentes cadastrados
+    useEffect(() => {
+        if (!isLoading && remetentes && remetentes.length === 0 && !isModalOpenRemetente) {
+            setIsModalOpenRemetente(true);
+        }
+    }, [isLoading, remetentes, isModalOpenRemetente]);
+
     const contentButton: ContentButtonProps[] = [
         {
             label: "Adicionar",
