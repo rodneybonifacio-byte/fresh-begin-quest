@@ -91,10 +91,12 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
             }
 
             // Upload para Supabase Storage
-            const fileName = `faturas/fatura_${fatura.id}_${Date.now()}.pdf`;
+            const baseFileName = `fatura_${fatura.id}_${Date.now()}.pdf`;
+            const storagePath = `faturas/${baseFileName}`;
+
             const { data: uploadData, error: uploadError } = await supabase.storage
                 .from('faturas')
-                .upload(fileName, blob, {
+                .upload(storagePath, blob, {
                     contentType: 'application/pdf',
                     upsert: false
                 });
@@ -106,10 +108,11 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
             // Gerar URL pública para verificação
             const { data: publicUrlData } = supabase.storage
                 .from('faturas')
-                .getPublicUrl(fileName);
+                .getPublicUrl(storagePath);
 
             console.log('✅ PDF salvo e URL pública gerada:', {
-                fileName: fileName,
+                fileName: baseFileName,
+                storagePath,
                 publicUrl: publicUrlData.publicUrl,
                 uploadKey: uploadData?.path
             });
@@ -117,7 +120,8 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
             const payload = {
                 celular_cliente: celularRemetente,
                 nome_cliente: fechamentoData.nomeCliente || fatura.cliente?.nome || fatura.nome || '',
-                pdf_url: fileName
+                // Enviar somente o NOME do arquivo, sem caminho, conforme combinado
+                pdf_url: baseFileName
             };
 
             console.log('📤 Enviando fatura para webhook:', { 
