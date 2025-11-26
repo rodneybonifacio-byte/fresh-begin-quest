@@ -41,7 +41,7 @@ export const Manutencao = () => {
                     </div>
 
                     <div className="mt-8 flex justify-center">
-                        <a href="/" className="px-6 py-2 bg-secondary text-white rounded-lg hover:bg-primary transition-colors font-medium">
+                        <a href="/" className="px-6 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors font-medium">
                             Voltar à Página Inicial
                         </a>
                     </div>
