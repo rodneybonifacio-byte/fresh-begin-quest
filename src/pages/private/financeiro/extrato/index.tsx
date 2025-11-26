@@ -2,13 +2,14 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../../../../providers/AuthContext";
 import { CreditoService, ITransacaoCredito } from "../../../../services/CreditoService";
 import { formatCurrencyWithCents } from "../../../../utils/formatCurrency";
-import { Receipt, ArrowUpCircle, ArrowDownCircle, Clock, AlertCircle, Filter } from "lucide-react";
+import { Receipt, ArrowUpCircle, ArrowDownCircle, Clock, AlertCircle, Filter, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "../../../../integrations/supabase/client";
 import { useRecargaPixRealtime } from "../../../../hooks/useRecargaPixRealtime";
 import { toast } from "sonner";
 import { ExplicacaoRegraBloqueio } from "../../../../components/ExplicacaoRegraBloqueio";
+import { ProcessarCreditosService } from "../../../../services/ProcessarCreditosService";
 
 export default function ExtratoCreditos() {
     const { user } = useAuth();
@@ -113,6 +114,25 @@ export default function ExtratoCreditos() {
         }
     };
 
+    const processarCreditosBloqueados = async () => {
+        try {
+            toast.loading('Processando créditos bloqueados...', { id: 'processar-creditos' });
+            
+            const resultado = await ProcessarCreditosService.executarProcessamento();
+            
+            toast.success(`Processamento concluído! ${resultado.consumidas || 0} consumidas, ${resultado.liberadas || 0} liberadas, ${resultado.mantidas || 0} mantidas.`, { 
+                id: 'processar-creditos',
+                duration: 5000 
+            });
+            
+            // Recarregar dados após processamento
+            await carregarDados();
+        } catch (error) {
+            console.error('Erro ao processar créditos:', error);
+            toast.error('Erro ao processar créditos bloqueados', { id: 'processar-creditos' });
+        }
+    };
+
     const transacoesFiltradas = transacoes.filter(t => {
         if (filtroTipo === 'todos') return true;
         if (filtroTipo === 'bloqueado') {
@@ -148,6 +168,14 @@ export default function ExtratoCreditos() {
                         <h1 className="text-3xl font-bold text-foreground">Extrato de Créditos</h1>
                         <p className="text-muted-foreground">Histórico completo de transações</p>
                     </div>
+                    <button
+                        onClick={processarCreditosBloqueados}
+                        className="ml-auto px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2 shadow-sm"
+                        title="Processar créditos bloqueados (verifica status das etiquetas e consome/libera créditos)"
+                    >
+                        <RefreshCw className="w-4 h-4" />
+                        <span className="text-sm font-medium">Processar Créditos</span>
+                    </button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
