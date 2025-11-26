@@ -91,7 +91,7 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
             }
 
             // Upload para Supabase Storage
-            const fileName = `fatura_${fatura.id}_${Date.now()}.pdf`;
+            const fileName = `faturas/fatura_${fatura.id}_${Date.now()}.pdf`;
             const { error: uploadError } = await supabase.storage
                 .from('faturas')
                 .upload(fileName, blob, {
