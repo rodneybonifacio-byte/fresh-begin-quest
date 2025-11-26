@@ -237,7 +237,7 @@ export default function Recarga() {
                             </div>
                         </div>
 
-                        <button onClick={handleGeneratePixCharge} disabled={!valorRecarga || parseFloat(valorRecarga.replace(/\D/g, "")) === 0} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                        <button onClick={handleGeneratePixCharge} disabled={!valorRecarga || parseFloat(valorRecarga.replace(/\D/g, "")) === 0} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-slate-50 bg-slate-950 hover:bg-slate-800">
                             <QrCode className="w-5 h-5" />
                             Gerar PIX
                         </button>
