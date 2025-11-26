@@ -20,6 +20,7 @@ export const ListaRemetente = () => {
 
     const [isModalOpenRemetente, setIsModalOpenRemetente] = useState<boolean>(false);
     const [isFromAutoCadastro, setIsFromAutoCadastro] = useState<boolean>(false);
+    const [wasModalClosedManually, setWasModalClosedManually] = useState<boolean>(false);
 
     const service = new RemetenteService();
 
@@ -40,10 +41,12 @@ export const ListaRemetente = () => {
             fromCadastro,
             remetentesLength: remetentes?.length,
             isError,
-            isModalOpen: isModalOpenRemetente 
+            isModalOpen: isModalOpenRemetente,
+            wasClosedManually: wasModalClosedManually
         });
 
-        if (isLoading || isModalOpenRemetente) return;
+        // Não reabre se o usuário fechou manualmente
+        if (isLoading || isModalOpenRemetente || wasModalClosedManually) return;
 
         const qtdRemetentes = remetentes?.length ?? 0;
         const shouldOpenModal = fromCadastro || isError || qtdRemetentes === 0;
@@ -61,7 +64,7 @@ export const ListaRemetente = () => {
                 navigate('/app/remetentes', { replace: true });
             }
         }
-    }, [isLoading, remetentes, isError, searchParams, navigate, isModalOpenRemetente]);
+    }, [isLoading, remetentes, isError, searchParams, navigate, isModalOpenRemetente, wasModalClosedManually]);
 
     const contentButton: ContentButtonProps[] = [
         {
@@ -130,6 +133,7 @@ export const ListaRemetente = () => {
                 onCancel={() => {
                     setIsModalOpenRemetente(false);
                     setIsFromAutoCadastro(false);
+                    setWasModalClosedManually(true);
                 }}
                 showWelcomeMessage={isFromAutoCadastro}
             />
