@@ -60,6 +60,7 @@ serve(async (req: Request) => {
       senha: body.senha,
       telefone: body.telefone || '',
       celular: body.celular,
+      role: 'CLIENTE',
       endereco: {
         cep: body.endereco.cep,
         logradouro: body.endereco.logradouro,
