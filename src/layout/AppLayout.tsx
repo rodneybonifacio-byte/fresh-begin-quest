@@ -32,6 +32,9 @@ const AppLayoutContent = () => {
                 }
             } catch (error) {
                 console.error('❌ Erro ao verificar remetentes do cliente:', error);
+                // Se houver erro (ex: sem token, sem remetentes), abre modal
+                console.log('⚠️ Erro ao buscar remetentes, abrindo modal para cadastro');
+                setIsRemetenteModalOpen(true);
             }
         };
 
