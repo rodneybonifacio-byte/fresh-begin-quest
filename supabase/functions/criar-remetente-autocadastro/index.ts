@@ -38,7 +38,7 @@ serve(async (req) => {
     console.log('🔐 Fazendo login na API externa...');
     
     // 1. Fazer login para obter token
-    const loginResponse = await fetch(`${apiBaseUrl}/auth`, {
+    const loginResponse = await fetch(`${apiBaseUrl}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
