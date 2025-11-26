@@ -39,11 +39,43 @@ Deno.serve(async (req) => {
 
     // @ts-ignore: Deno types
     const baseApiUrl = Deno.env.get('BASE_API_URL')
-    if (!baseApiUrl) {
-      throw new Error('BASE_API_URL não configurada')
+    // @ts-ignore: Deno types
+    const adminEmail = Deno.env.get('API_ADMIN_EMAIL')
+    // @ts-ignore: Deno types
+    const adminPassword = Deno.env.get('API_ADMIN_PASSWORD')
+    
+    if (!baseApiUrl || !adminEmail || !adminPassword) {
+      throw new Error('Variáveis de ambiente não configuradas')
     }
 
-    // 1. Buscar todas as etiquetas com créditos bloqueados
+    // 1. Fazer login com credenciais admin
+    console.log('🔐 Fazendo login com credenciais de admin...')
+    
+    const loginResponse = await fetch(`${baseApiUrl}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: adminEmail,
+        password: adminPassword,
+      }),
+    })
+
+    if (!loginResponse.ok) {
+      const loginError = await loginResponse.text()
+      console.error('❌ Erro no login:', loginError)
+      throw new Error('Falha na autenticação com a API externa')
+    }
+
+    const loginData = await loginResponse.json()
+    const authToken = loginData.token
+
+    if (!authToken) {
+      throw new Error('Token de autenticação não recebido')
+    }
+
+    console.log('✅ Login admin realizado com sucesso')
+
+    // 2. Buscar todas as etiquetas com créditos bloqueados
     const { data: etiquetas, error: etiquetasError } = await supabaseClient
       .rpc('buscar_etiquetas_bloqueadas')
 
@@ -76,13 +108,14 @@ Deno.serve(async (req) => {
       try {
         console.log(`\n🔍 Processando etiqueta ${etiqueta.emissao_id}`)
         
-        // Buscar status da etiqueta na API externa
+        // Buscar status da etiqueta na API externa usando token admin
         const emissaoResponse = await fetch(
           `${baseApiUrl}/emissoes/${etiqueta.emissao_id}`,
           {
             method: 'GET',
             headers: {
               'Content-Type': 'application/json',
+              'Authorization': `Bearer ${authToken}`,
             }
           }
         )
