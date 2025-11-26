@@ -21,6 +21,9 @@ verify_jwt = false
 [functions.criar-cliente-autocadastro]
 verify_jwt = false
 
+[functions.criar-remetente-autocadastro]
+verify_jwt = false
+
 [functions.sincronizar-remetentes]
 verify_jwt = false
 
