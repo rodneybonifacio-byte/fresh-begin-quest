@@ -28,7 +28,7 @@ export const ListaRemetenteModern = () => {
         }
     );
 
-    // Redirecionar para home se já tem remetentes e não veio do autocadastro
+    // Abrir modal automaticamente se veio do autocadastro
     useEffect(() => {
         const fromCadastro = searchParams.get('from') === 'autocadastro';
         
@@ -36,12 +36,8 @@ export const ListaRemetenteModern = () => {
             setIsFromAutoCadastro(true);
             setIsModalOpenRemetente(true);
             navigate('/app/remetentes', { replace: true });
-        } else if (!fromCadastro && !isLoading && remetentes && remetentes.length > 0) {
-            // Se não veio do autocadastro e já tem remetentes, redireciona para home
-            console.log('✅ Usuário já tem remetentes, redirecionando para home');
-            navigate('/app', { replace: true });
         }
-    }, [searchParams, navigate, isModalOpenRemetente, wasModalClosedManually, isLoading, remetentes]);
+    }, [searchParams, navigate, isModalOpenRemetente, wasModalClosedManually]);
 
     const formatEndereco = (remetente: IRemetente) => {
         const { endereco } = remetente;
