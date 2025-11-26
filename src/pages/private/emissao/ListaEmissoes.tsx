@@ -133,9 +133,16 @@ export const ListaEmissoes = () => {
             return;
         }
 
-        const motivo = prompt('Informe o motivo do cancelamento:');
-        if (!motivo || motivo.trim() === '') {
+        const motivo = prompt('Informe o motivo do cancelamento (mínimo 10 caracteres):');
+        const motivoLimpo = motivo?.trim() || '';
+
+        if (!motivoLimpo) {
             toast.error('É necessário informar um motivo para cancelar a etiqueta');
+            return;
+        }
+
+        if (motivoLimpo.length < 10) {
+            toast.error('O motivo deve ter pelo menos 10 caracteres.');
             return;
         }
 
@@ -149,23 +156,25 @@ export const ListaEmissoes = () => {
             const { data, error } = await supabase.functions.invoke('cancelar-etiqueta-admin', {
                 body: {
                     codigoObjeto: emissao.codigoObjeto,
-                    motivo: motivo.trim(),
+                    motivo: motivoLimpo,
                     emissaoId: emissao.id
                 }
             });
 
             if (error) {
-                throw new Error(error.message);
+                // Tentar extrair mensagem mais detalhada da resposta
+                const mensagemDetalhada = (data as any)?.error as string | undefined;
+                throw new Error(mensagemDetalhada || error.message);
             }
 
-            if (!data.success) {
-                throw new Error(data.error || 'Erro ao cancelar etiqueta');
+            if (!data?.success) {
+                throw new Error((data as any)?.error || 'Erro ao cancelar etiqueta');
             }
 
-            if (data.warning) {
-                toast.warning(data.warning);
+            if ((data as any).warning) {
+                toast.warning((data as any).warning as string);
             } else {
-                toast.success(data.message || 'Etiqueta cancelada e valor extornado com sucesso!');
+                toast.success((data as any).message as string || 'Etiqueta cancelada e valor extornado com sucesso!');
             }
 
             // Recarregar dados
