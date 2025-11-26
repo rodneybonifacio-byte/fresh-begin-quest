@@ -61,7 +61,7 @@ serve(async (req) => {
     console.log('✅ Login admin realizado com sucesso');
 
     // 2. Cancelar etiqueta usando token admin
-    console.log('📤 Cancelando etiqueta na API externa...');
+    console.log('📤 Cancelando etiqueta na API externa...', { codigoObjeto, motivo });
     
     const cancelResponse = await fetch(`${apiBaseUrl}/emissoes/cancelar-emissao`, {
       method: 'DELETE',
@@ -72,6 +72,7 @@ serve(async (req) => {
       body: JSON.stringify({
         codigoObjeto,
         motivo,
+        motivoCancelamento: motivo,
       }),
     });
 
