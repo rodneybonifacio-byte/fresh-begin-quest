@@ -76,7 +76,7 @@ export const ListaRemetente = () => {
             data={(remetentes && remetentes.length > 0) ? remetentes : []}
         >
             {isLoading ? <LoadSpinner mensagem="Carregando..." /> : null}
-            {!isLoading && !isError && remetentes && remetentes.length > 0 && (
+            {!isLoading && remetentes && remetentes.length > 0 && (
                 <div className=" rounded-lg">
 
                     <TableCustom
