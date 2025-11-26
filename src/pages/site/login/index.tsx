@@ -49,10 +49,20 @@ export const Login = () => {
           token: response.token
         });
         reset();
-        const from = location.state?.from?.pathname + location.state?.from?.search || getRedirectPathByRole();
-        navigate(from, {
-          replace: true
-        });
+        
+        // Verificar se deve redirecionar para cadastro de remetente
+        const redirecionarParaRemetente = location.state?.redirecionarParaRemetente;
+        
+        if (redirecionarParaRemetente) {
+          navigate('/app/remetentes?from=autocadastro', {
+            replace: true
+          });
+        } else {
+          const from = location.state?.from?.pathname + location.state?.from?.search || getRedirectPathByRole();
+          navigate(from, {
+            replace: true
+          });
+        }
       } else {
         toast.error("Login falhou. Verifique suas credenciais.", {
           position: "top-center"

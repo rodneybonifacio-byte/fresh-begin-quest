@@ -176,13 +176,17 @@ export const CadastroCliente = () => {
             }
 
             // Sucesso
-            toast.success('Conta criada com sucesso! Redirecionando para o login...', {
+            toast.success('Conta criada com sucesso! Você será redirecionado para cadastrar seu remetente.', {
                 duration: 3000,
             });
 
             setTimeout(() => {
                 navigate('/login', {
-                    state: { email: data.email, mensagem: 'Conta criada com sucesso! Faça login para continuar.' }
+                    state: { 
+                        email: data.email, 
+                        mensagem: 'Conta criada com sucesso! Faça login para continuar.',
+                        redirecionarParaRemetente: true 
+                    }
                 });
             }, 2000);
 
