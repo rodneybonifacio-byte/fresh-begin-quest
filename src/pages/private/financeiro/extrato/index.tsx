@@ -14,7 +14,7 @@ export default function ExtratoCreditos() {
     const { user } = useAuth();
     const [transacoes, setTransacoes] = useState<ITransacaoCredito[]>([]);
     const [loading, setLoading] = useState(true);
-    const [filtroTipo, setFiltroTipo] = useState<'todos' | 'recarga' | 'consumo' | 'bloqueado'>('todos');
+    const [filtroTipo, setFiltroTipo] = useState<'todos' | 'recarga' | 'consumo' | 'bloqueado' | 'estorno'>('todos');
     const [paginaAtual, setPaginaAtual] = useState(1);
     const itensPorPagina = 15;
     const [resumo, setResumo] = useState({
@@ -117,6 +117,9 @@ export default function ExtratoCreditos() {
         if (filtroTipo === 'todos') return true;
         if (filtroTipo === 'bloqueado') {
             return t.status === 'bloqueado';
+        }
+        if (filtroTipo === 'estorno') {
+            return t.tipo === 'recarga' && (t.descricao || '').startsWith('Estorno de cancelamento');
         }
         return t.tipo === filtroTipo;
     });
@@ -227,6 +230,7 @@ export default function ExtratoCreditos() {
                                 <option value="recarga">Recargas</option>
                                 <option value="bloqueado">Bloqueados</option>
                                 <option value="consumo">Consumidos</option>
+                                <option value="estorno">Estornos</option>
                             </select>
                         </div>
                     </div>
@@ -258,25 +262,30 @@ export default function ExtratoCreditos() {
                                     <tbody className="divide-y divide-border">
                                         {transacoesPaginadas.map((transacao) => (
                                             <tr key={transacao.id} className="hover:bg-muted/30">
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm">{formatarData(transacao.created_at)}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    {transacao.status === 'bloqueado' ? (
-                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300">
-                                                            <Clock className="w-3 h-3 mr-1" />
-                                                            Bloqueado
-                                                        </span>
-                                                    ) : transacao.tipo === 'recarga' ? (
-                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
-                                                            <ArrowUpCircle className="w-3 h-3 mr-1" />
-                                                            Recarga
-                                                        </span>
-                                                    ) : (
-                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300">
-                                                            <ArrowDownCircle className="w-3 h-3 mr-1" />
-                                                            Consumido
-                                                        </span>
-                                                    )}
-                                                </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm">{formatarData(transacao.created_at)}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                {(transacao.descricao || '').startsWith('Estorno de cancelamento') ? (
+                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
+                                                        <AlertCircle className="w-3 h-3 mr-1" />
+                                                        Estorno
+                                                    </span>
+                                                ) : transacao.status === 'bloqueado' ? (
+                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300">
+                                                        <Clock className="w-3 h-3 mr-1" />
+                                                        Bloqueado
+                                                    </span>
+                                                ) : transacao.tipo === 'recarga' ? (
+                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
+                                                        <ArrowUpCircle className="w-3 h-3 mr-1" />
+                                                        Recarga
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300">
+                                                        <ArrowDownCircle className="w-3 h-3 mr-1" />
+                                                        Consumido
+                                                    </span>
+                                                )}
+                                            </td>
                                                 <td className="px-6 py-4 text-sm">{transacao.descricao || '-'}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                     <span className={transacao.tipo === 'recarga' ? 'text-green-600' : 'text-red-600'}>
