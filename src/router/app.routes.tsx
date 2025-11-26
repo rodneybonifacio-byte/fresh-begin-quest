@@ -16,11 +16,11 @@ export const appRoutesConfig: ProtectedRouteItem[] = [
     },
     {
         path: "destinatarios",
-        component: () => import("../pages/private/destinatario")
+        component: () => import("../pages/private/destinatario"),
     },
     {
-        path: "simulador/frete",
-        component: () => import("../pages/private/simulador")
+        path: "remetentes",
+        component: () => import("../pages/private/remetente"),
     },
     {
         path: "emissao",
