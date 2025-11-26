@@ -42,10 +42,24 @@ export const ListaRemetente = () => {
 
     // Abrir modal automaticamente se não houver remetentes cadastrados
     useEffect(() => {
-        if (!isLoading && remetentes && remetentes.length === 0 && !isModalOpenRemetente) {
-            setIsModalOpenRemetente(true);
+        console.log('🔍 Verificando remetentes:', { 
+            isLoading, 
+            remetentesLength: remetentes?.length,
+            isModalOpen: isModalOpenRemetente 
+        });
+
+        if (!isLoading && remetentes !== undefined) {
+            if (remetentes.length === 0 && !isModalOpenRemetente) {
+                console.log('✅ Abrindo modal - usuário sem remetentes');
+                setIsModalOpenRemetente(true);
+            } else {
+                console.log('ℹ️ Modal não aberto:', {
+                    temRemetentes: remetentes.length > 0,
+                    modalJaAberto: isModalOpenRemetente
+                });
+            }
         }
-    }, [isLoading, remetentes, isModalOpenRemetente]);
+    }, [isLoading, remetentes]);
 
     const contentButton: ContentButtonProps[] = [
         {
