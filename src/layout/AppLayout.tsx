@@ -18,12 +18,20 @@ const AppLayoutContent = () => {
                 const response = await service.getAll();
                 const remetentes = response?.data ?? [];
 
+                console.log('🔍 AppLayout verificação:', {
+                    quantidadeRemetentes: remetentes.length,
+                    remetentes: remetentes
+                });
+
                 // Se não houver remetentes cadastrados, abre o modal explicativo
                 if (remetentes.length === 0) {
+                    console.log('⚠️ Nenhum remetente encontrado, abrindo modal');
                     setIsRemetenteModalOpen(true);
+                } else {
+                    console.log('✅ Remetente(s) encontrado(s), não abre modal');
                 }
             } catch (error) {
-                console.error('Erro ao verificar remetentes do cliente:', error);
+                console.error('❌ Erro ao verificar remetentes do cliente:', error);
             }
         };
 
