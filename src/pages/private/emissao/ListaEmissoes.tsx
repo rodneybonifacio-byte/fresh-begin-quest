@@ -128,8 +128,14 @@ export const ListaEmissoes = () => {
     };
 
     const handleCancelarEtiqueta = async (emissao: IEmissao) => {
-        if (!emissao.id) {
-            toast.error('ID da emissão não encontrado');
+        if (!emissao.id || !emissao.codigoObjeto) {
+            toast.error('Dados da emissão incompletos');
+            return;
+        }
+
+        const motivo = prompt('Informe o motivo do cancelamento:');
+        if (!motivo || motivo.trim() === '') {
+            toast.error('É necessário informar um motivo para cancelar a etiqueta');
             return;
         }
 
@@ -139,8 +145,11 @@ export const ListaEmissoes = () => {
 
         setIsLoading(true);
         try {
-            // Cancelar etiqueta via API
-            await service.cancelarEmissao({ id: emissao.id });
+            // Cancelar etiqueta via API com código e motivo
+            await service.cancelarEmissao({ 
+                codigoObjeto: emissao.codigoObjeto,
+                motivo: motivo.trim()
+            });
 
             // Liberar crédito bloqueado
             const { error } = await supabase.rpc('liberar_credito_bloqueado', {
