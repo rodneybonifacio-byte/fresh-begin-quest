@@ -162,21 +162,22 @@ Deno.serve(async (req) => {
           const now = new Date()
 
           if (now >= blockedUntil) {
-            // Expirou - LIBERAR crédito
-            console.log('⏰ Etiqueta em PRE_POSTADO e prazo de 72h expirado - liberando crédito')
+            // Expirou - DELETAR crédito bloqueado (libera automaticamente)
+            console.log('⏰ Etiqueta em PRE_POSTADO e prazo de 72h expirado - deletando bloqueio')
             
-            const { error: liberarError } = await supabaseClient
-              .rpc('liberar_credito_bloqueado', {
-                p_emissao_id: etiqueta.emissao_id,
-                p_codigo_objeto: statusEtiqueta.codigo_objeto
-              })
+            const { error: deleteError } = await supabaseClient
+              .from('transacoes_credito')
+              .delete()
+              .eq('emissao_id', etiqueta.emissao_id)
+              .eq('tipo', 'consumo')
+              .eq('status', 'bloqueado')
 
-            if (liberarError) {
-              console.error('❌ Erro ao liberar crédito:', liberarError)
+            if (deleteError) {
+              console.error('❌ Erro ao deletar bloqueio:', deleteError)
               erros.push(`Etiqueta ${etiqueta.emissao_id}: erro ao liberar`)
             } else {
               liberadas++
-              console.log('✅ Crédito liberado com sucesso (regra 72h)')
+              console.log('✅ Bloqueio deletado com sucesso (regra 72h)')
             }
           } else {
             // Ainda dentro das 72h - manter bloqueado
