@@ -180,12 +180,14 @@ export const CadastroCliente = () => {
                 duration: 3000,
             });
 
+            // Marcar no localStorage que deve redirecionar para remetente após login
+            localStorage.setItem('redirect_to_remetente', 'true');
+
             setTimeout(() => {
                 navigate('/login', {
                     state: { 
                         email: data.email, 
                         mensagem: 'Conta criada com sucesso! Faça login para continuar.',
-                        redirecionarParaRemetente: true 
                     }
                 });
             }, 2000);

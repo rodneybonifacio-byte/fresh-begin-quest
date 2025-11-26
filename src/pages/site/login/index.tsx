@@ -51,9 +51,10 @@ export const Login = () => {
         reset();
         
         // Verificar se deve redirecionar para cadastro de remetente
-        const redirecionarParaRemetente = location.state?.redirecionarParaRemetente;
+        const shouldRedirectToRemetente = localStorage.getItem('redirect_to_remetente') === 'true';
         
-        if (redirecionarParaRemetente) {
+        if (shouldRedirectToRemetente) {
+          localStorage.removeItem('redirect_to_remetente');
           navigate('/app/remetentes?from=autocadastro', {
             replace: true
           });
