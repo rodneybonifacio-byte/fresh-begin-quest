@@ -13,6 +13,7 @@ import { ButtonComponent } from "../../../components/button";
 import { InputLabel } from "../../../components/input-label";
 import { getRedirectPathByRole } from "../../../utils/auth.utils";
 import { ThemeToggle } from "../../../components/theme/ThemeToggle";
+import { UsuarioDadosService } from "../../../services/UsuarioDadosService";
 const loginSchame = yup.object({
   email: yup.string().required("Informe seu email."),
   password: yup.string().required("Informa sua password.")
@@ -50,11 +51,31 @@ export const Login = () => {
         });
         reset();
         
-        // Verificar se deve redirecionar para cadastro de remetente
-        const shouldRedirectToRemetente = localStorage.getItem('redirect_to_remetente') === 'true';
+        // Verificar se deve redirecionar para cadastro de remetente (fluxo de autocadastro)
+        const shouldRedirectToRemetenteFlag = localStorage.getItem('redirect_to_remetente') === 'true';
         
-        if (shouldRedirectToRemetente) {
+        if (shouldRedirectToRemetenteFlag) {
           localStorage.removeItem('redirect_to_remetente');
+          navigate('/app/remetentes?from=autocadastro', {
+            replace: true
+          });
+          return;
+        }
+
+        // Verificar via backend se o usuário já possui remetentes cadastrados
+        const usuarioDadosService = new UsuarioDadosService();
+        let hasRemetentes = false;
+
+        try {
+          const dados = await usuarioDadosService.buscarDadosCompletos();
+          hasRemetentes = Array.isArray(dados.remetentes) && dados.remetentes.length > 0;
+        } catch (err) {
+          console.error('Erro ao buscar dados completos do usuário para verificar remetentes:', err);
+          // Em caso de erro, consideramos que não há remetentes para forçar o fluxo de cadastro
+          hasRemetentes = false;
+        }
+
+        if (!hasRemetentes) {
           navigate('/app/remetentes?from=autocadastro', {
             replace: true
           });
