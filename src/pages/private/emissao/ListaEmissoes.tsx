@@ -1,4 +1,4 @@
-import { Filter, Import, Plus, Printer, ReceiptText, BarChart3, Download } from 'lucide-react';
+import { Filter, Import, Plus, Printer, ReceiptText, BarChart3, Download, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DataTable } from '../../../components/DataTable';
@@ -24,6 +24,8 @@ import { ModalViewDeclaracaoConteudo } from './ModalViewDeclaracaoConteudo';
 import { ModalViewErroPostagem } from './ModalViewErroPostagem';
 import { ModalViewPDF } from './ModalViewPDF';
 import { DashboardEmissoes } from './DashboardEmissoes';
+import { toast } from 'sonner';
+import { supabase } from '../../../integrations/supabase/client';
 
 export const ListaEmissoes = () => {
     const { user } = useAuth();
@@ -122,6 +124,44 @@ export const ListaEmissoes = () => {
     const handleExportToExcel = () => {
         if (data && data.length > 0) {
             exportEmissoesToExcel(data, 'emissoes');
+        }
+    };
+
+    const handleCancelarEtiqueta = async (emissao: IEmissao) => {
+        if (!emissao.id) {
+            toast.error('ID da emissão não encontrado');
+            return;
+        }
+
+        if (!confirm('Tem certeza que deseja cancelar esta etiqueta? O valor será extornado automaticamente.')) {
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            // Cancelar etiqueta via API
+            await service.cancelarEmissao({ id: emissao.id });
+
+            // Liberar crédito bloqueado
+            const { error } = await supabase.rpc('liberar_credito_bloqueado', {
+                p_emissao_id: emissao.id,
+                p_codigo_objeto: emissao.codigoObjeto
+            });
+
+            if (error) {
+                console.error('Erro ao liberar crédito:', error);
+                toast.error('Etiqueta cancelada, mas houve erro ao extornar o crédito');
+            } else {
+                toast.success('Etiqueta cancelada e valor extornado com sucesso!');
+            }
+
+            // Recarregar dados
+            window.location.reload();
+        } catch (error: any) {
+            console.error('Erro ao cancelar etiqueta:', error);
+            toast.error(error?.message || 'Erro ao cancelar etiqueta');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -294,6 +334,12 @@ export const ListaEmissoes = () => {
                                         icon: <Printer size={16} className="text-blue-600" />,
                                         onClick: (row) => handleOnPDF(row, true),
                                         show: (row) => !row.mensagensErrorPostagem && !['ENTREGUE', 'EM_TRANSITO', 'POSTADO'].includes(row.status as string),
+                                    },
+                                    {
+                                        label: 'Cancelar Etiqueta',
+                                        icon: <XCircle size={16} className="text-red-600" />,
+                                        onClick: (row) => handleCancelarEtiqueta(row),
+                                        show: (row) => row.status === 'PRE_POSTADO',
                                     },
                                 ]}
                             />
