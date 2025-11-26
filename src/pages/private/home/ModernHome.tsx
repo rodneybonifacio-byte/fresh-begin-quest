@@ -385,7 +385,7 @@ export const ModernHome = () => {
                     <p className="text-lg text-muted-foreground mb-8">
                         Comece agora mesmo a emitir fretes com desconto
                     </p>
-                    <button onClick={() => navigate('/app/emissao/adicionar')} className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-4 rounded-full text-lg font-bold shadow-2xl shadow-primary/40 transition-all duration-300 hover:scale-105 inline-flex items-center gap-2">
+                    <button onClick={() => navigate('/app/emissao/adicionar')} className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-4 rounded-full text-lg font-bold shadow-2xl shadow-primary/40 transition-all duration-300 hover:scale-105 inline-flex items-center gap-2 text-slate-50">
                         <Plus className="h-5 w-5" />
                         Criar primeira etiqueta
                     </button>
