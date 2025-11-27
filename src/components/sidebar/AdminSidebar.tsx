@@ -1,4 +1,4 @@
-import { Archive, Calculator, ClipboardList, FileBarChart, FilePen, FileStack, Home, Package, Settings, Truck, UsersRound, Wallet, Tags, FileUp, Gift } from 'lucide-react';
+import { Archive, Calculator, ClipboardList, Clock, FileBarChart, FilePen, FileStack, Home, Package, Settings, Truck, UsersRound, Wallet, Tags, FileUp, Gift } from 'lucide-react';
 import { observer } from 'mobx-react-lite';
 import { useLocation } from 'react-router-dom';
 import { SidebarLayout } from './SidebarLayout';
@@ -63,7 +63,7 @@ const AdminSidebar = observer(({
         {
             icon: Wallet,
             label: 'Financeiro',
-            active: ['/admin/financeiro/faturas-a-receber', '/admin/financeiro/contas-a-pagar', '/admin/financeiro/processar-pagamento'].some(path => isPathActive(path)),
+            active: ['/admin/financeiro/faturas-a-receber', '/admin/financeiro/contas-a-pagar', '/admin/financeiro/processar-pagamento', '/admin/financeiro/recargas-pendentes'].some(path => isPathActive(path)),
             submenu: [
                 {
                     icon: FileBarChart,
@@ -76,6 +76,12 @@ const AdminSidebar = observer(({
                     label: 'Contas a Pagar',
                     to: '/admin/financeiro/contas-a-pagar',
                     active: isPathActive('/admin/financeiro/contas-a-pagar')
+                },
+                {
+                    icon: Clock,
+                    label: 'Recargas Pendentes',
+                    to: '/admin/financeiro/recargas-pendentes',
+                    active: isPathActive('/admin/financeiro/recargas-pendentes')
                 },
                 {
                     icon: Wallet,
