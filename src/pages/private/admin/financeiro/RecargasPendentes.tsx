@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../../../integrations/supabase/client';
+import { RealtimeStatusIndicator } from '../../../../components/RealtimeStatusIndicator';
 import { Clock, CheckCircle, XCircle, RefreshCw, Search, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -49,6 +50,8 @@ export default function RecargasPendentes() {
   const [loading, setLoading] = useState(true);
   const [filtroStatus, setFiltroStatus] = useState<string>('pendente_pagamento');
   const [searchTxid, setSearchTxid] = useState('');
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<Date | undefined>(undefined);
 
   const fetchRecargas = async () => {
     setLoading(true);
@@ -87,6 +90,42 @@ export default function RecargasPendentes() {
     fetchRecargas();
   }, [filtroStatus]);
 
+  // Realtime subscription
+  useEffect(() => {
+    console.log('🔔 Iniciando listener realtime para recargas pendentes...');
+
+    const channel = supabase
+      .channel('admin-recargas-pix-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'recargas_pix'
+        },
+        (payload) => {
+          console.log('📥 Atualização realtime recebida:', payload);
+          setLastUpdate(new Date());
+          fetchRecargas();
+        }
+      )
+      .subscribe((status) => {
+        console.log('Status do canal realtime admin:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Admin inscrito no canal de recargas');
+          setRealtimeConnected(true);
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error('❌ Erro no canal realtime admin');
+          setRealtimeConnected(false);
+        }
+      });
+
+    return () => {
+      console.log('🔕 Removendo listener realtime admin');
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   const handleSearch = () => {
     fetchRecargas();
   };
@@ -122,13 +161,16 @@ export default function RecargasPendentes() {
           <h1 className="text-2xl font-bold text-foreground">Recargas Pendentes</h1>
           <p className="text-muted-foreground">Gerenciar recargas PIX aguardando confirmação</p>
         </div>
-        <button
-          onClick={fetchRecargas}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-        >
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          Atualizar
-        </button>
+        <div className="flex items-center gap-3">
+          <RealtimeStatusIndicator isConnected={realtimeConnected} lastUpdate={lastUpdate} />
+          <button
+            onClick={fetchRecargas}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            Atualizar
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}
