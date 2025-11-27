@@ -284,7 +284,7 @@ export const CadastroCliente = () => {
               posicaoCadastro={posicaoCadastro}
             />
 
-        <PromoBannerRecarga />
+        <PromoBannerRecarga variant="featured" />
 
         <div className="w-full min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-background via-background to-accent/10 relative overflow-hidden">
             {/* Decorative circles */}

@@ -122,7 +122,7 @@ export const Login = () => {
     return <LoadSpinner mensagem="Aguarde, Autenticando suas credenciais..." />;
   }
   return <>
-        <PromoBannerRecarga />
+        <PromoBannerRecarga variant="featured" />
         <div className="w-full min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-background via-background to-accent/10 relative overflow-hidden">
             {/* Decorative circles */}
             <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
