@@ -329,13 +329,39 @@ export const CadastroCliente = () => {
                                     placeholder="(00) 0000-0000"
                                     {...register("telefone")}
                                     fieldError={errors.telefone?.message}
+                                    maxLength={14}
+                                    onChange={(e) => {
+                                        const value = e.target.value.replace(/\D/g, '');
+                                        let formatted = value;
+                                        if (value.length > 2) {
+                                            formatted = `(${value.slice(0, 2)}) ${value.slice(2, 6)}${value.length > 6 ? '-' + value.slice(6, 10) : ''}`;
+                                        } else if (value.length > 0) {
+                                            formatted = `(${value}`;
+                                        }
+                                        setValue('telefone', formatted);
+                                    }}
                                 />
 
                                 <InputLabel
                                     labelTitulo="Celular *"
-                                    placeholder="(00) 00000-0000"
+                                    placeholder="(00) 9 0000-0000"
                                     {...register("celular")}
                                     fieldError={errors.celular?.message}
+                                    maxLength={16}
+                                    onChange={(e) => {
+                                        const value = e.target.value.replace(/\D/g, '');
+                                        let formatted = value;
+                                        if (value.length > 2) {
+                                            if (value.length <= 7) {
+                                                formatted = `(${value.slice(0, 2)}) ${value.slice(2)}`;
+                                            } else {
+                                                formatted = `(${value.slice(0, 2)}) ${value.slice(2, 3)} ${value.slice(3, 7)}-${value.slice(7, 11)}`;
+                                            }
+                                        } else if (value.length > 0) {
+                                            formatted = `(${value}`;
+                                        }
+                                        setValue('celular', formatted);
+                                    }}
                                 />
                             </div>
                         </div>
