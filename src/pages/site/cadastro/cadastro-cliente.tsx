@@ -279,7 +279,7 @@ export const CadastroCliente = () => {
                                                 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300
                                                 ${currentStep > step.id ? 'bg-green-500 text-white shadow-lg shadow-green-500/30' : currentStep === step.id ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/30 scale-110' : 'bg-muted text-muted-foreground'}
                                             `}>
-                                            {currentStep > step.id ? <Check className="w-5 h-5" /> : <step.icon className="w-5 h-5" />}
+                                            {currentStep > step.id ? <Check className="w-5 h-5 text-slate-50 bg-orange-400" /> : <step.icon className="w-5 h-5" />}
                                         </div>
                                         <span className={`
                                             mt-2 text-xs font-medium transition-colors
