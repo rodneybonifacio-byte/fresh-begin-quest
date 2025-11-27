@@ -72,7 +72,7 @@ export const InputLabel = forwardRef<HTMLInputElement, InputLabelProps>(({ label
                 <input
                     {...props}
                     ref={ref}
-                    // type={isPassword ? (showPassword ? 'text' : 'password') : props.type}
+                    type={isPassword ? (showPassword ? 'text' : 'password') : props.type}
                     className={inputVariants({ typeSize })}
                 />
                 {/* Ícone de alerta posicionado sobre o input */}
