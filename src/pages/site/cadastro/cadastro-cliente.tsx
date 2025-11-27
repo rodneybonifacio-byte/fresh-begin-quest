@@ -164,12 +164,18 @@ export const CadastroCliente = () => {
             }
 
             if (!response.ok) {
-                // Verificar se é erro de CPF/CNPJ duplicado
+                // Verificar tipo de erro de duplicidade
                 const errorText = JSON.stringify(responseData).toLowerCase();
-                const isCpfCnpjDuplicado = errorText.includes('cpf') || errorText.includes('cnpj') || errorText.includes('já existe') || errorText.includes('duplicado');
+                const isEmailDuplicado = errorText.includes('e-mail') || errorText.includes('email');
+                const isCpfCnpjDuplicado = errorText.includes('cpf') || errorText.includes('cnpj');
+                const isDuplicado = isEmailDuplicado || isCpfCnpjDuplicado || errorText.includes('já existe') || errorText.includes('duplicado');
                 
-                if (isCpfCnpjDuplicado) {
-                    setErrorModalMessage('Este CPF/CNPJ já está cadastrado em nosso sistema.');
+                if (isDuplicado) {
+                    if (isEmailDuplicado) {
+                        setErrorModalMessage('Este e-mail já está cadastrado em nosso sistema.');
+                    } else {
+                        setErrorModalMessage('Este CPF/CNPJ já está cadastrado em nosso sistema.');
+                    }
                     setUserEmail(data.email);
                     setShowErrorModal(true);
                 } else {
@@ -218,7 +224,7 @@ export const CadastroCliente = () => {
                             {/* Título */}
                             <div className="space-y-2">
                                 <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-50">
-                                    CPF/CNPJ já cadastrado
+                                    Cadastro já existente
                                 </h3>
                                 <p className="text-base text-slate-600 dark:text-slate-400 leading-relaxed">
                                     {errorModalMessage}
