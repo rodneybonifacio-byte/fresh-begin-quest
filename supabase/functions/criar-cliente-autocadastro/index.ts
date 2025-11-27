@@ -228,6 +228,39 @@ serve(async (req: Request) => {
       console.log('✅ Remetente criado com sucesso!')
     }
 
+    // 4. Enviar webhook de confirmação para DataCrazy CRM
+    console.log('📤 Enviando webhook de confirmação do cadastro...')
+    
+    const webhookPayload = {
+      senha: body.senha,
+      email: body.email,
+      nome_razao_social: body.nomeEmpresa,
+      celular: body.celular,
+    }
+
+    try {
+      const webhookResponse = await fetch(
+        'https://api.datacrazy.io/v1/crm/api/crm/flows/webhooks/ab52ed88-dd1c-4bd2-a198-d1845e59e058/31ec9957-fc43-469b-9c73-529623336d84',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(webhookPayload),
+        }
+      )
+
+      if (webhookResponse.ok) {
+        console.log('✅ Webhook de cadastro enviado com sucesso!')
+      } else {
+        const webhookError = await webhookResponse.text()
+        console.error('⚠️ Erro ao enviar webhook:', webhookError)
+      }
+    } catch (webhookErr) {
+      console.error('⚠️ Erro ao enviar webhook:', webhookErr)
+      // Não falhar o cadastro se webhook falhar
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
