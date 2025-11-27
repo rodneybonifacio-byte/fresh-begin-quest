@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom';
 import { useState } from 'react';
 import AppSidebar from '../components/sidebar/AppSidebar';
 import AppTopbar from '../components/sidebar/AppTopbar';
+import { PromoBannerRecarga } from '../components/PromoBannerRecarga';
 
 export const LayoutBase = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -33,6 +34,9 @@ export const LayoutBase = () => {
                 <div className="lg:hidden">
                     <AppTopbar toggleSidebar={toggleSidebar} />
                 </div>
+
+                {/* Banner promocional */}
+                <PromoBannerRecarga />
 
                 {/* Page content */}
                 <main className="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 sm:p-6 lg:p-8">
