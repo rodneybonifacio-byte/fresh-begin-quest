@@ -343,7 +343,7 @@ export const CadastroCliente = () => {
                                 />
 
                                 <InputLabel
-                                    labelTitulo="Celular *"
+                                    labelTitulo="Celular (Whatsapp) *"
                                     placeholder="(00) 9 0000-0000"
                                     {...register("celular")}
                                     fieldError={errors.celular?.message}
