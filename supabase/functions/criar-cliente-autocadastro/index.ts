@@ -269,6 +269,7 @@ serve(async (req: Request) => {
     
     let posicaoCadastro = 0
     let elegivelPremio = false
+    let creditoAdicionado = false
     
     try {
       // @ts-ignore: Deno types
@@ -293,8 +294,38 @@ serve(async (req: Request) => {
         
         if (incrementResponse.ok) {
           posicaoCadastro = await incrementResponse.json()
-          elegivelPremio = posicaoCadastro <= 105
+          elegivelPremio = posicaoCadastro <= 100
           console.log(`✅ Posição de cadastro: ${posicaoCadastro}, Elegível ao prêmio: ${elegivelPremio}`)
+          
+          // REGRA 1: Se está entre os 100 primeiros, adiciona R$50 de crédito
+          if (elegivelPremio && clienteId) {
+            console.log('🎁 Cliente elegível! Adicionando R$50 de crédito bônus...')
+            
+            const registrarRecargaResponse = await fetch(
+              `${supabaseUrl}/rest/v1/rpc/registrar_recarga`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'apikey': supabaseServiceKey,
+                  'Authorization': `Bearer ${supabaseServiceKey}`,
+                },
+                body: JSON.stringify({
+                  p_cliente_id: clienteId,
+                  p_valor: 50,
+                  p_descricao: `🎁 Bônus dos 100 primeiros cadastros - Posição #${posicaoCadastro}`
+                }),
+              }
+            )
+            
+            if (registrarRecargaResponse.ok) {
+              creditoAdicionado = true
+              console.log('✅ R$50 de crédito bônus adicionado com sucesso!')
+            } else {
+              const errorText = await registrarRecargaResponse.text()
+              console.error('⚠️ Erro ao adicionar crédito bônus:', errorText)
+            }
+          }
         }
       }
     } catch (contadorErr) {
@@ -308,7 +339,8 @@ serve(async (req: Request) => {
         data: result,
         message: 'Cliente e remetente criados com sucesso',
         posicaoCadastro,
-        elegivelPremio
+        elegivelPremio,
+        creditoAdicionado
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
