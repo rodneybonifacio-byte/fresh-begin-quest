@@ -172,9 +172,11 @@ export const CadastroCliente = () => {
                 
                 if (isDuplicado) {
                     if (isEmailDuplicado) {
-                        setErrorModalMessage('Este e-mail já está cadastrado em nosso sistema.');
+                        setErrorModalMessage('E-mail já cadastrado');
+                    } else if (isCpfCnpjDuplicado) {
+                        setErrorModalMessage('CPF/CNPJ já cadastrado');
                     } else {
-                        setErrorModalMessage('Este CPF/CNPJ já está cadastrado em nosso sistema.');
+                        setErrorModalMessage('Dados já cadastrados');
                     }
                     setUserEmail(data.email);
                     setShowErrorModal(true);
@@ -224,10 +226,10 @@ export const CadastroCliente = () => {
                             {/* Título */}
                             <div className="space-y-2">
                                 <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-50">
-                                    Cadastro já existente
+                                    {errorModalMessage}
                                 </h3>
                                 <p className="text-base text-slate-600 dark:text-slate-400 leading-relaxed">
-                                    {errorModalMessage}
+                                    Este dado já está vinculado a uma conta em nosso sistema.
                                 </p>
                             </div>
 
