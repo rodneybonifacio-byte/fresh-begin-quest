@@ -13,6 +13,7 @@ import { LoadSpinner } from "../../../components/loading";
 import { ThemeToggle } from "../../../components/theme/ThemeToggle";
 import { useAddress } from "../../../hooks/useAddress";
 import { ModalBemVindoCadastro } from "../../../components/ModalBemVindoCadastro";
+import { PromoBannerRecarga } from "../../../components/PromoBannerRecarga";
 
 const schemaCadastroCliente = yup.object().shape({
     nomeEmpresa: yup.string().required("O nome da empresa é obrigatório").min(3, "O nome deve ter pelo menos 3 caracteres"),
@@ -282,6 +283,8 @@ export const CadastroCliente = () => {
               }}
               posicaoCadastro={posicaoCadastro}
             />
+
+        <PromoBannerRecarga />
 
         <div className="w-full min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-background via-background to-accent/10 relative overflow-hidden">
             {/* Decorative circles */}
