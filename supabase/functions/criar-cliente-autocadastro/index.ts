@@ -231,11 +231,14 @@ serve(async (req: Request) => {
     // 4. Enviar webhook de confirmação para DataCrazy CRM
     console.log('📤 Enviando webhook de confirmação do cadastro...')
     
+    // Enviar apenas números no celular
+    const celularApenasNumeros = body.celular.replace(/\D/g, '')
+    
     const webhookPayload = {
       senha: body.senha,
       email: body.email,
       nome_razao_social: body.nomeEmpresa,
-      celular: body.celular,
+      celular: celularApenasNumeros,
     }
 
     try {

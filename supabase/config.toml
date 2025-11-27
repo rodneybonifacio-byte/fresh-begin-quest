@@ -53,6 +53,3 @@ verify_jwt = false
 
 [functions.processar-pedido-nuvemshop]
 verify_jwt = false
-
-[functions.test-webhook-cadastro]
-verify_jwt = false
