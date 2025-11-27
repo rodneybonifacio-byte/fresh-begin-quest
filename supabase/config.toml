@@ -44,3 +44,12 @@ verify_jwt = false
 
 [functions.corrigir-consumos-incorretos]
 verify_jwt = false
+
+[functions.nuvemshop-oauth-token]
+verify_jwt = false
+
+[functions.nuvemshop-webhook]
+verify_jwt = false
+
+[functions.processar-pedido-nuvemshop]
+verify_jwt = false
