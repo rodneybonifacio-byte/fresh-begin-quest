@@ -15,222 +15,199 @@ import { useAddress } from "../../../hooks/useAddress";
 import { ModalBemVindoCadastro } from "../../../components/ModalBemVindoCadastro";
 import { PromoBannerRecarga } from "../../../components/PromoBannerRecarga";
 import { Building2, MapPin, Lock, Check, ChevronRight, ChevronLeft } from "lucide-react";
-
 const schemaCadastroCliente = yup.object().shape({
-    nomeEmpresa: yup.string().required("O nome da empresa é obrigatório").min(3, "O nome deve ter pelo menos 3 caracteres"),
-    nomeResponsavel: yup.string().required("O nome do responsável é obrigatório").min(3, "O nome do responsável deve ter pelo menos 3 caracteres"),
-    cpfCnpj: yup.string()
-        .required("O CPF/CNPJ é obrigatório")
-        .test('cpf-cnpj-valido', 'CPF/CNPJ inválido', function(value) {
-            if (!value) return false;
-            const numeros = value.replace(/\D/g, '');
-            if (numeros.length === 11) {
-                return isValidCPF(numeros);
-            } else if (numeros.length === 14) {
-                return isValidCNPJ(numeros);
-            }
-            return false;
-        }),
-    telefone: yup.string(),
-    celular: yup.string().required("O celular é obrigatório"),
-    cep: yup.string().required("O CEP é obrigatório"),
-    logradouro: yup.string().required("O logradouro é obrigatório"),
-    numero: yup.string().required("O número é obrigatório"),
-    complemento: yup.string(),
-    bairro: yup.string().required("O bairro é obrigatório"),
-    localidade: yup.string().required("A cidade é obrigatória"),
-    uf: yup.string().required("O estado é obrigatório"),
-    email: yup.string().required("O e-mail é obrigatório").email("E-mail inválido"),
-    senha: yup.string().required("A senha é obrigatória").min(6, "A senha deve ter pelo menos 6 caracteres"),
-    confirmarSenha: yup.string()
-        .required("Confirme a senha")
-        .oneOf([yup.ref('senha')], "As senhas não coincidem"),
-});
-
-type CadastroClienteFormData = yup.InferType<typeof schemaCadastroCliente>;
-
-const steps = [
-    { id: 1, title: "Empresa", icon: Building2 },
-    { id: 2, title: "Endereço", icon: MapPin },
-    { id: 3, title: "Acesso", icon: Lock },
-];
-
-export const CadastroCliente = () => {
-    const navigate = useNavigate();
-    const [isLoading, setIsLoading] = useState(false);
-    const [currentStep, setCurrentStep] = useState(1);
-    const [showErrorModal, setShowErrorModal] = useState(false);
-    const [errorModalMessage, setErrorModalMessage] = useState('');
-    const [userEmail, setUserEmail] = useState('');
-    const [showWelcomeModal, setShowWelcomeModal] = useState(false);
-    const [posicaoCadastro, setPosicaoCadastro] = useState(0);
-    const { onBuscaCep } = useAddress();
-
-    const {
-        register,
-        handleSubmit,
-        formState: { errors },
-        setValue,
-        setFocus,
-        clearErrors,
-        trigger,
-    } = useForm<CadastroClienteFormData>({
-        resolver: yupResolver(schemaCadastroCliente),
-        mode: 'onChange',
-    });
-
-    const handleCepChange = async (cep: string) => {
-        const cepFormatado = cep.replace(/\D/g, '');
-        if (cepFormatado.length === 8) {
-            try {
-                const endereco = await onBuscaCep(cepFormatado, () => {});
-                if (endereco) {
-                    setValue('logradouro', endereco.logradouro || '');
-                    setValue('bairro', endereco.bairro || '');
-                    setValue('localidade', endereco.localidade || '');
-                    setValue('uf', endereco.uf || '');
-                    clearErrors(['logradouro', 'bairro', 'localidade', 'uf']);
-                    setFocus('numero');
-                }
-            } catch (error) {
-                console.error('Erro ao buscar CEP:', error);
-                toast.error('Erro ao buscar CEP');
-            }
-        }
-    };
-
-    const handleCpfCnpjChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value.replace(/\D/g, '');
-        let formatted = '';
-        if (value.length <= 11) {
-            formatted = value
-                .replace(/(\d{3})(\d)/, '$1.$2')
-                .replace(/(\d{3})(\d)/, '$1.$2')
-                .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-        } else {
-            formatted = value
-                .substring(0, 14)
-                .replace(/(\d{2})(\d)/, '$1.$2')
-                .replace(/(\d{3})(\d)/, '$1.$2')
-                .replace(/(\d{3})(\d)/, '$1/$2')
-                .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
-        }
-        setValue('cpfCnpj', formatted);
-    };
-
-    const validateCurrentStep = async (): Promise<boolean> => {
-        let fieldsToValidate: (keyof CadastroClienteFormData)[] = [];
-        
-        if (currentStep === 1) {
-            fieldsToValidate = ['nomeEmpresa', 'nomeResponsavel', 'cpfCnpj', 'celular'];
-        } else if (currentStep === 2) {
-            fieldsToValidate = ['cep', 'logradouro', 'numero', 'bairro', 'localidade', 'uf'];
-        } else if (currentStep === 3) {
-            fieldsToValidate = ['email', 'senha', 'confirmarSenha'];
-        }
-        
-        const result = await trigger(fieldsToValidate);
-        return result;
-    };
-
-    const handleNext = async () => {
-        const isValid = await validateCurrentStep();
-        if (isValid && currentStep < 3) {
-            setCurrentStep(currentStep + 1);
-        }
-    };
-
-    const handlePrevious = () => {
-        if (currentStep > 1) {
-            setCurrentStep(currentStep - 1);
-        }
-    };
-
-    const onSubmit = async (data: CadastroClienteFormData) => {
-        setIsLoading(true);
-        try {
-            const cpfCnpjLimpo = data.cpfCnpj.replace(/\D/g, '');
-            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-            const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-            
-            const response = await fetch(`${supabaseUrl}/functions/v1/criar-cliente-autocadastro`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${supabaseAnonKey}`,
-                },
-                body: JSON.stringify({
-                    nomeEmpresa: data.nomeEmpresa,
-                    nomeResponsavel: data.nomeResponsavel,
-                    cpfCnpj: cpfCnpjLimpo,
-                    telefone: data.telefone || '',
-                    celular: data.celular,
-                    endereco: {
-                        cep: data.cep,
-                        logradouro: data.logradouro,
-                        numero: data.numero,
-                        complemento: data.complemento || '',
-                        bairro: data.bairro,
-                        localidade: data.localidade,
-                        uf: data.uf,
-                    },
-                    email: data.email,
-                    senha: data.senha,
-                }),
-            });
-
-            let responseData: any = {};
-            try {
-                responseData = await response.json();
-            } catch (e) {
-                console.error('Erro ao fazer parse do JSON:', e);
-            }
-
-            if (!response.ok) {
-                const errorText = JSON.stringify(responseData).toLowerCase();
-                const isEmailDuplicado = errorText.includes('e-mail') || errorText.includes('email');
-                const isCpfCnpjDuplicado = errorText.includes('cpf') || errorText.includes('cnpj');
-                const isDuplicado = isEmailDuplicado || isCpfCnpjDuplicado || errorText.includes('já existe') || errorText.includes('duplicado');
-                
-                if (isDuplicado) {
-                    if (isEmailDuplicado) {
-                        setErrorModalMessage('E-mail já cadastrado');
-                    } else if (isCpfCnpjDuplicado) {
-                        setErrorModalMessage('CPF/CNPJ já cadastrado');
-                    } else {
-                        setErrorModalMessage('Dados já cadastrados');
-                    }
-                    setUserEmail(data.email);
-                    setShowErrorModal(true);
-                } else {
-                    toast.error('Erro ao criar conta. Tente novamente.');
-                }
-                return;
-            }
-
-            const posicao = responseData.posicaoCadastro || 0;
-            setPosicaoCadastro(posicao);
-            setUserEmail(data.email);
-            localStorage.setItem('redirect_to_remetente', 'true');
-            setShowWelcomeModal(true);
-
-        } catch (error) {
-            console.error('Erro ao criar cliente:', error);
-            toast.error('Erro ao criar conta. Tente novamente.');
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    if (isLoading) {
-        return <LoadSpinner mensagem="Criando sua conta..." />;
+  nomeEmpresa: yup.string().required("O nome da empresa é obrigatório").min(3, "O nome deve ter pelo menos 3 caracteres"),
+  nomeResponsavel: yup.string().required("O nome do responsável é obrigatório").min(3, "O nome do responsável deve ter pelo menos 3 caracteres"),
+  cpfCnpj: yup.string().required("O CPF/CNPJ é obrigatório").test('cpf-cnpj-valido', 'CPF/CNPJ inválido', function (value) {
+    if (!value) return false;
+    const numeros = value.replace(/\D/g, '');
+    if (numeros.length === 11) {
+      return isValidCPF(numeros);
+    } else if (numeros.length === 14) {
+      return isValidCNPJ(numeros);
     }
-
-    return (
-        <>
+    return false;
+  }),
+  telefone: yup.string(),
+  celular: yup.string().required("O celular é obrigatório"),
+  cep: yup.string().required("O CEP é obrigatório"),
+  logradouro: yup.string().required("O logradouro é obrigatório"),
+  numero: yup.string().required("O número é obrigatório"),
+  complemento: yup.string(),
+  bairro: yup.string().required("O bairro é obrigatório"),
+  localidade: yup.string().required("A cidade é obrigatória"),
+  uf: yup.string().required("O estado é obrigatório"),
+  email: yup.string().required("O e-mail é obrigatório").email("E-mail inválido"),
+  senha: yup.string().required("A senha é obrigatória").min(6, "A senha deve ter pelo menos 6 caracteres"),
+  confirmarSenha: yup.string().required("Confirme a senha").oneOf([yup.ref('senha')], "As senhas não coincidem")
+});
+type CadastroClienteFormData = yup.InferType<typeof schemaCadastroCliente>;
+const steps = [{
+  id: 1,
+  title: "Empresa",
+  icon: Building2
+}, {
+  id: 2,
+  title: "Endereço",
+  icon: MapPin
+}, {
+  id: 3,
+  title: "Acesso",
+  icon: Lock
+}];
+export const CadastroCliente = () => {
+  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorModalMessage, setErrorModalMessage] = useState('');
+  const [userEmail, setUserEmail] = useState('');
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [posicaoCadastro, setPosicaoCadastro] = useState(0);
+  const {
+    onBuscaCep
+  } = useAddress();
+  const {
+    register,
+    handleSubmit,
+    formState: {
+      errors
+    },
+    setValue,
+    setFocus,
+    clearErrors,
+    trigger
+  } = useForm<CadastroClienteFormData>({
+    resolver: yupResolver(schemaCadastroCliente),
+    mode: 'onChange'
+  });
+  const handleCepChange = async (cep: string) => {
+    const cepFormatado = cep.replace(/\D/g, '');
+    if (cepFormatado.length === 8) {
+      try {
+        const endereco = await onBuscaCep(cepFormatado, () => {});
+        if (endereco) {
+          setValue('logradouro', endereco.logradouro || '');
+          setValue('bairro', endereco.bairro || '');
+          setValue('localidade', endereco.localidade || '');
+          setValue('uf', endereco.uf || '');
+          clearErrors(['logradouro', 'bairro', 'localidade', 'uf']);
+          setFocus('numero');
+        }
+      } catch (error) {
+        console.error('Erro ao buscar CEP:', error);
+        toast.error('Erro ao buscar CEP');
+      }
+    }
+  };
+  const handleCpfCnpjChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, '');
+    let formatted = '';
+    if (value.length <= 11) {
+      formatted = value.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    } else {
+      formatted = value.substring(0, 14).replace(/(\d{2})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1/$2').replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+    }
+    setValue('cpfCnpj', formatted);
+  };
+  const validateCurrentStep = async (): Promise<boolean> => {
+    let fieldsToValidate: (keyof CadastroClienteFormData)[] = [];
+    if (currentStep === 1) {
+      fieldsToValidate = ['nomeEmpresa', 'nomeResponsavel', 'cpfCnpj', 'celular'];
+    } else if (currentStep === 2) {
+      fieldsToValidate = ['cep', 'logradouro', 'numero', 'bairro', 'localidade', 'uf'];
+    } else if (currentStep === 3) {
+      fieldsToValidate = ['email', 'senha', 'confirmarSenha'];
+    }
+    const result = await trigger(fieldsToValidate);
+    return result;
+  };
+  const handleNext = async () => {
+    const isValid = await validateCurrentStep();
+    if (isValid && currentStep < 3) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+  const handlePrevious = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+  const onSubmit = async (data: CadastroClienteFormData) => {
+    setIsLoading(true);
+    try {
+      const cpfCnpjLimpo = data.cpfCnpj.replace(/\D/g, '');
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const response = await fetch(`${supabaseUrl}/functions/v1/criar-cliente-autocadastro`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`
+        },
+        body: JSON.stringify({
+          nomeEmpresa: data.nomeEmpresa,
+          nomeResponsavel: data.nomeResponsavel,
+          cpfCnpj: cpfCnpjLimpo,
+          telefone: data.telefone || '',
+          celular: data.celular,
+          endereco: {
+            cep: data.cep,
+            logradouro: data.logradouro,
+            numero: data.numero,
+            complemento: data.complemento || '',
+            bairro: data.bairro,
+            localidade: data.localidade,
+            uf: data.uf
+          },
+          email: data.email,
+          senha: data.senha
+        })
+      });
+      let responseData: any = {};
+      try {
+        responseData = await response.json();
+      } catch (e) {
+        console.error('Erro ao fazer parse do JSON:', e);
+      }
+      if (!response.ok) {
+        const errorText = JSON.stringify(responseData).toLowerCase();
+        const isEmailDuplicado = errorText.includes('e-mail') || errorText.includes('email');
+        const isCpfCnpjDuplicado = errorText.includes('cpf') || errorText.includes('cnpj');
+        const isDuplicado = isEmailDuplicado || isCpfCnpjDuplicado || errorText.includes('já existe') || errorText.includes('duplicado');
+        if (isDuplicado) {
+          if (isEmailDuplicado) {
+            setErrorModalMessage('E-mail já cadastrado');
+          } else if (isCpfCnpjDuplicado) {
+            setErrorModalMessage('CPF/CNPJ já cadastrado');
+          } else {
+            setErrorModalMessage('Dados já cadastrados');
+          }
+          setUserEmail(data.email);
+          setShowErrorModal(true);
+        } else {
+          toast.error('Erro ao criar conta. Tente novamente.');
+        }
+        return;
+      }
+      const posicao = responseData.posicaoCadastro || 0;
+      setPosicaoCadastro(posicao);
+      setUserEmail(data.email);
+      localStorage.setItem('redirect_to_remetente', 'true');
+      setShowWelcomeModal(true);
+    } catch (error) {
+      console.error('Erro ao criar cliente:', error);
+      toast.error('Erro ao criar conta. Tente novamente.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  if (isLoading) {
+    return <LoadSpinner mensagem="Criando sua conta..." />;
+  }
+  return <>
             {/* Modal de Erro */}
-            {showErrorModal && (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in-0">
+            {showErrorModal && <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in-0">
                     <div className="bg-white dark:bg-slate-900 border-2 border-red-100 dark:border-red-900/30 rounded-2xl shadow-2xl max-w-md w-full p-8 animate-in fade-in-0 zoom-in-95 duration-300">
                         <div className="flex flex-col items-center text-center gap-4">
                             <div className="w-16 h-16 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg shadow-red-500/30">
@@ -243,37 +220,33 @@ export const CadastroCliente = () => {
                                 <p className="text-base text-slate-600 dark:text-slate-400">Este dado já está vinculado a uma conta.</p>
                             </div>
                             <div className="flex flex-col sm:flex-row gap-3 w-full mt-2">
-                                <ButtonComponent
-                                    onClick={() => {
-                                        setShowErrorModal(false);
-                                        navigate('/login', { state: { email: userEmail } });
-                                    }}
-                                    variant="primary"
-                                    className="flex-1 h-12 font-semibold"
-                                >
+                                <ButtonComponent onClick={() => {
+              setShowErrorModal(false);
+              navigate('/login', {
+                state: {
+                  email: userEmail
+                }
+              });
+            }} variant="primary" className="flex-1 h-12 font-semibold">
                                     Fazer Login
                                 </ButtonComponent>
-                                <ButtonComponent
-                                    onClick={() => setShowErrorModal(false)}
-                                    variant="ghost"
-                                    className="flex-1 h-12 border border-slate-300 dark:border-slate-600"
-                                >
+                                <ButtonComponent onClick={() => setShowErrorModal(false)} variant="ghost" className="flex-1 h-12 border border-slate-300 dark:border-slate-600">
                                     Fechar
                                 </ButtonComponent>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                </div>}
 
-            <ModalBemVindoCadastro 
-                isOpen={showWelcomeModal}
-                onClose={() => {
-                    setShowWelcomeModal(false);
-                    navigate('/login', { state: { email: userEmail, mensagem: 'Conta criada com sucesso!' } });
-                }}
-                posicaoCadastro={posicaoCadastro}
-            />
+            <ModalBemVindoCadastro isOpen={showWelcomeModal} onClose={() => {
+      setShowWelcomeModal(false);
+      navigate('/login', {
+        state: {
+          email: userEmail,
+          mensagem: 'Conta criada com sucesso!'
+        }
+      });
+    }} posicaoCadastro={posicaoCadastro} />
 
             <PromoBannerRecarga variant="featured" />
 
@@ -289,9 +262,7 @@ export const CadastroCliente = () => {
                 <div className="w-full max-w-2xl relative z-10 animate-fade-in">
                     {/* Logo */}
                     <div className="flex flex-col items-center gap-3 mb-6">
-                        <div className="p-3 bg-primary/10 rounded-2xl">
-                            <LogoApp light />
-                        </div>
+                        
                         <div className="text-center">
                             <h1 className="text-2xl font-bold text-foreground mb-1">Criar Conta</h1>
                             <p className="text-muted-foreground text-sm">Preencha os dados para começar</p>
@@ -301,26 +272,14 @@ export const CadastroCliente = () => {
                     {/* Timeline/Stepper */}
                     <div className="mb-8">
                         <div className="flex items-center justify-center">
-                            {steps.map((step, index) => (
-                                <div key={step.id} className="flex items-center">
+                            {steps.map((step, index) => <div key={step.id} className="flex items-center">
                                     {/* Step Circle */}
                                     <div className="flex flex-col items-center">
-                                        <div 
-                                            className={`
+                                        <div className={`
                                                 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300
-                                                ${currentStep > step.id 
-                                                    ? 'bg-green-500 text-white shadow-lg shadow-green-500/30' 
-                                                    : currentStep === step.id 
-                                                        ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/30 scale-110' 
-                                                        : 'bg-muted text-muted-foreground'
-                                                }
-                                            `}
-                                        >
-                                            {currentStep > step.id ? (
-                                                <Check className="w-5 h-5" />
-                                            ) : (
-                                                <step.icon className="w-5 h-5" />
-                                            )}
+                                                ${currentStep > step.id ? 'bg-green-500 text-white shadow-lg shadow-green-500/30' : currentStep === step.id ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/30 scale-110' : 'bg-muted text-muted-foreground'}
+                                            `}>
+                                            {currentStep > step.id ? <Check className="w-5 h-5" /> : <step.icon className="w-5 h-5" />}
                                         </div>
                                         <span className={`
                                             mt-2 text-xs font-medium transition-colors
@@ -331,14 +290,11 @@ export const CadastroCliente = () => {
                                     </div>
                                     
                                     {/* Connector Line */}
-                                    {index < steps.length - 1 && (
-                                        <div className={`
+                                    {index < steps.length - 1 && <div className={`
                                             w-16 sm:w-24 h-1 mx-2 rounded-full transition-colors duration-300
                                             ${currentStep > step.id ? 'bg-green-500' : 'bg-muted'}
-                                        `} />
-                                    )}
-                                </div>
-                            ))}
+                                        `} />}
+                                </div>)}
                         </div>
                     </div>
 
@@ -346,8 +302,7 @@ export const CadastroCliente = () => {
                     <div className="bg-card border border-border rounded-2xl shadow-xl p-6 sm:p-8 backdrop-blur-sm">
                         <form onSubmit={handleSubmit(onSubmit)}>
                             {/* Step 1: Dados da Empresa */}
-                            {currentStep === 1 && (
-                                <div className="space-y-5 animate-fade-in">
+                            {currentStep === 1 && <div className="space-y-5 animate-fade-in">
                                     <div className="flex items-center gap-3 mb-6">
                                         <div className="p-2 bg-primary/10 rounded-lg">
                                             <Building2 className="w-5 h-5 text-primary" />
@@ -358,75 +313,45 @@ export const CadastroCliente = () => {
                                         </div>
                                     </div>
                                     
-                                    <InputLabel
-                                        labelTitulo="Nome / Razão Social *"
-                                        placeholder="Digite o nome da empresa"
-                                        {...register("nomeEmpresa")}
-                                        fieldError={errors.nomeEmpresa?.message}
-                                    />
+                                    <InputLabel labelTitulo="Nome / Razão Social *" placeholder="Digite o nome da empresa" {...register("nomeEmpresa")} fieldError={errors.nomeEmpresa?.message} />
                                     
-                                    <InputLabel
-                                        labelTitulo="Nome do Responsável *"
-                                        placeholder="Digite o nome do responsável"
-                                        {...register("nomeResponsavel")}
-                                        fieldError={errors.nomeResponsavel?.message}
-                                    />
+                                    <InputLabel labelTitulo="Nome do Responsável *" placeholder="Digite o nome do responsável" {...register("nomeResponsavel")} fieldError={errors.nomeResponsavel?.message} />
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <InputLabel
-                                            labelTitulo="CPF/CNPJ *"
-                                            placeholder="Digite o CPF ou CNPJ"
-                                            {...register("cpfCnpj", { onChange: handleCpfCnpjChange })}
-                                            fieldError={errors.cpfCnpj?.message}
-                                            maxLength={18}
-                                        />
+                                        <InputLabel labelTitulo="CPF/CNPJ *" placeholder="Digite o CPF ou CNPJ" {...register("cpfCnpj", {
+                  onChange: handleCpfCnpjChange
+                })} fieldError={errors.cpfCnpj?.message} maxLength={18} />
 
-                                        <InputLabel
-                                            labelTitulo="Telefone"
-                                            placeholder="(00) 0000-0000"
-                                            {...register("telefone")}
-                                            fieldError={errors.telefone?.message}
-                                            maxLength={14}
-                                            onChange={(e) => {
-                                                const value = e.target.value.replace(/\D/g, '');
-                                                let formatted = value;
-                                                if (value.length > 2) {
-                                                    formatted = `(${value.slice(0, 2)}) ${value.slice(2, 6)}${value.length > 6 ? '-' + value.slice(6, 10) : ''}`;
-                                                } else if (value.length > 0) {
-                                                    formatted = `(${value}`;
-                                                }
-                                                setValue('telefone', formatted);
-                                            }}
-                                        />
+                                        <InputLabel labelTitulo="Telefone" placeholder="(00) 0000-0000" {...register("telefone")} fieldError={errors.telefone?.message} maxLength={14} onChange={e => {
+                  const value = e.target.value.replace(/\D/g, '');
+                  let formatted = value;
+                  if (value.length > 2) {
+                    formatted = `(${value.slice(0, 2)}) ${value.slice(2, 6)}${value.length > 6 ? '-' + value.slice(6, 10) : ''}`;
+                  } else if (value.length > 0) {
+                    formatted = `(${value}`;
+                  }
+                  setValue('telefone', formatted);
+                }} />
                                     </div>
 
-                                    <InputLabel
-                                        labelTitulo="Celular (WhatsApp) *"
-                                        placeholder="(00) 9 0000-0000"
-                                        {...register("celular")}
-                                        fieldError={errors.celular?.message}
-                                        maxLength={16}
-                                        onChange={(e) => {
-                                            const value = e.target.value.replace(/\D/g, '');
-                                            let formatted = value;
-                                            if (value.length > 2) {
-                                                if (value.length <= 7) {
-                                                    formatted = `(${value.slice(0, 2)}) ${value.slice(2)}`;
-                                                } else {
-                                                    formatted = `(${value.slice(0, 2)}) ${value.slice(2, 3)} ${value.slice(3, 7)}-${value.slice(7, 11)}`;
-                                                }
-                                            } else if (value.length > 0) {
-                                                formatted = `(${value}`;
-                                            }
-                                            setValue('celular', formatted);
-                                        }}
-                                    />
-                                </div>
-                            )}
+                                    <InputLabel labelTitulo="Celular (WhatsApp) *" placeholder="(00) 9 0000-0000" {...register("celular")} fieldError={errors.celular?.message} maxLength={16} onChange={e => {
+                const value = e.target.value.replace(/\D/g, '');
+                let formatted = value;
+                if (value.length > 2) {
+                  if (value.length <= 7) {
+                    formatted = `(${value.slice(0, 2)}) ${value.slice(2)}`;
+                  } else {
+                    formatted = `(${value.slice(0, 2)}) ${value.slice(2, 3)} ${value.slice(3, 7)}-${value.slice(7, 11)}`;
+                  }
+                } else if (value.length > 0) {
+                  formatted = `(${value}`;
+                }
+                setValue('celular', formatted);
+              }} />
+                                </div>}
 
                             {/* Step 2: Endereço */}
-                            {currentStep === 2 && (
-                                <div className="space-y-5 animate-fade-in">
+                            {currentStep === 2 && <div className="space-y-5 animate-fade-in">
                                     <div className="flex items-center gap-3 mb-6">
                                         <div className="p-2 bg-primary/10 rounded-lg">
                                             <MapPin className="w-5 h-5 text-primary" />
@@ -438,68 +363,28 @@ export const CadastroCliente = () => {
                                     </div>
                                     
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <InputLabel
-                                            labelTitulo="CEP *"
-                                            placeholder="00000-000"
-                                            {...register("cep")}
-                                            fieldError={errors.cep?.message}
-                                            onChange={(e) => {
-                                                const value = e.target.value;
-                                                setValue('cep', value);
-                                                handleCepChange(value);
-                                            }}
-                                        />
+                                        <InputLabel labelTitulo="CEP *" placeholder="00000-000" {...register("cep")} fieldError={errors.cep?.message} onChange={e => {
+                  const value = e.target.value;
+                  setValue('cep', value);
+                  handleCepChange(value);
+                }} />
 
-                                        <InputLabel
-                                            labelTitulo="Rua *"
-                                            placeholder="Digite o logradouro"
-                                            {...register("logradouro")}
-                                            fieldError={errors.logradouro?.message}
-                                        />
+                                        <InputLabel labelTitulo="Rua *" placeholder="Digite o logradouro" {...register("logradouro")} fieldError={errors.logradouro?.message} />
 
-                                        <InputLabel
-                                            labelTitulo="Número *"
-                                            placeholder="Número"
-                                            {...register("numero")}
-                                            fieldError={errors.numero?.message}
-                                        />
+                                        <InputLabel labelTitulo="Número *" placeholder="Número" {...register("numero")} fieldError={errors.numero?.message} />
 
-                                        <InputLabel
-                                            labelTitulo="Complemento"
-                                            placeholder="Complemento (opcional)"
-                                            {...register("complemento")}
-                                            fieldError={errors.complemento?.message}
-                                        />
+                                        <InputLabel labelTitulo="Complemento" placeholder="Complemento (opcional)" {...register("complemento")} fieldError={errors.complemento?.message} />
 
-                                        <InputLabel
-                                            labelTitulo="Bairro *"
-                                            placeholder="Bairro"
-                                            {...register("bairro")}
-                                            fieldError={errors.bairro?.message}
-                                        />
+                                        <InputLabel labelTitulo="Bairro *" placeholder="Bairro" {...register("bairro")} fieldError={errors.bairro?.message} />
 
-                                        <InputLabel
-                                            labelTitulo="Cidade *"
-                                            placeholder="Cidade"
-                                            {...register("localidade")}
-                                            fieldError={errors.localidade?.message}
-                                            disabled
-                                        />
+                                        <InputLabel labelTitulo="Cidade *" placeholder="Cidade" {...register("localidade")} fieldError={errors.localidade?.message} disabled />
 
-                                        <InputLabel
-                                            labelTitulo="Estado *"
-                                            placeholder="UF"
-                                            {...register("uf")}
-                                            fieldError={errors.uf?.message}
-                                            disabled
-                                        />
+                                        <InputLabel labelTitulo="Estado *" placeholder="UF" {...register("uf")} fieldError={errors.uf?.message} disabled />
                                     </div>
-                                </div>
-                            )}
+                                </div>}
 
                             {/* Step 3: Dados de Acesso */}
-                            {currentStep === 3 && (
-                                <div className="space-y-5 animate-fade-in">
+                            {currentStep === 3 && <div className="space-y-5 animate-fade-in">
                                     <div className="flex items-center gap-3 mb-6">
                                         <div className="p-2 bg-primary/10 rounded-lg">
                                             <Lock className="w-5 h-5 text-primary" />
@@ -510,76 +395,31 @@ export const CadastroCliente = () => {
                                         </div>
                                     </div>
                                     
-                                    <InputLabel
-                                        labelTitulo="E-mail *"
-                                        type="email"
-                                        placeholder="seu@email.com"
-                                        {...register("email")}
-                                        fieldError={errors.email?.message}
-                                    />
+                                    <InputLabel labelTitulo="E-mail *" type="email" placeholder="seu@email.com" {...register("email")} fieldError={errors.email?.message} />
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <InputLabel
-                                            labelTitulo="Senha *"
-                                            type="password"
-                                            placeholder="Digite sua senha"
-                                            {...register("senha")}
-                                            isPassword
-                                            fieldError={errors.senha?.message}
-                                        />
+                                        <InputLabel labelTitulo="Senha *" type="password" placeholder="Digite sua senha" {...register("senha")} isPassword fieldError={errors.senha?.message} />
 
-                                        <InputLabel
-                                            labelTitulo="Confirmar Senha *"
-                                            type="password"
-                                            placeholder="Confirme sua senha"
-                                            {...register("confirmarSenha")}
-                                            isPassword
-                                            fieldError={errors.confirmarSenha?.message}
-                                        />
+                                        <InputLabel labelTitulo="Confirmar Senha *" type="password" placeholder="Confirme sua senha" {...register("confirmarSenha")} isPassword fieldError={errors.confirmarSenha?.message} />
                                     </div>
-                                </div>
-                            )}
+                                </div>}
 
                             {/* Navigation Buttons */}
                             <div className="flex gap-3 mt-8 pt-6 border-t border-border">
-                                {currentStep > 1 ? (
-                                    <ButtonComponent
-                                        type="button"
-                                        onClick={handlePrevious}
-                                        className="flex-1 bg-secondary hover:bg-secondary/80 text-secondary-foreground"
-                                    >
+                                {currentStep > 1 ? <ButtonComponent type="button" onClick={handlePrevious} className="flex-1 bg-secondary hover:bg-secondary/80 text-secondary-foreground">
                                         <ChevronLeft className="w-4 h-4 mr-1" />
                                         Voltar
-                                    </ButtonComponent>
-                                ) : (
-                                    <ButtonComponent
-                                        type="button"
-                                        onClick={() => navigate('/login')}
-                                        className="flex-1 bg-secondary hover:bg-secondary/80 text-secondary-foreground"
-                                    >
+                                    </ButtonComponent> : <ButtonComponent type="button" onClick={() => navigate('/login')} className="flex-1 bg-secondary hover:bg-secondary/80 text-secondary-foreground">
                                         Cancelar
-                                    </ButtonComponent>
-                                )}
+                                    </ButtonComponent>}
                                 
-                                {currentStep < 3 ? (
-                                    <ButtonComponent
-                                        type="button"
-                                        onClick={handleNext}
-                                        className="flex-1"
-                                    >
+                                {currentStep < 3 ? <ButtonComponent type="button" onClick={handleNext} className="flex-1">
                                         Próximo
                                         <ChevronRight className="w-4 h-4 ml-1" />
-                                    </ButtonComponent>
-                                ) : (
-                                    <ButtonComponent
-                                        type="submit"
-                                        className="flex-1"
-                                        disabled={isLoading}
-                                    >
+                                    </ButtonComponent> : <ButtonComponent type="submit" className="flex-1" disabled={isLoading}>
                                         <Check className="w-4 h-4 mr-1" />
                                         Criar Conta
-                                    </ButtonComponent>
-                                )}
+                                    </ButtonComponent>}
                             </div>
                         </form>
                     </div>
@@ -595,6 +435,5 @@ export const CadastroCliente = () => {
                     </div>
                 </div>
             </div>
-        </>
-    );
+        </>;
 };
