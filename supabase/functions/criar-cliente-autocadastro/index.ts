@@ -264,11 +264,51 @@ serve(async (req: Request) => {
       // Não falhar o cadastro se webhook falhar
     }
 
+    // 5. Incrementar contador de cadastros e verificar elegibilidade ao prêmio
+    console.log('📊 Atualizando contador de cadastros...')
+    
+    let posicaoCadastro = 0
+    let elegivelPremio = false
+    
+    try {
+      // @ts-ignore: Deno types
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')
+      // @ts-ignore: Deno types
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+      
+      if (supabaseUrl && supabaseServiceKey) {
+        // Incrementar contador
+        const incrementResponse = await fetch(
+          `${supabaseUrl}/rest/v1/rpc/incrementar_contador_cadastro`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': supabaseServiceKey,
+              'Authorization': `Bearer ${supabaseServiceKey}`,
+            },
+            body: JSON.stringify({}),
+          }
+        )
+        
+        if (incrementResponse.ok) {
+          posicaoCadastro = await incrementResponse.json()
+          elegivelPremio = posicaoCadastro <= 105
+          console.log(`✅ Posição de cadastro: ${posicaoCadastro}, Elegível ao prêmio: ${elegivelPremio}`)
+        }
+      }
+    } catch (contadorErr) {
+      console.error('⚠️ Erro ao atualizar contador:', contadorErr)
+      // Não falhar o cadastro se contador falhar
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
         data: result,
-        message: 'Cliente e remetente criados com sucesso' 
+        message: 'Cliente e remetente criados com sucesso',
+        posicaoCadastro,
+        elegivelPremio
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

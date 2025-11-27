@@ -12,6 +12,7 @@ import { ButtonComponent } from "../../../components/button";
 import { LoadSpinner } from "../../../components/loading";
 import { ThemeToggle } from "../../../components/theme/ThemeToggle";
 import { useAddress } from "../../../hooks/useAddress";
+import { ModalBemVindoCadastro } from "../../../components/ModalBemVindoCadastro";
 
 const schemaCadastroCliente = yup.object().shape({
     nomeEmpresa: yup.string().required("O nome da empresa é obrigatório").min(3, "O nome deve ter pelo menos 3 caracteres"),
@@ -57,6 +58,8 @@ export const CadastroCliente = () => {
     const [showErrorModal, setShowErrorModal] = useState(false);
     const [errorModalMessage, setErrorModalMessage] = useState('');
     const [userEmail, setUserEmail] = useState('');
+    const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+    const [posicaoCadastro, setPosicaoCadastro] = useState(0);
     const { onBuscaCep } = useAddress();
 
     const {
@@ -175,22 +178,16 @@ export const CadastroCliente = () => {
                 return;
             }
 
-            // Sucesso
-            toast.success('Conta criada com sucesso! Você será redirecionado para cadastrar seu remetente.', {
-                duration: 3000,
-            });
-
+            // Sucesso - Mostrar modal de boas-vindas
+            const posicao = responseData.posicaoCadastro || 0;
+            setPosicaoCadastro(posicao);
+            setUserEmail(data.email);
+            
             // Marcar no localStorage que deve redirecionar para remetente após login
             localStorage.setItem('redirect_to_remetente', 'true');
-
-            setTimeout(() => {
-                navigate('/login', {
-                    state: { 
-                        email: data.email, 
-                        mensagem: 'Conta criada com sucesso! Faça login para continuar.',
-                    }
-                });
-            }, 2000);
+            
+            // Mostrar modal de boas-vindas
+            setShowWelcomeModal(true);
 
         } catch (error) {
             console.error('Erro ao criar cliente:', error);
@@ -262,6 +259,21 @@ export const CadastroCliente = () => {
                     </div>
                 </div>
             )}
+
+            {/* Modal de Boas-Vindas */}
+            <ModalBemVindoCadastro 
+              isOpen={showWelcomeModal}
+              onClose={() => {
+                setShowWelcomeModal(false);
+                navigate('/login', {
+                  state: { 
+                    email: userEmail, 
+                    mensagem: 'Conta criada com sucesso! Faça login para continuar.',
+                  }
+                });
+              }}
+              posicaoCadastro={posicaoCadastro}
+            />
 
         <div className="w-full min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-background via-background to-accent/10 relative overflow-hidden">
             {/* Decorative circles */}

@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      contador_cadastros: {
+        Row: {
+          ativo: boolean
+          contador: number
+          created_at: string
+          id: string
+          limite: number
+          tipo: string
+          updated_at: string
+          valor_premio: number
+        }
+        Insert: {
+          ativo?: boolean
+          contador?: number
+          created_at?: string
+          id?: string
+          limite?: number
+          tipo?: string
+          updated_at?: string
+          valor_premio?: number
+        }
+        Update: {
+          ativo?: boolean
+          contador?: number
+          created_at?: string
+          id?: string
+          limite?: number
+          tipo?: string
+          updated_at?: string
+          valor_premio?: number
+        }
+        Relationships: []
+      }
       etiquetas_pendentes_correcao: {
         Row: {
           altura: number | null
@@ -379,6 +412,7 @@ export type Database = {
         Returns: boolean
       }
       get_cliente_id_from_jwt: { Args: never; Returns: string }
+      incrementar_contador_cadastro: { Args: never; Returns: number }
       liberar_credito_bloqueado: {
         Args: { p_codigo_objeto?: string; p_emissao_id: string }
         Returns: boolean
@@ -395,6 +429,15 @@ export type Database = {
           p_valor: number
         }
         Returns: boolean
+      }
+      verificar_elegibilidade_premio: {
+        Args: never
+        Returns: {
+          elegivel: boolean
+          limite: number
+          posicao: number
+          valor: number
+        }[]
       }
       verificar_saldo_suficiente: {
         Args: { p_cliente_id: string; p_valor: number }
