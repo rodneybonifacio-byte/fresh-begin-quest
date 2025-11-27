@@ -129,6 +129,10 @@ export const adminRoutesConfig: ProtectedRouteItem[] = [
         path: 'promocoes',
         component: () => import('../pages/private/admin/promocoes'),
     },
+    {
+        path: 'financeiro/processar-pagamento',
+        component: () => import('../pages/private/admin/financeiro/ProcessarPagamentoManual'),
+    },
 ];
 
 export const AdminRoutes = generateProtectedRoutes(adminRoutesConfig);
