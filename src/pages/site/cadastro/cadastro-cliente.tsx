@@ -6,7 +6,6 @@ import * as yup from "yup";
 import { toast } from "sonner";
 import { isValid as isValidCPF } from "@fnando/cpf";
 import { isValid as isValidCNPJ } from "@fnando/cnpj";
-import { LogoApp } from "../../../components/logo";
 import { InputLabel } from "../../../components/input-label";
 import { ButtonComponent } from "../../../components/button";
 import { LoadSpinner } from "../../../components/loading";

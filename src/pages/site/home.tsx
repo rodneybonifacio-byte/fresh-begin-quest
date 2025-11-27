@@ -1,9 +1,11 @@
 import { LogoApp } from "../../components/logo";
 import { NavBarPublico } from "./layout/NavBarPublico";
+import { PromoBannerRecarga } from "../../components/PromoBannerRecarga";
 
 export const Home = () => {
     return (
         <div className="w-full bg-gray-600 dark:bg-slate-900">
+            <PromoBannerRecarga variant="featured" />
             <NavBarPublico />
 
             <div className="bg-gradient-to-r from-secondary/75 to-orange-600/85 dark:from-secondary-dark/75 dark:to-orange-500/85">
