@@ -8,14 +8,70 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Função para validar se o usuário é admin
+async function validateAdminAccess(req: Request): Promise<{ isAdmin: boolean; error?: string }> {
+  const authHeader = req.headers.get('authorization');
+  
+  if (!authHeader) {
+    return { isAdmin: false, error: 'Token de autorização não fornecido' };
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  
+  try {
+    // Decodificar o JWT para verificar claims
+    const payloadBase64 = token.split('.')[1];
+    const payload = JSON.parse(atob(payloadBase64));
+    
+    console.log('🔐 Validando acesso admin...');
+    console.log('📋 JWT Payload:', JSON.stringify(payload));
+    
+    // Verificar se tem role admin no token
+    const isAdmin = payload.role === 'admin' || 
+                    payload.isAdmin === true || 
+                    payload.user_metadata?.role === 'admin' ||
+                    payload.app_metadata?.role === 'admin';
+    
+    if (isAdmin) {
+      console.log('✅ Usuário é admin (via JWT claims)');
+      return { isAdmin: true };
+    }
+    
+    // Fallback: verificar se é uma das credenciais de admin conhecidas
+    const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
+    if (payload.email === adminEmail) {
+      console.log('✅ Usuário é admin (via email)');
+      return { isAdmin: true };
+    }
+    
+    console.log('❌ Usuário não tem permissão de admin');
+    return { isAdmin: false, error: 'Acesso negado: permissão de administrador necessária' };
+    
+  } catch (error) {
+    console.error('❌ Erro ao validar token:', error);
+    return { isAdmin: false, error: 'Token inválido' };
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Validar acesso admin ANTES de processar
+    const { isAdmin, error: authError } = await validateAdminAccess(req);
+    
+    if (!isAdmin) {
+      console.error('🚫 Acesso negado:', authError);
+      return new Response(
+        JSON.stringify({ success: false, error: authError || 'Acesso negado' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { txid } = await req.json();
-    console.log('Processando pagamento manual para txid:', txid);
+    console.log('✅ Admin autenticado. Processando pagamento manual para txid:', txid);
 
     if (!txid) {
       return new Response(
