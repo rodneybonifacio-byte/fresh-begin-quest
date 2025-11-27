@@ -125,11 +125,10 @@ export const adminRoutesConfig: ProtectedRouteItem[] = [
         path: 'transportadoras/correios/credenciais/editar/:correiosId',
         component: () => import('../pages/private/admin/transportadoras/correios/FormularioCorreiosCredencial'),
     },
-    // {
-    //     path: 'transportadoras/editar/:transportadoraId',
-    //     permission: 'transportadoras_editar',
-    //     component: () => import('../pages/private/admin/transportadoras/FormularioTransportadora'),
-    // },
+    {
+        path: 'promocoes',
+        component: () => import('../pages/private/admin/promocoes'),
+    },
 ];
 
 export const AdminRoutes = generateProtectedRoutes(adminRoutesConfig);
