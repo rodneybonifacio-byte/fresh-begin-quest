@@ -77,13 +77,35 @@ serve(async (req) => {
       );
     }
 
-    console.log('Pagamento processado manualmente com sucesso:', txid);
+    // 4. REGRA 2: Aplicar bônus de R$50 se recarga >= R$100
+    let bonusAplicado = false;
+    if (recarga.valor >= 100) {
+      console.log('🎁 Aplicando bônus de R$50 (recarga >= R$100)...');
+      
+      const { error: bonusError } = await supabase.rpc('registrar_recarga', {
+        p_cliente_id: recarga.cliente_id,
+        p_valor: 50,
+        p_descricao: `🎁 Bônus promocional - Recarga de R$${recarga.valor.toFixed(2)}`
+      });
+
+      if (bonusError) {
+        console.error('⚠️ Erro ao aplicar bônus:', bonusError);
+      } else {
+        console.log('✅ Bônus de R$50 aplicado com sucesso!');
+        bonusAplicado = true;
+      }
+    }
+
+    console.log('Pagamento processado manualmente com sucesso:', txid, bonusAplicado ? '(com bônus)' : '');
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Pagamento processado com sucesso',
-        valor: recarga.valor
+        message: bonusAplicado 
+          ? 'Pagamento processado com sucesso + Bônus de R$50 aplicado!' 
+          : 'Pagamento processado com sucesso',
+        valor: recarga.valor,
+        bonus: bonusAplicado ? 50 : 0
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
