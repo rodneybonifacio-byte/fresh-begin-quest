@@ -212,6 +212,31 @@ export default function Recarga() {
                     </div>
                 </div>
 
+                {/* Banner Promocional - Regra 2 */}
+                <div className="relative overflow-hidden bg-gradient-to-r from-orange-500 via-orange-600 to-amber-500 rounded-xl p-6 shadow-lg">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+                    <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2" />
+                    <div className="relative flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-white/20 rounded-full">
+                                <TrendingUp className="w-8 h-8 text-white" />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold text-white">🎁 Promoção Especial!</h3>
+                                <p className="text-white/90 text-lg mt-1">
+                                    Coloque <span className="font-bold text-yellow-200">R$ 100</span> e ganhe <span className="font-bold text-yellow-200">R$ 50</span> em créditos para usar no BRHUB Envios!
+                                </p>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={() => setValorRecarga((100 * 100).toString())}
+                            className="px-6 py-3 bg-white text-orange-600 font-bold rounded-lg hover:bg-orange-50 transition-colors shadow-md whitespace-nowrap"
+                        >
+                            Aproveitar Agora
+                        </button>
+                    </div>
+                </div>
+
                 {/* Recarga Form */}
                 <div className="bg-card border border-border rounded-lg p-8 shadow-sm">
                     <div className="flex items-center gap-3 mb-6">
@@ -231,8 +256,9 @@ export default function Recarga() {
                         <div>
                             <p className="text-sm font-medium text-muted-foreground mb-3">Valores Sugeridos</p>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                {[50, 100, 200, 500].map(valor => <button key={valor} onClick={() => setValorRecarga((valor * 100).toString())} className="px-4 py-3 bg-secondary hover:bg-secondary/80 border border-border rounded-lg text-foreground font-semibold transition-colors">
+                                {[50, 100, 200, 500].map(valor => <button key={valor} onClick={() => setValorRecarga((valor * 100).toString())} className={`px-4 py-3 border rounded-lg font-semibold transition-colors ${valor === 100 ? 'bg-orange-500 hover:bg-orange-600 text-white border-orange-500' : 'bg-secondary hover:bg-secondary/80 border-border text-foreground'}`}>
                                         R$ {valor},00
+                                        {valor === 100 && <span className="ml-1 text-xs">🎁</span>}
                                     </button>)}
                             </div>
                         </div>
