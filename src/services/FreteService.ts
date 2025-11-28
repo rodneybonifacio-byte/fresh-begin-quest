@@ -14,7 +14,10 @@ export class FreteService extends BaseService<any> {
         console.log('🚚 Chamando edge function cotacao-frete...');
         
         // Obter token do usuário para aplicar regras de negócio do cliente
-        const apiToken = localStorage.getItem('apiToken');
+        // IMPORTANTE: O login salva como 'token', não 'apiToken'
+        const apiToken = localStorage.getItem('token');
+        
+        console.log('🔑 Token encontrado:', apiToken ? 'SIM' : 'NÃO');
         
         const payload = {
             ...item,
