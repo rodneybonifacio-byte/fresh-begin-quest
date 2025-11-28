@@ -18,11 +18,13 @@ serve(async (req) => {
     console.log('🚚 Iniciando cotação de frete...');
 
     const baseUrl = Deno.env.get('BASE_API_URL');
-    const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
-    const adminPassword = Deno.env.get('API_ADMIN_PASSWORD');
+    
+    // Credenciais do usuário com permissões completas na API BRHUB
+    const apiUserEmail = 'contato@guilherme.com.br';
+    const apiUserPassword = '123mudar';
 
-    if (!baseUrl || !adminEmail || !adminPassword) {
-      throw new Error('Configurações de API não encontradas');
+    if (!baseUrl) {
+      throw new Error('BASE_API_URL não configurada');
     }
 
     // Extrair clienteId do token do usuário - OBRIGATÓRIO para aplicar regras do cliente
@@ -63,39 +65,37 @@ serve(async (req) => {
       ...(requestData.cpfCnpjLoja && { cpfCnpjLoja: requestData.cpfCnpjLoja }),
     };
 
-    // Obter token admin para autenticação (bypass de permissões)
-    // A API BRHUB usa o clienteId do PAYLOAD para aplicar regras de preço, não do token
-    console.log('🔐 Obtendo token admin para autenticação...');
+    // Autenticar com usuário que tem permissões completas na API BRHUB
+    console.log('🔐 Autenticando com usuário BRHUB...');
     const loginResponse = await fetch(`${baseUrl}/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        email: adminEmail,
-        password: adminPassword,
+        email: apiUserEmail,
+        password: apiUserPassword,
       }),
     });
 
     if (!loginResponse.ok) {
       const errorText = await loginResponse.text();
-      console.error('❌ Erro no login admin:', errorText);
-      throw new Error('Falha na autenticação');
+      console.error('❌ Erro no login:', errorText);
+      throw new Error('Falha na autenticação com API BRHUB');
     }
 
     const loginData = await loginResponse.json();
-    const adminToken = loginData.token;
-    console.log('✅ Token admin obtido');
+    const apiToken = loginData.token;
+    console.log('✅ Token BRHUB obtido');
 
-    // Realizar cotação com admin token MAS com clienteId no payload
-    // Isso garante que as regras de preço do cliente sejam aplicadas
+    // Realizar cotação com token do usuário autorizado + clienteId no payload
     console.log('📊 Realizando cotação com clienteId:', clienteId);
     console.log('📦 Payload:', JSON.stringify(cotacaoPayload));
     
     const cotacaoResponse = await fetch(`${baseUrl}/frete/cotacao`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${adminToken}`,
+        'Authorization': `Bearer ${apiToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(cotacaoPayload),
