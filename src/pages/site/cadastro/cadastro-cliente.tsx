@@ -196,6 +196,8 @@ export const CadastroCliente = () => {
         console.log('✅ Token do usuário recebido, salvando para login automático...');
         localStorage.setItem('token', userToken);
         localStorage.setItem('auto_login', 'true');
+        // Limpa verificação de remetente para forçar abertura do modal
+        sessionStorage.removeItem('remetente_verificado');
       }
 
       const posicao = responseData.posicaoCadastro || 0;

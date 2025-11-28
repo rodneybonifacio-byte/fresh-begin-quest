@@ -167,11 +167,13 @@ serve(async (req: Request) => {
 
     // ============================================
     // PASSO 2.5: Atualizar cliente com configurações de transportadora
-    // (A API pode não aceitar transportadoraConfiguracoes no POST, mas aceita no PUT)
+    // (A API não aceita transportadoraConfiguracoes no POST, mas aceita no PUT)
+    // IMPORTANTE: PUT requer todos os dados do cliente
     // ============================================
     console.log('🚚 Atualizando cliente com configurações de transportadora...')
     
-    const transportadoraConfigs = {
+    const clienteDataComTransportadora = {
+      ...clienteData,
       transportadoraConfiguracoes: [
         {
           transportadora: 'correios',
@@ -204,7 +206,7 @@ serve(async (req: Request) => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${adminToken}`,
       },
-      body: JSON.stringify(transportadoraConfigs),
+      body: JSON.stringify(clienteDataComTransportadora),
     })
     
     if (updateTransportadoraResponse.ok) {
