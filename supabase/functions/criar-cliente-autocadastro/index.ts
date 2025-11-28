@@ -106,31 +106,7 @@ serve(async (req: Request) => {
         link_whatsapp: '111',
       },
 
-      // Configurações de transportadoras padrão (MANTIDO - não há padrão na API)
-      transportadoraConfiguracoes: [
-        {
-          transportadora: 'correios',
-          ativo: true,
-          tipoAcrescimo: 'PERCENTUAL',
-          valorAcrescimo: 5,
-          porcentagem: 5,
-          alturaMaxima: 100,
-          larguraMaxima: 100,
-          comprimentoMaximo: 100,
-          pesoMaximo: 30000,
-        },
-        {
-          transportadora: 'rodonave',
-          ativo: false,
-          tipoAcrescimo: 'PERCENTUAL',
-          valorAcrescimo: 0,
-          porcentagem: 0,
-          alturaMaxima: 0,
-          larguraMaxima: 0,
-          comprimentoMaximo: 0,
-          pesoMaximo: 0,
-        },
-      ],
+      // Configurações de transportadoras serão aplicadas via PUT separado após criação
     }
 
     // ============================================
@@ -188,6 +164,55 @@ serve(async (req: Request) => {
     const clienteResult = await clienteResponse.json()
     const clienteId = clienteResult.data?.id || clienteResult.id
     console.log('✅ Cliente criado com sucesso, ID:', clienteId)
+
+    // ============================================
+    // PASSO 2.5: Atualizar cliente com configurações de transportadora
+    // (A API pode não aceitar transportadoraConfiguracoes no POST, mas aceita no PUT)
+    // ============================================
+    console.log('🚚 Atualizando cliente com configurações de transportadora...')
+    
+    const transportadoraConfigs = {
+      transportadoraConfiguracoes: [
+        {
+          transportadora: 'correios',
+          ativo: true,
+          tipoAcrescimo: 'PERCENTUAL',
+          valorAcrescimo: 5,
+          porcentagem: 5,
+          alturaMaxima: 100,
+          larguraMaxima: 100,
+          comprimentoMaximo: 100,
+          pesoMaximo: 30000,
+        },
+        {
+          transportadora: 'rodonave',
+          ativo: false,
+          tipoAcrescimo: 'PERCENTUAL',
+          valorAcrescimo: 0,
+          porcentagem: 0,
+          alturaMaxima: 0,
+          larguraMaxima: 0,
+          comprimentoMaximo: 0,
+          pesoMaximo: 0,
+        },
+      ],
+    }
+    
+    const updateTransportadoraResponse = await fetch(`${baseApiUrl}/clientes/${clienteId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify(transportadoraConfigs),
+    })
+    
+    if (updateTransportadoraResponse.ok) {
+      console.log('✅ Configurações de transportadora atualizadas com sucesso')
+    } else {
+      const updateError = await updateTransportadoraResponse.text()
+      console.error('⚠️ Erro ao atualizar configurações de transportadora:', updateError)
+    }
 
     // ============================================
     // PASSO 3: Login do novo usuário para obter token
