@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      cadastros_origem: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          email_cliente: string | null
+          id: string
+          nome_cliente: string | null
+          origem: string
+          telefone_cliente: string | null
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          email_cliente?: string | null
+          id?: string
+          nome_cliente?: string | null
+          origem?: string
+          telefone_cliente?: string | null
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          email_cliente?: string | null
+          id?: string
+          nome_cliente?: string | null
+          origem?: string
+          telefone_cliente?: string | null
+        }
+        Relationships: []
+      }
       contador_cadastros: {
         Row: {
           ativo: boolean

@@ -3,7 +3,6 @@ import { Gift, Users, DollarSign, ToggleLeft, ToggleRight, Save, Loader2, Phone,
 import { supabase } from '../../../../integrations/supabase/client';
 import { toast } from 'sonner';
 import { Content } from '../../Content';
-import { ClienteService } from '../../../../services/ClienteService';
 
 interface Promocao {
     id: string;
@@ -32,8 +31,6 @@ const PromocoesAdmin = () => {
     const [saving, setSaving] = useState<string | null>(null);
     const [editedValues, setEditedValues] = useState<Record<string, Partial<Promocao>>>({});
 
-    const clienteService = new ClienteService();
-
     useEffect(() => {
         fetchPromocoes();
         fetchParticipantes();
@@ -61,11 +58,19 @@ const PromocoesAdmin = () => {
         try {
             setLoadingParticipantes(true);
             
-            // Buscar todos os clientes cadastrados da API externa
-            const clientesResponse = await clienteService.getAll({ limit: 100, offset: 0 });
-            const clientes = clientesResponse?.data || [];
+            // Buscar clientes que vieram do autocadastro (página de cadastro público)
+            const { data: cadastrosOrigem, error } = await supabase
+                .from('cadastros_origem')
+                .select('*')
+                .eq('origem', 'autocadastro')
+                .order('created_at', { ascending: false });
 
-            if (!clientes.length) {
+            if (error) {
+                console.error('Erro ao buscar cadastros:', error);
+                throw error;
+            }
+
+            if (!cadastrosOrigem || cadastrosOrigem.length === 0) {
                 setParticipantes([]);
                 return;
             }
@@ -73,28 +78,28 @@ const PromocoesAdmin = () => {
             // Buscar dados de cada cliente
             const participantesData: ParticipantePromo[] = [];
 
-            for (const cliente of clientes) {
+            for (const cadastro of cadastrosOrigem) {
                 try {
                     // Buscar saldo disponível do Supabase
                     const { data: saldoData } = await supabase
-                        .rpc('calcular_saldo_disponivel', { p_cliente_id: cliente.id });
+                        .rpc('calcular_saldo_disponivel', { p_cliente_id: cadastro.cliente_id });
 
                     participantesData.push({
-                        clienteId: cliente.id,
-                        nome: cliente.nomeEmpresa || cliente.nomResponsavel || 'Não informado',
-                        telefone: cliente.celular || cliente.telefone || '-',
+                        clienteId: cadastro.cliente_id,
+                        nome: cadastro.nome_cliente || 'Não informado',
+                        telefone: cadastro.telefone_cliente || '-',
                         saldoDisponivel: saldoData || 0,
-                        dataCredito: cliente.criadoEm || ''
+                        dataCredito: cadastro.created_at || ''
                     });
                 } catch (clienteError) {
-                    console.error('Erro ao processar cliente:', cliente.id, clienteError);
+                    console.error('Erro ao processar cliente:', cadastro.cliente_id, clienteError);
                     // Adiciona mesmo com erro de saldo
                     participantesData.push({
-                        clienteId: cliente.id,
-                        nome: cliente.nomeEmpresa || cliente.nomResponsavel || 'Não informado',
-                        telefone: cliente.celular || cliente.telefone || '-',
+                        clienteId: cadastro.cliente_id,
+                        nome: cadastro.nome_cliente || 'Não informado',
+                        telefone: cadastro.telefone_cliente || '-',
                         saldoDisponivel: 0,
-                        dataCredito: cliente.criadoEm || ''
+                        dataCredito: cadastro.created_at || ''
                     });
                 }
             }

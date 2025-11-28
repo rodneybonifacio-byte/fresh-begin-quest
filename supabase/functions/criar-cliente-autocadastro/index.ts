@@ -326,6 +326,35 @@ serve(async (req: Request) => {
               console.error('⚠️ Erro ao adicionar crédito bônus:', errorText)
             }
           }
+          
+          // Registrar origem do cadastro na tabela cadastros_origem
+          console.log('📝 Registrando origem do cadastro...')
+          const origemResponse = await fetch(
+            `${supabaseUrl}/rest/v1/cadastros_origem`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': supabaseServiceKey,
+                'Authorization': `Bearer ${supabaseServiceKey}`,
+                'Prefer': 'return=minimal',
+              },
+              body: JSON.stringify({
+                cliente_id: clienteId,
+                origem: 'autocadastro',
+                nome_cliente: body.nomeEmpresa,
+                email_cliente: body.email,
+                telefone_cliente: body.celular,
+              }),
+            }
+          )
+          
+          if (origemResponse.ok) {
+            console.log('✅ Origem do cadastro registrada com sucesso!')
+          } else {
+            const errorText = await origemResponse.text()
+            console.error('⚠️ Erro ao registrar origem:', errorText)
+          }
         }
       }
     } catch (contadorErr) {
