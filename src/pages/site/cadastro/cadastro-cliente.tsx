@@ -189,6 +189,15 @@ export const CadastroCliente = () => {
         }
         return;
       }
+
+      // Salvar token do novo usuário para login automático
+      const userToken = responseData.userToken;
+      if (userToken) {
+        console.log('✅ Token do usuário recebido, salvando para login automático...');
+        localStorage.setItem('token', userToken);
+        localStorage.setItem('auto_login', 'true');
+      }
+
       const posicao = responseData.posicaoCadastro || 0;
       setPosicaoCadastro(posicao);
       setUserEmail(data.email);
@@ -239,12 +248,18 @@ export const CadastroCliente = () => {
 
             <ModalBemVindoCadastro isOpen={showWelcomeModal} onClose={() => {
       setShowWelcomeModal(false);
-      navigate('/login', {
-        state: {
-          email: userEmail,
-          mensagem: 'Conta criada com sucesso!'
-        }
-      });
+      // Se tiver token de auto_login, vai direto para /app
+      const hasAutoLogin = localStorage.getItem('auto_login') === 'true';
+      if (hasAutoLogin) {
+        navigate('/app');
+      } else {
+        navigate('/login', {
+          state: {
+            email: userEmail,
+            mensagem: 'Conta criada com sucesso!'
+          }
+        });
+      }
     }} posicaoCadastro={posicaoCadastro} />
 
             <PromoBannerRecarga variant="featured" />
