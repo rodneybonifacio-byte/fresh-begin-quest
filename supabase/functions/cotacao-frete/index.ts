@@ -41,7 +41,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         email: adminEmail,
-        senha: adminPassword,
+        password: adminPassword,
       }),
     });
 
