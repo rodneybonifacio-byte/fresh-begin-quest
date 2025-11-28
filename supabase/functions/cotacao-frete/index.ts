@@ -16,7 +16,6 @@ serve(async (req) => {
     const requestData = await req.json();
     
     console.log('🚚 Iniciando cotação de frete...');
-    console.log('📦 Dados recebidos:', JSON.stringify({ ...requestData, apiToken: requestData.apiToken ? '***' : 'MISSING' }));
 
     const baseUrl = Deno.env.get('BASE_API_URL');
     const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
@@ -28,49 +27,58 @@ serve(async (req) => {
 
     // Extrair clienteId do token do usuário (se fornecido)
     let clienteId = null;
-    if (requestData.apiToken) {
+    let userToken = requestData.apiToken;
+    
+    if (userToken) {
       try {
-        const tokenPayload = JSON.parse(atob(requestData.apiToken.split('.')[1]));
+        const tokenPayload = JSON.parse(atob(userToken.split('.')[1]));
         clienteId = tokenPayload.clienteId;
         console.log('👤 ClienteId extraído do token:', clienteId);
       } catch (e) {
         console.warn('⚠️ Não foi possível extrair clienteId do token');
+        userToken = null;
       }
+    } else {
+      console.log('⚠️ apiToken não fornecido no request');
     }
 
-    // Autenticar com credenciais admin
-    console.log('🔐 Autenticando com credenciais admin...');
-    const loginResponse = await fetch(`${baseUrl}/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        email: adminEmail,
-        password: adminPassword,
-      }),
-    });
-
-    if (!loginResponse.ok) {
-      const errorText = await loginResponse.text();
-      console.error('❌ Erro no login admin:', errorText);
-      throw new Error('Falha na autenticação admin');
-    }
-
-    const loginData = await loginResponse.json();
-    const adminToken = loginData.token;
+    // Determinar qual token usar para a cotação
+    let authToken = userToken;
     
-    console.log('✅ Login admin realizado com sucesso');
+    // Se não tiver token do usuário, usar admin como fallback
+    if (!authToken) {
+      console.log('🔐 Usando credenciais admin (fallback)...');
+      const loginResponse = await fetch(`${baseUrl}/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: adminEmail,
+          password: adminPassword,
+        }),
+      });
 
-    // Preparar dados da cotação - incluir clienteId para regras de negócio
+      if (!loginResponse.ok) {
+        const errorText = await loginResponse.text();
+        console.error('❌ Erro no login admin:', errorText);
+        throw new Error('Falha na autenticação admin');
+      }
+
+      const loginData = await loginResponse.json();
+      authToken = loginData.token;
+      console.log('✅ Login admin realizado com sucesso');
+    } else {
+      console.log('✅ Usando token do usuário para aplicar regras de negócio');
+    }
+
+    // Preparar dados da cotação
     const cotacaoPayload = {
       cepOrigem: requestData.cepOrigem,
       cepDestino: requestData.cepDestino,
       embalagem: requestData.embalagem,
       logisticaReversa: requestData.logisticaReversa || 'N',
       valorDeclarado: requestData.valorDeclarado || 0,
-      // Incluir clienteId para aplicar regras de plano/desconto do cliente
-      ...(clienteId && { clienteId }),
       // Incluir cpfCnpjLoja se fornecido (para regras específicas do remetente)
       ...(requestData.cpfCnpjLoja && { cpfCnpjLoja: requestData.cpfCnpjLoja }),
     };
@@ -80,7 +88,7 @@ serve(async (req) => {
     const cotacaoResponse = await fetch(`${baseUrl}/frete/cotacao`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${adminToken}`,
+        'Authorization': `Bearer ${authToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(cotacaoPayload),
