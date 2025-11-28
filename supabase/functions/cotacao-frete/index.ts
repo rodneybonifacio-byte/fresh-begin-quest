@@ -49,6 +49,8 @@ serve(async (req) => {
       embalagem: requestData.embalagem,
       logisticaReversa: requestData.logisticaReversa || 'N',
       valorDeclarado: requestData.valorDeclarado || 0,
+      // Incluir clienteId para aplicar regras específicas do cliente mesmo com auth admin
+      ...(clienteId && { clienteId }),
       // Incluir cpfCnpjLoja se fornecido (para regras específicas do remetente)
       ...(requestData.cpfCnpjLoja && { cpfCnpjLoja: requestData.cpfCnpjLoja }),
     };
