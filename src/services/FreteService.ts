@@ -13,8 +13,16 @@ export class FreteService extends BaseService<any> {
     async calculadoraFrete(item: any): Promise<any> {
         console.log('🚚 Chamando edge function cotacao-frete...');
         
+        // Obter token do usuário para aplicar regras de negócio do cliente
+        const apiToken = localStorage.getItem('apiToken');
+        
+        const payload = {
+            ...item,
+            ...(apiToken && { apiToken }),
+        };
+        
         const { data, error } = await supabase.functions.invoke('cotacao-frete', {
-            body: item
+            body: payload
         });
 
         if (error) {
