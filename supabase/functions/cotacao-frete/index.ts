@@ -16,24 +16,30 @@ serve(async (req) => {
     const requestData = await req.json();
     
     console.log('🚚 Iniciando cotação de frete...');
-    console.log('📦 Dados recebidos:', JSON.stringify(requestData));
+    console.log('📦 Dados recebidos:', JSON.stringify({ ...requestData, apiToken: requestData.apiToken ? '***' : 'MISSING' }));
 
     const baseUrl = Deno.env.get('BASE_API_URL');
     const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
     const adminPassword = Deno.env.get('API_ADMIN_PASSWORD');
 
-    console.log('🔧 Configuração:', {
-      baseUrl: baseUrl ? 'OK' : 'MISSING',
-      adminEmail: adminEmail ? adminEmail.substring(0, 5) + '***' : 'MISSING',
-      adminPassword: adminPassword ? '***SET***' : 'MISSING'
-    });
-
     if (!baseUrl || !adminEmail || !adminPassword) {
       throw new Error('Configurações de API não encontradas');
     }
 
+    // Extrair clienteId do token do usuário (se fornecido)
+    let clienteId = null;
+    if (requestData.apiToken) {
+      try {
+        const tokenPayload = JSON.parse(atob(requestData.apiToken.split('.')[1]));
+        clienteId = tokenPayload.clienteId;
+        console.log('👤 ClienteId extraído do token:', clienteId);
+      } catch (e) {
+        console.warn('⚠️ Não foi possível extrair clienteId do token');
+      }
+    }
+
     // Autenticar com credenciais admin
-    console.log('🔐 Autenticando com credenciais admin em:', `${baseUrl}/login`);
+    console.log('🔐 Autenticando com credenciais admin...');
     const loginResponse = await fetch(`${baseUrl}/login`, {
       method: 'POST',
       headers: {
@@ -56,15 +62,28 @@ serve(async (req) => {
     
     console.log('✅ Login admin realizado com sucesso');
 
-    // Fazer cotação com token admin
-    console.log('📊 Realizando cotação...');
+    // Preparar dados da cotação - incluir clienteId para regras de negócio
+    const cotacaoPayload = {
+      cepOrigem: requestData.cepOrigem,
+      cepDestino: requestData.cepDestino,
+      embalagem: requestData.embalagem,
+      logisticaReversa: requestData.logisticaReversa || 'N',
+      valorDeclarado: requestData.valorDeclarado || 0,
+      // Incluir clienteId para aplicar regras de plano/desconto do cliente
+      ...(clienteId && { clienteId }),
+      // Incluir cpfCnpjLoja se fornecido (para regras específicas do remetente)
+      ...(requestData.cpfCnpjLoja && { cpfCnpjLoja: requestData.cpfCnpjLoja }),
+    };
+
+    console.log('📊 Realizando cotação com payload:', JSON.stringify(cotacaoPayload));
+    
     const cotacaoResponse = await fetch(`${baseUrl}/frete/cotacao`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${adminToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(requestData),
+      body: JSON.stringify(cotacaoPayload),
     });
 
     const responseText = await cotacaoResponse.text();
