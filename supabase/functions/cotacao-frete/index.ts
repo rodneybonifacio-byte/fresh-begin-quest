@@ -27,45 +27,7 @@ serve(async (req) => {
       throw new Error('BASE_API_URL não configurada');
     }
 
-    // Extrair clienteId do token do usuário - OBRIGATÓRIO para aplicar regras do cliente
-    let clienteId = null;
-    const userToken = requestData.apiToken;
-    
-    if (userToken) {
-      try {
-        const tokenPayload = JSON.parse(atob(userToken.split('.')[1]));
-        clienteId = tokenPayload.clienteId;
-        console.log('👤 ClienteId extraído do token:', clienteId);
-      } catch (e) {
-        console.warn('⚠️ Não foi possível extrair clienteId do token:', e.message);
-      }
-    }
-
-    if (!clienteId) {
-      console.error('❌ ClienteId não encontrado - necessário para aplicar regras de preço');
-      return new Response(
-        JSON.stringify({
-          error: 'Não foi possível identificar o cliente. Faça login novamente.',
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 401,
-        }
-      );
-    }
-
-    // Preparar dados da cotação - SEMPRE incluir clienteId para aplicar regras específicas
-    const cotacaoPayload = {
-      cepOrigem: requestData.cepOrigem,
-      cepDestino: requestData.cepDestino,
-      embalagem: requestData.embalagem,
-      logisticaReversa: requestData.logisticaReversa || 'N',
-      valorDeclarado: requestData.valorDeclarado || 0,
-      clienteId, // CRÍTICO: Sempre enviar para aplicar regras do cliente
-      ...(requestData.cpfCnpjLoja && { cpfCnpjLoja: requestData.cpfCnpjLoja }),
-    };
-
-    // Autenticar com usuário que tem permissões completas na API BRHUB
+    // Autenticar com usuário BRHUB para obter clienteId correto
     console.log('🔐 Autenticando com usuário BRHUB...');
     const loginResponse = await fetch(`${baseUrl}/login`, {
       method: 'POST',
@@ -86,7 +48,28 @@ serve(async (req) => {
 
     const loginData = await loginResponse.json();
     const apiToken = loginData.token;
-    console.log('✅ Token BRHUB obtido');
+    
+    // Extrair clienteId do token do usuário autenticado (Guilherme)
+    let clienteId = null;
+    try {
+      const tokenPayload = JSON.parse(atob(apiToken.split('.')[1]));
+      clienteId = tokenPayload.clienteId;
+      console.log('👤 ClienteId do Guilherme:', clienteId);
+    } catch (e) {
+      console.error('❌ Erro ao extrair clienteId:', e.message);
+      throw new Error('Não foi possível identificar o cliente');
+    }
+
+    // Preparar dados da cotação - SEMPRE incluir clienteId para aplicar regras específicas
+    const cotacaoPayload = {
+      cepOrigem: requestData.cepOrigem,
+      cepDestino: requestData.cepDestino,
+      embalagem: requestData.embalagem,
+      logisticaReversa: requestData.logisticaReversa || 'N',
+      valorDeclarado: requestData.valorDeclarado || 0,
+      clienteId, // CRÍTICO: Sempre enviar para aplicar regras do cliente
+      ...(requestData.cpfCnpjLoja && { cpfCnpjLoja: requestData.cpfCnpjLoja }),
+    };
 
     // Realizar cotação com token do usuário autorizado + clienteId no payload
     console.log('📊 Realizando cotação com clienteId:', clienteId);
