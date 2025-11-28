@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Gift, Users, DollarSign, ToggleLeft, ToggleRight, Save, Loader2 } from 'lucide-react';
+import { Gift, Users, DollarSign, ToggleLeft, ToggleRight, Save, Loader2, Phone, User, Wallet, RefreshCw } from 'lucide-react';
 import { supabase } from '../../../../integrations/supabase/client';
 import { toast } from 'sonner';
 import { Content } from '../../Content';
+import { ClienteService } from '../../../../services/ClienteService';
 
 interface Promocao {
     id: string;
@@ -15,14 +16,27 @@ interface Promocao {
     updated_at: string;
 }
 
+interface ParticipantePromo {
+    clienteId: string;
+    nome: string;
+    telefone: string;
+    saldoDisponivel: number;
+    dataCredito: string;
+}
+
 const PromocoesAdmin = () => {
     const [promocoes, setPromocoes] = useState<Promocao[]>([]);
+    const [participantes, setParticipantes] = useState<ParticipantePromo[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadingParticipantes, setLoadingParticipantes] = useState(false);
     const [saving, setSaving] = useState<string | null>(null);
     const [editedValues, setEditedValues] = useState<Record<string, Partial<Promocao>>>({});
 
+    const clienteService = new ClienteService();
+
     useEffect(() => {
         fetchPromocoes();
+        fetchParticipantes();
     }, []);
 
     const fetchPromocoes = async () => {
@@ -40,6 +54,83 @@ const PromocoesAdmin = () => {
             toast.error('Erro ao carregar promoções');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchParticipantes = async () => {
+        try {
+            setLoadingParticipantes(true);
+            
+            // Buscar transações de recarga que são bônus da promoção
+            const { data: transacoes, error } = await supabase
+                .from('transacoes_credito')
+                .select('cliente_id, created_at, descricao')
+                .eq('tipo', 'recarga')
+                .or('descricao.ilike.%promoção%,descricao.ilike.%promocao%,descricao.ilike.%bônus%,descricao.ilike.%bonus%,descricao.ilike.%primeiros cadastros%')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            // Obter cliente_ids únicos
+            const clienteIds = [...new Set((transacoes || []).map(t => t.cliente_id))];
+
+            // Buscar dados de cada cliente
+            const participantesData: ParticipantePromo[] = [];
+
+            for (const clienteId of clienteIds) {
+                try {
+                    // Buscar saldo disponível
+                    const { data: saldoData } = await supabase
+                        .rpc('calcular_saldo_disponivel', { p_cliente_id: clienteId });
+
+                    // Buscar data do crédito promocional
+                    const transacaoCliente = transacoes?.find(t => t.cliente_id === clienteId);
+
+                    // Tentar buscar dados do cliente da API externa
+                    let nomeCliente = 'Cliente ' + clienteId.substring(0, 8);
+                    let telefoneCliente = '-';
+
+                    try {
+                        const clienteResponse = await clienteService.getById(clienteId);
+                        if (clienteResponse?.data) {
+                            const cliente = clienteResponse.data;
+                            nomeCliente = cliente.nomeEmpresa || cliente.nomResponsavel || nomeCliente;
+                            telefoneCliente = cliente.celular || cliente.telefone || '-';
+                        }
+                    } catch (apiError) {
+                        console.log('Não foi possível buscar dados do cliente:', clienteId);
+                        
+                        // Tentar buscar do remetente associado
+                        const { data: remetenteData } = await supabase
+                            .from('remetentes')
+                            .select('nome, celular, telefone')
+                            .eq('cliente_id', clienteId)
+                            .limit(1);
+                        
+                        if (remetenteData && remetenteData.length > 0) {
+                            nomeCliente = remetenteData[0].nome || nomeCliente;
+                            telefoneCliente = remetenteData[0].celular || remetenteData[0].telefone || '-';
+                        }
+                    }
+
+                    participantesData.push({
+                        clienteId,
+                        nome: nomeCliente,
+                        telefone: telefoneCliente,
+                        saldoDisponivel: saldoData || 0,
+                        dataCredito: transacaoCliente?.created_at || ''
+                    });
+                } catch (clienteError) {
+                    console.error('Erro ao processar cliente:', clienteId, clienteError);
+                }
+            }
+
+            setParticipantes(participantesData);
+        } catch (error) {
+            console.error('Erro ao buscar participantes:', error);
+            toast.error('Erro ao carregar participantes');
+        } finally {
+            setLoadingParticipantes(false);
         }
     };
 
@@ -130,6 +221,24 @@ const PromocoesAdmin = () => {
 
     const progressPercentage = (contador: number, limite: number) => {
         return Math.min((contador / limite) * 100, 100);
+    };
+
+    const formatCurrency = (value: number) => {
+        return new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+        }).format(value);
+    };
+
+    const formatDate = (dateStr: string) => {
+        if (!dateStr) return '-';
+        return new Date(dateStr).toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
     };
 
     if (loading) {
@@ -317,6 +426,101 @@ const PromocoesAdmin = () => {
                         <div className="text-center py-12 bg-card border border-border rounded-xl">
                             <Gift className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                             <p className="text-muted-foreground">Nenhuma promoção cadastrada</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Lista de Participantes */}
+                <div className="bg-card border border-border rounded-xl overflow-hidden">
+                    <div className="p-4 border-b border-border flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-primary/10 rounded-lg">
+                                <Users className="w-5 h-5 text-primary" />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-foreground">Participantes da Promoção</h3>
+                                <p className="text-sm text-muted-foreground">
+                                    Clientes que receberam créditos promocionais
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={fetchParticipantes}
+                            disabled={loadingParticipantes}
+                            className="p-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+                            title="Atualizar lista"
+                        >
+                            <RefreshCw className={`w-4 h-4 text-muted-foreground ${loadingParticipantes ? 'animate-spin' : ''}`} />
+                        </button>
+                    </div>
+
+                    {loadingParticipantes ? (
+                        <div className="flex items-center justify-center py-12">
+                            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                        </div>
+                    ) : participantes.length === 0 ? (
+                        <div className="text-center py-12">
+                            <Users className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                            <p className="text-muted-foreground">Nenhum participante encontrado</p>
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-muted/50">
+                                    <tr>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                            <div className="flex items-center gap-2">
+                                                <User className="w-4 h-4" />
+                                                Nome
+                                            </div>
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                            <div className="flex items-center gap-2">
+                                                <Phone className="w-4 h-4" />
+                                                Telefone
+                                            </div>
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                            <div className="flex items-center gap-2">
+                                                <Wallet className="w-4 h-4" />
+                                                Créditos Disponíveis
+                                            </div>
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                            Data do Crédito
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border">
+                                    {participantes.map((participante, index) => (
+                                        <tr key={participante.clienteId} className="hover:bg-muted/30 transition-colors">
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary">
+                                                        {index + 1}
+                                                    </div>
+                                                    <span className="font-medium text-foreground">{participante.nome}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 text-muted-foreground">
+                                                {participante.telefone}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <span className={`font-semibold ${
+                                                    participante.saldoDisponivel > 0 
+                                                        ? 'text-green-600 dark:text-green-400' 
+                                                        : 'text-muted-foreground'
+                                                }`}>
+                                                    {formatCurrency(participante.saldoDisponivel)}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-muted-foreground">
+                                                {formatDate(participante.dataCredito)}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     )}
                 </div>
