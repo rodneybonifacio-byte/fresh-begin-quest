@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.cotacao-frete]
 verify_jwt = false
+
+[functions.atualizar-transportadora-cliente]
+verify_jwt = false
