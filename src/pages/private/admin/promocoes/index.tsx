@@ -61,67 +61,41 @@ const PromocoesAdmin = () => {
         try {
             setLoadingParticipantes(true);
             
-            // Buscar transações de recarga que são bônus da promoção
-            const { data: transacoes, error } = await supabase
-                .from('transacoes_credito')
-                .select('cliente_id, created_at, descricao')
-                .eq('tipo', 'recarga')
-                .or('descricao.ilike.%promoção%,descricao.ilike.%promocao%,descricao.ilike.%bônus%,descricao.ilike.%bonus%,descricao.ilike.%primeiros cadastros%')
-                .order('created_at', { ascending: false });
+            // Buscar todos os clientes cadastrados da API externa
+            const clientesResponse = await clienteService.getAll({ limit: 100, offset: 0 });
+            const clientes = clientesResponse?.data || [];
 
-            if (error) throw error;
-
-            // Obter cliente_ids únicos
-            const clienteIds = [...new Set((transacoes || []).map(t => t.cliente_id))];
+            if (!clientes.length) {
+                setParticipantes([]);
+                return;
+            }
 
             // Buscar dados de cada cliente
             const participantesData: ParticipantePromo[] = [];
 
-            for (const clienteId of clienteIds) {
+            for (const cliente of clientes) {
                 try {
-                    // Buscar saldo disponível
+                    // Buscar saldo disponível do Supabase
                     const { data: saldoData } = await supabase
-                        .rpc('calcular_saldo_disponivel', { p_cliente_id: clienteId });
-
-                    // Buscar data do crédito promocional
-                    const transacaoCliente = transacoes?.find(t => t.cliente_id === clienteId);
-
-                    // Tentar buscar dados do cliente da API externa
-                    let nomeCliente = 'Cliente ' + clienteId.substring(0, 8);
-                    let telefoneCliente = '-';
-
-                    try {
-                        const clienteResponse = await clienteService.getById(clienteId);
-                        if (clienteResponse?.data) {
-                            const cliente = clienteResponse.data;
-                            nomeCliente = cliente.nomeEmpresa || cliente.nomResponsavel || nomeCliente;
-                            telefoneCliente = cliente.celular || cliente.telefone || '-';
-                        }
-                    } catch (apiError) {
-                        console.log('Não foi possível buscar dados do cliente:', clienteId);
-                        
-                        // Tentar buscar do remetente associado
-                        const { data: remetenteData } = await supabase
-                            .from('remetentes')
-                            .select('nome, celular, telefone')
-                            .eq('cliente_id', clienteId)
-                            .limit(1);
-                        
-                        if (remetenteData && remetenteData.length > 0) {
-                            nomeCliente = remetenteData[0].nome || nomeCliente;
-                            telefoneCliente = remetenteData[0].celular || remetenteData[0].telefone || '-';
-                        }
-                    }
+                        .rpc('calcular_saldo_disponivel', { p_cliente_id: cliente.id });
 
                     participantesData.push({
-                        clienteId,
-                        nome: nomeCliente,
-                        telefone: telefoneCliente,
+                        clienteId: cliente.id,
+                        nome: cliente.nomeEmpresa || cliente.nomResponsavel || 'Não informado',
+                        telefone: cliente.celular || cliente.telefone || '-',
                         saldoDisponivel: saldoData || 0,
-                        dataCredito: transacaoCliente?.created_at || ''
+                        dataCredito: cliente.criadoEm || ''
                     });
                 } catch (clienteError) {
-                    console.error('Erro ao processar cliente:', clienteId, clienteError);
+                    console.error('Erro ao processar cliente:', cliente.id, clienteError);
+                    // Adiciona mesmo com erro de saldo
+                    participantesData.push({
+                        clienteId: cliente.id,
+                        nome: cliente.nomeEmpresa || cliente.nomResponsavel || 'Não informado',
+                        telefone: cliente.celular || cliente.telefone || '-',
+                        saldoDisponivel: 0,
+                        dataCredito: cliente.criadoEm || ''
+                    });
                 }
             }
 
@@ -487,7 +461,7 @@ const PromocoesAdmin = () => {
                                             </div>
                                         </th>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                                            Data do Crédito
+                                            Data de Cadastro
                                         </th>
                                     </tr>
                                 </thead>
