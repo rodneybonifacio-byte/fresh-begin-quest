@@ -34,7 +34,7 @@ serve(async (req: Request) => {
   try {
     const body: ClienteAutocadastroRequest = await req.json()
     
-    console.log('Iniciando criação de cliente:', body.email)
+    console.log('🚀 Iniciando criação de cliente:', body.email)
 
     // Validações básicas
     if (!body.email || !body.senha) {
@@ -47,11 +47,24 @@ serve(async (req: Request) => {
 
     // @ts-ignore: Deno types
     const baseApiUrl = Deno.env.get('BASE_API_URL')
+    // @ts-ignore: Deno types
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    // @ts-ignore: Deno types
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    // @ts-ignore: Deno types
+    const API_ADMIN_EMAIL = Deno.env.get('API_ADMIN_EMAIL')
+    // @ts-ignore: Deno types
+    const API_ADMIN_PASSWORD = Deno.env.get('API_ADMIN_PASSWORD')
+
     if (!baseApiUrl) {
       throw new Error('BASE_API_URL não configurada')
     }
+    
+    if (!API_ADMIN_EMAIL || !API_ADMIN_PASSWORD) {
+      throw new Error('Credenciais de admin não configuradas')
+    }
 
-    // Preparar dados do cliente com todas as configurações padrão
+    // Preparar dados do cliente com configurações padrão
     const clienteData = {
       nomeEmpresa: body.nomeEmpresa,
       nomeResponsavel: body.nomeResponsavel,
@@ -73,7 +86,7 @@ serve(async (req: Request) => {
       status: 'ATIVO',
       criadoEm: new Date().toISOString(),
       
-      // Configurações padrão conforme os prints
+      // Configurações padrão
       configuracoes: {
         aplicar_valor_declarado: true,
         incluir_valor_declarado_na_nota: true,
@@ -93,7 +106,7 @@ serve(async (req: Request) => {
         link_whatsapp: '111',
       },
 
-      // Configurações de transportadoras padrão
+      // Configurações de transportadoras padrão (MANTIDO - não há padrão na API)
       transportadoraConfiguracoes: [
         {
           transportadora: 'correios',
@@ -120,64 +133,50 @@ serve(async (req: Request) => {
       ],
     }
 
-    // @ts-ignore: Deno types
-    const API_ADMIN_EMAIL = Deno.env.get('API_ADMIN_EMAIL')
-    // @ts-ignore: Deno types
-    const API_ADMIN_PASSWORD = Deno.env.get('API_ADMIN_PASSWORD')
-    
-    if (!API_ADMIN_EMAIL || !API_ADMIN_PASSWORD) {
-      throw new Error('Credenciais de admin não configuradas')
-    }
-
-    // 1. Fazer login para obter token
-    console.log('Fazendo login com credenciais de serviço...')
-    const loginResponse = await fetch(`${baseApiUrl}/login`, {
+    // ============================================
+    // PASSO 1: Login admin para criar cliente
+    // ============================================
+    console.log('🔐 Fazendo login com credenciais de admin...')
+    const adminLoginResponse = await fetch(`${baseApiUrl}/login`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email: API_ADMIN_EMAIL,
         password: API_ADMIN_PASSWORD,
       }),
     })
 
-    if (!loginResponse.ok) {
-      const loginError = await loginResponse.text()
-      console.error('Erro ao fazer login:', loginError)
+    if (!adminLoginResponse.ok) {
+      const loginError = await adminLoginResponse.text()
+      console.error('❌ Erro ao fazer login admin:', loginError)
       throw new Error(`Erro ao autenticar: ${loginError}`)
     }
 
-    const loginData = await loginResponse.json()
-    const token = loginData.token
+    const adminLoginData = await adminLoginResponse.json()
+    const adminToken = adminLoginData.token
     
-    if (!token) {
-      throw new Error('Token não retornado no login')
+    if (!adminToken) {
+      throw new Error('Token admin não retornado no login')
     }
-    
-    console.log('✅ Login realizado com sucesso, token obtido')
+    console.log('✅ Login admin realizado com sucesso')
 
-    // 2. Enviar dados do cliente usando o token
-    console.log('Enviando dados para API:', JSON.stringify({
-      ...clienteData,
-      senha: '***'
-    }))
-
-    // Criar cliente na API externa
-    const response = await fetch(`${baseApiUrl}/clientes`, {
+    // ============================================
+    // PASSO 2: Criar cliente na API BRHUB
+    // ============================================
+    console.log('👤 Criando cliente na API BRHUB...')
+    const clienteResponse = await fetch(`${baseApiUrl}/clientes`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
+        'Authorization': `Bearer ${adminToken}`,
       },
       body: JSON.stringify(clienteData),
     })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('Erro na API:', errorText)
+    if (!clienteResponse.ok) {
+      const errorText = await clienteResponse.text()
+      console.error('❌ Erro ao criar cliente:', errorText)
       
-      // Tentar parsear o erro
       try {
         const errorJson = JSON.parse(errorText)
         throw new Error(errorJson.message || errorJson.error || 'Erro ao criar cliente')
@@ -186,15 +185,42 @@ serve(async (req: Request) => {
       }
     }
 
-    const result = await response.json()
-    console.log('✅ Cliente criado com sucesso:', result)
+    const clienteResult = await clienteResponse.json()
+    const clienteId = clienteResult.data?.id || clienteResult.id
+    console.log('✅ Cliente criado com sucesso, ID:', clienteId)
 
-    // Extrair o ID do cliente criado
-    const clienteId = result.data?.id || result.id
-    console.log('📋 Cliente ID:', clienteId)
+    // ============================================
+    // PASSO 3: Login do novo usuário para obter token
+    // ============================================
+    console.log('🔑 Fazendo login do novo usuário para obter token...')
+    let userToken = null
+    
+    try {
+      const userLoginResponse = await fetch(`${baseApiUrl}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: body.email,
+          password: body.senha,
+        }),
+      })
 
-    // 3. Criar o remetente com os mesmos dados
-    console.log('📤 Criando remetente associado ao cliente...')
+      if (userLoginResponse.ok) {
+        const userLoginData = await userLoginResponse.json()
+        userToken = userLoginData.token
+        console.log('✅ Token do novo usuário obtido com sucesso')
+      } else {
+        const loginError = await userLoginResponse.text()
+        console.error('⚠️ Erro ao obter token do usuário:', loginError)
+      }
+    } catch (loginErr) {
+      console.error('⚠️ Exceção ao obter token do usuário:', loginErr)
+    }
+
+    // ============================================
+    // PASSO 4: Criar remetente na API BRHUB
+    // ============================================
+    console.log('📤 Criando remetente na API BRHUB...')
     
     const remetenteData = {
       clienteId: clienteId,
@@ -207,33 +233,90 @@ serve(async (req: Request) => {
       endereco: clienteData.endereco,
     }
 
-    console.log('📤 Dados do remetente:', JSON.stringify(remetenteData, null, 2))
+    let remetenteId = null
+    let remetenteCreated = false
 
-    const createRemetenteResponse = await fetch(`${baseApiUrl}/remetentes`, {
+    const remetenteResponse = await fetch(`${baseApiUrl}/remetentes`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
+        'Authorization': `Bearer ${adminToken}`,
       },
       body: JSON.stringify(remetenteData),
     })
 
-    const remetenteResponseText = await createRemetenteResponse.text()
-    console.log('📥 Resposta do remetente:', remetenteResponseText.substring(0, 500))
-
-    if (!createRemetenteResponse.ok) {
-      console.error('⚠️ Erro ao criar remetente:', remetenteResponseText)
-      // Não falhar todo o processo se remetente falhar
+    const remetenteResponseText = await remetenteResponse.text()
+    
+    if (remetenteResponse.ok) {
+      try {
+        const remetenteResult = JSON.parse(remetenteResponseText)
+        remetenteId = remetenteResult.data?.id || remetenteResult.id
+        remetenteCreated = true
+        console.log('✅ Remetente criado na API BRHUB, ID:', remetenteId)
+      } catch {
+        console.log('✅ Remetente criado na API BRHUB (sem ID no response)')
+        remetenteCreated = true
+      }
     } else {
-      console.log('✅ Remetente criado com sucesso!')
+      console.error('⚠️ Erro ao criar remetente na API BRHUB:', remetenteResponseText)
     }
 
-    // 4. Enviar webhook de confirmação para DataCrazy CRM
-    console.log('📤 Enviando webhook de confirmação do cadastro...')
+    // ============================================
+    // PASSO 5: Sincronizar remetente no Supabase
+    // ============================================
+    if (supabaseUrl && supabaseServiceKey && remetenteCreated) {
+      console.log('🔄 Sincronizando remetente no Supabase...')
+      
+      const supabaseRemetenteData = {
+        id: remetenteId || crypto.randomUUID(),
+        cliente_id: clienteId,
+        nome: clienteData.nomeEmpresa.trim(),
+        cpf_cnpj: clienteData.cpfCnpj,
+        celular: clienteData.celular,
+        telefone: clienteData.telefone || '',
+        email: clienteData.email.trim(),
+        cep: clienteData.endereco.cep,
+        logradouro: clienteData.endereco.logradouro,
+        numero: clienteData.endereco.numero,
+        complemento: clienteData.endereco.complemento || '',
+        bairro: clienteData.endereco.bairro,
+        localidade: clienteData.endereco.localidade,
+        uf: clienteData.endereco.uf,
+        sincronizado_em: new Date().toISOString(),
+      }
+
+      try {
+        const syncResponse = await fetch(
+          `${supabaseUrl}/rest/v1/remetentes`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': supabaseServiceKey,
+              'Authorization': `Bearer ${supabaseServiceKey}`,
+              'Prefer': 'resolution=merge-duplicates',
+            },
+            body: JSON.stringify(supabaseRemetenteData),
+          }
+        )
+
+        if (syncResponse.ok) {
+          console.log('✅ Remetente sincronizado no Supabase')
+        } else {
+          const syncError = await syncResponse.text()
+          console.error('⚠️ Erro ao sincronizar remetente no Supabase:', syncError)
+        }
+      } catch (syncErr) {
+        console.error('⚠️ Exceção ao sincronizar remetente:', syncErr)
+      }
+    }
+
+    // ============================================
+    // PASSO 6: Webhook DataCrazy CRM
+    // ============================================
+    console.log('📤 Enviando webhook de confirmação...')
     
-    // Enviar apenas números no celular
     const celularApenasNumeros = body.celular.replace(/\D/g, '')
-    
     const webhookPayload = {
       senha: body.senha,
       email: body.email,
@@ -246,38 +329,32 @@ serve(async (req: Request) => {
         'https://api.datacrazy.io/v1/crm/api/crm/flows/webhooks/ab52ed88-dd1c-4bd2-a198-d1845e59e058/31ec9957-fc43-469b-9c73-529623336d84',
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(webhookPayload),
         }
       )
 
       if (webhookResponse.ok) {
-        console.log('✅ Webhook de cadastro enviado com sucesso!')
+        console.log('✅ Webhook de cadastro enviado')
       } else {
         const webhookError = await webhookResponse.text()
-        console.error('⚠️ Erro ao enviar webhook:', webhookError)
+        console.error('⚠️ Erro webhook:', webhookError)
       }
     } catch (webhookErr) {
-      console.error('⚠️ Erro ao enviar webhook:', webhookErr)
-      // Não falhar o cadastro se webhook falhar
+      console.error('⚠️ Exceção webhook:', webhookErr)
     }
 
-    // 5. Incrementar contador de cadastros e verificar elegibilidade ao prêmio
-    console.log('📊 Atualizando contador de cadastros...')
-    
+    // ============================================
+    // PASSO 7: Contador e crédito bônus
+    // ============================================
     let posicaoCadastro = 0
     let elegivelPremio = false
     let creditoAdicionado = false
     
-    try {
-      // @ts-ignore: Deno types
-      const supabaseUrl = Deno.env.get('SUPABASE_URL')
-      // @ts-ignore: Deno types
-      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    if (supabaseUrl && supabaseServiceKey) {
+      console.log('📊 Atualizando contador de cadastros...')
       
-      if (supabaseUrl && supabaseServiceKey) {
+      try {
         // Incrementar contador
         const incrementResponse = await fetch(
           `${supabaseUrl}/rest/v1/rpc/incrementar_contador_cadastro`,
@@ -295,11 +372,11 @@ serve(async (req: Request) => {
         if (incrementResponse.ok) {
           posicaoCadastro = await incrementResponse.json()
           elegivelPremio = posicaoCadastro <= 100
-          console.log(`✅ Posição de cadastro: ${posicaoCadastro}, Elegível ao prêmio: ${elegivelPremio}`)
+          console.log(`✅ Posição: ${posicaoCadastro}, Elegível: ${elegivelPremio}`)
           
-          // REGRA 1: Se está entre os 100 primeiros, adiciona R$50 de crédito
+          // REGRA 1: Se está entre os 100 primeiros, adiciona R$50
           if (elegivelPremio && clienteId) {
-            console.log('🎁 Cliente elegível! Adicionando R$50 de crédito bônus...')
+            console.log('🎁 Adicionando R$50 de crédito bônus...')
             
             const registrarRecargaResponse = await fetch(
               `${supabaseUrl}/rest/v1/rpc/registrar_recarga`,
@@ -313,22 +390,21 @@ serve(async (req: Request) => {
                 body: JSON.stringify({
                   p_cliente_id: clienteId,
                   p_valor: 50,
-                  p_descricao: `🎁 Bônus dos 100 primeiros cadastros - Posição #${posicaoCadastro}`
+                  p_descricao: `🎁 Bônus dos 100 primeiros - Posição #${posicaoCadastro}`
                 }),
               }
             )
             
             if (registrarRecargaResponse.ok) {
               creditoAdicionado = true
-              console.log('✅ R$50 de crédito bônus adicionado com sucesso!')
+              console.log('✅ Crédito bônus adicionado')
             } else {
               const errorText = await registrarRecargaResponse.text()
-              console.error('⚠️ Erro ao adicionar crédito bônus:', errorText)
+              console.error('⚠️ Erro ao adicionar crédito:', errorText)
             }
           }
           
-          // Registrar origem do cadastro na tabela cadastros_origem
-          console.log('📝 Registrando origem do cadastro...')
+          // Registrar origem do cadastro
           const origemResponse = await fetch(
             `${supabaseUrl}/rest/v1/cadastros_origem`,
             {
@@ -350,22 +426,26 @@ serve(async (req: Request) => {
           )
           
           if (origemResponse.ok) {
-            console.log('✅ Origem do cadastro registrada com sucesso!')
-          } else {
-            const errorText = await origemResponse.text()
-            console.error('⚠️ Erro ao registrar origem:', errorText)
+            console.log('✅ Origem do cadastro registrada')
           }
         }
+      } catch (contadorErr) {
+        console.error('⚠️ Erro contador:', contadorErr)
       }
-    } catch (contadorErr) {
-      console.error('⚠️ Erro ao atualizar contador:', contadorErr)
-      // Não falhar o cadastro se contador falhar
     }
 
+    // ============================================
+    // RESPOSTA FINAL
+    // ============================================
+    console.log('🎉 Autocadastro concluído com sucesso!')
+    
     return new Response(
       JSON.stringify({ 
         success: true, 
-        data: result,
+        data: clienteResult,
+        clienteId: clienteId,
+        remetenteId: remetenteId,
+        userToken: userToken, // TOKEN DO NOVO USUÁRIO PARA LOGIN AUTOMÁTICO
         message: 'Cliente e remetente criados com sucesso',
         posicaoCadastro,
         elegivelPremio,
@@ -378,7 +458,7 @@ serve(async (req: Request) => {
     )
 
   } catch (error) {
-    console.error('Erro no autocadastro:', error)
+    console.error('❌ Erro no autocadastro:', error)
     
     const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido ao criar cliente'
     
