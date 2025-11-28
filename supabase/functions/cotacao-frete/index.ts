@@ -22,12 +22,18 @@ serve(async (req) => {
     const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
     const adminPassword = Deno.env.get('API_ADMIN_PASSWORD');
 
+    console.log('🔧 Configuração:', {
+      baseUrl: baseUrl ? 'OK' : 'MISSING',
+      adminEmail: adminEmail ? adminEmail.substring(0, 5) + '***' : 'MISSING',
+      adminPassword: adminPassword ? '***SET***' : 'MISSING'
+    });
+
     if (!baseUrl || !adminEmail || !adminPassword) {
       throw new Error('Configurações de API não encontradas');
     }
 
     // Autenticar com credenciais admin
-    console.log('🔐 Autenticando com credenciais admin...');
+    console.log('🔐 Autenticando com credenciais admin em:', `${baseUrl}/login`);
     const loginResponse = await fetch(`${baseUrl}/login`, {
       method: 'POST',
       headers: {
