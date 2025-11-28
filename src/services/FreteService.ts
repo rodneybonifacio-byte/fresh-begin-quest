@@ -1,3 +1,4 @@
+import { supabase } from "../integrations/supabase/client";
 import { CustomHttpClient } from "../utils/http-axios-client";
 import { BaseService } from "./BaseService";
 
@@ -6,11 +7,23 @@ export class FreteService extends BaseService<any> {
     protected endpoint = 'frete';
 
     constructor() {
-        super(new CustomHttpClient()); // Passa o httpClient para a classe pai (BaseService)
+        super(new CustomHttpClient());
     }
 
     async calculadoraFrete(item: any): Promise<any> {
-        return await this.httpClient.post<any, any>(`${this.endpoint}/cotacao`, item);
+        console.log('🚚 Chamando edge function cotacao-frete...');
+        
+        const { data, error } = await supabase.functions.invoke('cotacao-frete', {
+            body: item
+        });
+
+        if (error) {
+            console.error('❌ Erro na edge function:', error);
+            throw new Error(error.message || 'Erro ao calcular frete');
+        }
+
+        console.log('✅ Cotação recebida:', data);
+        return data;
     }
 
     // Método para criar uma nova cotação de frete
