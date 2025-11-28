@@ -18,11 +18,9 @@ serve(async (req) => {
     console.log('🚚 Iniciando cotação de frete...');
 
     const baseUrl = Deno.env.get('BASE_API_URL');
-    const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
-    const adminPassword = Deno.env.get('API_ADMIN_PASSWORD');
 
-    if (!baseUrl || !adminEmail || !adminPassword) {
-      throw new Error('Configurações de API não encontradas');
+    if (!baseUrl) {
+      throw new Error('BASE_API_URL não configurada');
     }
 
     // Extrair clienteId do token do usuário (se fornecido)
@@ -71,49 +69,40 @@ serve(async (req) => {
       return response;
     };
 
-    // Função para obter token admin
-    const obterTokenAdmin = async () => {
-      console.log('🔐 Obtendo token admin...');
-      const loginResponse = await fetch(`${baseUrl}/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: adminEmail,
-          password: adminPassword,
-        }),
-      });
-
-      if (!loginResponse.ok) {
-        const errorText = await loginResponse.text();
-        console.error('❌ Erro no login admin:', errorText);
-        throw new Error('Falha na autenticação admin');
-      }
-
-      const loginData = await loginResponse.json();
-      console.log('✅ Login admin realizado com sucesso');
-      return loginData.token;
-    };
-
     let cotacaoResponse;
 
-    // Tentar primeiro com token do usuário (se disponível)
-    if (userToken) {
-      console.log('🔑 Tentando cotação com token do usuário...');
-      cotacaoResponse = await realizarCotacao(userToken);
-      
-      // Se der 403 (acesso negado), fazer fallback para admin
-      if (cotacaoResponse.status === 403) {
-        console.log('⚠️ Token do usuário sem permissão (403), usando fallback admin...');
-        const adminToken = await obterTokenAdmin();
-        cotacaoResponse = await realizarCotacao(adminToken);
-      }
-    } else {
-      // Sem token do usuário, usar admin diretamente
-      console.log('🔐 Usando credenciais admin (sem token do usuário)...');
-      const adminToken = await obterTokenAdmin();
-      cotacaoResponse = await realizarCotacao(adminToken);
+    // IMPORTANTE: Usar APENAS token do usuário para aplicar regras do cliente
+    // NÃO usar fallback para admin, pois isso aplicaria regras de preço incorretas
+    if (!userToken) {
+      console.error('❌ Token do usuário não fornecido - não é possível cotar sem credenciais do cliente');
+      return new Response(
+        JSON.stringify({
+          error: 'Token de autenticação não encontrado. Faça login novamente.',
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 401,
+        }
+      );
+    }
+
+    console.log('🔑 Realizando cotação com token do usuário...');
+    cotacaoResponse = await realizarCotacao(userToken);
+    
+    // Se der 403, o cliente não tem permissão ou transportadora não configurada
+    if (cotacaoResponse.status === 403) {
+      console.error('❌ Usuário sem permissão para cotar frete (403)');
+      const errorText = await cotacaoResponse.text();
+      return new Response(
+        JSON.stringify({
+          error: 'Sem permissão para cotar frete. Verifique se as transportadoras estão configuradas.',
+          details: errorText,
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 403,
+        }
+      );
     }
 
     const responseText = await cotacaoResponse.text();
