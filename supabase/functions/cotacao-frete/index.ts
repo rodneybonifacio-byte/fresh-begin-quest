@@ -42,12 +42,36 @@ serve(async (req) => {
       console.log('⚠️ apiToken não fornecido no request');
     }
 
-    // Determinar qual token usar para a cotação
-    let authToken = userToken;
-    
-    // Se não tiver token do usuário, usar admin como fallback
-    if (!authToken) {
-      console.log('🔐 Usando credenciais admin (fallback)...');
+    // Preparar dados da cotação
+    const cotacaoPayload = {
+      cepOrigem: requestData.cepOrigem,
+      cepDestino: requestData.cepDestino,
+      embalagem: requestData.embalagem,
+      logisticaReversa: requestData.logisticaReversa || 'N',
+      valorDeclarado: requestData.valorDeclarado || 0,
+      // Incluir cpfCnpjLoja se fornecido (para regras específicas do remetente)
+      ...(requestData.cpfCnpjLoja && { cpfCnpjLoja: requestData.cpfCnpjLoja }),
+    };
+
+    // Função para fazer a cotação
+    const realizarCotacao = async (token: string) => {
+      console.log('📊 Realizando cotação com payload:', JSON.stringify(cotacaoPayload));
+      
+      const response = await fetch(`${baseUrl}/frete/cotacao`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(cotacaoPayload),
+      });
+
+      return response;
+    };
+
+    // Função para obter token admin
+    const obterTokenAdmin = async () => {
+      console.log('🔐 Obtendo token admin...');
       const loginResponse = await fetch(`${baseUrl}/login`, {
         method: 'POST',
         headers: {
@@ -66,33 +90,29 @@ serve(async (req) => {
       }
 
       const loginData = await loginResponse.json();
-      authToken = loginData.token;
       console.log('✅ Login admin realizado com sucesso');
-    } else {
-      console.log('✅ Usando token do usuário para aplicar regras de negócio');
-    }
-
-    // Preparar dados da cotação
-    const cotacaoPayload = {
-      cepOrigem: requestData.cepOrigem,
-      cepDestino: requestData.cepDestino,
-      embalagem: requestData.embalagem,
-      logisticaReversa: requestData.logisticaReversa || 'N',
-      valorDeclarado: requestData.valorDeclarado || 0,
-      // Incluir cpfCnpjLoja se fornecido (para regras específicas do remetente)
-      ...(requestData.cpfCnpjLoja && { cpfCnpjLoja: requestData.cpfCnpjLoja }),
+      return loginData.token;
     };
 
-    console.log('📊 Realizando cotação com payload:', JSON.stringify(cotacaoPayload));
-    
-    const cotacaoResponse = await fetch(`${baseUrl}/frete/cotacao`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${authToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(cotacaoPayload),
-    });
+    let cotacaoResponse;
+
+    // Tentar primeiro com token do usuário (se disponível)
+    if (userToken) {
+      console.log('🔑 Tentando cotação com token do usuário...');
+      cotacaoResponse = await realizarCotacao(userToken);
+      
+      // Se der 403 (acesso negado), fazer fallback para admin
+      if (cotacaoResponse.status === 403) {
+        console.log('⚠️ Token do usuário sem permissão (403), usando fallback admin...');
+        const adminToken = await obterTokenAdmin();
+        cotacaoResponse = await realizarCotacao(adminToken);
+      }
+    } else {
+      // Sem token do usuário, usar admin diretamente
+      console.log('🔐 Usando credenciais admin (sem token do usuário)...');
+      const adminToken = await obterTokenAdmin();
+      cotacaoResponse = await realizarCotacao(adminToken);
+    }
 
     const responseText = await cotacaoResponse.text();
     console.log('📄 Resposta da cotação (status):', cotacaoResponse.status);
