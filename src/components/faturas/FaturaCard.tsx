@@ -8,8 +8,6 @@ import { formatCpfCnpj } from '../../utils/lib.formats';
 import { formatarDataVencimento } from '../../utils/date-utils';
 import { StatusBadge } from '../StatusBadge';
 import { CopiadorDeId } from '../CopiadorDeId';
-import { toast } from 'sonner';
-import { supabase } from '../../integrations/supabase/client';
 
 interface FaturaCardProps {
     fatura: IFatura;
@@ -17,6 +15,7 @@ interface FaturaCardProps {
     onRealizarFechamento: (fatura: IFatura) => void;
     onVisualizarFechamento: (fatura: IFatura) => void;
     onCancelarBoleto: (fatura: IFatura) => void;
+    onEnviarFatura: (fatura: IFatura) => void;
     verificarFechamentoExistente: (faturaId: string) => any;
     isExpanded?: boolean;
     onToggleExpand?: () => void;
@@ -28,6 +27,7 @@ export const FaturaCard: React.FC<FaturaCardProps> = ({
     onRealizarFechamento,
     onVisualizarFechamento,
     onCancelarBoleto,
+    onEnviarFatura,
     verificarFechamentoExistente,
     isExpanded = false,
     onToggleExpand,
@@ -39,99 +39,6 @@ export const FaturaCard: React.FC<FaturaCardProps> = ({
     const isPendente = fatura.status === 'PENDENTE' || fatura.status === 'PAGO_PARCIAL';
 
     const lucro = Decimal(fatura.totalFaturado).minus(Decimal(fatura.totalCusto));
-
-    const enviarFaturaWebhook = async (faturaItem: IFatura) => {
-        try {
-            const fechamentoData = verificarFechamentoExistente(faturaItem.id);
-            
-            if (!fechamentoData || (!fechamentoData.faturaPdf && !fechamentoData.boletoPdf)) {
-                toast.error('PDF da fatura não encontrado. Realize o fechamento primeiro.');
-                return;
-            }
-
-            const pdfBase64 = fechamentoData.boletoPdf || fechamentoData.faturaPdf;
-
-            // Buscar celular do remetente
-            let celularRemetente = '';
-            try {
-                const remetenteResponse = await fetch(`https://envios.brhubb.com.br/api/remetente/${faturaItem.cpfCnpj ?? faturaItem.cliente?.cpfCnpj}`);
-                if (remetenteResponse.ok) {
-                    const remetentes = await remetenteResponse.json();
-                    if (remetentes && remetentes.length > 0) {
-                        celularRemetente = remetentes[0].celular || '';
-                    }
-                }
-            } catch (error) {
-                console.warn('Não foi possível buscar celular do remetente:', error);
-            }
-
-            // Converter base64 para Blob e fazer upload para Storage
-            const base64Data = pdfBase64.includes('base64,') ? pdfBase64.split('base64,')[1] : pdfBase64;
-            const byteCharacters = atob(base64Data);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-                byteNumbers[i] = byteCharacters.charCodeAt(i);
-            }
-            const byteArray = new Uint8Array(byteNumbers);
-            const blob = new Blob([byteArray], { type: 'application/pdf' });
-
-            // Upload para Supabase Storage
-            const fileName = `faturas/fatura_${faturaItem.id}_${Date.now()}.pdf`;
-            const { error: uploadError } = await supabase.storage
-                .from('faturas')
-                .upload(fileName, blob, {
-                    contentType: 'application/pdf',
-                    upsert: false
-                });
-
-            if (uploadError) {
-                throw new Error('Erro ao fazer upload do PDF: ' + uploadError.message);
-            }
-
-            // Obter URL pública
-            const { data: { publicUrl } } = supabase.storage
-                .from('faturas')
-                .getPublicUrl(fileName);
-
-            const payload = {
-                celular_cliente: celularRemetente,
-                nome_cliente: fechamentoData.nomeCliente || faturaItem.cliente?.nome || faturaItem.nome || '',
-                pdf_url: publicUrl
-            };
-
-            console.log('📤 Enviando fatura para webhook:', { 
-                celular: payload.celular_cliente,
-                nome: payload.nome_cliente,
-                pdf_url: payload.pdf_url 
-            });
-
-            const response = await fetch(
-                'https://api.datacrazy.io/v1/crm/api/crm/flows/webhooks/ab52ed88-dd1c-4bd2-a198-d1845e59e058/d965a334-7b87-4241-b3f2-d1026752f3e7',
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(payload)
-                }
-            );
-
-            if (response.ok) {
-                toast.success('Fatura enviada com sucesso!');
-            } else {
-                const errorData = await response.json().catch(() => ({}));
-                console.error('❌ Erro do webhook:', {
-                    status: response.status,
-                    statusText: response.statusText,
-                    data: errorData
-                });
-                throw new Error(`Erro ${response.status}: ${errorData.message || response.statusText || 'Webhook não encontrado'}`);
-            }
-        } catch (error: any) {
-            console.error('Erro ao enviar fatura:', error);
-            toast.error(error.message || 'Erro ao enviar fatura para o webhook');
-        }
-    };
 
     return (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden">
@@ -240,7 +147,7 @@ export const FaturaCard: React.FC<FaturaCardProps> = ({
                     
                     {temFechamento && (
                         <button
-                            onClick={() => enviarFaturaWebhook(fatura)}
+                            onClick={() => onEnviarFatura(fatura)}
                             className="w-full min-h-[44px] flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-medium transition-colors"
                         >
                             <Send size={16} />
@@ -345,7 +252,7 @@ export const FaturaCard: React.FC<FaturaCardProps> = ({
                                         {/* Enviar Fatura - Aparece se já tem fechamento */}
                                         {verificarFechamentoExistente(subfatura.id) && (
                                             <button
-                                                onClick={() => enviarFaturaWebhook(subfatura)}
+                                                onClick={() => onEnviarFatura(subfatura)}
                                                 className="w-full min-h-[44px] flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-medium transition-colors"
                                             >
                                                 <Send size={16} />
