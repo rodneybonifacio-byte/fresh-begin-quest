@@ -9,8 +9,7 @@ import { formatarDataVencimento } from '../utils/date-utils';
 import { StatusBadge } from './StatusBadge';
 import { CopiadorDeId } from './CopiadorDeId';
 import { Eye, CheckCircle, CreditCard, MessageCircle, XCircle, Send } from 'lucide-react';
-import { toast } from 'sonner';
-import { supabase } from '../integrations/supabase/client';
+import { ModalEnviarFaturaWhatsApp } from './ModalEnviarFaturaWhatsApp';
 
 interface TabelaFaturasComSubtabelaProps {
     faturas: IFatura[];
@@ -30,133 +29,26 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
     cancelarBoleto,
 }) => {
     const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
+    const [modalEnviarFatura, setModalEnviarFatura] = useState<{
+        isOpen: boolean;
+        fatura: IFatura | null;
+        fechamentoData: any;
+    }>({ isOpen: false, fatura: null, fechamentoData: null });
 
     const toggleExpand = (rowId: string) => {
         setExpandedRows((prev) => ({ ...prev, [rowId]: !prev[rowId] }));
     };
 
-    const enviarFaturaWebhook = async (fatura: IFatura) => {
-        try {
-            const fechamentoData = verificarFechamentoExistente(fatura.id);
-            
-            if (!fechamentoData || (!fechamentoData.faturaPdf && !fechamentoData.boletoPdf)) {
-                toast.error('PDF da fatura não encontrado. Realize o fechamento primeiro.');
-                return;
-            }
-
-            // Criar blob do PDF (concatenado ou individual)
-            let blob: Blob;
-            
-            if (fechamentoData.boletoPdf && fechamentoData.faturaPdf) {
-                // Concatenar boleto + fatura
-                const { PDFDocument } = await import('pdf-lib');
-                
-                const boletoPdfDoc = await PDFDocument.load(fechamentoData.boletoPdf);
-                const faturaPdfDoc = await PDFDocument.load(fechamentoData.faturaPdf);
-                
-                const mergedPdf = await PDFDocument.create();
-                const boletoCopiedPages = await mergedPdf.copyPages(boletoPdfDoc, boletoPdfDoc.getPageIndices());
-                boletoCopiedPages.forEach((page) => mergedPdf.addPage(page));
-                
-                const faturaCopiedPages = await mergedPdf.copyPages(faturaPdfDoc, faturaPdfDoc.getPageIndices());
-                faturaCopiedPages.forEach((page) => mergedPdf.addPage(page));
-                
-                const mergedPdfBytes = await mergedPdf.save();
-                blob = new Blob([new Uint8Array(mergedPdfBytes)], { type: 'application/pdf' });
-            } else {
-                // Converter base64 existente para Blob
-                const pdfBase64 = fechamentoData.boletoPdf || fechamentoData.faturaPdf;
-                const base64Data = pdfBase64.includes('base64,') ? pdfBase64.split('base64,')[1] : pdfBase64;
-                const byteCharacters = atob(base64Data);
-                const byteNumbers = new Array(byteCharacters.length);
-                for (let i = 0; i < byteCharacters.length; i++) {
-                    byteNumbers[i] = byteCharacters.charCodeAt(i);
-                }
-                const byteArray = new Uint8Array(byteNumbers);
-                blob = new Blob([byteArray], { type: 'application/pdf' });
-            }
-
-            // Buscar celular do remetente
-            let celularRemetente = '';
-            try {
-                const remetenteResponse = await fetch(`https://envios.brhubb.com.br/api/remetente/${fatura.cpfCnpj ?? fatura.cliente.cpfCnpj}`);
-                if (remetenteResponse.ok) {
-                    const remetentes = await remetenteResponse.json();
-                    if (remetentes && remetentes.length > 0) {
-                        celularRemetente = remetentes[0].celular || '';
-                    }
-                }
-            } catch (error) {
-                console.warn('Não foi possível buscar celular do remetente:', error);
-            }
-
-            // Upload para Supabase Storage
-            const baseFileName = `fatura_${fatura.id}_${Date.now()}.pdf`;
-            const storagePath = `faturas/${baseFileName}`;
-
-            const { data: uploadData, error: uploadError } = await supabase.storage
-                .from('faturas')
-                .upload(storagePath, blob, {
-                    contentType: 'application/pdf',
-                    upsert: false
-                });
-
-            if (uploadError) {
-                throw new Error('Erro ao fazer upload do PDF: ' + uploadError.message);
-            }
-
-            // Gerar URL pública para verificação
-            const { data: publicUrlData } = supabase.storage
-                .from('faturas')
-                .getPublicUrl(storagePath);
-
-            console.log('✅ PDF salvo e URL pública gerada:', {
-                fileName: baseFileName,
-                storagePath,
-                publicUrl: publicUrlData.publicUrl,
-                uploadKey: uploadData?.path
-            });
-
-            const payload = {
-                celular_cliente: celularRemetente,
-                nome_cliente: fechamentoData.nomeCliente || fatura.cliente?.nome || fatura.nome || '',
-                // Enviar somente o NOME do arquivo, sem caminho, conforme combinado
-                pdf_url: baseFileName
-            };
-
-            console.log('📤 Enviando fatura para webhook:', { 
-                celular: payload.celular_cliente,
-                nome: payload.nome_cliente,
-                pdf_url: payload.pdf_url,
-                url_completa: publicUrlData.publicUrl
-            });
-
-            const response = await fetch(
-                'https://api.datacrazy.io/v1/crm/api/crm/flows/webhooks/ab52ed88-dd1c-4bd2-a198-d1845e59e058/d965a334-7b87-4241-b3f2-d1026752f3e7',
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(payload)
-                }
-            );
-
-            if (response.ok) {
-                toast.success('Fatura enviada com sucesso!');
-            } else {
-                const errorData = await response.json().catch(() => ({}));
-                console.error('❌ Erro do webhook:', {
-                    status: response.status,
-                    statusText: response.statusText,
-                    data: errorData
-                });
-                throw new Error(`Erro ${response.status}: ${errorData.message || response.statusText || 'Webhook não encontrado'}`);
-            }
-        } catch (error: any) {
-            console.error('Erro ao enviar fatura:', error);
-            toast.error(error.message || 'Erro ao enviar fatura para o webhook');
+    const abrirModalEnviarFatura = (fatura: IFatura) => {
+        const fechamentoData = verificarFechamentoExistente(fatura.id);
+        if (!fechamentoData || (!fechamentoData.faturaPdf && !fechamentoData.boletoPdf)) {
+            return;
         }
+        setModalEnviarFatura({
+            isOpen: true,
+            fatura,
+            fechamentoData,
+        });
     };
 
     const renderSubTable = (subData: IFatura[]) => {
@@ -234,7 +126,7 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
                     {
                         label: 'Enviar Fatura',
                         icon: <Send size={16} />,
-                        onClick: (row) => enviarFaturaWebhook(row),
+                        onClick: (row) => abrirModalEnviarFatura(row),
                         show: (row) => !!(verificarFechamentoExistente(row.id)),
                     },
                 ]}
@@ -245,6 +137,7 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
     };
 
     return (
+        <>
         <DataTable<IFatura>
             data={faturas}
             columns={[
@@ -327,7 +220,7 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
                     {
                         label: 'Enviar Fatura',
                         icon: <Send size={16} />,
-                        onClick: (row) => enviarFaturaWebhook(row),
+                        onClick: (row) => abrirModalEnviarFatura(row),
                         show: (row) => !!(verificarFechamentoExistente(row.id)) && (!row.faturas || row.faturas.length === 0),
                     },
             ]}
@@ -340,5 +233,13 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
             }}
             rowKey={(row) => row.id}
         />
+
+        <ModalEnviarFaturaWhatsApp
+            isOpen={modalEnviarFatura.isOpen}
+            onClose={() => setModalEnviarFatura({ isOpen: false, fatura: null, fechamentoData: null })}
+            fatura={modalEnviarFatura.fatura}
+            fechamentoData={modalEnviarFatura.fechamentoData}
+        />
+        </>
     );
 };
