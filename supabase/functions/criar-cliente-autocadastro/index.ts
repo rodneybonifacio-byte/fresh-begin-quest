@@ -403,32 +403,39 @@ serve(async (req: Request) => {
           
           // REGRA 1: Se está entre os 100 primeiros, adiciona R$50
           if (elegivelPremio && clienteId) {
-            console.log('🎁 Adicionando R$50 de crédito bônus...')
+            console.log('🎁 Adicionando R$50 de crédito bônus para cliente:', clienteId)
             
-            const registrarRecargaResponse = await fetch(
-              `${supabaseUrl}/rest/v1/rpc/registrar_recarga`,
+            // Inserir diretamente na tabela transacoes_credito
+            const insertCreditoResponse = await fetch(
+              `${supabaseUrl}/rest/v1/transacoes_credito`,
               {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
                   'apikey': supabaseServiceKey,
                   'Authorization': `Bearer ${supabaseServiceKey}`,
+                  'Prefer': 'return=minimal',
                 },
                 body: JSON.stringify({
-                  p_cliente_id: clienteId,
-                  p_valor: 50,
-                  p_descricao: `🎁 Bônus dos 100 primeiros - Posição #${posicaoCadastro}`
+                  cliente_id: clienteId,
+                  tipo: 'recarga',
+                  valor: 50,
+                  descricao: `🎁 Bônus dos 100 primeiros - Posição #${posicaoCadastro}`,
+                  status: 'consumido',
+                  cobrada: false,
                 }),
               }
             )
             
-            if (registrarRecargaResponse.ok) {
+            if (insertCreditoResponse.ok) {
               creditoAdicionado = true
-              console.log('✅ Crédito bônus adicionado')
+              console.log('✅ Crédito bônus adicionado com sucesso!')
             } else {
-              const errorText = await registrarRecargaResponse.text()
-              console.error('⚠️ Erro ao adicionar crédito:', errorText)
+              const errorText = await insertCreditoResponse.text()
+              console.error('⚠️ Erro ao adicionar crédito bônus:', errorText, 'Status:', insertCreditoResponse.status)
             }
+          } else {
+            console.log('ℹ️ Cliente não elegível para bônus ou clienteId inválido. Elegível:', elegivelPremio, 'ClienteId:', clienteId)
           }
           
           // Registrar origem do cadastro
