@@ -137,6 +137,10 @@ export const adminRoutesConfig: ProtectedRouteItem[] = [
         path: 'financeiro/recargas-pendentes',
         component: () => import('../pages/private/admin/financeiro/RecargasPendentes'),
     },
+    {
+        path: 'logs-acesso',
+        component: () => import('../pages/private/admin/logs-acesso'),
+    },
 ];
 
 export const AdminRoutes = generateProtectedRoutes(adminRoutesConfig);

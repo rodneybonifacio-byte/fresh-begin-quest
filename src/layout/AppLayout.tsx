@@ -2,12 +2,14 @@ import { LayoutBase } from '../layout';
 import { LayoutProvider } from '../providers/LayoutContext';
 import { AuthProvider } from '../providers/AuthContext';
 import { useSyncUserData } from '../hooks/useSyncUserData';
+import { usePresenceTracking } from '../hooks/usePresenceTracking';
 import { useEffect, useState } from 'react';
 import { RemetenteSupabaseDirectService } from '../services/RemetenteSupabaseDirectService';
 import { ModalCadastrarRemetente } from '../pages/private/remetente/ModalCadastrarRemetente';
 
 const AppLayoutContent = () => {
     useSyncUserData();
+    usePresenceTracking();
 
     const [isRemetenteModalOpen, setIsRemetenteModalOpen] = useState(false);
     const [verificacaoFeita, setVerificacaoFeita] = useState(false);

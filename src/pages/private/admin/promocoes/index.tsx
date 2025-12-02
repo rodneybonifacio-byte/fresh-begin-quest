@@ -1,8 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Gift, Users, DollarSign, ToggleLeft, ToggleRight, Save, Loader2, Phone, User, Wallet, RefreshCw, Mail, Star, Zap } from 'lucide-react';
+import { Gift, Users, DollarSign, ToggleLeft, ToggleRight, Save, Loader2, Phone, User, Wallet, RefreshCw, Mail, Star, Zap, Activity } from 'lucide-react';
 import { supabase } from '../../../../integrations/supabase/client';
+import { getSupabaseWithAuth } from '../../../../integrations/supabase/custom-auth';
 import { toast } from 'sonner';
 import { Content } from '../../Content';
+
+interface SessaoAtiva {
+    cliente_id: string;
+    is_online: boolean;
+    last_seen: string;
+}
 
 interface Promocao {
     id: string;
@@ -28,6 +35,7 @@ interface ParticipantePromo {
 const PromocoesAdmin = () => {
     const [promocoes, setPromocoes] = useState<Promocao[]>([]);
     const [participantes, setParticipantes] = useState<ParticipantePromo[]>([]);
+    const [sessoesAtivas, setSessoesAtivas] = useState<SessaoAtiva[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadingParticipantes, setLoadingParticipantes] = useState(false);
     const [saving, setSaving] = useState<string | null>(null);
@@ -36,7 +44,61 @@ const PromocoesAdmin = () => {
     useEffect(() => {
         fetchPromocoes();
         fetchParticipantes();
+        fetchSessoesAtivas();
+
+        // Subscrição em tempo real para sessões
+        const channel = supabase
+            .channel('promocoes-sessoes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'sessoes_ativas' }, () => {
+                fetchSessoesAtivas();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, []);
+
+    const fetchSessoesAtivas = async () => {
+        try {
+            const supabaseAuth = getSupabaseWithAuth();
+            const { data, error } = await supabaseAuth
+                .from('sessoes_ativas')
+                .select('cliente_id, is_online, last_seen');
+
+            if (error) {
+                console.error('Erro ao buscar sessões:', error);
+            } else {
+                setSessoesAtivas((data as SessaoAtiva[]) || []);
+            }
+        } catch (error) {
+            console.error('Erro ao buscar sessões ativas:', error);
+        }
+    };
+
+    const isClienteOnline = (clienteId: string): 'online' | 'away' | 'offline' => {
+        const sessao = sessoesAtivas.find(s => s.cliente_id === clienteId);
+        if (!sessao) return 'offline';
+
+        const lastSeen = new Date(sessao.last_seen);
+        const now = new Date();
+        const diffMinutes = (now.getTime() - lastSeen.getTime()) / 1000 / 60;
+
+        if (sessao.is_online && diffMinutes < 5) return 'online';
+        if (diffMinutes < 15) return 'away';
+        return 'offline';
+    };
+
+    const getStatusIndicator = (status: 'online' | 'away' | 'offline') => {
+        switch (status) {
+            case 'online':
+                return <span className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse" title="Online" />;
+            case 'away':
+                return <span className="w-2.5 h-2.5 bg-yellow-500 rounded-full" title="Ausente" />;
+            default:
+                return <span className="w-2.5 h-2.5 bg-gray-400 rounded-full" title="Offline" />;
+        }
+    };
 
     const fetchPromocoes = async () => {
         try {
@@ -417,18 +479,24 @@ const PromocoesAdmin = () => {
                             <table className="w-full">
                                 <thead className="bg-muted/50">
                                     <tr>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                                            <div className="flex items-center gap-2">
-                                                <Gift className="w-4 h-4" />
-                                                Tipo
-                                            </div>
-                                        </th>
-                                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                                            <div className="flex items-center gap-2">
-                                                <User className="w-4 h-4" />
-                                                Nome
-                                            </div>
-                                        </th>
+                                                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                                            <div className="flex items-center gap-2">
+                                                                <Activity className="w-4 h-4" />
+                                                                Status
+                                                            </div>
+                                                        </th>
+                                                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                                            <div className="flex items-center gap-2">
+                                                                <Gift className="w-4 h-4" />
+                                                                Tipo
+                                                            </div>
+                                                        </th>
+                                                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                                            <div className="flex items-center gap-2">
+                                                                <User className="w-4 h-4" />
+                                                                Nome
+                                                            </div>
+                                                        </th>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                                             <div className="flex items-center gap-2">
                                                 <Phone className="w-4 h-4" />
@@ -453,33 +521,38 @@ const PromocoesAdmin = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border">
-                                    {participantes.map((participante, index) => (
-                                        <tr key={participante.clienteId} className="hover:bg-muted/30 transition-colors">
-                                            <td className="px-4 py-3">
-                                                {participante.tipoPromocao === '100_primeiros' ? (
-                                                    <div className="flex items-center gap-2" title="100 Primeiros Cadastros">
-                                                        <div className="w-7 h-7 rounded-full bg-yellow-500/10 flex items-center justify-center">
-                                                            <Star className="w-4 h-4 text-yellow-500" />
-                                                        </div>
-                                                        <span className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">100 Primeiros</span>
-                                                    </div>
-                                                ) : (
-                                                    <div className="flex items-center gap-2" title="Bônus de Recarga">
-                                                        <div className="w-7 h-7 rounded-full bg-blue-500/10 flex items-center justify-center">
-                                                            <Zap className="w-4 h-4 text-blue-500" />
-                                                        </div>
-                                                        <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">Bônus Recarga</span>
-                                                    </div>
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary">
-                                                        {index + 1}
-                                                    </div>
-                                                    <span className="font-medium text-foreground">{participante.nome}</span>
-                                                </div>
-                                            </td>
+                                                {participantes.map((participante, index) => (
+                                                        <tr key={participante.clienteId} className="hover:bg-muted/30 transition-colors">
+                                                            <td className="px-4 py-3">
+                                                                <div className="flex items-center justify-center">
+                                                                    {getStatusIndicator(isClienteOnline(participante.clienteId))}
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                {participante.tipoPromocao === '100_primeiros' ? (
+                                                                    <div className="flex items-center gap-2" title="100 Primeiros Cadastros">
+                                                                        <div className="w-7 h-7 rounded-full bg-yellow-500/10 flex items-center justify-center">
+                                                                            <Star className="w-4 h-4 text-yellow-500" />
+                                                                        </div>
+                                                                        <span className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">100 Primeiros</span>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="flex items-center gap-2" title="Bônus de Recarga">
+                                                                        <div className="w-7 h-7 rounded-full bg-blue-500/10 flex items-center justify-center">
+                                                                            <Zap className="w-4 h-4 text-blue-500" />
+                                                                        </div>
+                                                                        <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">Bônus Recarga</span>
+                                                                    </div>
+                                                                )}
+                                                            </td>
+                                                            <td className="px-4 py-3">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary">
+                                                                        {index + 1}
+                                                                    </div>
+                                                                    <span className="font-medium text-foreground">{participante.nome}</span>
+                                                                </div>
+                                                            </td>
                                             <td className="px-4 py-3 text-muted-foreground">
                                                 {participante.telefone}
                                             </td>

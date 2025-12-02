@@ -2,9 +2,13 @@ import { Outlet } from 'react-router-dom';
 import { useState } from 'react';
 import AdminSidebar from '../components/sidebar/AdminSidebar';
 import AppTopbar from '../components/sidebar/AppTopbar';
+import { usePresenceTracking } from '../hooks/usePresenceTracking';
 
 export const AdminLayoutBase = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    
+    // Ativa tracking de presença para detectar usuários online
+    usePresenceTracking();
 
     const toggleSidebar = () => {
         setSidebarOpen(!sidebarOpen);
