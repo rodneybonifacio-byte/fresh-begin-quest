@@ -581,21 +581,17 @@ serve(async (req) => {
       };
       
       // 🔍 BUSCAR ENVIOS ESPECÍFICOS DO REMETENTE DA SUBFATURA
-      // Usar endpoint de emissões com filtro por CPF/CNPJ do remetente e período
+      // Filtrar os detalhes da fatura pai pelo CPF/CNPJ do remetente
       console.log('🔍 Buscando envios do remetente CPF/CNPJ:', cpfCnpj);
       let detalhesSubfatura: any[] = [];
+      const cpfCnpjLimpo = cpfCnpj.replace(/\D/g, '');
       
       try {
-        // Formatar datas do período da fatura para filtro
-        const dataIni = fatura.periodoInicial ? fatura.periodoInicial.split('T')[0] : '';
-        const dataFim = fatura.periodoFinal ? fatura.periodoFinal.split('T')[0] : '';
-        const cpfCnpjLimpo = cpfCnpj.replace(/\D/g, '');
+        // Primeiro, buscar o ID do remetente pelo CPF/CNPJ
+        const remetenteUrl = `${baseApiUrl}/remetentes?cpfCnpj=${cpfCnpjLimpo}`;
+        console.log('📥 URL para buscar remetente:', remetenteUrl);
         
-        // Buscar emissões usando endpoint de emissões com filtro por remetente
-        const emissaoUrl = `${baseApiUrl}/emissao/admin?remetenteCpfCnpj=${cpfCnpjLimpo}&dataIni=${dataIni}&dataFim=${dataFim}&limite=500`;
-        console.log('📥 URL para buscar emissões do remetente:', emissaoUrl);
-        
-        const emissaoResponse = await fetch(emissaoUrl, {
+        const remetenteResponse = await fetch(remetenteUrl, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${apiToken}`,
@@ -603,36 +599,32 @@ serve(async (req) => {
           },
         });
         
-        console.log('📡 Resposta emissões - Status:', emissaoResponse.status);
+        let remetenteId = null;
         
-        if (emissaoResponse.ok) {
-          const emissaoData = await emissaoResponse.json();
-          const emissoes = emissaoData.data || emissaoData;
+        if (remetenteResponse.ok) {
+          const remetenteResult = await remetenteResponse.json();
+          const remetentes = remetenteResult.data || remetenteResult;
           
-          console.log('📋 Total de emissões retornadas:', Array.isArray(emissoes) ? emissoes.length : 'não é array');
-          
-          if (Array.isArray(emissoes) && emissoes.length > 0) {
-            // Mapear emissões para o formato esperado pelo PDF (mesmo formato de fatura.detalhe)
-            detalhesSubfatura = emissoes.map((e: any) => ({
-              id: e.id,
-              status: e.status || 'PENDENTE',
-              nome: e.destinatario?.nome || e.destinatarioNome || 'Envio',
-              valor: e.valorVenda || e.valor || '0',
-              codigoObjeto: e.codigoObjeto || e.etiqueta || '-',
-              criadoEm: e.criadoEm || e.dataCriacao,
-            }));
-            console.log(`✅ Encontrados ${detalhesSubfatura.length} envios do remetente`);
-          } else {
-            console.log('⚠️ Nenhuma emissão encontrada para o remetente no período');
+          if (Array.isArray(remetentes) && remetentes.length > 0) {
+            // Encontrar o remetente exato pelo CPF/CNPJ
+            const remetenteEncontrado = remetentes.find((r: any) => 
+              (r.cpfCnpj || r.cpf_cnpj || '').replace(/\D/g, '') === cpfCnpjLimpo
+            );
+            remetenteId = remetenteEncontrado?.id;
+            console.log('✅ Remetente encontrado - ID:', remetenteId);
           }
-        } else {
-          const errorText = await emissaoResponse.text();
-          console.log('⚠️ Erro ao buscar emissões:', emissaoResponse.status, errorText);
+        }
+        
+        // Formatar datas do período da fatura para filtro
+        const dataIni = fatura.periodoInicial ? fatura.periodoInicial.split('T')[0] : '';
+        const dataFim = fatura.periodoFinal ? fatura.periodoFinal.split('T')[0] : '';
+        
+        if (remetenteId) {
+          // Buscar emissões usando endpoint correto com remetenteId
+          const emissaoUrl = `${baseApiUrl}/emissoes/admin?remetenteId=${remetenteId}&dataIni=${dataIni}&dataFim=${dataFim}&limit=500`;
+          console.log('📥 URL para buscar emissões:', emissaoUrl);
           
-          // Fallback: tentar buscar pela subfatura diretamente
-          console.log('🔄 Tentando fallback via subfatura_id...');
-          const subfaturaUrl = `${baseApiUrl}/faturas/admin/${subfatura_id}`;
-          const subfaturaResponse = await fetch(subfaturaUrl, {
+          const emissaoResponse = await fetch(emissaoUrl, {
             method: 'GET',
             headers: {
               'Authorization': `Bearer ${apiToken}`,
@@ -640,12 +632,41 @@ serve(async (req) => {
             },
           });
           
-          if (subfaturaResponse.ok) {
-            const subfaturaData = await subfaturaResponse.json();
-            if (subfaturaData.data?.detalhe && Array.isArray(subfaturaData.data.detalhe)) {
-              detalhesSubfatura = subfaturaData.data.detalhe;
-              console.log(`✅ Fallback: ${detalhesSubfatura.length} envios da subfatura`);
+          console.log('📡 Resposta emissões - Status:', emissaoResponse.status);
+          
+          if (emissaoResponse.ok) {
+            const emissaoData = await emissaoResponse.json();
+            const emissoes = emissaoData.data || emissaoData;
+            
+            console.log('📋 Total de emissões retornadas:', Array.isArray(emissoes) ? emissoes.length : 'não é array');
+            
+            if (Array.isArray(emissoes) && emissoes.length > 0) {
+              // Mapear emissões para o formato esperado pelo PDF
+              detalhesSubfatura = emissoes.map((e: any) => ({
+                id: e.id,
+                status: e.status || 'PENDENTE',
+                nome: e.destinatario?.nome || e.destinatarioNome || 'Envio',
+                valor: e.valorVenda || e.valor || '0',
+                codigoObjeto: e.codigoObjeto || e.etiqueta || '-',
+                criadoEm: e.criadoEm || e.dataCriacao,
+              }));
+              console.log(`✅ Encontrados ${detalhesSubfatura.length} envios do remetente`);
             }
+          } else {
+            const errorText = await emissaoResponse.text();
+            console.log('⚠️ Erro ao buscar emissões:', emissaoResponse.status, errorText);
+          }
+        } else {
+          console.log('⚠️ Remetente não encontrado pelo CPF/CNPJ, tentando filtrar detalhes da fatura...');
+          
+          // Fallback: filtrar detalhes da fatura pai (caso tenha info do remetente)
+          if (fatura.detalhe && Array.isArray(fatura.detalhe)) {
+            // Tentar filtrar por qualquer campo que contenha o CPF/CNPJ
+            detalhesSubfatura = fatura.detalhe.filter((item: any) => {
+              const itemCpfCnpj = (item.cpfCnpjRemetente || item.remetenteCpfCnpj || item.remetente?.cpfCnpj || '').replace(/\D/g, '');
+              return itemCpfCnpj === cpfCnpjLimpo;
+            });
+            console.log(`📋 Filtrados ${detalhesSubfatura.length} envios pelo CPF/CNPJ`);
           }
         }
       } catch (enviosErr) {
