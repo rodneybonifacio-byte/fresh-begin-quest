@@ -135,10 +135,18 @@ serve(async (req) => {
       fatura = faturaDataResponse.data;
       console.log('✅ Fatura pai encontrada');
       
-      // Procurar a subfatura dentro do array faturas para obter dados do remetente
-      if (subfatura_id && fatura.faturas && Array.isArray(fatura.faturas)) {
-        console.log('🔍 Procurando subfatura dentro da fatura pai...');
-        const subfaturaEncontrada = fatura.faturas.find((f: any) => f.id === subfatura_id);
+      // LOG DETALHADO: Ver TODOS os campos da fatura pai
+      console.log('📋 CAMPOS da fatura pai:', Object.keys(fatura));
+      console.log('📋 fatura.faturas existe?:', !!fatura.faturas);
+      console.log('📋 fatura.subFaturas existe?:', !!fatura.subFaturas);
+      console.log('📋 ESTRUTURA COMPLETA FATURA PAI:', JSON.stringify(fatura, null, 2));
+      
+      // Procurar a subfatura - tentar múltiplos nomes de campo
+      const subfaturasArray = fatura.faturas || fatura.subFaturas || fatura.subclientes || [];
+      
+      if (subfatura_id && subfaturasArray.length > 0) {
+        console.log('🔍 Procurando subfatura dentro do array (length:', subfaturasArray.length, ')...');
+        const subfaturaEncontrada = subfaturasArray.find((f: any) => f.id === subfatura_id);
         
         if (subfaturaEncontrada) {
           console.log('✅ Subfatura encontrada:', JSON.stringify(subfaturaEncontrada, null, 2));
