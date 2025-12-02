@@ -135,13 +135,41 @@ serve(async (req) => {
       fatura = faturaDataResponse.data;
       console.log('✅ Fatura pai encontrada');
       
-      // Se temos cpfCnpj do subcliente, buscar dados do remetente
-      if (cpf_cnpj_subcliente) {
-        console.log('🔍 Buscando dados do REMETENTE com CPF/CNPJ:', cpf_cnpj_subcliente);
+      // Procurar a subfatura dentro do array faturas para obter dados do remetente
+      if (subfatura_id && fatura.faturas && Array.isArray(fatura.faturas)) {
+        console.log('🔍 Procurando subfatura dentro da fatura pai...');
+        const subfaturaEncontrada = fatura.faturas.find((f: any) => f.id === subfatura_id);
+        
+        if (subfaturaEncontrada) {
+          console.log('✅ Subfatura encontrada:', JSON.stringify(subfaturaEncontrada, null, 2));
+          
+          // Extrair dados do remetente da subfatura
+          // A subfatura contém os dados do remetente/subcliente
+          remetenteData = {
+            nome: subfaturaEncontrada.nome || nome_cliente,
+            cpfCnpj: subfaturaEncontrada.cpfCnpj || cpf_cnpj_subcliente,
+            telefone: subfaturaEncontrada.telefone || '11999999999',
+            cep: subfaturaEncontrada.cep,
+            logradouro: subfaturaEncontrada.logradouro,
+            numero: subfaturaEncontrada.numero,
+            complemento: subfaturaEncontrada.complemento || '',
+            bairro: subfaturaEncontrada.bairro,
+            localidade: subfaturaEncontrada.localidade || subfaturaEncontrada.cidade,
+            uf: subfaturaEncontrada.uf || subfaturaEncontrada.estado,
+          };
+          console.log('📋 Dados do remetente extraídos da subfatura:', JSON.stringify(remetenteData, null, 2));
+        } else {
+          console.log('⚠️ Subfatura não encontrada no array faturas');
+        }
+      }
+      
+      // Se ainda não temos dados do remetente, tentar buscar via API
+      if (!remetenteData && cpf_cnpj_subcliente) {
+        console.log('🔍 Tentando buscar REMETENTE via API com CPF/CNPJ:', cpf_cnpj_subcliente);
         
         try {
-          // Tentar endpoint principal
-          const remetenteResponse = await fetch(`${baseApiUrl}/remetente/${cpf_cnpj_subcliente}`, {
+          // Tentar endpoint admin de remetentes com filtro
+          const remetentesResponse = await fetch(`${baseApiUrl}/remetentes/admin?cpfCnpj=${cpf_cnpj_subcliente}`, {
             method: 'GET',
             headers: {
               'Authorization': `Bearer ${apiToken}`,
@@ -149,37 +177,38 @@ serve(async (req) => {
             },
           });
           
-          console.log('📡 Status resposta remetente:', remetenteResponse.status);
+          console.log('📡 Status resposta remetentes admin:', remetentesResponse.status);
           
-          if (remetenteResponse.ok) {
-            const remetenteDataResponse = await remetenteResponse.json();
-            remetenteData = remetenteDataResponse.data;
-            console.log('✅ Dados do remetente encontrados:', JSON.stringify(remetenteData, null, 2));
-          } else {
-            const errorText = await remetenteResponse.text();
-            console.log('⚠️ Resposta remetente não OK:', errorText);
+          if (remetentesResponse.ok) {
+            const remetentesDataResponse = await remetentesResponse.json();
+            console.log('📋 Resposta remetentes admin:', JSON.stringify(remetentesDataResponse, null, 2));
             
-            // Tentar endpoint alternativo com lista de remetentes
-            console.log('🔄 Tentando endpoint alternativo /remetentes...');
-            const remetentesResponse = await fetch(`${baseApiUrl}/remetentes?cpfCnpj=${cpf_cnpj_subcliente}`, {
-              method: 'GET',
-              headers: {
-                'Authorization': `Bearer ${apiToken}`,
-                'Content-Type': 'application/json',
-              },
-            });
+            // Filtrar pelo cpfCnpj correto
+            const remetentes = remetentesDataResponse.data || [];
+            const remetenteCorreto = remetentes.find((r: any) => 
+              r.cpfCnpj === cpf_cnpj_subcliente || 
+              r.cpfCnpj?.replace(/\D/g, '') === cpf_cnpj_subcliente?.replace(/\D/g, '')
+            );
             
-            if (remetentesResponse.ok) {
-              const remetentesDataResponse = await remetentesResponse.json();
-              console.log('📋 Resposta remetentes:', JSON.stringify(remetentesDataResponse, null, 2));
-              if (remetentesDataResponse.data && remetentesDataResponse.data.length > 0) {
-                remetenteData = remetentesDataResponse.data[0];
-                console.log('✅ Remetente encontrado via endpoint alternativo');
-              }
+            if (remetenteCorreto) {
+              // Mapear estrutura do remetente (endereço pode estar aninhado)
+              remetenteData = {
+                nome: remetenteCorreto.nome,
+                cpfCnpj: remetenteCorreto.cpfCnpj,
+                telefone: remetenteCorreto.telefone || '11999999999',
+                cep: remetenteCorreto.endereco?.cep || remetenteCorreto.cep,
+                logradouro: remetenteCorreto.endereco?.logradouro || remetenteCorreto.logradouro,
+                numero: remetenteCorreto.endereco?.numero || remetenteCorreto.numero,
+                complemento: remetenteCorreto.endereco?.complemento || remetenteCorreto.complemento || '',
+                bairro: remetenteCorreto.endereco?.bairro || remetenteCorreto.bairro,
+                localidade: remetenteCorreto.endereco?.localidade || remetenteCorreto.localidade,
+                uf: remetenteCorreto.endereco?.uf || remetenteCorreto.uf,
+              };
+              console.log('✅ Remetente encontrado via API admin:', JSON.stringify(remetenteData, null, 2));
             }
           }
         } catch (remetErr) {
-          console.log('⚠️ Erro ao buscar remetente:', remetErr);
+          console.log('⚠️ Erro ao buscar remetente via API:', remetErr);
         }
       }
     } else {
