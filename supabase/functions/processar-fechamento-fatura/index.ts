@@ -73,7 +73,7 @@ async function gerarPdfFaturaPersonalizado(
   // Função para desenhar footer completo estilo modelo
   const drawFooter = (page: any, pageNum: number, totalPages: number) => {
     // Endereço acima da barra preta
-    page.drawText('Endereco: Rua Maria Marcolina, 748 - Sao Paulo, SP - CEP 03011-000', {
+    page.drawText('Rua Xavantes, 719 - Setimo andar, sala 718 - Sao Paulo, SP', {
       x: MARGIN, y: 70, size: 9, font: fontRegular, color: grayColor,
     });
     
@@ -87,16 +87,16 @@ async function gerarPdfFaturaPersonalizado(
     });
     
     // Informações de contato na barra preta
-    page.drawText('(11) 99999-9999', {
+    page.drawText('(11) 94627-8338 / 91154-4095', {
       x: MARGIN, y: 22, size: 9, font: fontRegular, color: whiteColor,
     });
-    page.drawText('contato@brhub.com.br', {
-      x: 180, y: 22, size: 9, font: fontRegular, color: whiteColor,
+    page.drawText('financeiro@brhubb.com.br', {
+      x: 200, y: 22, size: 9, font: fontRegular, color: whiteColor,
     });
-    page.drawText('www.brhub.com.br', {
-      x: 350, y: 22, size: 9, font: fontRegular, color: whiteColor,
+    page.drawText('envios.brhubb.com.br', {
+      x: 380, y: 22, size: 9, font: fontRegular, color: whiteColor,
     });
-    page.drawText(`Página ${pageNum}/${totalPages}`, {
+    page.drawText(`Pagina ${pageNum}/${totalPages}`, {
       x: PAGE_WIDTH - 80, y: 22, size: 8, font: fontRegular, color: whiteColor,
     });
   };
