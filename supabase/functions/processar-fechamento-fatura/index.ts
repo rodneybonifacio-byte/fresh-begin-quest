@@ -12,7 +12,8 @@ const corsHeaders = {
 async function gerarPdfFaturaPersonalizado(
   fatura: any,
   pagadorData: any,
-  isSubfatura: boolean
+  isSubfatura: boolean,
+  valorTotal?: number // Valor customizado (para subfaturas)
 ): Promise<string> {
   const pdfDoc = await PDFDocument.create();
   const page = pdfDoc.addPage([595, 842]); // A4
@@ -246,7 +247,9 @@ async function gerarPdfFaturaPersonalizado(
     color: rgb(1, 1, 1),
   });
   
-  page.drawText(`R$ ${parseFloat(fatura.totalFaturado || 0).toFixed(2)}`, {
+  // Usar valorTotal customizado se fornecido, senão usar fatura.totalFaturado
+  const valorParaExibir = valorTotal !== undefined ? valorTotal : parseFloat(fatura.totalFaturado || 0);
+  page.drawText(`R$ ${valorParaExibir.toFixed(2)}`, {
     x: 365,
     y: y - 2,
     size: 20,
@@ -613,7 +616,10 @@ serve(async (req) => {
         }
       };
       
-      faturaPdfBase64 = await gerarPdfFaturaPersonalizado(fatura, pagadorParaPdf, true);
+      // Passar o valor da subfatura para o PDF
+      const valorParaPdf = valorSubfatura !== null && valorSubfatura > 0 ? valorSubfatura : parseFloat(fatura.totalFaturado);
+      console.log('💰 Valor para PDF da subfatura:', valorParaPdf);
+      faturaPdfBase64 = await gerarPdfFaturaPersonalizado(fatura, pagadorParaPdf, true, valorParaPdf);
       console.log('✅ PDF personalizado da subfatura gerado');
     } else {
       // Para FATURAS NORMAIS: usar API externa
