@@ -60,68 +60,21 @@ const PromocoesAdmin = () => {
         try {
             setLoadingParticipantes(true);
             
-            // Buscar transações de bônus (100 primeiros E bônus de recarga)
-            const { data: bonusTransacoes, error: bonusError } = await supabase
-                .from('transacoes_credito')
-                .select('*')
-                .eq('tipo', 'recarga')
-                .or('descricao.like.%100 primeiros%,descricao.like.%Bônus Recarga%,descricao.like.%Bônus%')
-                .order('created_at', { ascending: true });
-
-            if (bonusError) {
-                console.error('Erro ao buscar transações de bônus:', bonusError);
+            // Usar edge function que tem service role para acessar todos os dados
+            const { data, error } = await supabase.functions.invoke('buscar-participantes-promocao');
+            
+            if (error) {
+                console.error('Erro ao buscar participantes:', error);
+                toast.error('Erro ao carregar participantes');
+                return;
             }
 
-            // Buscar TODOS os remetentes para obter dados dos clientes
-            const { data: remetentes } = await supabase
-                .from('remetentes')
-                .select('cliente_id, nome, telefone, celular, email');
-
-            // Criar mapa de remetentes por cliente_id (primeiro de cada cliente)
-            const remetentesMap = new Map<string, any>();
-            if (remetentes) {
-                remetentes.forEach(r => {
-                    if (!remetentesMap.has(r.cliente_id)) {
-                        remetentesMap.set(r.cliente_id, r);
-                    }
-                });
+            if (data?.success && data?.participantes) {
+                setParticipantes(data.participantes);
+            } else {
+                console.error('Resposta inválida:', data);
+                toast.error('Erro ao processar participantes');
             }
-
-            const participantesData: ParticipantePromo[] = [];
-            const clienteIdsProcessados = new Set<string>();
-
-            // Processar transações de bônus
-            if (bonusTransacoes && bonusTransacoes.length > 0) {
-                for (const transacao of bonusTransacoes) {
-                    if (clienteIdsProcessados.has(transacao.cliente_id)) continue;
-                    clienteIdsProcessados.add(transacao.cliente_id);
-
-                    // Buscar dados do remetente
-                    const remetenteData = remetentesMap.get(transacao.cliente_id);
-
-                    // Buscar saldo disponível
-                    const { data: saldoData } = await supabase
-                        .rpc('calcular_saldo_disponivel', { p_cliente_id: transacao.cliente_id });
-
-                    // Extrair posição da descrição e determinar tipo de promoção
-                    const posicaoMatch = transacao.descricao?.match(/#(\d+)/);
-                    const posicao = posicaoMatch ? posicaoMatch[1] : participantesData.length + 1;
-                    
-                    const is100Primeiros = transacao.descricao?.includes('100 primeiros');
-
-                    participantesData.push({
-                        clienteId: transacao.cliente_id,
-                        nome: remetenteData?.nome || `Cliente #${posicao}`,
-                        telefone: remetenteData?.telefone || remetenteData?.celular || '-',
-                        email: remetenteData?.email || '-',
-                        saldoDisponivel: saldoData || 0,
-                        dataCredito: transacao.created_at || '',
-                        tipoPromocao: is100Primeiros ? '100_primeiros' : 'bonus_recarga'
-                    });
-                }
-            }
-
-            setParticipantes(participantesData);
         } catch (error) {
             console.error('Erro ao buscar participantes:', error);
             toast.error('Erro ao carregar participantes');
