@@ -294,24 +294,12 @@ serve(async (req) => {
     }
 
     // Decodificar payload para verificar permissões (sem validar assinatura)
+    let tokenPayload: any = null;
     try {
-      const payload = JSON.parse(atob(tokenParts[1]));
-      console.log('✅ Token decodificado - Usuário:', payload.name || payload.email);
-      
-      // Verificar se é admin
-      if (payload.role !== 'ADMIN') {
-        console.error('❌ Usuário sem permissão de admin');
-        return new Response(
-          JSON.stringify({ 
-            status: 'error', 
-            mensagem: 'Apenas administradores podem realizar fechamento de faturas.' 
-          }), 
-          { 
-            status: 403, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        );
-      }
+      tokenPayload = JSON.parse(atob(tokenParts[1]));
+      console.log('✅ Token decodificado - Usuário:', tokenPayload.name || tokenPayload.email);
+      console.log('📋 Role do usuário:', tokenPayload.role);
+      console.log('📋 Payload completo:', JSON.stringify(tokenPayload, null, 2));
     } catch (decodeError) {
       console.error('❌ Erro ao decodificar token:', decodeError);
       return new Response(
@@ -326,13 +314,35 @@ serve(async (req) => {
       );
     }
 
-    const { codigo_fatura, nome_cliente, fatura_id, fatura_pai_id, subfatura_id, cpf_cnpj_subcliente, valor_subfatura, apenas_pdf } = await req.json() as FechamentoRequest & { 
+    // Parse body primeiro para verificar se é modo teste
+    const requestBody = await req.json() as FechamentoRequest & { 
       fatura_id?: string;
       fatura_pai_id?: string;
       subfatura_id?: string;
       cpf_cnpj_subcliente?: string;
       valor_subfatura?: string;
     };
+    
+    const { codigo_fatura, nome_cliente, fatura_id, fatura_pai_id, subfatura_id, cpf_cnpj_subcliente, valor_subfatura, apenas_pdf } = requestBody;
+
+    // Verificar se é admin (exceto para modo teste)
+    if (tokenPayload.role !== 'ADMIN' && !apenas_pdf) {
+      console.error('❌ Usuário sem permissão de admin');
+      return new Response(
+        JSON.stringify({ 
+          status: 'error', 
+          mensagem: 'Apenas administradores podem realizar fechamento de faturas.' 
+        }), 
+        { 
+          status: 403, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+    
+    if (apenas_pdf) {
+      console.log('🧪 MODO TESTE - Bypass de verificação admin para teste de PDF');
+    }
 
     console.log('🚀 Iniciando fechamento da fatura:', codigo_fatura);
     console.log('📋 Cliente:', nome_cliente);
