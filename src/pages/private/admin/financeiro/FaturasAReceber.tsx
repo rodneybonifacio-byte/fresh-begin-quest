@@ -161,11 +161,18 @@ const FinanceiroFaturasAReceber = () => {
         const telefoneCliente = '11999999999';
         const faturaId = fatura.id;
         
+        // Identificar se é subfatura
+        const ehSubfatura = !!fatura.faturaId;
+        const faturaPaiId = ehSubfatura ? fatura.faturaId : undefined;
+        const subfaturaId = ehSubfatura ? fatura.id : undefined;
+        
         const payload = {
-            fatura_id: faturaId,
+            fatura_id: ehSubfatura ? fatura.faturaId : faturaId,
             codigo_fatura: codigoFatura,
             nome_cliente: nomeCliente,
-            telefone_cliente: telefoneCliente
+            telefone_cliente: telefoneCliente,
+            fatura_pai_id: faturaPaiId,
+            subfatura_id: subfaturaId
         };
 
         try {
@@ -180,7 +187,14 @@ const FinanceiroFaturasAReceber = () => {
                 timestamp: new Date()
             });
 
-            const result = await service.realizarFechamento(faturaId, codigoFatura, nomeCliente, telefoneCliente);
+            const result = await service.realizarFechamento(
+                ehSubfatura ? fatura.faturaId! : faturaId, 
+                codigoFatura, 
+                nomeCliente, 
+                telefoneCliente,
+                faturaPaiId,
+                subfaturaId
+            );
             
             // Registrar sucesso
             setDebugInfo({
