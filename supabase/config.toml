@@ -68,3 +68,6 @@ verify_jwt = false
 
 [functions.atualizar-presenca]
 verify_jwt = false
+
+[functions.buscar-logs-acesso]
+verify_jwt = false
