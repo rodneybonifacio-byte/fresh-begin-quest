@@ -439,14 +439,52 @@ serve(async (req) => {
     }
 
     console.log('🚀 Iniciando fechamento da fatura:', codigo_fatura);
-    console.log('📋 Cliente:', nome_cliente);
-    console.log('🆔 Fatura ID:', fatura_id);
-    console.log('👨‍👧 Fatura Pai ID:', fatura_pai_id);
-    console.log('👶 Subfatura ID:', subfatura_id);
-    console.log('📄 CPF/CNPJ Subcliente:', cpf_cnpj_subcliente);
-    console.log('💰 Valor Subfatura (do frontend):', valor_subfatura);
-    console.log('🧪 Apenas PDF (teste):', apenas_pdf);
-    console.log('🔄 VERSÃO DA FUNÇÃO: 5.0 - SUPORTE A TESTE PDF');
+    console.log('🔄 VERSÃO DA FUNÇÃO: 6.0 - OTIMIZAÇÃO DE PERFORMANCE');
+
+    // 🚀 OTIMIZAÇÃO: Verificar se já existe fechamento em cache
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Verificar cache apenas se não for modo teste
+    if (!apenas_pdf) {
+      console.log('🔍 Verificando cache de fechamento...');
+      const cacheQuery = supabaseAdmin
+        .from('fechamentos_fatura')
+        .select('*')
+        .eq('codigo_fatura', codigo_fatura);
+      
+      if (subfatura_id) {
+        cacheQuery.eq('subfatura_id', subfatura_id);
+      } else {
+        cacheQuery.is('subfatura_id', null);
+      }
+      
+      const { data: fechamentoCache } = await cacheQuery.single();
+      
+      if (fechamentoCache && fechamentoCache.fatura_pdf && fechamentoCache.boleto_pdf) {
+        console.log('✅ CACHE HIT - Retornando PDFs do cache');
+        return new Response(
+          JSON.stringify({
+            status: 'ok',
+            mensagem: 'Fechamento recuperado do cache',
+            nome_cliente: fechamentoCache.nome_cliente,
+            codigo_fatura: codigo_fatura,
+            fatura_pdf: fechamentoCache.fatura_pdf,
+            boleto_pdf: fechamentoCache.boleto_pdf,
+            boleto_info: {
+              nossoNumero: fechamentoCache.boleto_id,
+            },
+            from_cache: true,
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          }
+        );
+      }
+      console.log('📝 Cache não encontrado, gerando novo fechamento...');
+    }
 
     // ✅ ETAPA 1: Buscar dados completos da fatura via API Backend
     console.log('📊 Etapa 1: Buscando dados completos da fatura...');
@@ -940,26 +978,35 @@ serve(async (req) => {
 
     console.log('✅ Processo concluído com sucesso');
 
-    // Salvar fechamento no Supabase para persistência
-    try {
-      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-      const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-      
-      await supabaseAdmin.from('fechamentos_fatura').insert({
-        fatura_id: fatura_id,
-        subfatura_id: subfatura_id || null,
-        codigo_fatura: codigo_fatura,
-        nome_cliente: clienteData.nome,
-        cpf_cnpj: cpfCnpj,
-        boleto_id: boletoData.nossoNumero,
-        fatura_pdf: faturaPdfBase64,
-        boleto_pdf: boletoPdfBase64,
-      });
-      
-      console.log('✅ Fechamento salvo no Supabase');
-    } catch (saveError) {
-      console.error('⚠️ Erro ao salvar fechamento no Supabase (não crítico):', saveError);
+    // 🚀 OTIMIZAÇÃO: Salvar fechamento em background (não bloqueia resposta)
+    const saveToCache = async () => {
+      try {
+        // Upsert para atualizar se já existir
+        await supabaseAdmin.from('fechamentos_fatura').upsert({
+          fatura_id: fatura_id,
+          subfatura_id: subfatura_id || null,
+          codigo_fatura: codigo_fatura,
+          nome_cliente: clienteData.nome,
+          cpf_cnpj: cpfCnpj,
+          boleto_id: boletoData.nossoNumero,
+          fatura_pdf: faturaPdfBase64,
+          boleto_pdf: boletoPdfBase64,
+        }, {
+          onConflict: 'codigo_fatura,subfatura_id',
+          ignoreDuplicates: false,
+        });
+        console.log('✅ Fechamento salvo no cache (background)');
+      } catch (saveError) {
+        console.error('⚠️ Erro ao salvar cache (não crítico):', saveError);
+      }
+    };
+    
+    // Executar salvamento em background se EdgeRuntime disponível
+    if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+      EdgeRuntime.waitUntil(saveToCache());
+    } else {
+      // Fallback: salvar de forma síncrona
+      saveToCache();
     }
 
     return new Response(
