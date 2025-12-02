@@ -696,53 +696,65 @@ serve(async (req) => {
           
           console.log('📋 Códigos de etiqueta encontrados:', codigosObjeto.length);
           
-          // Buscar emissões em lote (até 50 por vez para não sobrecarregar)
-          const BATCH_SIZE = 50;
+          // ⚡ OTIMIZAÇÃO: Buscar emissões em PARALELO (muito mais rápido)
           const emissoesFiltradas: any[] = [];
+          const BATCH_SIZE = 100; // Maior batch pois são paralelas
           
-          for (let i = 0; i < Math.min(codigosObjeto.length, 300); i += BATCH_SIZE) {
-            const lote = codigosObjeto.slice(i, i + BATCH_SIZE);
-            console.log(`🔄 Processando lote ${Math.floor(i/BATCH_SIZE) + 1} - ${lote.length} códigos`);
-            
-            // Buscar emissões por código de objeto
-            for (const codigoObj of lote) {
-              try {
-                const emissaoUrl = `${baseApiUrl}/emissoes/admin?codigoObjeto=${codigoObj}`;
-                const emissaoResponse = await fetch(emissaoUrl, {
-                  method: 'GET',
-                  headers: {
-                    'Authorization': `Bearer ${apiToken}`,
-                    'Content-Type': 'application/json',
-                  },
-                });
+          // Limitar a 200 códigos para performance
+          const codigosLimitados = codigosObjeto.slice(0, 200);
+          console.log(`⚡ Buscando ${codigosLimitados.length} emissões em paralelo...`);
+          
+          // Função para buscar uma emissão
+          const buscarEmissao = async (codigoObj: string) => {
+            try {
+              const emissaoUrl = `${baseApiUrl}/emissoes/admin?codigoObjeto=${codigoObj}`;
+              const emissaoResponse = await fetch(emissaoUrl, {
+                method: 'GET',
+                headers: {
+                  'Authorization': `Bearer ${apiToken}`,
+                  'Content-Type': 'application/json',
+                },
+              });
+              
+              if (emissaoResponse.ok) {
+                const emissaoData = await emissaoResponse.json();
+                const emissoes = emissaoData.data || emissaoData || [];
+                const emissao = Array.isArray(emissoes) ? emissoes[0] : emissoes;
                 
-                if (emissaoResponse.ok) {
-                  const emissaoData = await emissaoResponse.json();
-                  const emissoes = emissaoData.data || emissaoData || [];
-                  const emissao = Array.isArray(emissoes) ? emissoes[0] : emissoes;
+                if (emissao && emissao.remetenteCpfCnpj) {
+                  const emissaoCpfCnpj = emissao.remetenteCpfCnpj.replace(/\D/g, '');
                   
-                  if (emissao && emissao.remetenteCpfCnpj) {
-                    const emissaoCpfCnpj = emissao.remetenteCpfCnpj.replace(/\D/g, '');
-                    
-                    // Verificar se pertence ao remetente da subfatura
-                    if (emissaoCpfCnpj === cpfCnpjLimpo) {
-                      // Usar valor de VENDA (não custo/postagem)
-                      const valorVenda = emissao.valor || emissao.valorVenda || emissao.valorPostagem || '0';
-                      emissoesFiltradas.push({
-                        id: emissao.id,
-                        status: emissao.status || 'PENDENTE',
-                        nome: emissao.destinatario?.nome || 'Envio',
-                        valor: valorVenda,
-                        codigoObjeto: emissao.codigoObjeto || codigoObj,
-                        criadoEm: emissao.criadoEm,
-                      });
-                    }
+                  if (emissaoCpfCnpj === cpfCnpjLimpo) {
+                    const valorVenda = emissao.valor || emissao.valorVenda || emissao.valorPostagem || '0';
+                    return {
+                      id: emissao.id,
+                      status: emissao.status || 'PENDENTE',
+                      nome: emissao.destinatario?.nome || 'Envio',
+                      valor: valorVenda,
+                      codigoObjeto: emissao.codigoObjeto || codigoObj,
+                      criadoEm: emissao.criadoEm,
+                    };
                   }
                 }
-              } catch (err) {
-                // Continua para próximo código
               }
+            } catch (err) {
+              // Ignora erro individual
             }
+            return null;
+          };
+          
+          // Processar em batches paralelos
+          for (let i = 0; i < codigosLimitados.length; i += BATCH_SIZE) {
+            const lote = codigosLimitados.slice(i, i + BATCH_SIZE);
+            console.log(`🔄 Lote ${Math.floor(i/BATCH_SIZE) + 1}: ${lote.length} códigos em paralelo`);
+            
+            // ⚡ EXECUÇÃO PARALELA - todas as requisições ao mesmo tempo
+            const resultados = await Promise.all(lote.map(codigo => buscarEmissao(codigo)));
+            
+            // Filtrar resultados válidos
+            resultados.forEach(r => {
+              if (r) emissoesFiltradas.push(r);
+            });
           }
           
           detalhesSubfatura = emissoesFiltradas;
