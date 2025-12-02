@@ -167,6 +167,48 @@ export type Database = {
         }
         Relationships: []
       }
+      fechamentos_fatura: {
+        Row: {
+          boleto_id: string | null
+          boleto_pdf: string | null
+          codigo_fatura: string
+          cpf_cnpj: string | null
+          created_at: string
+          fatura_id: string
+          fatura_pdf: string | null
+          id: string
+          nome_cliente: string
+          pdf_url: string | null
+          subfatura_id: string | null
+        }
+        Insert: {
+          boleto_id?: string | null
+          boleto_pdf?: string | null
+          codigo_fatura: string
+          cpf_cnpj?: string | null
+          created_at?: string
+          fatura_id: string
+          fatura_pdf?: string | null
+          id?: string
+          nome_cliente: string
+          pdf_url?: string | null
+          subfatura_id?: string | null
+        }
+        Update: {
+          boleto_id?: string | null
+          boleto_pdf?: string | null
+          codigo_fatura?: string
+          cpf_cnpj?: string | null
+          created_at?: string
+          fatura_id?: string
+          fatura_pdf?: string | null
+          id?: string
+          nome_cliente?: string
+          pdf_url?: string | null
+          subfatura_id?: string | null
+        }
+        Relationships: []
+      }
       integracoes: {
         Row: {
           ativo: boolean | null
