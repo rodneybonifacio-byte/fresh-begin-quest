@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Gift, Users, DollarSign, ToggleLeft, ToggleRight, Save, Loader2, Phone, User, Wallet, RefreshCw } from 'lucide-react';
+import { Gift, Users, DollarSign, ToggleLeft, ToggleRight, Save, Loader2, Phone, User, Wallet, RefreshCw, Mail } from 'lucide-react';
 import { supabase } from '../../../../integrations/supabase/client';
 import { toast } from 'sonner';
 import { Content } from '../../Content';
@@ -19,6 +19,7 @@ interface ParticipantePromo {
     clienteId: string;
     nome: string;
     telefone: string;
+    email: string;
     saldoDisponivel: number;
     dataCredito: string;
 }
@@ -70,33 +71,51 @@ const PromocoesAdmin = () => {
                 console.error('Erro ao buscar transações de bônus:', bonusError);
             }
 
-            // Também buscar da cadastros_origem como fallback
+            // Buscar TODOS os cadastros_origem para ter os dados dos clientes
             const { data: cadastrosOrigem, error: origemError } = await supabase
                 .from('cadastros_origem')
                 .select('*')
-                .eq('origem', 'autocadastro')
                 .order('created_at', { ascending: false });
 
             if (origemError) {
                 console.error('Erro ao buscar cadastros:', origemError);
             }
 
+            // Criar mapa de cadastros por cliente_id para busca rápida
+            const cadastrosMap = new Map<string, any>();
+            if (cadastrosOrigem) {
+                cadastrosOrigem.forEach(c => cadastrosMap.set(c.cliente_id, c));
+            }
+
             const participantesData: ParticipantePromo[] = [];
             const clienteIdsProcessados = new Set<string>();
 
-            // Processar transações de bônus primeiro
+            // Processar transações de bônus
             if (bonusTransacoes && bonusTransacoes.length > 0) {
                 for (const transacao of bonusTransacoes) {
                     if (clienteIdsProcessados.has(transacao.cliente_id)) continue;
                     clienteIdsProcessados.add(transacao.cliente_id);
 
-                    // Buscar dados do remetente para obter nome e telefone
-                    const { data: remetenteData } = await supabase
-                        .from('remetentes')
-                        .select('*')
-                        .eq('cliente_id', transacao.cliente_id)
-                        .limit(1)
-                        .maybeSingle();
+                    // Primeiro buscar dados do cadastros_origem (fonte principal)
+                    const cadastroData = cadastrosMap.get(transacao.cliente_id);
+
+                    // Se não tem cadastros_origem, buscar do remetente como fallback
+                    let nome = cadastroData?.nome_cliente;
+                    let telefone = cadastroData?.telefone_cliente;
+                    let email = cadastroData?.email_cliente;
+
+                    if (!nome || !telefone) {
+                        const { data: remetenteData } = await supabase
+                            .from('remetentes')
+                            .select('*')
+                            .eq('cliente_id', transacao.cliente_id)
+                            .limit(1)
+                            .maybeSingle();
+
+                        nome = nome || remetenteData?.nome;
+                        telefone = telefone || remetenteData?.telefone || remetenteData?.celular;
+                        email = email || remetenteData?.email;
+                    }
 
                     // Buscar saldo disponível
                     const { data: saldoData } = await supabase
@@ -108,8 +127,9 @@ const PromocoesAdmin = () => {
 
                     participantesData.push({
                         clienteId: transacao.cliente_id,
-                        nome: remetenteData?.nome || `Cliente #${posicao}`,
-                        telefone: remetenteData?.telefone || remetenteData?.celular || '-',
+                        nome: nome || `Cliente #${posicao}`,
+                        telefone: telefone || '-',
+                        email: email || '-',
                         saldoDisponivel: saldoData || 0,
                         dataCredito: transacao.created_at || ''
                     });
@@ -129,6 +149,7 @@ const PromocoesAdmin = () => {
                         clienteId: cadastro.cliente_id,
                         nome: cadastro.nome_cliente || 'Não informado',
                         telefone: cadastro.telefone_cliente || '-',
+                        email: cadastro.email_cliente || '-',
                         saldoDisponivel: saldoData || 0,
                         dataCredito: cadastro.created_at || ''
                     });
@@ -492,6 +513,12 @@ const PromocoesAdmin = () => {
                                         </th>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                                             <div className="flex items-center gap-2">
+                                                <Mail className="w-4 h-4" />
+                                                Email
+                                            </div>
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                            <div className="flex items-center gap-2">
                                                 <Wallet className="w-4 h-4" />
                                                 Créditos Disponíveis
                                             </div>
@@ -515,10 +542,13 @@ const PromocoesAdmin = () => {
                                             <td className="px-4 py-3 text-muted-foreground">
                                                 {participante.telefone}
                                             </td>
+                                            <td className="px-4 py-3 text-muted-foreground text-sm">
+                                                {participante.email}
+                                            </td>
                                             <td className="px-4 py-3">
                                                 <span className={`font-semibold ${
                                                     participante.saldoDisponivel > 0 
-                                                        ? 'text-green-600 dark:text-green-400' 
+                                                        ? 'text-green-600 dark:text-green-400'
                                                         : 'text-muted-foreground'
                                                 }`}>
                                                     {formatCurrency(participante.saldoDisponivel)}
