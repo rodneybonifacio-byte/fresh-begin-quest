@@ -389,6 +389,7 @@ serve(async (req) => {
     
     let fatura;
     let isSubfatura = !!subfatura_id;
+    let valorSubfatura: number | null = null; // Valor específico da subfatura
     let remetenteData = null;
     
     // Se for subfatura, precisamos buscar a fatura pai E os dados do remetente
@@ -428,6 +429,10 @@ serve(async (req) => {
         
         if (subfaturaEncontrada) {
           console.log('✅ Subfatura encontrada:', JSON.stringify(subfaturaEncontrada, null, 2));
+          
+          // Extrair VALOR da subfatura (campo totalFaturado da subfatura)
+          valorSubfatura = parseFloat(subfaturaEncontrada.totalFaturado || subfaturaEncontrada.valor || '0');
+          console.log('💰 Valor da SUBFATURA extraído:', valorSubfatura);
           
           // Extrair dados do remetente da subfatura
           // A subfatura contém os dados do remetente/subcliente
@@ -636,9 +641,13 @@ serve(async (req) => {
 
     // ✅ ETAPA 4: Emitir boleto via Banco Inter
     console.log('💰 Etapa 4: Emitindo boleto...');
-    console.log('💰 Valor do boleto:', fatura.totalFaturado);
     
-    const valorBoleto = parseFloat(fatura.totalFaturado);
+    // Para SUBFATURAS: usar o valor específico da subfatura, não da fatura pai
+    const valorBoleto = isSubfatura && valorSubfatura !== null && valorSubfatura > 0 
+      ? valorSubfatura 
+      : parseFloat(fatura.totalFaturado);
+    
+    console.log('💰 Valor do boleto:', valorBoleto, isSubfatura ? '(valor da SUBFATURA)' : '(valor da fatura)');
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     
