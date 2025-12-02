@@ -8,7 +8,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Função para gerar PDF de fatura personalizado COM PAGINAÇÃO
+// Função para gerar PDF de fatura personalizado - LAYOUT PROFISSIONAL
 async function gerarPdfFaturaPersonalizado(
   fatura: any,
   pagadorData: any,
@@ -20,17 +20,19 @@ async function gerarPdfFaturaPersonalizado(
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
   
-  const primaryColor = rgb(0.96, 0.33, 0.11);
-  const darkColor = rgb(0.1, 0.1, 0.1);
-  const grayColor = rgb(0.4, 0.4, 0.4);
-  const lightGray = rgb(0.95, 0.95, 0.95);
+  // Cores baseadas na identidade BRHUB
+  const primaryOrange = rgb(0.95, 0.33, 0.11); // #F2541B
+  const darkColor = rgb(0.15, 0.15, 0.15);
+  const grayColor = rgb(0.5, 0.5, 0.5);
+  const lightGray = rgb(0.96, 0.96, 0.98);
+  const whiteColor = rgb(1, 1, 1);
+  const headerBg = rgb(0.12, 0.12, 0.12);
   
   const PAGE_WIDTH = 595;
   const PAGE_HEIGHT = 842;
-  const MARGIN_TOP = 50;
-  const MARGIN_BOTTOM = 100; // Espaço para footer e total
-  const ROW_HEIGHT = 20;
-  const HEADER_TABLE_HEIGHT = 25;
+  const MARGIN = 40;
+  const ROW_HEIGHT = 28;
+  const HEADER_TABLE_HEIGHT = 30;
   
   const detalhes = (isSubfatura && detalhesSubfatura) ? detalhesSubfatura : (fatura.detalhe || []);
   console.log(`📋 Total de itens no PDF: ${detalhes.length}`);
@@ -41,193 +43,269 @@ async function gerarPdfFaturaPersonalizado(
   
   const valorParaExibir = valorTotal !== undefined ? valorTotal : parseFloat(fatura.totalFaturado || 0);
   
-  // Função auxiliar para desenhar header da tabela
-  const drawTableHeader = (page: any, yPos: number) => {
-    page.drawRectangle({
-      x: 40,
-      y: yPos - 5,
-      width: PAGE_WIDTH - 80,
-      height: HEADER_TABLE_HEIGHT,
-      color: darkColor,
-    });
-    page.drawText('DESCRIÇÃO', { x: 50, y: yPos + 3, size: 9, font: fontBold, color: rgb(1, 1, 1) });
-    page.drawText('CÓDIGO', { x: 280, y: yPos + 3, size: 9, font: fontBold, color: rgb(1, 1, 1) });
-    page.drawText('STATUS', { x: 380, y: yPos + 3, size: 9, font: fontBold, color: rgb(1, 1, 1) });
-    page.drawText('VALOR', { x: 480, y: yPos + 3, size: 9, font: fontBold, color: rgb(1, 1, 1) });
-    return yPos - 30;
-  };
-  
-  // Função auxiliar para desenhar footer
-  const drawFooter = (page: any, pageNum: number, totalPages: number) => {
-    page.drawText('BRHUB Envios - Sistema de Gestão de Fretes', {
-      x: 40, y: 40, size: 8, font: fontRegular, color: grayColor,
-    });
-    page.drawText(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, {
-      x: 40, y: 25, size: 8, font: fontRegular, color: grayColor,
-    });
-    page.drawText(`Página ${pageNum} de ${totalPages}`, {
-      x: PAGE_WIDTH - 100, y: 25, size: 8, font: fontRegular, color: grayColor,
-    });
-  };
-  
-  // Calcular número de páginas necessárias
-  const FIRST_PAGE_ITEMS = 18; // Primeira página tem menos espaço (header, dados pagador, etc)
-  const OTHER_PAGE_ITEMS = 32; // Outras páginas têm mais espaço
+  // Calcular paginação
+  const FIRST_PAGE_ITEMS = 12;
+  const OTHER_PAGE_ITEMS = 22;
   
   let totalPages = 1;
   if (detalhes.length > FIRST_PAGE_ITEMS) {
     totalPages = 1 + Math.ceil((detalhes.length - FIRST_PAGE_ITEMS) / OTHER_PAGE_ITEMS);
   }
   
+  // Função para desenhar header da tabela
+  const drawTableHeader = (page: any, yPos: number) => {
+    page.drawRectangle({
+      x: MARGIN,
+      y: yPos - 5,
+      width: PAGE_WIDTH - (MARGIN * 2),
+      height: HEADER_TABLE_HEIGHT,
+      color: headerBg,
+    });
+    
+    page.drawText('Nº', { x: MARGIN + 10, y: yPos + 5, size: 9, font: fontBold, color: whiteColor });
+    page.drawText('DESCRIÇÃO DO ENVIO', { x: MARGIN + 50, y: yPos + 5, size: 9, font: fontBold, color: whiteColor });
+    page.drawText('CÓDIGO OBJETO', { x: 300, y: yPos + 5, size: 9, font: fontBold, color: whiteColor });
+    page.drawText('VALOR', { x: 480, y: yPos + 5, size: 9, font: fontBold, color: whiteColor });
+    
+    return yPos - 35;
+  };
+  
+  // Função para desenhar footer
+  const drawFooter = (page: any, pageNum: number, totalPages: number) => {
+    // Barra inferior preta
+    page.drawRectangle({
+      x: 0,
+      y: 0,
+      width: PAGE_WIDTH,
+      height: 45,
+      color: headerBg,
+    });
+    
+    page.drawText('www.brhub.com.br', {
+      x: MARGIN, y: 18, size: 9, font: fontRegular, color: whiteColor,
+    });
+    page.drawText('contato@brhub.com.br', {
+      x: 200, y: 18, size: 9, font: fontRegular, color: whiteColor,
+    });
+    page.drawText(`Página ${pageNum} de ${totalPages}`, {
+      x: PAGE_WIDTH - 100, y: 18, size: 9, font: fontRegular, color: whiteColor,
+    });
+  };
+  
   let currentPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-  let y = PAGE_HEIGHT - MARGIN_TOP;
+  let y = PAGE_HEIGHT - MARGIN;
   let currentPageNum = 1;
   let itemIndex = 0;
   
-  // === PRIMEIRA PÁGINA: HEADER PRINCIPAL ===
-  currentPage.drawRectangle({
-    x: 0, y: PAGE_HEIGHT - 100, width: PAGE_WIDTH, height: 100, color: primaryColor,
+  // === HEADER PRINCIPAL COM LOGO ===
+  // Logo BRHUB (texto estilizado)
+  currentPage.drawText('BRHUB', {
+    x: MARGIN + 30,
+    y: y - 15,
+    size: 32,
+    font: fontBold,
+    color: darkColor,
   });
   
-  currentPage.drawText('BRHUB ENVIOS', {
-    x: 40, y: PAGE_HEIGHT - 50, size: 24, font: fontBold, color: rgb(1, 1, 1),
+  // Ícone de raio estilizado (triângulo laranja)
+  currentPage.drawRectangle({
+    x: MARGIN,
+    y: y - 30,
+    width: 25,
+    height: 35,
+    color: primaryOrange,
+  });
+  
+  // Badge "FATURA" à direita
+  currentPage.drawRectangle({
+    x: PAGE_WIDTH - MARGIN - 120,
+    y: y - 25,
+    width: 120,
+    height: 35,
+    color: headerBg,
   });
   currentPage.drawText('FATURA', {
-    x: 40, y: PAGE_HEIGHT - 75, size: 14, font: fontRegular, color: rgb(1, 1, 1),
-  });
-  currentPage.drawText(`#${fatura.codigo}`, {
-    x: PAGE_WIDTH - 150, y: PAGE_HEIGHT - 50, size: 20, font: fontBold, color: rgb(1, 1, 1),
+    x: PAGE_WIDTH - MARGIN - 95,
+    y: y - 12,
+    size: 16,
+    font: fontBold,
+    color: whiteColor,
   });
   
-  if (isSubfatura) {
-    currentPage.drawText('SUBFATURA', {
-      x: PAGE_WIDTH - 150, y: PAGE_HEIGHT - 75, size: 10, font: fontRegular, color: rgb(1, 1, 1),
-    });
-  }
+  y -= 70;
   
-  y = PAGE_HEIGHT - 130;
-  
-  // === DADOS DO PAGADOR ===
-  currentPage.drawText('DADOS DO PAGADOR', {
-    x: 40, y: y, size: 12, font: fontBold, color: primaryColor,
+  // Linha divisória
+  currentPage.drawLine({
+    start: { x: MARGIN, y: y },
+    end: { x: PAGE_WIDTH - MARGIN, y: y },
+    thickness: 1,
+    color: lightGray,
   });
+  
   y -= 25;
   
-  currentPage.drawRectangle({
-    x: 40, y: y - 80, width: PAGE_WIDTH - 80, height: 90,
-    color: lightGray, borderColor: rgb(0.85, 0.85, 0.85), borderWidth: 1,
-  });
+  // === DADOS DO PAGADOR (esquerda) e DADOS DA FATURA (direita) ===
+  // Lado esquerdo - Dados do pagador
+  currentPage.drawText('Código da Fatura', { x: MARGIN, y: y, size: 9, font: fontRegular, color: grayColor });
+  currentPage.drawText(`#${fatura.codigo}`, { x: MARGIN + 100, y: y, size: 9, font: fontBold, color: darkColor });
   
-  currentPage.drawText(pagadorData.nome || 'N/A', {
-    x: 50, y: y - 5, size: 14, font: fontBold, color: darkColor,
-  });
+  // Lado direito - Data
+  currentPage.drawText('Data Emissão:', { x: 380, y: y, size: 9, font: fontRegular, color: grayColor });
+  currentPage.drawText(formatDate(new Date().toISOString()), { x: 460, y: y, size: 9, font: fontBold, color: darkColor });
+  
+  y -= 18;
+  
+  currentPage.drawText('Cliente', { x: MARGIN, y: y, size: 9, font: fontRegular, color: grayColor });
+  currentPage.drawText((pagadorData.nome || 'N/A').substring(0, 40), { x: MARGIN + 100, y: y, size: 9, font: fontBold, color: darkColor });
+  
+  currentPage.drawText('Vencimento:', { x: 380, y: y, size: 9, font: fontRegular, color: grayColor });
+  currentPage.drawText(formatDate(fatura.dataVencimento), { x: 460, y: y, size: 9, font: fontBold, color: darkColor });
+  
+  y -= 18;
   
   const cpfFormatado = pagadorData.cpfCnpj?.length === 14 
     ? pagadorData.cpfCnpj.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')
     : pagadorData.cpfCnpj?.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') || 'N/A';
   
-  currentPage.drawText(`CPF/CNPJ: ${cpfFormatado}`, {
-    x: 50, y: y - 25, size: 10, font: fontRegular, color: grayColor,
-  });
+  currentPage.drawText('CPF/CNPJ', { x: MARGIN, y: y, size: 9, font: fontRegular, color: grayColor });
+  currentPage.drawText(cpfFormatado, { x: MARGIN + 100, y: y, size: 9, font: fontBold, color: darkColor });
+  
+  currentPage.drawText('Período:', { x: 380, y: y, size: 9, font: fontRegular, color: grayColor });
+  currentPage.drawText(`${formatDate(fatura.periodoInicial)} a ${formatDate(fatura.periodoFinal)}`, { x: 460, y: y, size: 9, font: fontRegular, color: darkColor });
+  
+  y -= 18;
   
   const endereco = pagadorData.endereco;
-  const enderecoLinha1 = `${endereco?.logradouro || ''}, ${endereco?.numero || 'S/N'}${endereco?.complemento ? ' - ' + endereco.complemento : ''}`;
-  const enderecoLinha2 = `${endereco?.bairro || ''} - ${endereco?.cidade || ''}/${endereco?.uf || ''} - CEP: ${endereco?.cep || ''}`;
+  const enderecoLinha = `${endereco?.logradouro || ''}, ${endereco?.numero || 'S/N'} - ${endereco?.bairro || ''}`;
+  const cidadeUf = `${endereco?.cidade || ''}/${endereco?.uf || ''} - CEP: ${endereco?.cep || ''}`;
   
-  currentPage.drawText(enderecoLinha1.substring(0, 70), {
-    x: 50, y: y - 45, size: 10, font: fontRegular, color: grayColor,
-  });
-  currentPage.drawText(enderecoLinha2.substring(0, 70), {
-    x: 50, y: y - 60, size: 10, font: fontRegular, color: grayColor,
-  });
+  currentPage.drawText('Endereço', { x: MARGIN, y: y, size: 9, font: fontRegular, color: grayColor });
+  currentPage.drawText(enderecoLinha.substring(0, 50), { x: MARGIN + 100, y: y, size: 9, font: fontRegular, color: darkColor });
   
-  y -= 110;
+  if (isSubfatura) {
+    currentPage.drawText('Tipo:', { x: 380, y: y, size: 9, font: fontRegular, color: grayColor });
+    currentPage.drawText('SUBFATURA', { x: 460, y: y, size: 9, font: fontBold, color: primaryOrange });
+  }
   
-  // === DETALHES DA FATURA ===
-  currentPage.drawText('DETALHES DA FATURA', {
-    x: 40, y: y, size: 12, font: fontBold, color: primaryColor,
-  });
-  y -= 30;
+  y -= 18;
+  currentPage.drawText('', { x: MARGIN, y: y, size: 9, font: fontRegular, color: grayColor });
+  currentPage.drawText(cidadeUf.substring(0, 50), { x: MARGIN + 100, y: y, size: 9, font: fontRegular, color: darkColor });
   
-  const infoItems = [
-    { label: 'Período:', value: `${formatDate(fatura.periodoInicial)} a ${formatDate(fatura.periodoFinal)}` },
-    { label: 'Vencimento:', value: formatDate(fatura.dataVencimento) },
-    { label: 'Total de Objetos:', value: String(totalObjetosExibir) },
-    { label: 'Status:', value: fatura.status || 'PENDENTE' },
-  ];
+  y -= 35;
   
-  infoItems.forEach((item, index) => {
-    const xPos = index % 2 === 0 ? 40 : 300;
-    const yPos = y - Math.floor(index / 2) * 25;
-    currentPage.drawText(item.label, { x: xPos, y: yPos, size: 10, font: fontBold, color: grayColor });
-    currentPage.drawText(item.value, { x: xPos + 100, y: yPos, size: 10, font: fontRegular, color: darkColor });
+  // Linha divisória antes da tabela
+  currentPage.drawLine({
+    start: { x: MARGIN, y: y },
+    end: { x: PAGE_WIDTH - MARGIN, y: y },
+    thickness: 1,
+    color: lightGray,
   });
   
-  y -= 70;
+  y -= 20;
   
   // === TABELA DE ITENS ===
-  currentPage.drawText('ITENS', {
-    x: 40, y: y, size: 12, font: fontBold, color: primaryColor,
-  });
-  y -= 25;
-  
   y = drawTableHeader(currentPage, y);
   
-  // Desenhar itens com paginação
+  // Desenhar itens
+  let somaItens = 0;
   while (itemIndex < detalhes.length) {
     const item = detalhes[itemIndex];
     
     // Verificar se precisa de nova página
-    if (y < MARGIN_BOTTOM + 60) {
-      // Desenhar footer da página atual
+    if (y < 150) {
       drawFooter(currentPage, currentPageNum, totalPages);
       
-      // Criar nova página
       currentPageNum++;
       currentPage = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-      y = PAGE_HEIGHT - MARGIN_TOP;
+      y = PAGE_HEIGHT - MARGIN;
       
-      // Header simplificado para páginas de continuação
-      currentPage.drawRectangle({
-        x: 0, y: PAGE_HEIGHT - 60, width: PAGE_WIDTH, height: 60, color: primaryColor,
-      });
-      currentPage.drawText(`FATURA #${fatura.codigo} - Continuação`, {
-        x: 40, y: PAGE_HEIGHT - 40, size: 16, font: fontBold, color: rgb(1, 1, 1),
-      });
+      // Header simplificado
+      currentPage.drawText('BRHUB', { x: MARGIN + 30, y: y - 10, size: 20, font: fontBold, color: darkColor });
+      currentPage.drawText(`Fatura #${fatura.codigo} - Continuação`, { x: 200, y: y - 10, size: 12, font: fontRegular, color: grayColor });
       
-      y = PAGE_HEIGHT - 90;
+      y -= 50;
       y = drawTableHeader(currentPage, y);
     }
     
-    const bgColor = itemIndex % 2 === 0 ? rgb(1, 1, 1) : lightGray;
-    
+    // Fundo alternado
+    const bgColor = itemIndex % 2 === 0 ? whiteColor : lightGray;
     currentPage.drawRectangle({
-      x: 40, y: y - 5, width: PAGE_WIDTH - 80, height: ROW_HEIGHT, color: bgColor,
+      x: MARGIN,
+      y: y - 5,
+      width: PAGE_WIDTH - (MARGIN * 2),
+      height: ROW_HEIGHT,
+      color: bgColor,
     });
     
-    currentPage.drawText((item.nome || 'Envio').substring(0, 30), { x: 50, y: y + 2, size: 9, font: fontRegular, color: darkColor });
-    currentPage.drawText(item.codigoObjeto || '-', { x: 280, y: y + 2, size: 9, font: fontRegular, color: darkColor });
-    currentPage.drawText((item.status || '-').substring(0, 15), { x: 380, y: y + 2, size: 9, font: fontRegular, color: darkColor });
-    currentPage.drawText(`R$ ${parseFloat(item.valor || 0).toFixed(2)}`, { x: 480, y: y + 2, size: 9, font: fontBold, color: darkColor });
+    // Linhas de borda horizontal
+    currentPage.drawLine({
+      start: { x: MARGIN, y: y - 5 },
+      end: { x: PAGE_WIDTH - MARGIN, y: y - 5 },
+      thickness: 0.5,
+      color: rgb(0.9, 0.9, 0.9),
+    });
+    
+    const numero = String(itemIndex + 1).padStart(2, '0');
+    const valorItem = parseFloat(item.valor || 0);
+    somaItens += valorItem;
+    
+    currentPage.drawText(numero, { x: MARGIN + 10, y: y + 5, size: 9, font: fontRegular, color: darkColor });
+    currentPage.drawText((item.nome || 'Envio').substring(0, 35), { x: MARGIN + 50, y: y + 5, size: 9, font: fontRegular, color: darkColor });
+    currentPage.drawText(item.codigoObjeto || '-', { x: 300, y: y + 5, size: 9, font: fontRegular, color: grayColor });
+    currentPage.drawText(`R$ ${valorItem.toFixed(2)}`, { x: 480, y: y + 5, size: 9, font: fontBold, color: darkColor });
     
     y -= ROW_HEIGHT;
     itemIndex++;
   }
   
+  // Linha final da tabela
+  currentPage.drawLine({
+    start: { x: MARGIN, y: y + ROW_HEIGHT - 5 },
+    end: { x: PAGE_WIDTH - MARGIN, y: y + ROW_HEIGHT - 5 },
+    thickness: 1,
+    color: headerBg,
+  });
+  
+  y -= 30;
+  
+  // === SEÇÃO DE TOTAIS ===
+  // Subtotal
+  currentPage.drawText('Subtotal:', { x: 350, y: y, size: 10, font: fontRegular, color: grayColor });
+  currentPage.drawText(`R$ ${somaItens.toFixed(2)}`, { x: 480, y: y, size: 10, font: fontRegular, color: darkColor });
+  
   y -= 20;
   
-  // === TOTAL (na última página) ===
+  // Total de objetos
+  currentPage.drawText('Total de Objetos:', { x: 350, y: y, size: 10, font: fontRegular, color: grayColor });
+  currentPage.drawText(String(totalObjetosExibir), { x: 480, y: y, size: 10, font: fontRegular, color: darkColor });
+  
+  y -= 30;
+  
+  // TOTAL A PAGAR (destacado)
   currentPage.drawRectangle({
-    x: 350, y: y - 10, width: 205, height: 50, color: primaryColor,
-  });
-  currentPage.drawText('TOTAL A PAGAR', {
-    x: 365, y: y + 20, size: 10, font: fontRegular, color: rgb(1, 1, 1),
-  });
-  currentPage.drawText(`R$ ${valorParaExibir.toFixed(2)}`, {
-    x: 365, y: y - 2, size: 20, font: fontBold, color: rgb(1, 1, 1),
+    x: 340,
+    y: y - 15,
+    width: PAGE_WIDTH - MARGIN - 340,
+    height: 50,
+    color: primaryOrange,
   });
   
-  // Footer da última página
+  currentPage.drawText('TOTAL A PAGAR:', {
+    x: 355, y: y + 15, size: 10, font: fontRegular, color: whiteColor,
+  });
+  currentPage.drawText(`R$ ${valorParaExibir.toFixed(2)}`, {
+    x: 355, y: y - 5, size: 22, font: fontBold, color: whiteColor,
+  });
+  
+  // Informações extras à esquerda
+  currentPage.drawText('Desenvolvido por BRHUB Envios', {
+    x: MARGIN, y: y + 10, size: 8, font: fontRegular, color: grayColor,
+  });
+  currentPage.drawText(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, {
+    x: MARGIN, y: y - 5, size: 8, font: fontRegular, color: grayColor,
+  });
+  
+  // Footer
   drawFooter(currentPage, currentPageNum, totalPages);
   
   const pdfBytes = await pdfDoc.save();
