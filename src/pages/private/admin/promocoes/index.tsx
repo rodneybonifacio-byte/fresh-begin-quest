@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Gift, Users, DollarSign, ToggleLeft, ToggleRight, Save, Loader2, Phone, User, Wallet, RefreshCw, Mail } from 'lucide-react';
+import { Gift, Users, DollarSign, ToggleLeft, ToggleRight, Save, Loader2, Phone, User, Wallet, RefreshCw, Mail, Star, Zap } from 'lucide-react';
 import { supabase } from '../../../../integrations/supabase/client';
 import { toast } from 'sonner';
 import { Content } from '../../Content';
@@ -22,6 +22,7 @@ interface ParticipantePromo {
     email: string;
     saldoDisponivel: number;
     dataCredito: string;
+    tipoPromocao: '100_primeiros' | 'bonus_recarga';
 }
 
 const PromocoesAdmin = () => {
@@ -71,45 +72,51 @@ const PromocoesAdmin = () => {
                 console.error('Erro ao buscar transações de bônus:', bonusError);
             }
 
-            // Buscar dados de cadastros_origem (fonte principal com histórico completo)
-            const { data: cadastrosOrigem } = await supabase
-                .from('cadastros_origem')
-                .select('*')
-                .order('created_at', { ascending: false });
+            // Buscar TODOS os remetentes para obter dados dos clientes
+            const { data: remetentes } = await supabase
+                .from('remetentes')
+                .select('cliente_id, nome, telefone, celular, email');
 
-            // Criar mapa de cadastros por cliente_id
-            const cadastrosMap = new Map<string, any>();
-            if (cadastrosOrigem) {
-                cadastrosOrigem.forEach(c => cadastrosMap.set(c.cliente_id, c));
+            // Criar mapa de remetentes por cliente_id (primeiro de cada cliente)
+            const remetentesMap = new Map<string, any>();
+            if (remetentes) {
+                remetentes.forEach(r => {
+                    if (!remetentesMap.has(r.cliente_id)) {
+                        remetentesMap.set(r.cliente_id, r);
+                    }
+                });
             }
 
             const participantesData: ParticipantePromo[] = [];
             const clienteIdsProcessados = new Set<string>();
 
-            // Processar transações de bônus com dados de cadastros_origem
+            // Processar transações de bônus
             if (bonusTransacoes && bonusTransacoes.length > 0) {
                 for (const transacao of bonusTransacoes) {
                     if (clienteIdsProcessados.has(transacao.cliente_id)) continue;
                     clienteIdsProcessados.add(transacao.cliente_id);
 
-                    // Buscar dados do cadastros_origem (fonte principal)
-                    const cadastroData = cadastrosMap.get(transacao.cliente_id);
+                    // Buscar dados do remetente
+                    const remetenteData = remetentesMap.get(transacao.cliente_id);
 
                     // Buscar saldo disponível
                     const { data: saldoData } = await supabase
                         .rpc('calcular_saldo_disponivel', { p_cliente_id: transacao.cliente_id });
 
-                    // Extrair posição da descrição
+                    // Extrair posição da descrição e determinar tipo de promoção
                     const posicaoMatch = transacao.descricao?.match(/#(\d+)/);
-                    const posicao = posicaoMatch ? posicaoMatch[1] : '-';
+                    const posicao = posicaoMatch ? posicaoMatch[1] : participantesData.length + 1;
+                    
+                    const is100Primeiros = transacao.descricao?.includes('100 primeiros');
 
                     participantesData.push({
                         clienteId: transacao.cliente_id,
-                        nome: cadastroData?.nome_cliente || `Cliente #${posicao}`,
-                        telefone: cadastroData?.telefone_cliente || '-',
-                        email: cadastroData?.email_cliente || '-',
+                        nome: remetenteData?.nome || `Cliente #${posicao}`,
+                        telefone: remetenteData?.telefone || remetenteData?.celular || '-',
+                        email: remetenteData?.email || '-',
                         saldoDisponivel: saldoData || 0,
-                        dataCredito: transacao.created_at || ''
+                        dataCredito: transacao.created_at || '',
+                        tipoPromocao: is100Primeiros ? '100_primeiros' : 'bonus_recarga'
                     });
                 }
             }
@@ -459,6 +466,12 @@ const PromocoesAdmin = () => {
                                     <tr>
                                         <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                                             <div className="flex items-center gap-2">
+                                                <Gift className="w-4 h-4" />
+                                                Tipo
+                                            </div>
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                            <div className="flex items-center gap-2">
                                                 <User className="w-4 h-4" />
                                                 Nome
                                             </div>
@@ -489,6 +502,23 @@ const PromocoesAdmin = () => {
                                 <tbody className="divide-y divide-border">
                                     {participantes.map((participante, index) => (
                                         <tr key={participante.clienteId} className="hover:bg-muted/30 transition-colors">
+                                            <td className="px-4 py-3">
+                                                {participante.tipoPromocao === '100_primeiros' ? (
+                                                    <div className="flex items-center gap-2" title="100 Primeiros Cadastros">
+                                                        <div className="w-7 h-7 rounded-full bg-yellow-500/10 flex items-center justify-center">
+                                                            <Star className="w-4 h-4 text-yellow-500" />
+                                                        </div>
+                                                        <span className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">100 Primeiros</span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center gap-2" title="Bônus de Recarga">
+                                                        <div className="w-7 h-7 rounded-full bg-blue-500/10 flex items-center justify-center">
+                                                            <Zap className="w-4 h-4 text-blue-500" />
+                                                        </div>
+                                                        <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">Bônus Recarga</span>
+                                                    </div>
+                                                )}
+                                            </td>
                                             <td className="px-4 py-3">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary">
