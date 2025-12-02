@@ -593,45 +593,78 @@ serve(async (req) => {
       };
       
       // 🔍 BUSCAR ENVIOS ESPECÍFICOS DA SUBFATURA
-      // Usar o codigo_fatura para buscar os detalhes diretamente
+      // Buscar DIRETAMENTE da API de emissões para obter o remetenteCpfCnpj
       console.log('🔍 Buscando envios da subfatura - Código:', codigo_fatura, 'ID:', subfatura_id);
       let detalhesSubfatura: any[] = [];
       const cpfCnpjLimpo = cpfCnpj.replace(/\D/g, '');
       
       try {
-        // ESTRATÉGIA PRINCIPAL: Usar os detalhes da fatura PAI já carregada
-        // A fatura pai (já buscada) contém TODOS os detalhes de emissões
-        // Precisamos filtrar apenas os envios do remetente da subfatura (pelo CPF/CNPJ)
+        // ESTRATÉGIA: Buscar emissões diretamente da API de emissões
+        // A API de emissões retorna o campo remetenteCpfCnpj que precisamos para filtrar
         
-        if (fatura.detalhe && Array.isArray(fatura.detalhe) && fatura.detalhe.length > 0) {
-          console.log('📥 Usando detalhes da fatura PAI já carregada');
-          console.log('📊 Total de detalhes na fatura pai:', fatura.detalhe.length);
+        const periodoInicial = fatura.periodoInicial?.split('T')[0] || '';
+        const periodoFinal = fatura.periodoFinal?.split('T')[0] || '';
+        
+        console.log('📅 Período da fatura:', periodoInicial, 'até', periodoFinal);
+        console.log('🔍 Buscando emissões do remetente:', cpfCnpjLimpo);
+        
+        // Buscar emissões com filtro por período e remetente
+        const emissaoUrl = `${baseApiUrl}/emissoes/admin?limit=500&offset=0&dataIni=${periodoInicial}&dataFim=${periodoFinal}`;
+        console.log('📡 URL emissões:', emissaoUrl);
+        
+        const emissaoResponse = await fetch(emissaoUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${apiToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (emissaoResponse.ok) {
+          const emissaoData = await emissaoResponse.json();
+          const todasEmissoes = emissaoData.data || emissaoData || [];
+          console.log('📊 Total de emissões no período:', Array.isArray(todasEmissoes) ? todasEmissoes.length : 0);
           
-          // Log da estrutura do primeiro item para debug
-          if (fatura.detalhe.length > 0) {
-            console.log('📋 Estrutura do primeiro detalhe:', JSON.stringify(Object.keys(fatura.detalhe[0])));
-            console.log('📋 Primeiro item completo:', JSON.stringify(fatura.detalhe[0], null, 2));
-          }
-          
-          // Filtrar pelo CPF/CNPJ do remetente da subfatura
-          console.log('🔍 Filtrando pelo CPF/CNPJ:', cpfCnpjLimpo);
-          
-          detalhesSubfatura = fatura.detalhe.filter((item: any) => {
-            // Tentar múltiplos campos possíveis para encontrar o CPF/CNPJ do remetente
-            const itemCpfCnpj = (
-              item.remetenteCpfCnpj || 
-              item.cpfCnpjRemetente || 
-              item.remetente?.cpfCnpj ||
-              item.cpfCnpj ||
-              ''
-            ).replace(/\D/g, '');
+          if (Array.isArray(todasEmissoes) && todasEmissoes.length > 0) {
+            // Log da estrutura para debug
+            console.log('📋 Estrutura emissão:', JSON.stringify(Object.keys(todasEmissoes[0])));
             
-            const match = itemCpfCnpj === cpfCnpjLimpo;
-            if (match) {
-              console.log(`✅ Match encontrado - Item: ${item.nome}, CPF/CNPJ: ${itemCpfCnpj}`);
-            }
-            return match;
-          }).map((item: any) => ({
+            // Verificar campos disponíveis
+            const primeiraEmissao = todasEmissoes[0];
+            console.log('📋 Campos remetente na emissão:', {
+              remetenteCpfCnpj: primeiraEmissao.remetenteCpfCnpj,
+              remetente_cpfCnpj: primeiraEmissao.remetente?.cpfCnpj,
+              remetenteNome: primeiraEmissao.remetenteNome,
+            });
+            
+            // Filtrar pelo CPF/CNPJ do remetente
+            detalhesSubfatura = todasEmissoes.filter((item: any) => {
+              const itemCpfCnpj = (
+                item.remetenteCpfCnpj || 
+                item.remetente?.cpfCnpj ||
+                ''
+              ).replace(/\D/g, '');
+              
+              return itemCpfCnpj === cpfCnpjLimpo;
+            }).map((item: any) => ({
+              id: item.id,
+              status: item.status || 'PENDENTE',
+              nome: item.destinatario?.nome || item.destinatarioNome || 'Envio',
+              valor: item.valorPostagem || item.valor || '0',
+              codigoObjeto: item.codigoObjeto || '-',
+              criadoEm: item.criadoEm,
+            }));
+            
+            console.log(`✅ Filtrados ${detalhesSubfatura.length} envios pelo remetente ${cpfCnpjLimpo}`);
+          }
+        } else {
+          console.log('⚠️ Erro ao buscar emissões:', emissaoResponse.status);
+        }
+        
+        // FALLBACK: Se não encontrou emissões, usar detalhes da fatura
+        if (detalhesSubfatura.length === 0 && fatura.detalhe && Array.isArray(fatura.detalhe)) {
+          console.log('⚠️ Nenhuma emissão filtrada - usando detalhes da fatura como fallback');
+          detalhesSubfatura = fatura.detalhe.map((item: any) => ({
             id: item.id,
             status: item.status || 'PENDENTE',
             nome: item.nome || item.destinatario?.nome || 'Envio',
@@ -639,65 +672,7 @@ serve(async (req) => {
             codigoObjeto: item.codigoObjeto || '-',
             criadoEm: item.criadoEm,
           }));
-          
-          console.log(`📋 Filtrados ${detalhesSubfatura.length} envios pelo CPF/CNPJ do remetente`);
-          
-          // Se não encontrou por CPF/CNPJ, usar TODOS os detalhes (fallback)
-          if (detalhesSubfatura.length === 0) {
-            console.log('⚠️ Nenhum envio filtrado pelo CPF/CNPJ - usando TODOS os detalhes como fallback');
-            detalhesSubfatura = fatura.detalhe.map((item: any) => ({
-              id: item.id,
-              status: item.status || 'PENDENTE',
-              nome: item.nome || item.destinatario?.nome || 'Envio',
-              valor: item.valor || item.valorVenda || '0',
-              codigoObjeto: item.codigoObjeto || '-',
-              criadoEm: item.criadoEm,
-            }));
-            console.log(`📋 Total de envios usados (fallback): ${detalhesSubfatura.length}`);
-          }
-        } else {
-          console.log('⚠️ Fatura pai não tem detalhes, tentando outras estratégias...');
-        }
-        
-        // ESTRATÉGIA 2: Se ainda não tem detalhes, buscar pelo código
-        if (detalhesSubfatura.length === 0 && codigo_fatura) {
-          console.log('📥 Tentando buscar detalhes pelo código da fatura:', codigo_fatura);
-          
-          const faturaCodigoUrl = `${baseApiUrl}/faturas/admin?codigo=${codigo_fatura}`;
-          console.log('📥 URL para buscar fatura por código:', faturaCodigoUrl);
-          
-          const faturaCodigoResponse = await fetch(faturaCodigoUrl, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${apiToken}`,
-              'Content-Type': 'application/json',
-            },
-          });
-          
-          console.log('📡 Resposta busca por código - Status:', faturaCodigoResponse.status);
-          
-          if (faturaCodigoResponse.ok) {
-            const faturaCodigoData = await faturaCodigoResponse.json();
-            const faturas = faturaCodigoData.data || faturaCodigoData;
-            
-            console.log('📋 Resposta da API de código:', JSON.stringify(faturas, null, 2).substring(0, 500));
-            
-            const faturaEncontrada = Array.isArray(faturas) 
-              ? faturas.find((f: any) => f.codigo === codigo_fatura) 
-              : faturas;
-            
-            if (faturaEncontrada?.detalhe && Array.isArray(faturaEncontrada.detalhe)) {
-              detalhesSubfatura = faturaEncontrada.detalhe.map((item: any) => ({
-                id: item.id,
-                status: item.status || 'PENDENTE',
-                nome: item.nome || item.destinatario?.nome || 'Envio',
-                valor: item.valor || item.valorVenda || '0',
-                codigoObjeto: item.codigoObjeto || '-',
-                criadoEm: item.criadoEm,
-              }));
-              console.log(`✅ Encontrados ${detalhesSubfatura.length} envios pelo código da fatura`);
-            }
-          }
+          console.log(`📋 Total de envios usados (fallback): ${detalhesSubfatura.length}`);
         }
       } catch (enviosErr) {
         console.log('⚠️ Erro ao buscar envios:', enviosErr);
