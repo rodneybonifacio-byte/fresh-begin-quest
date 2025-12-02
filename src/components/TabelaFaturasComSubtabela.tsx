@@ -98,12 +98,12 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
                         onClick: (row) => visualizarFechamento(row),
                         show: (row) => !!(verificarFechamentoExistente(row.id)) && (row.status === 'PENDENTE' || row.status === 'PAGO_PARCIAL'),
                     },
-                    {
-                        label: 'Realizar Fechamento',
-                        icon: <CheckCircle size={16} />,
-                        onClick: (row) => realizarFechamento(row),
-                        show: (row) => !verificarFechamentoExistente(row.id) && (row.status === 'PENDENTE' || row.status === 'PAGO_PARCIAL'),
-                    },
+                {
+                    label: 'Realizar Fechamento',
+                    icon: <CheckCircle size={16} />,
+                    onClick: (row) => realizarFechamento(row),
+                    show: (row) => !verificarFechamentoExistente(row.id) && (row.status === 'PENDENTE' || row.status === 'PAGO_PARCIAL'),
+                },
                     {
                         label: 'Confirmar Pagamento',
                         icon: <CreditCard size={16} />,

@@ -88,11 +88,17 @@ serve(async (req) => {
       );
     }
 
-    const { codigo_fatura, nome_cliente, fatura_id } = await req.json() as FechamentoRequest & { fatura_id?: string };
+    const { codigo_fatura, nome_cliente, fatura_id, fatura_pai_id, subfatura_id } = await req.json() as FechamentoRequest & { 
+      fatura_id?: string;
+      fatura_pai_id?: string;
+      subfatura_id?: string;
+    };
 
     console.log('🚀 Iniciando fechamento da fatura:', codigo_fatura);
     console.log('📋 Cliente:', nome_cliente);
     console.log('🆔 Fatura ID:', fatura_id);
+    console.log('👨‍👧 Fatura Pai ID:', fatura_pai_id);
+    console.log('👶 Subfatura ID:', subfatura_id);
     console.log('🔄 VERSÃO DA FUNÇÃO: 2.0 - DEBUG ATIVADO');
 
     // ✅ ETAPA 1: Buscar dados completos da fatura via API Backend
@@ -101,8 +107,13 @@ serve(async (req) => {
     const baseApiUrl = Deno.env.get('BASE_API_URL') || 'https://envios.brhubb.com.br/api';
     const apiToken = authHeader.replace('Bearer ', '');
     
+    // Se for subfatura, buscar a fatura pai
+    const idParaBuscar = fatura_pai_id || fatura_id || codigo_fatura;
+    
+    console.log('🔍 Buscando fatura com ID:', idParaBuscar);
+    
     // Buscar pela API usando o ID da fatura
-    const faturaResponse = await fetch(`${baseApiUrl}/faturas/admin/${fatura_id || codigo_fatura}`, {
+    const faturaResponse = await fetch(`${baseApiUrl}/faturas/admin/${idParaBuscar}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${apiToken}`,
@@ -116,7 +127,20 @@ serve(async (req) => {
     }
 
     const faturaDataResponse = await faturaResponse.json();
-    const fatura = faturaDataResponse.data;
+    let fatura = faturaDataResponse.data;
+    
+    // Se for subfatura, procurar dentro do array de subfaturas
+    if (subfatura_id && fatura.faturas && Array.isArray(fatura.faturas)) {
+      console.log('🔍 Procurando subfatura com ID:', subfatura_id);
+      const subfatura = fatura.faturas.find((f: any) => f.id === subfatura_id);
+      
+      if (!subfatura) {
+        throw new Error('Subfatura não encontrada dentro da fatura pai');
+      }
+      
+      console.log('✅ Subfatura encontrada');
+      fatura = subfatura;
+    }
 
     console.log('🔍 DEBUG - Resposta completa da API:', JSON.stringify(faturaDataResponse, null, 2));
 
