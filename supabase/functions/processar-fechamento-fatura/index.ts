@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { PDFDocument, rgb, StandardFonts } from "npm:pdf-lib@^1.17.1";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -736,6 +737,28 @@ serve(async (req) => {
     };
 
     console.log('✅ Processo concluído com sucesso');
+
+    // Salvar fechamento no Supabase para persistência
+    try {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+      
+      await supabaseAdmin.from('fechamentos_fatura').insert({
+        fatura_id: fatura_id,
+        subfatura_id: subfatura_id || null,
+        codigo_fatura: codigo_fatura,
+        nome_cliente: clienteData.nome,
+        cpf_cnpj: cpfCnpj,
+        boleto_id: boletoData.nossoNumero,
+        fatura_pdf: faturaPdfBase64,
+        boleto_pdf: boletoPdfBase64,
+      });
+      
+      console.log('✅ Fechamento salvo no Supabase');
+    } catch (saveError) {
+      console.error('⚠️ Erro ao salvar fechamento no Supabase (não crítico):', saveError);
+    }
 
     return new Response(
       JSON.stringify(resultado),
