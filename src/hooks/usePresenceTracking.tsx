@@ -17,6 +17,8 @@ export function usePresenceTracking() {
             await supabase.functions.invoke('atualizar-presenca', {
                 body: {
                     clienteId: user.clienteId,
+                    userEmail: user.email,
+                    userName: user.name,
                     isOnline,
                     lastSeen: new Date().toISOString(),
                 },
