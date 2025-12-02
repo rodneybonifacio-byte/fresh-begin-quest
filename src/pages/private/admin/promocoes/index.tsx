@@ -58,29 +58,70 @@ const PromocoesAdmin = () => {
         try {
             setLoadingParticipantes(true);
             
-            // Buscar clientes que vieram do autocadastro (página de cadastro público)
-            const { data: cadastrosOrigem, error } = await supabase
+            // Buscar transações de bônus dos 100 primeiros (fonte mais confiável)
+            const { data: bonusTransacoes, error: bonusError } = await supabase
+                .from('transacoes_credito')
+                .select('*')
+                .like('descricao', '%100 primeiros%')
+                .eq('tipo', 'recarga')
+                .order('created_at', { ascending: true });
+
+            if (bonusError) {
+                console.error('Erro ao buscar transações de bônus:', bonusError);
+            }
+
+            // Também buscar da cadastros_origem como fallback
+            const { data: cadastrosOrigem, error: origemError } = await supabase
                 .from('cadastros_origem')
                 .select('*')
                 .eq('origem', 'autocadastro')
                 .order('created_at', { ascending: false });
 
-            if (error) {
-                console.error('Erro ao buscar cadastros:', error);
-                throw error;
+            if (origemError) {
+                console.error('Erro ao buscar cadastros:', origemError);
             }
 
-            if (!cadastrosOrigem || cadastrosOrigem.length === 0) {
-                setParticipantes([]);
-                return;
-            }
-
-            // Buscar dados de cada cliente
             const participantesData: ParticipantePromo[] = [];
+            const clienteIdsProcessados = new Set<string>();
 
-            for (const cadastro of cadastrosOrigem) {
-                try {
-                    // Buscar saldo disponível do Supabase
+            // Processar transações de bônus primeiro
+            if (bonusTransacoes && bonusTransacoes.length > 0) {
+                for (const transacao of bonusTransacoes) {
+                    if (clienteIdsProcessados.has(transacao.cliente_id)) continue;
+                    clienteIdsProcessados.add(transacao.cliente_id);
+
+                    // Buscar dados do remetente para obter nome e telefone
+                    const { data: remetenteData } = await supabase
+                        .from('remetentes')
+                        .select('*')
+                        .eq('cliente_id', transacao.cliente_id)
+                        .limit(1)
+                        .maybeSingle();
+
+                    // Buscar saldo disponível
+                    const { data: saldoData } = await supabase
+                        .rpc('calcular_saldo_disponivel', { p_cliente_id: transacao.cliente_id });
+
+                    // Extrair posição da descrição
+                    const posicaoMatch = transacao.descricao?.match(/#(\d+)/);
+                    const posicao = posicaoMatch ? posicaoMatch[1] : '-';
+
+                    participantesData.push({
+                        clienteId: transacao.cliente_id,
+                        nome: remetenteData?.nome || `Cliente #${posicao}`,
+                        telefone: remetenteData?.telefone || remetenteData?.celular || '-',
+                        saldoDisponivel: saldoData || 0,
+                        dataCredito: transacao.created_at || ''
+                    });
+                }
+            }
+
+            // Adicionar cadastros_origem que não estão nas transações de bônus
+            if (cadastrosOrigem && cadastrosOrigem.length > 0) {
+                for (const cadastro of cadastrosOrigem) {
+                    if (clienteIdsProcessados.has(cadastro.cliente_id)) continue;
+                    clienteIdsProcessados.add(cadastro.cliente_id);
+
                     const { data: saldoData } = await supabase
                         .rpc('calcular_saldo_disponivel', { p_cliente_id: cadastro.cliente_id });
 
@@ -89,16 +130,6 @@ const PromocoesAdmin = () => {
                         nome: cadastro.nome_cliente || 'Não informado',
                         telefone: cadastro.telefone_cliente || '-',
                         saldoDisponivel: saldoData || 0,
-                        dataCredito: cadastro.created_at || ''
-                    });
-                } catch (clienteError) {
-                    console.error('Erro ao processar cliente:', cadastro.cliente_id, clienteError);
-                    // Adiciona mesmo com erro de saldo
-                    participantesData.push({
-                        clienteId: cadastro.cliente_id,
-                        nome: cadastro.nome_cliente || 'Não informado',
-                        telefone: cadastro.telefone_cliente || '-',
-                        saldoDisponivel: 0,
                         dataCredito: cadastro.created_at || ''
                     });
                 }
