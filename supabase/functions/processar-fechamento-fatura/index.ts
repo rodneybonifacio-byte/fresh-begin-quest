@@ -128,6 +128,8 @@ serve(async (req) => {
 
     const faturaDataResponse = await faturaResponse.json();
     let fatura = faturaDataResponse.data;
+    const faturaPai = fatura; // Guardar referência da fatura pai
+    let isSubfatura = false;
     
     // Se for subfatura, procurar dentro do array de subfaturas
     if (subfatura_id && fatura.faturas && Array.isArray(fatura.faturas)) {
@@ -140,6 +142,7 @@ serve(async (req) => {
       
       console.log('✅ Subfatura encontrada');
       fatura = subfatura;
+      isSubfatura = true;
     }
 
     console.log('🔍 DEBUG - Resposta completa da API:', JSON.stringify(faturaDataResponse, null, 2));
@@ -153,17 +156,32 @@ serve(async (req) => {
       codigo: fatura.codigo,
       valor: fatura.totalFaturado,
       periodo: `${fatura.periodoInicial} - ${fatura.periodoFinal}`,
+      isSubfatura: isSubfatura,
     });
-    
-    console.log('🔍 DEBUG - Objeto fatura.cliente:', JSON.stringify(fatura.cliente, null, 2));
 
-    // ✅ ETAPA 3: Extrair cadastro completo do cliente
-    console.log('👤 Etapa 3: Validando dados do cliente...');
+    // ✅ ETAPA 3: Extrair cadastro completo do cliente/pagador
+    // Para subfaturas: usar dados do remetente da subfatura como pagador
+    // Para faturas normais: usar dados do cliente da fatura
+    console.log('👤 Etapa 3: Validando dados do pagador...');
     
-    const clienteData = fatura.cliente;
+    let clienteData;
     
-    // Log completo do objeto cliente para debug
-    console.log('🔍 DEBUG - Estrutura completa do cliente:', JSON.stringify(clienteData, null, 2));
+    if (isSubfatura && fatura.remetente) {
+      // Subfatura: pagador é o remetente da subfatura
+      console.log('📋 Usando dados do REMETENTE da subfatura como pagador');
+      clienteData = fatura.remetente;
+    } else if (isSubfatura && fatura.cliente) {
+      // Subfatura com cliente próprio
+      console.log('📋 Usando dados do CLIENTE da subfatura como pagador');
+      clienteData = fatura.cliente;
+    } else {
+      // Fatura normal: pagador é o cliente da fatura
+      console.log('📋 Usando dados do CLIENTE da fatura como pagador');
+      clienteData = fatura.cliente;
+    }
+    
+    // Log completo do objeto cliente/pagador para debug
+    console.log('🔍 DEBUG - Estrutura completa do pagador:', JSON.stringify(clienteData, null, 2));
     
     // Suportar tanto camelCase quanto snake_case
     const cpfCnpj = clienteData.cpfCnpj || clienteData.cpf_cnpj;
