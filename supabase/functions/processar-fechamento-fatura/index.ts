@@ -642,11 +642,13 @@ serve(async (req) => {
                     
                     // Verificar se pertence ao remetente da subfatura
                     if (emissaoCpfCnpj === cpfCnpjLimpo) {
+                      // Usar valor de VENDA (não custo/postagem)
+                      const valorVenda = emissao.valor || emissao.valorVenda || emissao.valorPostagem || '0';
                       emissoesFiltradas.push({
                         id: emissao.id,
                         status: emissao.status || 'PENDENTE',
                         nome: emissao.destinatario?.nome || 'Envio',
-                        valor: emissao.valorPostagem || emissao.valor || '0',
+                        valor: valorVenda,
                         codigoObjeto: emissao.codigoObjeto || codigoObj,
                         criadoEm: emissao.criadoEm,
                       });
