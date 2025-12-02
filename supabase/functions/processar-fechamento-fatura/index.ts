@@ -880,8 +880,6 @@ serve(async (req) => {
     
     console.log('💰 Valor do boleto:', valorBoleto, isSubfatura ? '(valor da SUBFATURA)' : '(valor da fatura)');
     
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    
     console.log('📤 Enviando requisição para banco-inter-create-boleto...');
     console.log('📋 Dados do pagador:', {
       nome: clienteData.nome,
