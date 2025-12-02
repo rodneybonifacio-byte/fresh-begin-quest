@@ -23,6 +23,7 @@ import { ModalVisualizarFechamento } from '../../../../components/ModalVisualiza
 import { toast } from 'sonner';
 import { BoletoService } from '../../../../services/BoletoService';
 import { supabase } from '../../../../integrations/supabase/client';
+import { getSupabaseWithAuth } from '../../../../integrations/supabase/custom-auth';
 
 const FinanceiroFaturasAReceber = () => {
     const { setIsLoading } = useLoadingSpinner();
@@ -190,7 +191,9 @@ const FinanceiroFaturasAReceber = () => {
             setIsLoading(true);
             toast.info('Gerando PDF de teste...');
             
-            const { data, error } = await supabase.functions.invoke('processar-fechamento-fatura', {
+            // Usar cliente com token JWT do usuário
+            const supabaseAuth = getSupabaseWithAuth();
+            const { data, error } = await supabaseAuth.functions.invoke('processar-fechamento-fatura', {
                 body: payload
             });
             
