@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '../../../../integrations/supabase/client';
-import { getSupabaseWithAuth } from '../../../../integrations/supabase/custom-auth';
 import { CardComponent } from '../../../../components/card';
 import { Activity, Clock, User, Monitor, Globe, RefreshCw } from 'lucide-react';
 import { ButtonComponent } from '../../../../components/button';
@@ -35,31 +34,17 @@ export default function LogsAcesso() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const supabaseAuth = getSupabaseWithAuth();
+            // Usar edge function para buscar dados (bypassa RLS)
+            const { data, error } = await supabase.functions.invoke('buscar-logs-acesso');
 
-            // Buscar logs de acesso
-            const { data: logsData, error: logsError } = await supabaseAuth
-                .from('logs_acesso')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(100);
-
-            if (logsError) {
-                console.error('Erro ao buscar logs:', logsError);
-            } else {
-                setLogs((logsData as LogAcesso[]) || []);
+            if (error) {
+                console.error('Erro ao buscar dados via edge function:', error);
+                return;
             }
 
-            // Buscar sessões ativas
-            const { data: sessoesData, error: sessoesError } = await supabaseAuth
-                .from('sessoes_ativas')
-                .select('*')
-                .order('last_seen', { ascending: false });
-
-            if (sessoesError) {
-                console.error('Erro ao buscar sessões:', sessoesError);
-            } else {
-                setSessoesAtivas((sessoesData as SessaoAtiva[]) || []);
+            if (data) {
+                setLogs(data.logs || []);
+                setSessoesAtivas(data.sessoes || []);
             }
         } catch (error) {
             console.error('Erro ao buscar dados:', error);
