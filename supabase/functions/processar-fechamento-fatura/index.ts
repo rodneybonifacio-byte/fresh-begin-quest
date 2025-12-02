@@ -593,17 +593,62 @@ serve(async (req) => {
       };
       
       // 🔍 BUSCAR ENVIOS ESPECÍFICOS DA SUBFATURA
-      // Usar o subfatura_id para buscar os detalhes diretamente
-      console.log('🔍 Buscando envios da subfatura ID:', subfatura_id);
+      // Usar o codigo_fatura para buscar os detalhes diretamente
+      console.log('🔍 Buscando envios da subfatura - Código:', codigo_fatura, 'ID:', subfatura_id);
       let detalhesSubfatura: any[] = [];
       const cpfCnpjLimpo = cpfCnpj.replace(/\D/g, '');
       
       try {
-        // ESTRATÉGIA 1: Buscar detalhes da subfatura diretamente
-        if (subfatura_id) {
-          console.log('📥 Tentando buscar detalhes da subfatura:', subfatura_id);
+        // ESTRATÉGIA 1: Buscar detalhes da fatura pelo CÓDIGO (mais confiável)
+        if (codigo_fatura) {
+          console.log('📥 Tentando buscar detalhes pelo código da fatura:', codigo_fatura);
           
-          // Tentar buscar fatura/subfatura diretamente pelo ID
+          // Buscar fatura pelo código
+          const faturaCodigoUrl = `${baseApiUrl}/faturas/admin?codigo=${codigo_fatura}`;
+          console.log('📥 URL para buscar fatura por código:', faturaCodigoUrl);
+          
+          const faturaCodigoResponse = await fetch(faturaCodigoUrl, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${apiToken}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          
+          console.log('📡 Resposta busca por código - Status:', faturaCodigoResponse.status);
+          
+          if (faturaCodigoResponse.ok) {
+            const faturaCodigoData = await faturaCodigoResponse.json();
+            const faturas = faturaCodigoData.data || faturaCodigoData;
+            
+            // Pode ser array ou objeto único
+            const faturaEncontrada = Array.isArray(faturas) 
+              ? faturas.find((f: any) => f.codigo === codigo_fatura) 
+              : faturas;
+            
+            if (faturaEncontrada) {
+              console.log('✅ Fatura encontrada pelo código:', JSON.stringify(faturaEncontrada, null, 2).substring(0, 1500));
+              
+              // Verificar se tem detalhes
+              if (faturaEncontrada.detalhe && Array.isArray(faturaEncontrada.detalhe)) {
+                detalhesSubfatura = faturaEncontrada.detalhe.map((item: any) => ({
+                  id: item.id,
+                  status: item.status || 'PENDENTE',
+                  nome: item.nome || item.destinatario?.nome || 'Envio',
+                  valor: item.valor || item.valorVenda || '0',
+                  codigoObjeto: item.codigoObjeto || '-',
+                  criadoEm: item.criadoEm,
+                }));
+                console.log(`✅ Encontrados ${detalhesSubfatura.length} envios pelo código da fatura`);
+              }
+            }
+          }
+        }
+        
+        // ESTRATÉGIA 2: Se não encontrou pelo código, tentar pelo subfatura_id
+        if (detalhesSubfatura.length === 0 && subfatura_id) {
+          console.log('📥 Tentando buscar detalhes pelo subfatura_id:', subfatura_id);
+          
           const subfaturaUrl = `${baseApiUrl}/faturas/admin/${subfatura_id}`;
           console.log('📥 URL para buscar subfatura:', subfaturaUrl);
           
@@ -623,7 +668,6 @@ serve(async (req) => {
             
             console.log('📋 Subfatura obtida:', JSON.stringify(subfaturaDetalhes, null, 2).substring(0, 1000));
             
-            // Verificar se a subfatura tem detalhes
             if (subfaturaDetalhes.detalhe && Array.isArray(subfaturaDetalhes.detalhe)) {
               detalhesSubfatura = subfaturaDetalhes.detalhe.map((item: any) => ({
                 id: item.id,
