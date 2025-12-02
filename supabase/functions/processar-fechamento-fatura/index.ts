@@ -140,6 +140,7 @@ serve(async (req) => {
         console.log('🔍 Buscando dados do REMETENTE com CPF/CNPJ:', cpf_cnpj_subcliente);
         
         try {
+          // Tentar endpoint principal
           const remetenteResponse = await fetch(`${baseApiUrl}/remetente/${cpf_cnpj_subcliente}`, {
             method: 'GET',
             headers: {
@@ -148,12 +149,34 @@ serve(async (req) => {
             },
           });
           
+          console.log('📡 Status resposta remetente:', remetenteResponse.status);
+          
           if (remetenteResponse.ok) {
             const remetenteDataResponse = await remetenteResponse.json();
             remetenteData = remetenteDataResponse.data;
             console.log('✅ Dados do remetente encontrados:', JSON.stringify(remetenteData, null, 2));
           } else {
-            console.log('⚠️ Não foi possível buscar dados do remetente, usando dados do cliente');
+            const errorText = await remetenteResponse.text();
+            console.log('⚠️ Resposta remetente não OK:', errorText);
+            
+            // Tentar endpoint alternativo com lista de remetentes
+            console.log('🔄 Tentando endpoint alternativo /remetentes...');
+            const remetentesResponse = await fetch(`${baseApiUrl}/remetentes?cpfCnpj=${cpf_cnpj_subcliente}`, {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${apiToken}`,
+                'Content-Type': 'application/json',
+              },
+            });
+            
+            if (remetentesResponse.ok) {
+              const remetentesDataResponse = await remetentesResponse.json();
+              console.log('📋 Resposta remetentes:', JSON.stringify(remetentesDataResponse, null, 2));
+              if (remetentesDataResponse.data && remetentesDataResponse.data.length > 0) {
+                remetenteData = remetentesDataResponse.data[0];
+                console.log('✅ Remetente encontrado via endpoint alternativo');
+              }
+            }
           }
         } catch (remetErr) {
           console.log('⚠️ Erro ao buscar remetente:', remetErr);
