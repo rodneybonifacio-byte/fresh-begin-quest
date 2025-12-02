@@ -70,25 +70,34 @@ async function gerarPdfFaturaPersonalizado(
     return yPos - 35;
   };
   
-  // Função para desenhar footer
+  // Função para desenhar footer completo estilo modelo
   const drawFooter = (page: any, pageNum: number, totalPages: number) => {
+    // Endereço acima da barra preta
+    page.drawText('📍 Rua Exemplo, 123 - São Paulo, SP - CEP 01234-567', {
+      x: MARGIN, y: 70, size: 9, font: fontRegular, color: grayColor,
+    });
+    
     // Barra inferior preta
     page.drawRectangle({
       x: 0,
       y: 0,
       width: PAGE_WIDTH,
-      height: 45,
+      height: 50,
       color: headerBg,
     });
     
-    page.drawText('www.brhub.com.br', {
-      x: MARGIN, y: 18, size: 9, font: fontRegular, color: whiteColor,
+    // Informações de contato na barra preta
+    page.drawText('(11) 99999-9999', {
+      x: MARGIN, y: 22, size: 9, font: fontRegular, color: whiteColor,
     });
     page.drawText('contato@brhub.com.br', {
-      x: 200, y: 18, size: 9, font: fontRegular, color: whiteColor,
+      x: 180, y: 22, size: 9, font: fontRegular, color: whiteColor,
     });
-    page.drawText(`Página ${pageNum} de ${totalPages}`, {
-      x: PAGE_WIDTH - 100, y: 18, size: 9, font: fontRegular, color: whiteColor,
+    page.drawText('www.brhub.com.br', {
+      x: 350, y: 22, size: 9, font: fontRegular, color: whiteColor,
+    });
+    page.drawText(`Página ${pageNum}/${totalPages}`, {
+      x: PAGE_WIDTH - 80, y: 22, size: 8, font: fontRegular, color: whiteColor,
     });
   };
   
@@ -98,40 +107,32 @@ async function gerarPdfFaturaPersonalizado(
   let itemIndex = 0;
   
   // === HEADER PRINCIPAL COM LOGO ===
-  // Desenhar o raio/triângulo laranja do logo BRHUB
-  // Triângulo superior (ponta para cima-direita)
-  const raioX = MARGIN;
-  const raioY = y - 5;
-  
-  // Simular o raio com dois triângulos usando linhas grossas
-  // Parte superior do raio
-  currentPage.drawLine({
-    start: { x: raioX + 8, y: raioY },
-    end: { x: raioX + 22, y: raioY - 15 },
-    thickness: 8,
-    color: primaryOrange,
-  });
-  currentPage.drawLine({
-    start: { x: raioX + 22, y: raioY - 15 },
-    end: { x: raioX + 12, y: raioY - 15 },
-    thickness: 8,
-    color: primaryOrange,
-  });
-  // Parte inferior do raio
-  currentPage.drawLine({
-    start: { x: raioX + 12, y: raioY - 15 },
-    end: { x: raioX + 18, y: raioY - 35 },
-    thickness: 8,
+  // Logo BRHUB com barra laranja + texto
+  // Barra laranja vertical (representa o raio)
+  currentPage.drawRectangle({
+    x: MARGIN,
+    y: y - 28,
+    width: 6,
+    height: 32,
     color: primaryOrange,
   });
   
-  // Logo BRHUB (texto)
+  // Texto BRHUB
   currentPage.drawText('BRHUB', {
-    x: MARGIN + 35,
-    y: y - 20,
-    size: 32,
+    x: MARGIN + 12,
+    y: y - 18,
+    size: 26,
     font: fontBold,
     color: darkColor,
+  });
+  
+  // Subtítulo
+  currentPage.drawText('ENVIOS', {
+    x: MARGIN + 12,
+    y: y - 32,
+    size: 10,
+    font: fontRegular,
+    color: grayColor,
   });
   
   // Badge "FATURA" à direita
@@ -284,43 +285,40 @@ async function gerarPdfFaturaPersonalizado(
     color: headerBg,
   });
   
-  y -= 30;
+  y -= 40;
   
-  // === SEÇÃO DE TOTAIS ===
-  // Subtotal
-  currentPage.drawText('Subtotal:', { x: 350, y: y, size: 10, font: fontRegular, color: grayColor });
-  currentPage.drawText(`R$ ${somaItens.toFixed(2)}`, { x: 480, y: y, size: 10, font: fontRegular, color: darkColor });
+  // === SEÇÃO DE TOTAIS - Layout estilo modelo ===
+  // Sub-Total à esquerda
+  currentPage.drawText('Sub-Total', { x: MARGIN, y: y, size: 10, font: fontRegular, color: grayColor });
+  currentPage.drawText(`R$ ${somaItens.toFixed(2)}`, { x: MARGIN + 100, y: y, size: 10, font: fontBold, color: darkColor });
   
-  y -= 20;
+  y -= 18;
   
   // Total de objetos
-  currentPage.drawText('Total de Objetos:', { x: 350, y: y, size: 10, font: fontRegular, color: grayColor });
-  currentPage.drawText(String(totalObjetosExibir), { x: 480, y: y, size: 10, font: fontRegular, color: darkColor });
+  currentPage.drawText('Total Objetos:', { x: MARGIN, y: y, size: 10, font: fontRegular, color: grayColor });
+  currentPage.drawText(String(totalObjetosExibir), { x: MARGIN + 100, y: y, size: 10, font: fontBold, color: darkColor });
   
-  y -= 30;
+  y -= 18;
   
-  // TOTAL A PAGAR (destacado)
-  currentPage.drawRectangle({
-    x: 340,
-    y: y - 15,
-    width: PAGE_WIDTH - MARGIN - 340,
-    height: 50,
-    color: primaryOrange,
+  // Total Geral à esquerda
+  currentPage.drawText('Total Geral:', { x: MARGIN, y: y, size: 10, font: fontBold, color: darkColor });
+  currentPage.drawText(`R$ ${valorParaExibir.toFixed(2)}`, { x: MARGIN + 100, y: y, size: 12, font: fontBold, color: darkColor });
+  
+  // TOTAL A PAGAR à direita (destacado)
+  const totalBoxY = y + 35;
+  currentPage.drawText('Total Due:', { x: 400, y: totalBoxY + 20, size: 10, font: fontRegular, color: grayColor });
+  currentPage.drawText(`R$ ${valorParaExibir.toFixed(2)}`, { x: 400, y: totalBoxY - 5, size: 24, font: fontBold, color: darkColor });
+  
+  y -= 40;
+  
+  // Informações do desenvolvedor
+  currentPage.drawText('Desenvolvido por: BRHUB Envios - Sistema de Gestão de Fretes', {
+    x: 300, y: y, size: 8, font: fontRegular, color: grayColor,
   });
   
-  currentPage.drawText('TOTAL A PAGAR:', {
-    x: 355, y: y + 15, size: 10, font: fontRegular, color: whiteColor,
-  });
-  currentPage.drawText(`R$ ${valorParaExibir.toFixed(2)}`, {
-    x: 355, y: y - 5, size: 22, font: fontBold, color: whiteColor,
-  });
-  
-  // Informações extras à esquerda
-  currentPage.drawText('Desenvolvido por BRHUB Envios', {
-    x: MARGIN, y: y + 10, size: 8, font: fontRegular, color: grayColor,
-  });
-  currentPage.drawText(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, {
-    x: MARGIN, y: y - 5, size: 8, font: fontRegular, color: grayColor,
+  y -= 12;
+  currentPage.drawText(`Documento gerado em: ${new Date().toLocaleString('pt-BR')}`, {
+    x: 300, y: y, size: 8, font: fontRegular, color: grayColor,
   });
   
   // Footer
