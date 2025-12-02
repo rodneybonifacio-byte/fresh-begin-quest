@@ -13,7 +13,8 @@ async function gerarPdfFaturaPersonalizado(
   fatura: any,
   pagadorData: any,
   isSubfatura: boolean,
-  valorTotal?: number // Valor customizado (para subfaturas)
+  valorTotal?: number, // Valor customizado (para subfaturas)
+  detalhesSubfatura?: any[] // Detalhes filtrados para subfatura
 ): Promise<string> {
   const pdfDoc = await PDFDocument.create();
   const page = pdfDoc.addPage([595, 842]); // A4
@@ -149,11 +150,16 @@ async function gerarPdfFaturaPersonalizado(
   
   y -= 30;
   
+  // Para subfaturas, usar a quantidade de detalhes filtrados
+  const totalObjetosExibir = isSubfatura && detalhesSubfatura 
+    ? detalhesSubfatura.length 
+    : (fatura.totalObjetos || '1');
+  
   // Grid de informações
   const infoItems = [
     { label: 'Período:', value: `${formatDate(fatura.periodoInicial)} a ${formatDate(fatura.periodoFinal)}` },
     { label: 'Vencimento:', value: formatDate(fatura.dataVencimento) },
-    { label: 'Total de Objetos:', value: String(fatura.totalObjetos || '1') },
+    { label: 'Total de Objetos:', value: String(totalObjetosExibir) },
     { label: 'Status:', value: fatura.status || 'PENDENTE' },
   ];
   
@@ -207,8 +213,9 @@ async function gerarPdfFaturaPersonalizado(
   
   y -= 30;
   
-  // Itens da fatura
-  const detalhes = fatura.detalhe || [];
+  // Itens da fatura - usar detalhes filtrados para subfatura ou todos para fatura normal
+  const detalhes = (isSubfatura && detalhesSubfatura) ? detalhesSubfatura : (fatura.detalhe || []);
+  console.log(`📋 Total de itens no PDF: ${detalhes.length}`);
   detalhes.forEach((item: any, index: number) => {
     const bgColor = index % 2 === 0 ? rgb(1, 1, 1) : lightGray;
     
@@ -624,10 +631,59 @@ serve(async (req) => {
         }
       };
       
+      // 🔍 BUSCAR ENVIOS ESPECÍFICOS DO REMETENTE DA SUBFATURA
+      console.log('🔍 Buscando envios específicos do remetente CPF/CNPJ:', cpfCnpj);
+      let detalhesSubfatura: any[] = [];
+      
+      try {
+        // Buscar envios usando o subfatura_id que representa os envios do remetente
+        const enviosUrl = `${baseApiUrl}/faturas/admin/${subfatura_id}`;
+        console.log('📥 URL para buscar detalhes da subfatura:', enviosUrl);
+        
+        const enviosResponse = await fetch(enviosUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${apiToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (enviosResponse.ok) {
+          const enviosData = await enviosResponse.json();
+          const subfaturaData = enviosData.data;
+          
+          if (subfaturaData && subfaturaData.detalhe && Array.isArray(subfaturaData.detalhe)) {
+            detalhesSubfatura = subfaturaData.detalhe;
+            console.log(`✅ Encontrados ${detalhesSubfatura.length} envios para o remetente da subfatura`);
+          } else {
+            console.log('⚠️ Subfatura não tem detalhes, tentando filtrar da fatura pai...');
+            // Fallback: filtrar detalhes da fatura pai pelo CPF/CNPJ se disponível
+            if (fatura.detalhe && Array.isArray(fatura.detalhe)) {
+              detalhesSubfatura = fatura.detalhe.filter((item: any) => {
+                const itemCpfCnpj = item.cpfCnpjRemetente || item.remetenteCpfCnpj;
+                return itemCpfCnpj && itemCpfCnpj.replace(/\D/g, '') === cpfCnpj.replace(/\D/g, '');
+              });
+              console.log(`📋 Filtrados ${detalhesSubfatura.length} envios da fatura pai pelo CPF/CNPJ`);
+            }
+          }
+        } else {
+          console.log('⚠️ Erro ao buscar detalhes da subfatura:', enviosResponse.status);
+        }
+      } catch (enviosErr) {
+        console.log('⚠️ Erro ao buscar envios do remetente:', enviosErr);
+      }
+      
+      // Se não conseguiu obter detalhes, usar array vazio com aviso
+      if (detalhesSubfatura.length === 0) {
+        console.log('⚠️ Nenhum envio encontrado para o remetente, PDF terá tabela vazia');
+      }
+      
       // Passar o valor da subfatura para o PDF
       const valorParaPdf = valorSubfatura !== null && valorSubfatura > 0 ? valorSubfatura : parseFloat(fatura.totalFaturado);
       console.log('💰 Valor para PDF da subfatura:', valorParaPdf);
-      faturaPdfBase64 = await gerarPdfFaturaPersonalizado(fatura, pagadorParaPdf, true, valorParaPdf);
+      console.log('📊 Total de itens para o PDF:', detalhesSubfatura.length);
+      
+      faturaPdfBase64 = await gerarPdfFaturaPersonalizado(fatura, pagadorParaPdf, true, valorParaPdf, detalhesSubfatura);
       console.log('✅ PDF personalizado da subfatura gerado');
     } else {
       // Para FATURAS NORMAIS: usar API externa
