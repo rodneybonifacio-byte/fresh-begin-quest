@@ -64,8 +64,8 @@ async function gerarPdfFaturaPersonalizado(
     
     page.drawText('Nº', { x: MARGIN + 10, y: yPos + 5, size: 9, font: fontBold, color: whiteColor });
     page.drawText('DESCRIÇÃO DO ENVIO', { x: MARGIN + 50, y: yPos + 5, size: 9, font: fontBold, color: whiteColor });
-    page.drawText('CÓDIGO OBJETO', { x: 300, y: yPos + 5, size: 9, font: fontBold, color: whiteColor });
-    page.drawText('VALOR', { x: 480, y: yPos + 5, size: 9, font: fontBold, color: whiteColor });
+    page.drawText('CÓDIGO', { x: 380, y: yPos + 5, size: 9, font: fontBold, color: whiteColor });
+    page.drawText('VALOR', { x: 490, y: yPos + 5, size: 9, font: fontBold, color: whiteColor });
     
     return yPos - 35;
   };
@@ -98,22 +98,40 @@ async function gerarPdfFaturaPersonalizado(
   let itemIndex = 0;
   
   // === HEADER PRINCIPAL COM LOGO ===
-  // Logo BRHUB (texto estilizado)
+  // Desenhar o raio/triângulo laranja do logo BRHUB
+  // Triângulo superior (ponta para cima-direita)
+  const raioX = MARGIN;
+  const raioY = y - 5;
+  
+  // Simular o raio com dois triângulos usando linhas grossas
+  // Parte superior do raio
+  currentPage.drawLine({
+    start: { x: raioX + 8, y: raioY },
+    end: { x: raioX + 22, y: raioY - 15 },
+    thickness: 8,
+    color: primaryOrange,
+  });
+  currentPage.drawLine({
+    start: { x: raioX + 22, y: raioY - 15 },
+    end: { x: raioX + 12, y: raioY - 15 },
+    thickness: 8,
+    color: primaryOrange,
+  });
+  // Parte inferior do raio
+  currentPage.drawLine({
+    start: { x: raioX + 12, y: raioY - 15 },
+    end: { x: raioX + 18, y: raioY - 35 },
+    thickness: 8,
+    color: primaryOrange,
+  });
+  
+  // Logo BRHUB (texto)
   currentPage.drawText('BRHUB', {
-    x: MARGIN + 30,
-    y: y - 15,
+    x: MARGIN + 35,
+    y: y - 20,
     size: 32,
     font: fontBold,
     color: darkColor,
-  });
-  
-  // Ícone de raio estilizado (triângulo laranja)
-  currentPage.drawRectangle({
-    x: MARGIN,
-    y: y - 30,
-    width: 25,
-    height: 35,
-    color: primaryOrange,
   });
   
   // Badge "FATURA" à direita
@@ -250,9 +268,9 @@ async function gerarPdfFaturaPersonalizado(
     somaItens += valorItem;
     
     currentPage.drawText(numero, { x: MARGIN + 10, y: y + 5, size: 9, font: fontRegular, color: darkColor });
-    currentPage.drawText((item.nome || 'Envio').substring(0, 35), { x: MARGIN + 50, y: y + 5, size: 9, font: fontRegular, color: darkColor });
-    currentPage.drawText(item.codigoObjeto || '-', { x: 300, y: y + 5, size: 9, font: fontRegular, color: grayColor });
-    currentPage.drawText(`R$ ${valorItem.toFixed(2)}`, { x: 480, y: y + 5, size: 9, font: fontBold, color: darkColor });
+    currentPage.drawText((item.nome || 'Envio').substring(0, 50), { x: MARGIN + 50, y: y + 5, size: 9, font: fontRegular, color: darkColor });
+    currentPage.drawText(item.codigoObjeto || '-', { x: 380, y: y + 5, size: 9, font: fontRegular, color: grayColor });
+    currentPage.drawText(`R$ ${valorItem.toFixed(2)}`, { x: 490, y: y + 5, size: 9, font: fontBold, color: darkColor });
     
     y -= ROW_HEIGHT;
     itemIndex++;
