@@ -1,7 +1,6 @@
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { PDFDocument } from "npm:pdf-lib@^1.17.1";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -172,48 +171,43 @@ serve(async (req) => {
         }
       }
       
-      // Se ainda não temos dados do remetente, buscar DIRETAMENTE no Supabase
+      // Buscar dados do CNPJ via BrasilAPI (Receita Federal)
       if (!remetenteData && cpf_cnpj_subcliente) {
-        console.log('🔍 Buscando REMETENTE no Supabase com CPF/CNPJ:', cpf_cnpj_subcliente);
+        const cnpjLimpo = cpf_cnpj_subcliente.replace(/\D/g, '');
+        console.log('🔍 Buscando CNPJ na BrasilAPI (Receita Federal):', cnpjLimpo);
         
-        try {
-          const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-          const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-          const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
-          
-          // Limpar CPF/CNPJ para comparação
-          const cpfLimpo = cpf_cnpj_subcliente.replace(/\D/g, '');
-          
-          // Buscar remetente no Supabase
-          const { data: remetentesSupabase, error: remetenteError } = await supabaseClient
-            .from('remetentes')
-            .select('*')
-            .or(`cpf_cnpj.eq.${cpfLimpo},cpf_cnpj.eq.${cpf_cnpj_subcliente}`);
-          
-          console.log('📡 Resposta Supabase remetentes:', { data: remetentesSupabase, error: remetenteError });
-          
-          if (!remetenteError && remetentesSupabase && remetentesSupabase.length > 0) {
-            const remetenteSupabase = remetentesSupabase[0];
-            console.log('✅ Remetente encontrado no Supabase:', JSON.stringify(remetenteSupabase, null, 2));
+        // Verificar se é CNPJ (14 dígitos) - BrasilAPI só funciona para CNPJ
+        if (cnpjLimpo.length === 14) {
+          try {
+            const brasilApiResponse = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`);
+            console.log('📡 BrasilAPI Status:', brasilApiResponse.status);
             
-            remetenteData = {
-              nome: remetenteSupabase.nome,
-              cpfCnpj: remetenteSupabase.cpf_cnpj,
-              telefone: remetenteSupabase.telefone || remetenteSupabase.celular || '11999999999',
-              cep: remetenteSupabase.cep,
-              logradouro: remetenteSupabase.logradouro,
-              numero: remetenteSupabase.numero,
-              complemento: remetenteSupabase.complemento || '',
-              bairro: remetenteSupabase.bairro,
-              localidade: remetenteSupabase.localidade,
-              uf: remetenteSupabase.uf,
-            };
-            console.log('✅ Dados do remetente mapeados:', JSON.stringify(remetenteData, null, 2));
-          } else {
-            console.log('⚠️ Remetente não encontrado no Supabase');
+            if (brasilApiResponse.ok) {
+              const cnpjData = await brasilApiResponse.json();
+              console.log('✅ Dados CNPJ da Receita Federal:', JSON.stringify(cnpjData, null, 2));
+              
+              remetenteData = {
+                nome: cnpjData.razao_social || cnpjData.nome_fantasia || nome_cliente,
+                cpfCnpj: cnpjLimpo,
+                telefone: cnpjData.ddd_telefone_1 ? `${cnpjData.ddd_telefone_1}`.replace(/\D/g, '') : '11999999999',
+                cep: cnpjData.cep?.replace(/\D/g, '') || '',
+                logradouro: cnpjData.logradouro || cnpjData.descricao_tipo_de_logradouro + ' ' + cnpjData.logradouro || '',
+                numero: cnpjData.numero || 'S/N',
+                complemento: (cnpjData.complemento || '').substring(0, 30),
+                bairro: cnpjData.bairro || '',
+                localidade: cnpjData.municipio || '',
+                uf: cnpjData.uf || '',
+              };
+              console.log('✅ Dados do remetente via BrasilAPI:', JSON.stringify(remetenteData, null, 2));
+            } else {
+              const errorText = await brasilApiResponse.text();
+              console.log('⚠️ BrasilAPI erro:', errorText);
+            }
+          } catch (brasilApiErr) {
+            console.log('⚠️ Erro ao consultar BrasilAPI:', brasilApiErr);
           }
-        } catch (remetErr) {
-          console.log('⚠️ Erro ao buscar remetente no Supabase:', remetErr);
+        } else {
+          console.log('⚠️ CPF não suportado pela BrasilAPI, usando dados do cliente principal');
         }
       }
     } else {
