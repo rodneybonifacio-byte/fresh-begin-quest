@@ -485,6 +485,7 @@ export type Database = {
       }
       get_cliente_id_from_jwt: { Args: never; Returns: string }
       incrementar_contador_cadastro: { Args: never; Returns: number }
+      is_admin_from_jwt: { Args: never; Returns: boolean }
       liberar_credito_bloqueado: {
         Args: { p_codigo_objeto?: string; p_emissao_id: string }
         Returns: boolean
