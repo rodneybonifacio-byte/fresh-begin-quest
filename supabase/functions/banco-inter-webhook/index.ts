@@ -80,18 +80,38 @@ serve(async (req) => {
     if (recarga.valor >= 100) {
       console.log('🎁 Aplicando bônus de R$50 (recarga >= R$100)...');
       
-      const { data: bonusData, error: bonusError } = await supabase.rpc('registrar_recarga', {
-        p_cliente_id: recarga.cliente_id,
-        p_valor: 50,
-        p_descricao: `🎁 Bônus promocional - Recarga de R$${recarga.valor.toFixed(2)}`
-      });
+      // Verificar se promoção está ativa
+      const { data: promoData } = await supabase
+        .from('contador_cadastros')
+        .select('*')
+        .eq('tipo', 'bonus_recarga')
+        .eq('ativo', true)
+        .maybeSingle();
+      
+      if (promoData) {
+        const { data: bonusData, error: bonusError } = await supabase.rpc('registrar_recarga', {
+          p_cliente_id: recarga.cliente_id,
+          p_valor: promoData.valor_premio || 50,
+          p_descricao: `🎁 Bônus Recarga R$100+ - Posição #${(promoData.contador || 0) + 1}`
+        });
 
-      if (bonusError) {
-        console.error('⚠️ Erro ao aplicar bônus:', bonusError);
-        // Não falha a operação principal, apenas loga o erro
+        if (bonusError) {
+          console.error('⚠️ Erro ao aplicar bônus:', bonusError);
+        } else {
+          console.log('✅ Bônus aplicado com sucesso!', bonusData);
+          bonusAplicado = true;
+          
+          // Incrementar contador da promoção
+          await supabase
+            .from('contador_cadastros')
+            .update({ 
+              contador: (promoData.contador || 0) + 1,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', promoData.id);
+        }
       } else {
-        console.log('✅ Bônus de R$50 aplicado com sucesso!', bonusData);
-        bonusAplicado = true;
+        console.log('ℹ️ Promoção bonus_recarga não está ativa');
       }
     }
 

@@ -58,12 +58,12 @@ const PromocoesAdmin = () => {
         try {
             setLoadingParticipantes(true);
             
-            // Buscar transações de bônus dos 100 primeiros (fonte mais confiável)
+            // Buscar transações de bônus (100 primeiros E bônus de recarga)
             const { data: bonusTransacoes, error: bonusError } = await supabase
                 .from('transacoes_credito')
                 .select('*')
-                .like('descricao', '%100 primeiros%')
                 .eq('tipo', 'recarga')
+                .or('descricao.like.%100 primeiros%,descricao.like.%Bônus Recarga%,descricao.like.%Bônus%')
                 .order('created_at', { ascending: true });
 
             if (bonusError) {
