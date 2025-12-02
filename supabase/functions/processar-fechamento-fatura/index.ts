@@ -73,7 +73,7 @@ async function gerarPdfFaturaPersonalizado(
   // Função para desenhar footer completo estilo modelo
   const drawFooter = (page: any, pageNum: number, totalPages: number) => {
     // Endereço acima da barra preta
-    page.drawText('📍 Rua Exemplo, 123 - São Paulo, SP - CEP 01234-567', {
+    page.drawText('Endereco: Rua Maria Marcolina, 748 - Sao Paulo, SP - CEP 03011-000', {
       x: MARGIN, y: 70, size: 9, font: fontRegular, color: grayColor,
     });
     
