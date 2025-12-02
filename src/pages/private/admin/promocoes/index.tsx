@@ -71,51 +71,22 @@ const PromocoesAdmin = () => {
                 console.error('Erro ao buscar transações de bônus:', bonusError);
             }
 
-            // Buscar TODOS os cadastros_origem para ter os dados dos clientes
-            const { data: cadastrosOrigem, error: origemError } = await supabase
-                .from('cadastros_origem')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            if (origemError) {
-                console.error('Erro ao buscar cadastros:', origemError);
-            }
-
-            // Criar mapa de cadastros por cliente_id para busca rápida
-            const cadastrosMap = new Map<string, any>();
-            if (cadastrosOrigem) {
-                cadastrosOrigem.forEach(c => cadastrosMap.set(c.cliente_id, c));
-            }
-
             const participantesData: ParticipantePromo[] = [];
             const clienteIdsProcessados = new Set<string>();
 
-            // Processar transações de bônus
+            // Processar transações de bônus e buscar dados dos remetentes
             if (bonusTransacoes && bonusTransacoes.length > 0) {
                 for (const transacao of bonusTransacoes) {
                     if (clienteIdsProcessados.has(transacao.cliente_id)) continue;
                     clienteIdsProcessados.add(transacao.cliente_id);
 
-                    // Primeiro buscar dados do cadastros_origem (fonte principal)
-                    const cadastroData = cadastrosMap.get(transacao.cliente_id);
-
-                    // Se não tem cadastros_origem, buscar do remetente como fallback
-                    let nome = cadastroData?.nome_cliente;
-                    let telefone = cadastroData?.telefone_cliente;
-                    let email = cadastroData?.email_cliente;
-
-                    if (!nome || !telefone) {
-                        const { data: remetenteData } = await supabase
-                            .from('remetentes')
-                            .select('*')
-                            .eq('cliente_id', transacao.cliente_id)
-                            .limit(1)
-                            .maybeSingle();
-
-                        nome = nome || remetenteData?.nome;
-                        telefone = telefone || remetenteData?.telefone || remetenteData?.celular;
-                        email = email || remetenteData?.email;
-                    }
+                    // Buscar dados do remetente (fonte principal dos dados dos clientes)
+                    const { data: remetenteData } = await supabase
+                        .from('remetentes')
+                        .select('nome, telefone, celular, email')
+                        .eq('cliente_id', transacao.cliente_id)
+                        .limit(1)
+                        .maybeSingle();
 
                     // Buscar saldo disponível
                     const { data: saldoData } = await supabase
@@ -127,31 +98,11 @@ const PromocoesAdmin = () => {
 
                     participantesData.push({
                         clienteId: transacao.cliente_id,
-                        nome: nome || `Cliente #${posicao}`,
-                        telefone: telefone || '-',
-                        email: email || '-',
+                        nome: remetenteData?.nome || `Cliente #${posicao}`,
+                        telefone: remetenteData?.telefone || remetenteData?.celular || '-',
+                        email: remetenteData?.email || '-',
                         saldoDisponivel: saldoData || 0,
                         dataCredito: transacao.created_at || ''
-                    });
-                }
-            }
-
-            // Adicionar cadastros_origem que não estão nas transações de bônus
-            if (cadastrosOrigem && cadastrosOrigem.length > 0) {
-                for (const cadastro of cadastrosOrigem) {
-                    if (clienteIdsProcessados.has(cadastro.cliente_id)) continue;
-                    clienteIdsProcessados.add(cadastro.cliente_id);
-
-                    const { data: saldoData } = await supabase
-                        .rpc('calcular_saldo_disponivel', { p_cliente_id: cadastro.cliente_id });
-
-                    participantesData.push({
-                        clienteId: cadastro.cliente_id,
-                        nome: cadastro.nome_cliente || 'Não informado',
-                        telefone: cadastro.telefone_cliente || '-',
-                        email: cadastro.email_cliente || '-',
-                        saldoDisponivel: saldoData || 0,
-                        dataCredito: cadastro.created_at || ''
                     });
                 }
             }
