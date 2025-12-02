@@ -71,22 +71,29 @@ const PromocoesAdmin = () => {
                 console.error('Erro ao buscar transações de bônus:', bonusError);
             }
 
+            // Buscar dados de cadastros_origem (fonte principal com histórico completo)
+            const { data: cadastrosOrigem } = await supabase
+                .from('cadastros_origem')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            // Criar mapa de cadastros por cliente_id
+            const cadastrosMap = new Map<string, any>();
+            if (cadastrosOrigem) {
+                cadastrosOrigem.forEach(c => cadastrosMap.set(c.cliente_id, c));
+            }
+
             const participantesData: ParticipantePromo[] = [];
             const clienteIdsProcessados = new Set<string>();
 
-            // Processar transações de bônus e buscar dados dos remetentes
+            // Processar transações de bônus com dados de cadastros_origem
             if (bonusTransacoes && bonusTransacoes.length > 0) {
                 for (const transacao of bonusTransacoes) {
                     if (clienteIdsProcessados.has(transacao.cliente_id)) continue;
                     clienteIdsProcessados.add(transacao.cliente_id);
 
-                    // Buscar dados do remetente (fonte principal dos dados dos clientes)
-                    const { data: remetenteData } = await supabase
-                        .from('remetentes')
-                        .select('nome, telefone, celular, email')
-                        .eq('cliente_id', transacao.cliente_id)
-                        .limit(1)
-                        .maybeSingle();
+                    // Buscar dados do cadastros_origem (fonte principal)
+                    const cadastroData = cadastrosMap.get(transacao.cliente_id);
 
                     // Buscar saldo disponível
                     const { data: saldoData } = await supabase
@@ -98,9 +105,9 @@ const PromocoesAdmin = () => {
 
                     participantesData.push({
                         clienteId: transacao.cliente_id,
-                        nome: remetenteData?.nome || `Cliente #${posicao}`,
-                        telefone: remetenteData?.telefone || remetenteData?.celular || '-',
-                        email: remetenteData?.email || '-',
+                        nome: cadastroData?.nome_cliente || `Cliente #${posicao}`,
+                        telefone: cadastroData?.telefone_cliente || '-',
+                        email: cadastroData?.email_cliente || '-',
                         saldoDisponivel: saldoData || 0,
                         dataCredito: transacao.created_at || ''
                     });
