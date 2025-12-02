@@ -1,11 +1,288 @@
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { PDFDocument } from "npm:pdf-lib@^1.17.1";
+import { PDFDocument, rgb, StandardFonts } from "npm:pdf-lib@^1.17.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Função para gerar PDF de fatura personalizado
+async function gerarPdfFaturaPersonalizado(
+  fatura: any,
+  pagadorData: any,
+  isSubfatura: boolean
+): Promise<string> {
+  const pdfDoc = await PDFDocument.create();
+  const page = pdfDoc.addPage([595, 842]); // A4
+  const { width, height } = page.getSize();
+  
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  
+  const primaryColor = rgb(0.96, 0.33, 0.11); // #F2541B (laranja)
+  const darkColor = rgb(0.1, 0.1, 0.1);
+  const grayColor = rgb(0.4, 0.4, 0.4);
+  const lightGray = rgb(0.95, 0.95, 0.95);
+  
+  let y = height - 50;
+  
+  // === HEADER ===
+  page.drawRectangle({
+    x: 0,
+    y: height - 100,
+    width: width,
+    height: 100,
+    color: primaryColor,
+  });
+  
+  page.drawText('BRHUB ENVIOS', {
+    x: 40,
+    y: height - 50,
+    size: 24,
+    font: fontBold,
+    color: rgb(1, 1, 1),
+  });
+  
+  page.drawText('FATURA', {
+    x: 40,
+    y: height - 75,
+    size: 14,
+    font: fontRegular,
+    color: rgb(1, 1, 1),
+  });
+  
+  page.drawText(`#${fatura.codigo}`, {
+    x: width - 150,
+    y: height - 50,
+    size: 20,
+    font: fontBold,
+    color: rgb(1, 1, 1),
+  });
+  
+  if (isSubfatura) {
+    page.drawText('SUBFATURA', {
+      x: width - 150,
+      y: height - 75,
+      size: 10,
+      font: fontRegular,
+      color: rgb(1, 1, 1),
+    });
+  }
+  
+  y = height - 130;
+  
+  // === DADOS DO PAGADOR ===
+  page.drawText('DADOS DO PAGADOR', {
+    x: 40,
+    y: y,
+    size: 12,
+    font: fontBold,
+    color: primaryColor,
+  });
+  
+  y -= 25;
+  
+  // Box do pagador
+  page.drawRectangle({
+    x: 40,
+    y: y - 80,
+    width: width - 80,
+    height: 90,
+    color: lightGray,
+    borderColor: rgb(0.85, 0.85, 0.85),
+    borderWidth: 1,
+  });
+  
+  page.drawText(pagadorData.nome || 'N/A', {
+    x: 50,
+    y: y - 5,
+    size: 14,
+    font: fontBold,
+    color: darkColor,
+  });
+  
+  const cpfFormatado = pagadorData.cpfCnpj?.length === 14 
+    ? pagadorData.cpfCnpj.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')
+    : pagadorData.cpfCnpj?.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') || 'N/A';
+  
+  page.drawText(`CPF/CNPJ: ${cpfFormatado}`, {
+    x: 50,
+    y: y - 25,
+    size: 10,
+    font: fontRegular,
+    color: grayColor,
+  });
+  
+  const endereco = pagadorData.endereco;
+  const enderecoLinha1 = `${endereco?.logradouro || ''}, ${endereco?.numero || 'S/N'}${endereco?.complemento ? ' - ' + endereco.complemento : ''}`;
+  const enderecoLinha2 = `${endereco?.bairro || ''} - ${endereco?.cidade || ''}/${endereco?.uf || ''} - CEP: ${endereco?.cep || ''}`;
+  
+  page.drawText(enderecoLinha1.substring(0, 70), {
+    x: 50,
+    y: y - 45,
+    size: 10,
+    font: fontRegular,
+    color: grayColor,
+  });
+  
+  page.drawText(enderecoLinha2.substring(0, 70), {
+    x: 50,
+    y: y - 60,
+    size: 10,
+    font: fontRegular,
+    color: grayColor,
+  });
+  
+  y -= 110;
+  
+  // === DETALHES DA FATURA ===
+  page.drawText('DETALHES DA FATURA', {
+    x: 40,
+    y: y,
+    size: 12,
+    font: fontBold,
+    color: primaryColor,
+  });
+  
+  y -= 30;
+  
+  // Grid de informações
+  const infoItems = [
+    { label: 'Período:', value: `${formatDate(fatura.periodoInicial)} a ${formatDate(fatura.periodoFinal)}` },
+    { label: 'Vencimento:', value: formatDate(fatura.dataVencimento) },
+    { label: 'Total de Objetos:', value: String(fatura.totalObjetos || '1') },
+    { label: 'Status:', value: fatura.status || 'PENDENTE' },
+  ];
+  
+  infoItems.forEach((item, index) => {
+    const xPos = index % 2 === 0 ? 40 : 300;
+    const yPos = y - Math.floor(index / 2) * 25;
+    
+    page.drawText(item.label, {
+      x: xPos,
+      y: yPos,
+      size: 10,
+      font: fontBold,
+      color: grayColor,
+    });
+    
+    page.drawText(item.value, {
+      x: xPos + 100,
+      y: yPos,
+      size: 10,
+      font: fontRegular,
+      color: darkColor,
+    });
+  });
+  
+  y -= 70;
+  
+  // === TABELA DE ITENS ===
+  page.drawText('ITENS', {
+    x: 40,
+    y: y,
+    size: 12,
+    font: fontBold,
+    color: primaryColor,
+  });
+  
+  y -= 25;
+  
+  // Header da tabela
+  page.drawRectangle({
+    x: 40,
+    y: y - 5,
+    width: width - 80,
+    height: 25,
+    color: darkColor,
+  });
+  
+  page.drawText('DESCRIÇÃO', { x: 50, y: y + 3, size: 9, font: fontBold, color: rgb(1, 1, 1) });
+  page.drawText('CÓDIGO', { x: 280, y: y + 3, size: 9, font: fontBold, color: rgb(1, 1, 1) });
+  page.drawText('STATUS', { x: 380, y: y + 3, size: 9, font: fontBold, color: rgb(1, 1, 1) });
+  page.drawText('VALOR', { x: 480, y: y + 3, size: 9, font: fontBold, color: rgb(1, 1, 1) });
+  
+  y -= 30;
+  
+  // Itens da fatura
+  const detalhes = fatura.detalhe || [];
+  detalhes.forEach((item: any, index: number) => {
+    const bgColor = index % 2 === 0 ? rgb(1, 1, 1) : lightGray;
+    
+    page.drawRectangle({
+      x: 40,
+      y: y - 5,
+      width: width - 80,
+      height: 22,
+      color: bgColor,
+    });
+    
+    page.drawText((item.nome || 'Envio').substring(0, 30), { x: 50, y: y + 2, size: 9, font: fontRegular, color: darkColor });
+    page.drawText(item.codigoObjeto || '-', { x: 280, y: y + 2, size: 9, font: fontRegular, color: darkColor });
+    page.drawText(item.status || '-', { x: 380, y: y + 2, size: 9, font: fontRegular, color: darkColor });
+    page.drawText(`R$ ${parseFloat(item.valor || 0).toFixed(2)}`, { x: 480, y: y + 2, size: 9, font: fontBold, color: darkColor });
+    
+    y -= 22;
+  });
+  
+  y -= 20;
+  
+  // === TOTAL ===
+  page.drawRectangle({
+    x: 350,
+    y: y - 10,
+    width: 205,
+    height: 50,
+    color: primaryColor,
+  });
+  
+  page.drawText('TOTAL A PAGAR', {
+    x: 365,
+    y: y + 20,
+    size: 10,
+    font: fontRegular,
+    color: rgb(1, 1, 1),
+  });
+  
+  page.drawText(`R$ ${parseFloat(fatura.totalFaturado || 0).toFixed(2)}`, {
+    x: 365,
+    y: y - 2,
+    size: 20,
+    font: fontBold,
+    color: rgb(1, 1, 1),
+  });
+  
+  // === FOOTER ===
+  page.drawText('BRHUB Envios - Sistema de Gestão de Fretes', {
+    x: 40,
+    y: 40,
+    size: 8,
+    font: fontRegular,
+    color: grayColor,
+  });
+  
+  page.drawText(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, {
+    x: 40,
+    y: 25,
+    size: 8,
+    font: fontRegular,
+    color: grayColor,
+  });
+  
+  const pdfBytes = await pdfDoc.save();
+  return btoa(String.fromCharCode(...pdfBytes));
+}
+
+function formatDate(dateStr: string): string {
+  if (!dateStr) return '-';
+  try {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('pt-BR');
+  } catch {
+    return dateStr;
+  }
+}
 
 interface FechamentoRequest {
   codigo_fatura: string;
@@ -306,37 +583,55 @@ serve(async (req) => {
       endereco_completo: `${logradouro}, ${numero} - ${bairro}, ${localidade}/${uf}`
     });
 
-    // ✅ ETAPA 2: Gerar PDF da Fatura via API
+    // ✅ ETAPA 2: Gerar PDF da Fatura
     console.log('📄 Etapa 2: Gerando PDF da fatura...');
     
-    // Para subfatura, usar formato: /faturas/imprimir/{faturaPaiId}/{subfaturaId}
-    // Para fatura normal, usar formato: /faturas/imprimir/{faturaId}
-    let pdfUrl;
-    if (isSubfatura && subfatura_id && fatura_pai_id) {
-      pdfUrl = `${baseApiUrl}/faturas/imprimir/${fatura_pai_id}/${subfatura_id}`;
-    } else {
-      pdfUrl = `${baseApiUrl}/faturas/imprimir/${fatura.id}`;
-    }
-    console.log('📄 URL para gerar PDF:', pdfUrl);
+    let faturaPdfBase64;
     
-    const pdfFaturaResponse = await fetch(pdfUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${apiToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    // Para SUBFATURAS: Gerar PDF personalizado com dados corretos do pagador
+    if (isSubfatura) {
+      console.log('📄 Gerando PDF PERSONALIZADO para subfatura...');
+      
+      const pagadorParaPdf = {
+        nome: clienteData.nome,
+        cpfCnpj: cpfCnpj,
+        telefone: telefone_cliente,
+        endereco: {
+          logradouro: logradouro,
+          numero: numero,
+          complemento: complemento,
+          bairro: bairro,
+          cidade: localidade,
+          uf: uf,
+          cep: cep,
+        }
+      };
+      
+      faturaPdfBase64 = await gerarPdfFaturaPersonalizado(fatura, pagadorParaPdf, true);
+      console.log('✅ PDF personalizado da subfatura gerado');
+    } else {
+      // Para FATURAS NORMAIS: usar API externa
+      const pdfUrl = `${baseApiUrl}/faturas/imprimir/${fatura.id}`;
+      console.log('📄 URL para gerar PDF:', pdfUrl);
+      
+      const pdfFaturaResponse = await fetch(pdfUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${apiToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-    if (!pdfFaturaResponse.ok) {
-      const pdfErrorText = await pdfFaturaResponse.text();
-      console.error('❌ Erro ao gerar PDF:', pdfErrorText);
-      throw new Error(`Erro ao gerar PDF da fatura: ${pdfFaturaResponse.status}`);
+      if (!pdfFaturaResponse.ok) {
+        const pdfErrorText = await pdfFaturaResponse.text();
+        console.error('❌ Erro ao gerar PDF:', pdfErrorText);
+        throw new Error(`Erro ao gerar PDF da fatura: ${pdfFaturaResponse.status}`);
+      }
+
+      const pdfFaturaData = await pdfFaturaResponse.json();
+      faturaPdfBase64 = pdfFaturaData.dados;
+      console.log('✅ PDF da fatura gerado via API');
     }
-
-    const pdfFaturaData = await pdfFaturaResponse.json();
-    const faturaPdfBase64 = pdfFaturaData.dados;
-
-    console.log('✅ PDF da fatura gerado');
 
     // ✅ ETAPA 4: Emitir boleto via Banco Inter
     console.log('💰 Etapa 4: Emitindo boleto...');
