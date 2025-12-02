@@ -50,7 +50,8 @@ export class FaturaService extends BaseService<IFatura> {
         telefoneCliente: string,
         faturaPaiId?: string,
         subfaturaId?: string,
-        cpfCnpjSubcliente?: string
+        cpfCnpjSubcliente?: string,
+        valorSubfatura?: string
     ): Promise<any> {
         const supabase = getSupabaseWithAuth();
         
@@ -63,6 +64,7 @@ export class FaturaService extends BaseService<IFatura> {
                 fatura_pai_id: faturaPaiId,
                 subfatura_id: subfaturaId,
                 cpf_cnpj_subcliente: cpfCnpjSubcliente,
+                valor_subfatura: valorSubfatura,
             }
         });
         
