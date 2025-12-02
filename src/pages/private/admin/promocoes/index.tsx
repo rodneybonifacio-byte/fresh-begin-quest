@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Gift, Users, DollarSign, ToggleLeft, ToggleRight, Save, Loader2, Phone, User, Wallet, RefreshCw } from 'lucide-react';
-import { supabase } from '../../../../integrations/supabase/client';
+import { getSupabaseWithAuth } from '../../../../integrations/supabase/custom-auth';
 import { toast } from 'sonner';
 import { Content } from '../../Content';
 
@@ -39,7 +39,8 @@ const PromocoesAdmin = () => {
     const fetchPromocoes = async () => {
         try {
             setLoading(true);
-            const { data, error } = await supabase
+            const supabaseAuth = getSupabaseWithAuth();
+            const { data, error } = await supabaseAuth
                 .from('contador_cadastros')
                 .select('*')
                 .order('created_at', { ascending: false });
@@ -57,9 +58,10 @@ const PromocoesAdmin = () => {
     const fetchParticipantes = async () => {
         try {
             setLoadingParticipantes(true);
+            const supabaseAuth = getSupabaseWithAuth();
             
             // Buscar transações de bônus dos 100 primeiros (fonte mais confiável)
-            const { data: bonusTransacoes, error: bonusError } = await supabase
+            const { data: bonusTransacoes, error: bonusError } = await supabaseAuth
                 .from('transacoes_credito')
                 .select('*')
                 .like('descricao', '%100 primeiros%')
@@ -71,7 +73,7 @@ const PromocoesAdmin = () => {
             }
 
             // Também buscar da cadastros_origem como fallback
-            const { data: cadastrosOrigem, error: origemError } = await supabase
+            const { data: cadastrosOrigem, error: origemError } = await supabaseAuth
                 .from('cadastros_origem')
                 .select('*')
                 .eq('origem', 'autocadastro')
@@ -91,7 +93,7 @@ const PromocoesAdmin = () => {
                     clienteIdsProcessados.add(transacao.cliente_id);
 
                     // Buscar dados do remetente para obter nome e telefone
-                    const { data: remetenteData } = await supabase
+                    const { data: remetenteData } = await supabaseAuth
                         .from('remetentes')
                         .select('*')
                         .eq('cliente_id', transacao.cliente_id)
@@ -99,7 +101,7 @@ const PromocoesAdmin = () => {
                         .maybeSingle();
 
                     // Buscar saldo disponível
-                    const { data: saldoData } = await supabase
+                    const { data: saldoData } = await supabaseAuth
                         .rpc('calcular_saldo_disponivel', { p_cliente_id: transacao.cliente_id });
 
                     // Extrair posição da descrição
@@ -122,7 +124,7 @@ const PromocoesAdmin = () => {
                     if (clienteIdsProcessados.has(cadastro.cliente_id)) continue;
                     clienteIdsProcessados.add(cadastro.cliente_id);
 
-                    const { data: saldoData } = await supabase
+                    const { data: saldoData } = await supabaseAuth
                         .rpc('calcular_saldo_disponivel', { p_cliente_id: cadastro.cliente_id });
 
                     participantesData.push({
@@ -163,7 +165,8 @@ const PromocoesAdmin = () => {
 
         try {
             setSaving(promocao.id);
-            const { error } = await supabase
+            const supabaseAuth = getSupabaseWithAuth();
+            const { error } = await supabaseAuth
                 .from('contador_cadastros')
                 .update({
                     ...changes,
@@ -191,7 +194,8 @@ const PromocoesAdmin = () => {
     const toggleAtivo = async (promocao: Promocao) => {
         try {
             setSaving(promocao.id);
-            const { error } = await supabase
+            const supabaseAuth = getSupabaseWithAuth();
+            const { error } = await supabaseAuth
                 .from('contador_cadastros')
                 .update({
                     ativo: !promocao.ativo,
