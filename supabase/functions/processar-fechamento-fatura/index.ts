@@ -258,11 +258,17 @@ serve(async (req) => {
     // ✅ ETAPA 2: Gerar PDF da Fatura via API
     console.log('📄 Etapa 2: Gerando PDF da fatura...');
     
-    // Para subfatura, usar o ID da subfatura para gerar o PDF
-    const idParaPdf = isSubfatura && subfatura_id ? subfatura_id : fatura.id;
-    console.log('📄 ID para gerar PDF:', idParaPdf);
+    // Para subfatura, usar formato: /faturas/imprimir/{faturaPaiId}/{subfaturaId}
+    // Para fatura normal, usar formato: /faturas/imprimir/{faturaId}
+    let pdfUrl;
+    if (isSubfatura && subfatura_id && fatura_pai_id) {
+      pdfUrl = `${baseApiUrl}/faturas/imprimir/${fatura_pai_id}/${subfatura_id}`;
+    } else {
+      pdfUrl = `${baseApiUrl}/faturas/imprimir/${fatura.id}`;
+    }
+    console.log('📄 URL para gerar PDF:', pdfUrl);
     
-    const pdfFaturaResponse = await fetch(`${baseApiUrl}/faturas/imprimir/${idParaPdf}`, {
+    const pdfFaturaResponse = await fetch(pdfUrl, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${apiToken}`,
@@ -271,6 +277,8 @@ serve(async (req) => {
     });
 
     if (!pdfFaturaResponse.ok) {
+      const pdfErrorText = await pdfFaturaResponse.text();
+      console.error('❌ Erro ao gerar PDF:', pdfErrorText);
       throw new Error(`Erro ao gerar PDF da fatura: ${pdfFaturaResponse.status}`);
     }
 
