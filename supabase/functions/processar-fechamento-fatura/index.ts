@@ -107,45 +107,53 @@ serve(async (req) => {
     const baseApiUrl = Deno.env.get('BASE_API_URL') || 'https://envios.brhubb.com.br/api';
     const apiToken = authHeader.replace('Bearer ', '');
     
-    // Se for subfatura, buscar a fatura pai
-    const idParaBuscar = fatura_pai_id || fatura_id || codigo_fatura;
-    
-    console.log('🔍 Buscando fatura com ID:', idParaBuscar);
-    
-    // Buscar pela API usando o ID da fatura
-    const faturaResponse = await fetch(`${baseApiUrl}/faturas/admin/${idParaBuscar}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${apiToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!faturaResponse.ok) {
-      const errorText = await faturaResponse.text();
-      throw new Error(`Erro ao buscar fatura: ${faturaResponse.status} - ${errorText}`);
-    }
-
-    const faturaDataResponse = await faturaResponse.json();
-    let fatura = faturaDataResponse.data;
-    const faturaPai = fatura; // Guardar referência da fatura pai
+    let fatura;
     let isSubfatura = false;
     
-    // Se for subfatura, procurar dentro do array de subfaturas
-    if (subfatura_id && fatura.faturas && Array.isArray(fatura.faturas)) {
-      console.log('🔍 Procurando subfatura com ID:', subfatura_id);
-      const subfatura = fatura.faturas.find((f: any) => f.id === subfatura_id);
-      
-      if (!subfatura) {
-        throw new Error('Subfatura não encontrada dentro da fatura pai');
-      }
-      
-      console.log('✅ Subfatura encontrada');
-      fatura = subfatura;
+    // Se temos subfatura_id, buscar diretamente a subfatura
+    if (subfatura_id) {
+      console.log('🔍 Buscando SUBFATURA diretamente com ID:', subfatura_id);
       isSubfatura = true;
+      
+      const subfaturaResponse = await fetch(`${baseApiUrl}/faturas/admin/${subfatura_id}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${apiToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!subfaturaResponse.ok) {
+        const errorText = await subfaturaResponse.text();
+        throw new Error(`Erro ao buscar subfatura: ${subfaturaResponse.status} - ${errorText}`);
+      }
+
+      const subfaturaDataResponse = await subfaturaResponse.json();
+      fatura = subfaturaDataResponse.data;
+      console.log('✅ Subfatura encontrada diretamente');
+    } else {
+      // Buscar fatura normal
+      const idParaBuscar = fatura_id || codigo_fatura;
+      console.log('🔍 Buscando fatura com ID:', idParaBuscar);
+      
+      const faturaResponse = await fetch(`${baseApiUrl}/faturas/admin/${idParaBuscar}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${apiToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!faturaResponse.ok) {
+        const errorText = await faturaResponse.text();
+        throw new Error(`Erro ao buscar fatura: ${faturaResponse.status} - ${errorText}`);
+      }
+
+      const faturaDataResponse = await faturaResponse.json();
+      fatura = faturaDataResponse.data;
     }
 
-    console.log('🔍 DEBUG - Resposta completa da API:', JSON.stringify(faturaDataResponse, null, 2));
+    console.log('🔍 DEBUG - Fatura obtida:', JSON.stringify(fatura, null, 2));
 
     if (!fatura) {
       throw new Error('Fatura não encontrada');
@@ -157,6 +165,7 @@ serve(async (req) => {
       valor: fatura.totalFaturado,
       periodo: `${fatura.periodoInicial} - ${fatura.periodoFinal}`,
       isSubfatura: isSubfatura,
+      temRemetente: !!fatura.remetente,
     });
 
     // ✅ ETAPA 3: Extrair cadastro completo do cliente/pagador
