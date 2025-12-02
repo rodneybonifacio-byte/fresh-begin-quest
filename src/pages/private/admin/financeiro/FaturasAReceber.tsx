@@ -177,6 +177,9 @@ const FinanceiroFaturasAReceber = () => {
         // Para subfaturas, enviar o cpfCnpj do remetente/subcliente
         const cpfCnpjSubcliente = ehSubfatura ? fatura.cpfCnpj : undefined;
         
+        // Para subfaturas, usar o totalFaturado da própria subfatura
+        const valorSubfatura = ehSubfatura ? fatura.totalFaturado : undefined;
+        
         const payload = {
             fatura_id: ehSubfatura ? fatura.faturaId : faturaId,
             codigo_fatura: codigoFatura,
@@ -184,7 +187,8 @@ const FinanceiroFaturasAReceber = () => {
             telefone_cliente: telefoneCliente,
             fatura_pai_id: faturaPaiId,
             subfatura_id: subfaturaId,
-            cpf_cnpj_subcliente: cpfCnpjSubcliente
+            cpf_cnpj_subcliente: cpfCnpjSubcliente,
+            valor_subfatura: valorSubfatura // Valor específico da subfatura
         };
 
         try {
@@ -206,7 +210,8 @@ const FinanceiroFaturasAReceber = () => {
                 telefoneCliente,
                 faturaPaiId,
                 subfaturaId,
-                cpfCnpjSubcliente
+                cpfCnpjSubcliente,
+                valorSubfatura
             );
             
             // Registrar sucesso

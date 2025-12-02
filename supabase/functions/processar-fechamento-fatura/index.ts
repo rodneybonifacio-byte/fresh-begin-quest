@@ -369,11 +369,12 @@ serve(async (req) => {
       );
     }
 
-    const { codigo_fatura, nome_cliente, fatura_id, fatura_pai_id, subfatura_id, cpf_cnpj_subcliente } = await req.json() as FechamentoRequest & { 
+    const { codigo_fatura, nome_cliente, fatura_id, fatura_pai_id, subfatura_id, cpf_cnpj_subcliente, valor_subfatura } = await req.json() as FechamentoRequest & { 
       fatura_id?: string;
       fatura_pai_id?: string;
       subfatura_id?: string;
       cpf_cnpj_subcliente?: string;
+      valor_subfatura?: string;
     };
 
     console.log('🚀 Iniciando fechamento da fatura:', codigo_fatura);
@@ -382,7 +383,8 @@ serve(async (req) => {
     console.log('👨‍👧 Fatura Pai ID:', fatura_pai_id);
     console.log('👶 Subfatura ID:', subfatura_id);
     console.log('📄 CPF/CNPJ Subcliente:', cpf_cnpj_subcliente);
-    console.log('🔄 VERSÃO DA FUNÇÃO: 3.0 - BUSCA REMETENTE');
+    console.log('💰 Valor Subfatura (do frontend):', valor_subfatura);
+    console.log('🔄 VERSÃO DA FUNÇÃO: 4.0 - VALOR SUBFATURA DO FRONTEND');
 
     // ✅ ETAPA 1: Buscar dados completos da fatura via API Backend
     console.log('📊 Etapa 1: Buscando dados completos da fatura...');
@@ -392,7 +394,9 @@ serve(async (req) => {
     
     let fatura;
     let isSubfatura = !!subfatura_id;
-    let valorSubfatura: number | null = null; // Valor específico da subfatura
+    // Usar valor_subfatura do frontend se disponível
+    let valorSubfatura: number | null = valor_subfatura ? parseFloat(valor_subfatura) : null;
+    console.log('💰 Valor subfatura inicial (do frontend):', valorSubfatura);
     let remetenteData = null;
     
     // Se for subfatura, precisamos buscar a fatura pai E os dados do remetente
@@ -433,9 +437,13 @@ serve(async (req) => {
         if (subfaturaEncontrada) {
           console.log('✅ Subfatura encontrada:', JSON.stringify(subfaturaEncontrada, null, 2));
           
-          // Extrair VALOR da subfatura (campo totalFaturado da subfatura)
-          valorSubfatura = parseFloat(subfaturaEncontrada.totalFaturado || subfaturaEncontrada.valor || '0');
-          console.log('💰 Valor da SUBFATURA extraído:', valorSubfatura);
+          // Extrair VALOR da subfatura APENAS se não foi passado pelo frontend
+          if (valorSubfatura === null || valorSubfatura === 0) {
+            valorSubfatura = parseFloat(subfaturaEncontrada.totalFaturado || subfaturaEncontrada.valor || '0');
+            console.log('💰 Valor da SUBFATURA extraído do array:', valorSubfatura);
+          } else {
+            console.log('💰 Usando valor da subfatura do FRONTEND:', valorSubfatura);
+          }
           
           // Extrair dados do remetente da subfatura
           // A subfatura contém os dados do remetente/subcliente
