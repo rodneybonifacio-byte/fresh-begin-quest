@@ -163,6 +163,63 @@ const FinanceiroFaturasAReceber = () => {
         }
     };
 
+    // FUNÇÃO DE TESTE - Gera apenas o PDF sem boleto
+    const handleTestarPDF = async (fatura: IFatura) => {
+        const nomeCliente = fatura.nome ?? fatura.cliente.nome;
+        const codigoFatura = fatura.codigo || '';
+        const faturaId = fatura.id;
+        
+        // Identificar se é subfatura
+        const ehSubfatura = !!fatura.faturaId;
+        const cpfCnpjSubcliente = ehSubfatura ? fatura.cpfCnpj : undefined;
+        const valorSubfatura = ehSubfatura ? fatura.totalFaturado : undefined;
+        
+        const payload = {
+            fatura_id: ehSubfatura ? fatura.faturaId : faturaId,
+            codigo_fatura: codigoFatura,
+            nome_cliente: nomeCliente,
+            telefone_cliente: '11999999999',
+            fatura_pai_id: ehSubfatura ? fatura.faturaId : undefined,
+            subfatura_id: ehSubfatura ? fatura.id : undefined,
+            cpf_cnpj_subcliente: cpfCnpjSubcliente,
+            valor_subfatura: valorSubfatura,
+            apenas_pdf: true // Flag para apenas gerar PDF
+        };
+
+        try {
+            setIsLoading(true);
+            toast.info('Gerando PDF de teste...');
+            
+            const { data, error } = await supabase.functions.invoke('processar-fechamento-fatura', {
+                body: payload
+            });
+            
+            if (error) throw error;
+            
+            console.log('📄 Resultado PDF teste:', data);
+            
+            if (data?.fatura_pdf) {
+                // Abrir modal apenas com o PDF da fatura
+                setIsModalFechamento({
+                    isOpen: true,
+                    faturaPdf: data.fatura_pdf,
+                    boletoPdf: null,
+                    codigoFatura: codigoFatura,
+                    nomeCliente: nomeCliente,
+                    boletoInfo: undefined
+                });
+                toast.success('PDF gerado com sucesso!');
+            } else {
+                toast.error('PDF não foi gerado');
+            }
+        } catch (error: any) {
+            console.error('Erro ao gerar PDF teste:', error);
+            toast.error(error?.message || 'Erro ao gerar PDF');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const handleRealizarFechamento = async (fatura: IFatura) => {
         const nomeCliente = fatura.nome ?? fatura.cliente.nome;
         const codigoFatura = fatura.codigo || '';
@@ -468,6 +525,7 @@ const FinanceiroFaturasAReceber = () => {
                         verificarFechamentoExistente={verificarFechamentoExistenteSync}
                         visualizarFechamento={handleVisualizarFechamento}
                         cancelarBoleto={handleCancelarBoleto}
+                        testarPDF={handleTestarPDF}
                     />
 
                     <div className="py-3">
