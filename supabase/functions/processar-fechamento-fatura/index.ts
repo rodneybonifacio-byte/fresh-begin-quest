@@ -486,144 +486,96 @@ serve(async (req) => {
       console.log('📝 Cache não encontrado, gerando novo fechamento...');
     }
 
-    // ✅ ETAPA 1: Buscar dados completos da fatura via API Backend
-    console.log('📊 Etapa 1: Buscando dados completos da fatura...');
+    // ✅ ETAPA 1: Buscar dados em PARALELO para otimização
+    console.log('📊 Etapa 1: Buscando dados (otimizado)...');
     
     const baseApiUrl = Deno.env.get('BASE_API_URL') || 'https://envios.brhubb.com.br/api';
     const apiToken = authHeader.replace('Bearer ', '');
     
     let fatura;
     let isSubfatura = !!subfatura_id;
-    // Usar valor_subfatura do frontend se disponível
     let valorSubfatura: number | null = valor_subfatura ? parseFloat(valor_subfatura) : null;
-    console.log('💰 Valor subfatura inicial (do frontend):', valorSubfatura);
     let remetenteData = null;
     
-    // Se for subfatura, precisamos buscar a fatura pai E os dados do remetente
+    // 🚀 OTIMIZAÇÃO: Iniciar chamadas em paralelo
+    const cnpjLimpo = cpf_cnpj_subcliente?.replace(/\D/g, '') || '';
+    const isCNPJ = cnpjLimpo.length === 14;
+    
+    // Preparar promessas para execução paralela
+    const faturaPromise = fetch(`${baseApiUrl}/faturas/admin/${isSubfatura && fatura_pai_id ? fatura_pai_id : fatura_id}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    // Buscar BrasilAPI em paralelo (apenas se for CNPJ e subfatura)
+    const brasilApiPromise = (isSubfatura && isCNPJ) 
+      ? fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`).catch(() => null)
+      : Promise.resolve(null);
+    
+    // Executar ambas em paralelo
+    const [faturaResponse, brasilApiResponse] = await Promise.all([faturaPromise, brasilApiPromise]);
+    
+    // Processar resposta da fatura
+    if (!faturaResponse.ok) {
+      const errorText = await faturaResponse.text();
+      throw new Error(`Erro ao buscar fatura: ${faturaResponse.status} - ${errorText}`);
+    }
+    const faturaDataResponse = await faturaResponse.json();
+    fatura = faturaDataResponse.data;
+    
+    // Processar subfatura se necessário
     if (isSubfatura && fatura_pai_id) {
-      console.log('🔍 É SUBFATURA - Buscando fatura PAI com ID:', fatura_pai_id);
-      
-      // Buscar fatura pai
-      const faturaResponse = await fetch(`${baseApiUrl}/faturas/admin/${fatura_pai_id}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${apiToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!faturaResponse.ok) {
-        const errorText = await faturaResponse.text();
-        throw new Error(`Erro ao buscar fatura pai: ${faturaResponse.status} - ${errorText}`);
-      }
-
-      const faturaDataResponse = await faturaResponse.json();
-      fatura = faturaDataResponse.data;
-      console.log('✅ Fatura pai encontrada');
-      
-      // LOG DETALHADO: Ver TODOS os campos da fatura pai
-      console.log('📋 CAMPOS da fatura pai:', Object.keys(fatura));
-      console.log('📋 fatura.faturas existe?:', !!fatura.faturas);
-      console.log('📋 fatura.subFaturas existe?:', !!fatura.subFaturas);
-      console.log('📋 ESTRUTURA COMPLETA FATURA PAI:', JSON.stringify(fatura, null, 2));
-      
-      // Procurar a subfatura - tentar múltiplos nomes de campo
       const subfaturasArray = fatura.faturas || fatura.subFaturas || fatura.subclientes || [];
       
       if (subfatura_id && subfaturasArray.length > 0) {
-        console.log('🔍 Procurando subfatura dentro do array (length:', subfaturasArray.length, ')...');
         const subfaturaEncontrada = subfaturasArray.find((f: any) => f.id === subfatura_id);
         
         if (subfaturaEncontrada) {
-          console.log('✅ Subfatura encontrada:', JSON.stringify(subfaturaEncontrada, null, 2));
-          
-          // Extrair VALOR da subfatura APENAS se não foi passado pelo frontend
           if (valorSubfatura === null || valorSubfatura === 0) {
             valorSubfatura = parseFloat(subfaturaEncontrada.totalFaturado || subfaturaEncontrada.valor || '0');
-            console.log('💰 Valor da SUBFATURA extraído do array:', valorSubfatura);
-          } else {
-            console.log('💰 Usando valor da subfatura do FRONTEND:', valorSubfatura);
           }
           
-          // Extrair dados do remetente da subfatura
-          // A subfatura contém os dados do remetente/subcliente
-          remetenteData = {
-            nome: subfaturaEncontrada.nome || nome_cliente,
-            cpfCnpj: subfaturaEncontrada.cpfCnpj || cpf_cnpj_subcliente,
-            telefone: subfaturaEncontrada.telefone || '11999999999',
-            cep: subfaturaEncontrada.cep,
-            logradouro: subfaturaEncontrada.logradouro,
-            numero: subfaturaEncontrada.numero,
-            complemento: subfaturaEncontrada.complemento || '',
-            bairro: subfaturaEncontrada.bairro,
-            localidade: subfaturaEncontrada.localidade || subfaturaEncontrada.cidade,
-            uf: subfaturaEncontrada.uf || subfaturaEncontrada.estado,
-          };
-          console.log('📋 Dados do remetente extraídos da subfatura:', JSON.stringify(remetenteData, null, 2));
-        } else {
-          console.log('⚠️ Subfatura não encontrada no array faturas');
-        }
-      }
-      
-      // Buscar dados do CNPJ via BrasilAPI (Receita Federal)
-      if (!remetenteData && cpf_cnpj_subcliente) {
-        const cnpjLimpo = cpf_cnpj_subcliente.replace(/\D/g, '');
-        console.log('🔍 Buscando CNPJ na BrasilAPI (Receita Federal):', cnpjLimpo);
-        
-        // Verificar se é CNPJ (14 dígitos) - BrasilAPI só funciona para CNPJ
-        if (cnpjLimpo.length === 14) {
-          try {
-            const brasilApiResponse = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`);
-            console.log('📡 BrasilAPI Status:', brasilApiResponse.status);
-            
-            if (brasilApiResponse.ok) {
-              const cnpjData = await brasilApiResponse.json();
-              console.log('✅ Dados CNPJ da Receita Federal:', JSON.stringify(cnpjData, null, 2));
-              
-              remetenteData = {
-                nome: cnpjData.razao_social || cnpjData.nome_fantasia || nome_cliente,
-                cpfCnpj: cnpjLimpo,
-                telefone: cnpjData.ddd_telefone_1 ? `${cnpjData.ddd_telefone_1}`.replace(/\D/g, '') : '11999999999',
-                cep: cnpjData.cep?.replace(/\D/g, '') || '',
-                logradouro: cnpjData.logradouro || cnpjData.descricao_tipo_de_logradouro + ' ' + cnpjData.logradouro || '',
-                numero: cnpjData.numero || 'S/N',
-                complemento: (cnpjData.complemento || '').substring(0, 30),
-                bairro: cnpjData.bairro || '',
-                localidade: cnpjData.municipio || '',
-                uf: cnpjData.uf || '',
-              };
-              console.log('✅ Dados do remetente via BrasilAPI:', JSON.stringify(remetenteData, null, 2));
-            } else {
-              const errorText = await brasilApiResponse.text();
-              console.log('⚠️ BrasilAPI erro:', errorText);
-            }
-          } catch (brasilApiErr) {
-            console.log('⚠️ Erro ao consultar BrasilAPI:', brasilApiErr);
+          // Extrair dados do remetente da subfatura se disponível
+          if (subfaturaEncontrada.cep) {
+            remetenteData = {
+              nome: subfaturaEncontrada.nome || nome_cliente,
+              cpfCnpj: subfaturaEncontrada.cpfCnpj || cpf_cnpj_subcliente,
+              telefone: subfaturaEncontrada.telefone || '11999999999',
+              cep: subfaturaEncontrada.cep,
+              logradouro: subfaturaEncontrada.logradouro,
+              numero: subfaturaEncontrada.numero,
+              complemento: subfaturaEncontrada.complemento || '',
+              bairro: subfaturaEncontrada.bairro,
+              localidade: subfaturaEncontrada.localidade || subfaturaEncontrada.cidade,
+              uf: subfaturaEncontrada.uf || subfaturaEncontrada.estado,
+            };
           }
-        } else {
-          console.log('⚠️ CPF não suportado pela BrasilAPI, usando dados do cliente principal');
         }
       }
-    } else {
-      // Buscar fatura normal
-      const idParaBuscar = fatura_id || codigo_fatura;
-      console.log('🔍 Buscando fatura com ID:', idParaBuscar);
       
-      const faturaResponse = await fetch(`${baseApiUrl}/faturas/admin/${idParaBuscar}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${apiToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!faturaResponse.ok) {
-        const errorText = await faturaResponse.text();
-        throw new Error(`Erro ao buscar fatura: ${faturaResponse.status} - ${errorText}`);
+      // Usar dados da BrasilAPI se não temos remetenteData e a requisição foi bem sucedida
+      if (!remetenteData && brasilApiResponse && brasilApiResponse.ok) {
+        try {
+          const cnpjData = await brasilApiResponse.json();
+          remetenteData = {
+            nome: cnpjData.razao_social || cnpjData.nome_fantasia || nome_cliente,
+            cpfCnpj: cnpjLimpo,
+            telefone: cnpjData.ddd_telefone_1 ? `${cnpjData.ddd_telefone_1}`.replace(/\D/g, '') : '11999999999',
+            cep: cnpjData.cep?.replace(/\D/g, '') || '',
+            logradouro: cnpjData.logradouro || '',
+            numero: cnpjData.numero || 'S/N',
+            complemento: (cnpjData.complemento || '').substring(0, 30),
+            bairro: cnpjData.bairro || '',
+            localidade: cnpjData.municipio || '',
+            uf: cnpjData.uf || '',
+          };
+        } catch (e) {
+          console.log('⚠️ Erro ao processar BrasilAPI');
+        }
       }
-
-      const faturaDataResponse = await faturaResponse.json();
-      fatura = faturaDataResponse.data;
     }
 
     console.log('🔍 DEBUG - Fatura obtida');
