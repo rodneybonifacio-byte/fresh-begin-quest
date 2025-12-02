@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { PDFDocument } from "npm:pdf-lib@^1.17.1";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -171,52 +172,48 @@ serve(async (req) => {
         }
       }
       
-      // Se ainda não temos dados do remetente, tentar buscar via API
+      // Se ainda não temos dados do remetente, buscar DIRETAMENTE no Supabase
       if (!remetenteData && cpf_cnpj_subcliente) {
-        console.log('🔍 Tentando buscar REMETENTE via API com CPF/CNPJ:', cpf_cnpj_subcliente);
+        console.log('🔍 Buscando REMETENTE no Supabase com CPF/CNPJ:', cpf_cnpj_subcliente);
         
         try {
-          // Tentar endpoint admin de remetentes com filtro
-          const remetentesResponse = await fetch(`${baseApiUrl}/remetentes/admin?cpfCnpj=${cpf_cnpj_subcliente}`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${apiToken}`,
-              'Content-Type': 'application/json',
-            },
-          });
+          const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+          const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+          const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
           
-          console.log('📡 Status resposta remetentes admin:', remetentesResponse.status);
+          // Limpar CPF/CNPJ para comparação
+          const cpfLimpo = cpf_cnpj_subcliente.replace(/\D/g, '');
           
-          if (remetentesResponse.ok) {
-            const remetentesDataResponse = await remetentesResponse.json();
-            console.log('📋 Resposta remetentes admin:', JSON.stringify(remetentesDataResponse, null, 2));
+          // Buscar remetente no Supabase
+          const { data: remetentesSupabase, error: remetenteError } = await supabaseClient
+            .from('remetentes')
+            .select('*')
+            .or(`cpf_cnpj.eq.${cpfLimpo},cpf_cnpj.eq.${cpf_cnpj_subcliente}`);
+          
+          console.log('📡 Resposta Supabase remetentes:', { data: remetentesSupabase, error: remetenteError });
+          
+          if (!remetenteError && remetentesSupabase && remetentesSupabase.length > 0) {
+            const remetenteSupabase = remetentesSupabase[0];
+            console.log('✅ Remetente encontrado no Supabase:', JSON.stringify(remetenteSupabase, null, 2));
             
-            // Filtrar pelo cpfCnpj correto
-            const remetentes = remetentesDataResponse.data || [];
-            const remetenteCorreto = remetentes.find((r: any) => 
-              r.cpfCnpj === cpf_cnpj_subcliente || 
-              r.cpfCnpj?.replace(/\D/g, '') === cpf_cnpj_subcliente?.replace(/\D/g, '')
-            );
-            
-            if (remetenteCorreto) {
-              // Mapear estrutura do remetente (endereço pode estar aninhado)
-              remetenteData = {
-                nome: remetenteCorreto.nome,
-                cpfCnpj: remetenteCorreto.cpfCnpj,
-                telefone: remetenteCorreto.telefone || '11999999999',
-                cep: remetenteCorreto.endereco?.cep || remetenteCorreto.cep,
-                logradouro: remetenteCorreto.endereco?.logradouro || remetenteCorreto.logradouro,
-                numero: remetenteCorreto.endereco?.numero || remetenteCorreto.numero,
-                complemento: remetenteCorreto.endereco?.complemento || remetenteCorreto.complemento || '',
-                bairro: remetenteCorreto.endereco?.bairro || remetenteCorreto.bairro,
-                localidade: remetenteCorreto.endereco?.localidade || remetenteCorreto.localidade,
-                uf: remetenteCorreto.endereco?.uf || remetenteCorreto.uf,
-              };
-              console.log('✅ Remetente encontrado via API admin:', JSON.stringify(remetenteData, null, 2));
-            }
+            remetenteData = {
+              nome: remetenteSupabase.nome,
+              cpfCnpj: remetenteSupabase.cpf_cnpj,
+              telefone: remetenteSupabase.telefone || remetenteSupabase.celular || '11999999999',
+              cep: remetenteSupabase.cep,
+              logradouro: remetenteSupabase.logradouro,
+              numero: remetenteSupabase.numero,
+              complemento: remetenteSupabase.complemento || '',
+              bairro: remetenteSupabase.bairro,
+              localidade: remetenteSupabase.localidade,
+              uf: remetenteSupabase.uf,
+            };
+            console.log('✅ Dados do remetente mapeados:', JSON.stringify(remetenteData, null, 2));
+          } else {
+            console.log('⚠️ Remetente não encontrado no Supabase');
           }
         } catch (remetErr) {
-          console.log('⚠️ Erro ao buscar remetente via API:', remetErr);
+          console.log('⚠️ Erro ao buscar remetente no Supabase:', remetErr);
         }
       }
     } else {
