@@ -4,13 +4,14 @@ import { FaturaMobileList } from '../../../../components/faturas/FaturaMobileLis
 import { useBreakpoint } from '../../../../hooks/useBreakpoint';
 import React from 'react';
 
-interface TabelaFaturasClienteProps {
+export interface TabelaFaturasClienteProps {
     faturas: IFatura[];
     setIsModalConfirmaPagamento: (data: { isOpen: boolean; fatura: IFatura }) => void;
     realizarFechamento: (fatura: IFatura) => void;
     verificarFechamentoExistente: (faturaId: string) => any;
     visualizarFechamento: (fatura: IFatura) => void;
     cancelarBoleto: (fatura: IFatura) => void;
+    testarPDF?: (fatura: IFatura) => void;
 }
 
 export const TabelaFaturasCliente: React.FC<TabelaFaturasClienteProps> = ({
@@ -20,6 +21,7 @@ export const TabelaFaturasCliente: React.FC<TabelaFaturasClienteProps> = ({
     verificarFechamentoExistente,
     visualizarFechamento,
     cancelarBoleto,
+    testarPDF,
 }) => {
     const isMobile = useBreakpoint(undefined, 'md');
 
@@ -42,6 +44,7 @@ export const TabelaFaturasCliente: React.FC<TabelaFaturasClienteProps> = ({
                     verificarFechamentoExistente={verificarFechamentoExistente}
                     visualizarFechamento={visualizarFechamento}
                     cancelarBoleto={cancelarBoleto}
+                    testarPDF={testarPDF}
                 />
             )}
         </div>

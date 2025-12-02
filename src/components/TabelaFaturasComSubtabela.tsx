@@ -8,7 +8,7 @@ import { formatCpfCnpj } from '../utils/lib.formats';
 import { formatarDataVencimento } from '../utils/date-utils';
 import { StatusBadge } from './StatusBadge';
 import { CopiadorDeId } from './CopiadorDeId';
-import { Eye, CheckCircle, CreditCard, MessageCircle, XCircle, Send } from 'lucide-react';
+import { Eye, CheckCircle, CreditCard, MessageCircle, XCircle, Send, FileText } from 'lucide-react';
 import { ModalEnviarFaturaWhatsApp } from './ModalEnviarFaturaWhatsApp';
 
 interface TabelaFaturasComSubtabelaProps {
@@ -18,6 +18,7 @@ interface TabelaFaturasComSubtabelaProps {
     verificarFechamentoExistente: (faturaId: string) => any;
     visualizarFechamento: (fatura: IFatura) => void;
     cancelarBoleto: (fatura: IFatura) => void;
+    testarPDF?: (fatura: IFatura) => void;
 }
 
 export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps> = ({
@@ -27,6 +28,7 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
     verificarFechamentoExistente,
     visualizarFechamento,
     cancelarBoleto,
+    testarPDF,
 }) => {
     const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
     const [modalEnviarFatura, setModalEnviarFatura] = useState<{
@@ -98,12 +100,18 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
                         onClick: (row) => visualizarFechamento(row),
                         show: (row) => !!(verificarFechamentoExistente(row.id)) && (row.status === 'PENDENTE' || row.status === 'PAGO_PARCIAL'),
                     },
-                {
-                    label: 'Realizar Fechamento',
-                    icon: <CheckCircle size={16} />,
-                    onClick: (row) => realizarFechamento(row),
-                    show: (row) => !verificarFechamentoExistente(row.id) && (row.status === 'PENDENTE' || row.status === 'PAGO_PARCIAL'),
-                },
+                    {
+                        label: 'Realizar Fechamento',
+                        icon: <CheckCircle size={16} />,
+                        onClick: (row) => realizarFechamento(row),
+                        show: (row) => !verificarFechamentoExistente(row.id) && (row.status === 'PENDENTE' || row.status === 'PAGO_PARCIAL'),
+                    },
+                    {
+                        label: '🧪 Testar PDF',
+                        icon: <FileText size={16} />,
+                        onClick: (row) => testarPDF?.(row),
+                        show: () => !!testarPDF,
+                    },
                     {
                         label: 'Confirmar Pagamento',
                         icon: <CreditCard size={16} />,
@@ -199,6 +207,12 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
                     show: (row) => !verificarFechamentoExistente(row.id) && (!row.faturas || row.faturas.length === 0) && (row.status === 'PENDENTE' || row.status === 'PAGO_PARCIAL'),
                 },
                 {
+                    label: '🧪 Testar PDF',
+                    icon: <FileText size={16} />,
+                    onClick: (row) => testarPDF?.(row),
+                    show: () => !!testarPDF,
+                },
+                {
                     label: 'Confirmar Pagamento',
                     icon: <CreditCard size={16} />,
                     onClick: (row) => setIsModalConfirmaPagamento({ isOpen: true, fatura: row }),
@@ -211,18 +225,18 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
                     show: () => false,
                     disabled: true,
                 },
-                    {
-                        label: 'Cancelar Boleto',
-                        icon: <XCircle size={16} />,
-                        onClick: (row) => cancelarBoleto(row),
-                        show: (row) => !!(verificarFechamentoExistente(row.id)) && (!row.faturas || row.faturas.length === 0) && (row.status === 'PENDENTE' || row.status === 'PAGO_PARCIAL'),
-                    },
-                    {
-                        label: 'Enviar Fatura',
-                        icon: <Send size={16} />,
-                        onClick: (row) => abrirModalEnviarFatura(row),
-                        show: (row) => !!(verificarFechamentoExistente(row.id)) && (!row.faturas || row.faturas.length === 0),
-                    },
+                {
+                    label: 'Cancelar Boleto',
+                    icon: <XCircle size={16} />,
+                    onClick: (row) => cancelarBoleto(row),
+                    show: (row) => !!(verificarFechamentoExistente(row.id)) && (!row.faturas || row.faturas.length === 0) && (row.status === 'PENDENTE' || row.status === 'PAGO_PARCIAL'),
+                },
+                {
+                    label: 'Enviar Fatura',
+                    icon: <Send size={16} />,
+                    onClick: (row) => abrirModalEnviarFatura(row),
+                    show: (row) => !!(verificarFechamentoExistente(row.id)) && (!row.faturas || row.faturas.length === 0),
+                },
             ]}
             subTable={{
                 hasSubData: (row) => !!(row.faturas && row.faturas.length > 0),

@@ -248,6 +248,7 @@ interface FechamentoRequest {
   codigo_fatura: string;
   nome_cliente: string;
   telefone_cliente: string;
+  apenas_pdf?: boolean;
 }
 
 serve(async (req) => {
@@ -325,7 +326,7 @@ serve(async (req) => {
       );
     }
 
-    const { codigo_fatura, nome_cliente, fatura_id, fatura_pai_id, subfatura_id, cpf_cnpj_subcliente, valor_subfatura } = await req.json() as FechamentoRequest & { 
+    const { codigo_fatura, nome_cliente, fatura_id, fatura_pai_id, subfatura_id, cpf_cnpj_subcliente, valor_subfatura, apenas_pdf } = await req.json() as FechamentoRequest & { 
       fatura_id?: string;
       fatura_pai_id?: string;
       subfatura_id?: string;
@@ -340,7 +341,8 @@ serve(async (req) => {
     console.log('👶 Subfatura ID:', subfatura_id);
     console.log('📄 CPF/CNPJ Subcliente:', cpf_cnpj_subcliente);
     console.log('💰 Valor Subfatura (do frontend):', valor_subfatura);
-    console.log('🔄 VERSÃO DA FUNÇÃO: 4.0 - VALOR SUBFATURA DO FRONTEND');
+    console.log('🧪 Apenas PDF (teste):', apenas_pdf);
+    console.log('🔄 VERSÃO DA FUNÇÃO: 5.0 - SUPORTE A TESTE PDF');
 
     // ✅ ETAPA 1: Buscar dados completos da fatura via API Backend
     console.log('📊 Etapa 1: Buscando dados completos da fatura...');
@@ -707,6 +709,26 @@ serve(async (req) => {
       const pdfFaturaData = await pdfFaturaResponse.json();
       faturaPdfBase64 = pdfFaturaData.dados;
       console.log('✅ PDF da fatura gerado via API');
+    }
+
+    // 🧪 MODO TESTE: Se apenas_pdf=true, retornar apenas o PDF sem emitir boleto
+    if (apenas_pdf) {
+      console.log('🧪 MODO TESTE - Retornando apenas PDF sem emitir boleto');
+      return new Response(
+        JSON.stringify({
+          status: 'ok',
+          mensagem: 'PDF gerado com sucesso (modo teste)',
+          nome_cliente: nome_cliente,
+          codigo_fatura: codigo_fatura,
+          fatura_pdf: faturaPdfBase64,
+          boleto_pdf: null,
+          boleto_info: null,
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     // ✅ ETAPA 4: Emitir boleto via Banco Inter

@@ -8,6 +8,7 @@ interface IListaFaturasProps {
     verificarFechamentoExistente: (faturaId: string) => any;
     visualizarFechamento: (fatura: IFatura) => void;
     cancelarBoleto: (fatura: IFatura) => void;
+    testarPDF?: (fatura: IFatura) => void;
 }
 
 export const ListaFaturas: React.FC<IListaFaturasProps> = ({ 
@@ -16,7 +17,8 @@ export const ListaFaturas: React.FC<IListaFaturasProps> = ({
     realizarFechamento, 
     verificarFechamentoExistente,
     visualizarFechamento,
-    cancelarBoleto
+    cancelarBoleto,
+    testarPDF
 }) => {
     return (
         <TabelaFaturasCliente
@@ -26,6 +28,7 @@ export const ListaFaturas: React.FC<IListaFaturasProps> = ({
             verificarFechamentoExistente={verificarFechamentoExistente}
             visualizarFechamento={visualizarFechamento}
             cancelarBoleto={cancelarBoleto}
+            testarPDF={testarPDF}
         />
     );
 };
