@@ -592,51 +592,22 @@ serve(async (req) => {
         }
       };
       
-      // 🔍 BUSCAR ENVIOS ESPECÍFICOS DO REMETENTE DA SUBFATURA
-      // Filtrar os detalhes da fatura pai pelo CPF/CNPJ do remetente
-      console.log('🔍 Buscando envios do remetente CPF/CNPJ:', cpfCnpj);
+      // 🔍 BUSCAR ENVIOS ESPECÍFICOS DA SUBFATURA
+      // Usar o subfatura_id para buscar os detalhes diretamente
+      console.log('🔍 Buscando envios da subfatura ID:', subfatura_id);
       let detalhesSubfatura: any[] = [];
       const cpfCnpjLimpo = cpfCnpj.replace(/\D/g, '');
       
       try {
-        // Primeiro, buscar o ID do remetente pelo CPF/CNPJ
-        const remetenteUrl = `${baseApiUrl}/remetentes?cpfCnpj=${cpfCnpjLimpo}`;
-        console.log('📥 URL para buscar remetente:', remetenteUrl);
-        
-        const remetenteResponse = await fetch(remetenteUrl, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${apiToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        
-        let remetenteId = null;
-        
-        if (remetenteResponse.ok) {
-          const remetenteResult = await remetenteResponse.json();
-          const remetentes = remetenteResult.data || remetenteResult;
+        // ESTRATÉGIA 1: Buscar detalhes da subfatura diretamente
+        if (subfatura_id) {
+          console.log('📥 Tentando buscar detalhes da subfatura:', subfatura_id);
           
-          if (Array.isArray(remetentes) && remetentes.length > 0) {
-            // Encontrar o remetente exato pelo CPF/CNPJ
-            const remetenteEncontrado = remetentes.find((r: any) => 
-              (r.cpfCnpj || r.cpf_cnpj || '').replace(/\D/g, '') === cpfCnpjLimpo
-            );
-            remetenteId = remetenteEncontrado?.id;
-            console.log('✅ Remetente encontrado - ID:', remetenteId);
-          }
-        }
-        
-        // Formatar datas do período da fatura para filtro
-        const dataIni = fatura.periodoInicial ? fatura.periodoInicial.split('T')[0] : '';
-        const dataFim = fatura.periodoFinal ? fatura.periodoFinal.split('T')[0] : '';
-        
-        if (remetenteId) {
-          // Buscar emissões usando endpoint correto com remetenteId
-          const emissaoUrl = `${baseApiUrl}/emissoes/admin?remetenteId=${remetenteId}&dataIni=${dataIni}&dataFim=${dataFim}&limit=500`;
-          console.log('📥 URL para buscar emissões:', emissaoUrl);
+          // Tentar buscar fatura/subfatura diretamente pelo ID
+          const subfaturaUrl = `${baseApiUrl}/faturas/admin/${subfatura_id}`;
+          console.log('📥 URL para buscar subfatura:', subfaturaUrl);
           
-          const emissaoResponse = await fetch(emissaoUrl, {
+          const subfaturaResponse = await fetch(subfaturaUrl, {
             method: 'GET',
             headers: {
               'Authorization': `Bearer ${apiToken}`,
@@ -644,45 +615,106 @@ serve(async (req) => {
             },
           });
           
-          console.log('📡 Resposta emissões - Status:', emissaoResponse.status);
+          console.log('📡 Resposta subfatura - Status:', subfaturaResponse.status);
           
-          if (emissaoResponse.ok) {
-            const emissaoData = await emissaoResponse.json();
-            const emissoes = emissaoData.data || emissaoData;
+          if (subfaturaResponse.ok) {
+            const subfaturaData = await subfaturaResponse.json();
+            const subfaturaDetalhes = subfaturaData.data || subfaturaData;
             
-            console.log('📋 Total de emissões retornadas:', Array.isArray(emissoes) ? emissoes.length : 'não é array');
+            console.log('📋 Subfatura obtida:', JSON.stringify(subfaturaDetalhes, null, 2).substring(0, 1000));
             
-            if (Array.isArray(emissoes) && emissoes.length > 0) {
-              // Mapear emissões para o formato esperado pelo PDF
-              detalhesSubfatura = emissoes.map((e: any) => ({
-                id: e.id,
-                status: e.status || 'PENDENTE',
-                nome: e.destinatario?.nome || e.destinatarioNome || 'Envio',
-                valor: e.valorVenda || e.valor || '0',
-                codigoObjeto: e.codigoObjeto || e.etiqueta || '-',
-                criadoEm: e.criadoEm || e.dataCriacao,
+            // Verificar se a subfatura tem detalhes
+            if (subfaturaDetalhes.detalhe && Array.isArray(subfaturaDetalhes.detalhe)) {
+              detalhesSubfatura = subfaturaDetalhes.detalhe.map((item: any) => ({
+                id: item.id,
+                status: item.status || 'PENDENTE',
+                nome: item.nome || item.destinatario?.nome || 'Envio',
+                valor: item.valor || item.valorVenda || '0',
+                codigoObjeto: item.codigoObjeto || '-',
+                criadoEm: item.criadoEm,
               }));
-              console.log(`✅ Encontrados ${detalhesSubfatura.length} envios do remetente`);
+              console.log(`✅ Encontrados ${detalhesSubfatura.length} envios na subfatura`);
             }
-          } else {
-            const errorText = await emissaoResponse.text();
-            console.log('⚠️ Erro ao buscar emissões:', emissaoResponse.status, errorText);
           }
-        } else {
-          console.log('⚠️ Remetente não encontrado pelo CPF/CNPJ, tentando filtrar detalhes da fatura...');
+        }
+        
+        // ESTRATÉGIA 2: Se não encontrou, filtrar fatura.detalhe pelo CPF/CNPJ do remetente
+        if (detalhesSubfatura.length === 0 && fatura.detalhe && Array.isArray(fatura.detalhe)) {
+          console.log('📥 Filtrando detalhes da fatura pai pelo CPF/CNPJ:', cpfCnpjLimpo);
           
-          // Fallback: filtrar detalhes da fatura pai (caso tenha info do remetente)
-          if (fatura.detalhe && Array.isArray(fatura.detalhe)) {
-            // Tentar filtrar por qualquer campo que contenha o CPF/CNPJ
-            detalhesSubfatura = fatura.detalhe.filter((item: any) => {
-              const itemCpfCnpj = (item.cpfCnpjRemetente || item.remetenteCpfCnpj || item.remetente?.cpfCnpj || '').replace(/\D/g, '');
-              return itemCpfCnpj === cpfCnpjLimpo;
+          // Filtrar por remetenteCpfCnpj ou campo equivalente
+          detalhesSubfatura = fatura.detalhe.filter((item: any) => {
+            const itemCpfCnpj = (item.remetenteCpfCnpj || item.cpfCnpjRemetente || item.remetente?.cpfCnpj || '').replace(/\D/g, '');
+            return itemCpfCnpj === cpfCnpjLimpo;
+          });
+          
+          console.log(`📋 Filtrados ${detalhesSubfatura.length} envios pelo CPF/CNPJ do remetente`);
+          
+          // Se ainda não encontrou, tentar buscar emissões pelo endpoint
+          if (detalhesSubfatura.length === 0) {
+            // Buscar o remetente pelo CPF/CNPJ
+            const remetenteUrl = `${baseApiUrl}/remetentes?cpfCnpj=${cpfCnpjLimpo}`;
+            console.log('📥 URL para buscar remetente:', remetenteUrl);
+            
+            const remetenteResponse = await fetch(remetenteUrl, {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${apiToken}`,
+                'Content-Type': 'application/json',
+              },
             });
-            console.log(`📋 Filtrados ${detalhesSubfatura.length} envios pelo CPF/CNPJ`);
+            
+            let remetenteId = null;
+            
+            if (remetenteResponse.ok) {
+              const remetenteResult = await remetenteResponse.json();
+              const remetentes = remetenteResult.data || remetenteResult;
+              
+              if (Array.isArray(remetentes) && remetentes.length > 0) {
+                const remetenteEncontrado = remetentes.find((r: any) => 
+                  (r.cpfCnpj || r.cpf_cnpj || '').replace(/\D/g, '') === cpfCnpjLimpo
+                );
+                remetenteId = remetenteEncontrado?.id;
+                console.log('✅ Remetente encontrado - ID:', remetenteId);
+              }
+            }
+            
+            if (remetenteId) {
+              const dataIni = fatura.periodoInicial ? fatura.periodoInicial.split('T')[0] : '';
+              const dataFim = fatura.periodoFinal ? fatura.periodoFinal.split('T')[0] : '';
+              
+              const emissaoUrl = `${baseApiUrl}/emissoes/admin?remetenteId=${remetenteId}&dataIni=${dataIni}&dataFim=${dataFim}&limit=500`;
+              console.log('📥 URL para buscar emissões:', emissaoUrl);
+              
+              const emissaoResponse = await fetch(emissaoUrl, {
+                method: 'GET',
+                headers: {
+                  'Authorization': `Bearer ${apiToken}`,
+                  'Content-Type': 'application/json',
+                },
+              });
+              
+              if (emissaoResponse.ok) {
+                const emissaoData = await emissaoResponse.json();
+                const emissoes = emissaoData.data || emissaoData;
+                
+                if (Array.isArray(emissoes) && emissoes.length > 0) {
+                  detalhesSubfatura = emissoes.map((e: any) => ({
+                    id: e.id,
+                    status: e.status || 'PENDENTE',
+                    nome: e.destinatario?.nome || e.destinatarioNome || 'Envio',
+                    valor: e.valorVenda || e.valor || '0',
+                    codigoObjeto: e.codigoObjeto || e.etiqueta || '-',
+                    criadoEm: e.criadoEm || e.dataCriacao,
+                  }));
+                  console.log(`✅ Encontrados ${detalhesSubfatura.length} envios pelo remetenteId`);
+                }
+              }
+            }
           }
         }
       } catch (enviosErr) {
-        console.log('⚠️ Erro ao buscar envios do remetente:', enviosErr);
+        console.log('⚠️ Erro ao buscar envios:', enviosErr);
       }
       
       // Se não conseguiu obter detalhes, usar array vazio com aviso
