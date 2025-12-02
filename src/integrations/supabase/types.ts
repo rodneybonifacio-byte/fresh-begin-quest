@@ -248,6 +248,39 @@ export type Database = {
         }
         Relationships: []
       }
+      logs_acesso: {
+        Row: {
+          action: string
+          cliente_id: string
+          created_at: string
+          id: string
+          ip_address: string | null
+          user_agent: string | null
+          user_email: string | null
+          user_name: string | null
+        }
+        Insert: {
+          action?: string
+          cliente_id: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          action?: string
+          cliente_id?: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_name?: string | null
+        }
+        Relationships: []
+      }
       recargas_pix: {
         Row: {
           cliente_id: string
@@ -353,6 +386,36 @@ export type Database = {
           sincronizado_em?: string | null
           telefone?: string | null
           uf?: string | null
+        }
+        Relationships: []
+      }
+      sessoes_ativas: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          id: string
+          is_online: boolean | null
+          last_seen: string
+          user_email: string | null
+          user_name: string | null
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          id?: string
+          is_online?: boolean | null
+          last_seen?: string
+          user_email?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          id?: string
+          is_online?: boolean | null
+          last_seen?: string
+          user_email?: string | null
+          user_name?: string | null
         }
         Relationships: []
       }

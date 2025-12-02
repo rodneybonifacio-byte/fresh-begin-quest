@@ -62,3 +62,9 @@ verify_jwt = false
 
 [functions.buscar-participantes-promocao]
 verify_jwt = false
+
+[functions.registrar-acesso]
+verify_jwt = false
+
+[functions.atualizar-presenca]
+verify_jwt = false

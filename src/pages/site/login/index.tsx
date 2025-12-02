@@ -15,6 +15,8 @@ import { getRedirectPathByRole } from "../../../utils/auth.utils";
 import { ThemeToggle } from "../../../components/theme/ThemeToggle";
 import { RemetenteSupabaseDirectService } from "../../../services/RemetenteSupabaseDirectService";
 import { PromoBannerRecarga } from "../../../components/PromoBannerRecarga";
+import { supabase } from "../../../integrations/supabase/client";
+import type { TokenPayload } from "../../../types/ITokenPayload";
 const loginSchame = yup.object({
   email: yup.string().required("Informe seu email."),
   password: yup.string().required("Informa sua password.")
@@ -51,6 +53,19 @@ export const Login = () => {
           token: response.token
         });
         reset();
+
+        // Registrar acesso/login
+        const user = authStore.getUser() as TokenPayload | null;
+        if (user?.clienteId) {
+          supabase.functions.invoke('registrar-acesso', {
+            body: {
+              clienteId: user.clienteId,
+              userEmail: user.email,
+              userName: user.name,
+              action: 'login',
+            },
+          }).catch(err => console.error('Erro ao registrar acesso:', err));
+        }
         
         // Verificar se deve redirecionar para cadastro de remetente (fluxo de autocadastro)
         const shouldRedirectToRemetenteFlag = localStorage.getItem('redirect_to_remetente') === 'true';
