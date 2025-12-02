@@ -206,7 +206,8 @@ serve(async (req) => {
         ...(body.pagadorEndereco && {
           endereco: body.pagadorEndereco.logradouro,
           numero: body.pagadorEndereco.numero,
-          complemento: body.pagadorEndereco.complemento || '',
+          // Banco Inter limita complemento a 30 caracteres
+          complemento: (body.pagadorEndereco.complemento || '').substring(0, 30),
           bairro: body.pagadorEndereco.bairro,
           cidade: body.pagadorEndereco.cidade,
           uf: body.pagadorEndereco.uf,
