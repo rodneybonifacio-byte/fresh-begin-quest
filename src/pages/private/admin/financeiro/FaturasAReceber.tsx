@@ -54,6 +54,7 @@ const FinanceiroFaturasAReceber = () => {
         timestamp?: Date;
     } | null>(null);
     const [page, setPage] = useState<number>(1);
+    const [forceUpdate, setForceUpdate] = useState<number>(0);
     const perPage = config.pagination.perPage;
 
     const service = new FaturaService();
@@ -227,6 +228,9 @@ const FinanceiroFaturasAReceber = () => {
                 nomeCliente: nomeCliente,
                 boletoInfo: result.boleto_info
             });
+            
+            // Forçar re-renderização da lista para mostrar o botão "Visualizar Boleto"
+            setForceUpdate(prev => prev + 1);
         } catch (error: any) {
             console.error('Erro ao realizar fechamento:', error);
             
@@ -358,6 +362,7 @@ const FinanceiroFaturasAReceber = () => {
             {!isLoading && !isError && faturas && faturas.data.length > 0 && (
                 <>
                     <ListaFaturas
+                        key={forceUpdate}
                         data={data}
                         setIsModalConfirmaPagamento={setIsModalConfirmaPagamento}
                         realizarFechamento={handleRealizarFechamento}
