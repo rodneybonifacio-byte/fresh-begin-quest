@@ -88,10 +88,11 @@ serve(async (req) => {
       );
     }
 
-    const { codigo_fatura, nome_cliente, fatura_id, fatura_pai_id, subfatura_id } = await req.json() as FechamentoRequest & { 
+    const { codigo_fatura, nome_cliente, fatura_id, fatura_pai_id, subfatura_id, cpf_cnpj_subcliente } = await req.json() as FechamentoRequest & { 
       fatura_id?: string;
       fatura_pai_id?: string;
       subfatura_id?: string;
+      cpf_cnpj_subcliente?: string;
     };
 
     console.log('🚀 Iniciando fechamento da fatura:', codigo_fatura);
@@ -99,7 +100,8 @@ serve(async (req) => {
     console.log('🆔 Fatura ID:', fatura_id);
     console.log('👨‍👧 Fatura Pai ID:', fatura_pai_id);
     console.log('👶 Subfatura ID:', subfatura_id);
-    console.log('🔄 VERSÃO DA FUNÇÃO: 2.0 - DEBUG ATIVADO');
+    console.log('📄 CPF/CNPJ Subcliente:', cpf_cnpj_subcliente);
+    console.log('🔄 VERSÃO DA FUNÇÃO: 3.0 - BUSCA REMETENTE');
 
     // ✅ ETAPA 1: Buscar dados completos da fatura via API Backend
     console.log('📊 Etapa 1: Buscando dados completos da fatura...');
@@ -108,14 +110,15 @@ serve(async (req) => {
     const apiToken = authHeader.replace('Bearer ', '');
     
     let fatura;
-    let isSubfatura = false;
+    let isSubfatura = !!subfatura_id;
+    let remetenteData = null;
     
-    // Se temos subfatura_id, buscar diretamente a subfatura
-    if (subfatura_id) {
-      console.log('🔍 Buscando SUBFATURA diretamente com ID:', subfatura_id);
-      isSubfatura = true;
+    // Se for subfatura, precisamos buscar a fatura pai E os dados do remetente
+    if (isSubfatura && fatura_pai_id) {
+      console.log('🔍 É SUBFATURA - Buscando fatura PAI com ID:', fatura_pai_id);
       
-      const subfaturaResponse = await fetch(`${baseApiUrl}/faturas/admin/${subfatura_id}`, {
+      // Buscar fatura pai
+      const faturaResponse = await fetch(`${baseApiUrl}/faturas/admin/${fatura_pai_id}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${apiToken}`,
@@ -123,14 +126,39 @@ serve(async (req) => {
         },
       });
 
-      if (!subfaturaResponse.ok) {
-        const errorText = await subfaturaResponse.text();
-        throw new Error(`Erro ao buscar subfatura: ${subfaturaResponse.status} - ${errorText}`);
+      if (!faturaResponse.ok) {
+        const errorText = await faturaResponse.text();
+        throw new Error(`Erro ao buscar fatura pai: ${faturaResponse.status} - ${errorText}`);
       }
 
-      const subfaturaDataResponse = await subfaturaResponse.json();
-      fatura = subfaturaDataResponse.data;
-      console.log('✅ Subfatura encontrada diretamente');
+      const faturaDataResponse = await faturaResponse.json();
+      fatura = faturaDataResponse.data;
+      console.log('✅ Fatura pai encontrada');
+      
+      // Se temos cpfCnpj do subcliente, buscar dados do remetente
+      if (cpf_cnpj_subcliente) {
+        console.log('🔍 Buscando dados do REMETENTE com CPF/CNPJ:', cpf_cnpj_subcliente);
+        
+        try {
+          const remetenteResponse = await fetch(`${baseApiUrl}/remetente/${cpf_cnpj_subcliente}`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${apiToken}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          
+          if (remetenteResponse.ok) {
+            const remetenteDataResponse = await remetenteResponse.json();
+            remetenteData = remetenteDataResponse.data;
+            console.log('✅ Dados do remetente encontrados:', JSON.stringify(remetenteData, null, 2));
+          } else {
+            console.log('⚠️ Não foi possível buscar dados do remetente, usando dados do cliente');
+          }
+        } catch (remetErr) {
+          console.log('⚠️ Erro ao buscar remetente:', remetErr);
+        }
+      }
     } else {
       // Buscar fatura normal
       const idParaBuscar = fatura_id || codigo_fatura;
@@ -153,7 +181,7 @@ serve(async (req) => {
       fatura = faturaDataResponse.data;
     }
 
-    console.log('🔍 DEBUG - Fatura obtida:', JSON.stringify(fatura, null, 2));
+    console.log('🔍 DEBUG - Fatura obtida');
 
     if (!fatura) {
       throw new Error('Fatura não encontrada');
@@ -165,24 +193,24 @@ serve(async (req) => {
       valor: fatura.totalFaturado,
       periodo: `${fatura.periodoInicial} - ${fatura.periodoFinal}`,
       isSubfatura: isSubfatura,
-      temRemetente: !!fatura.remetente,
+      temRemetenteData: !!remetenteData,
     });
 
     // ✅ ETAPA 3: Extrair cadastro completo do cliente/pagador
-    // Para subfaturas: usar dados do remetente da subfatura como pagador
+    // Para subfaturas: usar dados do remetente buscado via API como pagador
     // Para faturas normais: usar dados do cliente da fatura
     console.log('👤 Etapa 3: Validando dados do pagador...');
     
     let clienteData;
     
-    if (isSubfatura && fatura.remetente) {
-      // Subfatura: pagador é o remetente da subfatura
-      console.log('📋 Usando dados do REMETENTE da subfatura como pagador');
+    if (isSubfatura && remetenteData) {
+      // Subfatura: pagador é o remetente buscado via API
+      console.log('📋 Usando dados do REMETENTE (buscado via API) como pagador');
+      clienteData = remetenteData;
+    } else if (isSubfatura && fatura.remetente) {
+      // Subfatura: pagador é o remetente da fatura
+      console.log('📋 Usando dados do REMETENTE da fatura como pagador');
       clienteData = fatura.remetente;
-    } else if (isSubfatura && fatura.cliente) {
-      // Subfatura com cliente próprio
-      console.log('📋 Usando dados do CLIENTE da subfatura como pagador');
-      clienteData = fatura.cliente;
     } else {
       // Fatura normal: pagador é o cliente da fatura
       console.log('📋 Usando dados do CLIENTE da fatura como pagador');
@@ -230,7 +258,11 @@ serve(async (req) => {
     // ✅ ETAPA 2: Gerar PDF da Fatura via API
     console.log('📄 Etapa 2: Gerando PDF da fatura...');
     
-    const pdfFaturaResponse = await fetch(`${baseApiUrl}/faturas/imprimir/${fatura.id}`, {
+    // Para subfatura, usar o ID da subfatura para gerar o PDF
+    const idParaPdf = isSubfatura && subfatura_id ? subfatura_id : fatura.id;
+    console.log('📄 ID para gerar PDF:', idParaPdf);
+    
+    const pdfFaturaResponse = await fetch(`${baseApiUrl}/faturas/imprimir/${idParaPdf}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${apiToken}`,
