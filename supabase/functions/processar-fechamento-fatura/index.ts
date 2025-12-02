@@ -416,6 +416,21 @@ serve(async (req) => {
         dataVencimento: dataVencimento,
         valor: valorBoleto,
       },
+      pagador: {
+        nome: clienteData.nome,
+        cpfCnpj: cpfCnpj,
+        telefone: telefone_cliente,
+        endereco: {
+          logradouro: logradouro,
+          numero: numero,
+          complemento: complemento,
+          bairro: bairro,
+          cidade: localidade,
+          uf: uf,
+          cep: cep,
+        }
+      },
+      is_subfatura: isSubfatura,
       detalhes: {
         valor_total: fatura.totalFaturado,
         periodo: `${fatura.periodoInicial} a ${fatura.periodoFinal}`,
