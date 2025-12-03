@@ -44,10 +44,7 @@ export const ModalEmitirBoleto: React.FC<ModalEmitirBoletoProps> = ({
                     tipo: 'PERCENTUAL',
                     valor: 2, // 2% de multa
                 },
-                juros: {
-                    tipo: 'PERCENTUAL_DIA',
-                    valor: 0.033, // 0.033% ao dia = 1% ao mês
-                },
+                // Juros mora removido conforme solicitado
             });
 
             setBoleto(resultado);
@@ -109,7 +106,6 @@ export const ModalEmitirBoleto: React.FC<ModalEmitirBoletoProps> = ({
                             </p>
                             <ul className="list-disc list-inside space-y-1 text-blue-700 dark:text-blue-300">
                                 <li>Multa: 2% após vencimento</li>
-                                <li>Juros: 1% ao mês (0.033% ao dia)</li>
                                 <li>Webhook configurado para atualização automática</li>
                             </ul>
                         </div>
