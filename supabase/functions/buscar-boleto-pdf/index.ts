@@ -161,9 +161,7 @@ serve(async (req) => {
           console.log(`📋 Boletos encontrados por CPFCNPJ:`, listData.totalElementos || 0);
           
           if (listData.cobrancas && listData.cobrancas.length > 0) {
-            let primeiroValido = null;
-            
-            // Primeiro, tentar encontrar correspondência exata pelo codigoFatura
+            // Buscar APENAS correspondência exata pelo codigoFatura - NÃO usar fallback
             for (const cobranca of listData.cobrancas) {
               const seuNumero = cobranca.cobranca?.seuNumero || '';
               const situacao = cobranca.cobranca?.situacao;
@@ -172,26 +170,19 @@ serve(async (req) => {
               const statusValidos = ['A_RECEBER', 'ATRASADO', 'MARCADO_RECEBIDO'];
               const isStatusValido = statusValidos.includes(situacao);
               
-              // Guardar o primeiro boleto válido como fallback
-              if (!primeiroValido && isStatusValido) {
-                primeiroValido = cobranca;
-                console.log(`  💾 Primeiro válido encontrado: seuNumero=${seuNumero}, situacao=${situacao}`);
-              }
+              console.log(`  📝 Verificando: seuNumero=${seuNumero}, situacao=${situacao}, codigoFatura=${codigoFatura}`);
               
-              // Verificar correspondência exata do codigoFatura
+              // SOMENTE correspondência exata do codigoFatura
               if (codigoFatura && seuNumero === codigoFatura && isStatusValido) {
                 boletoEncontrado = cobranca;
                 boletoNossoNumero = cobranca.boleto?.nossoNumero || cobranca.nossoNumero;
-                console.log('✅ Boleto com correspondência EXATA! seuNumero:', seuNumero, 'nossoNumero:', boletoNossoNumero);
+                console.log('✅ Boleto EXATO encontrado! seuNumero:', seuNumero, 'nossoNumero:', boletoNossoNumero);
                 break;
               }
             }
             
-            // Se não encontrou correspondência exata, usar o primeiro válido
-            if (!boletoEncontrado && primeiroValido) {
-              boletoEncontrado = primeiroValido;
-              boletoNossoNumero = primeiroValido.boleto?.nossoNumero || primeiroValido.nossoNumero;
-              console.log('⚠️ Usando primeiro boleto válido (sem correspondência exata):', boletoNossoNumero);
+            if (!boletoEncontrado) {
+              console.log('❌ Nenhum boleto encontrado com codigoFatura:', codigoFatura);
             }
           }
         } else {
