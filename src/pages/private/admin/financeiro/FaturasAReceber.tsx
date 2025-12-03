@@ -488,6 +488,19 @@ const FinanceiroFaturasAReceber = () => {
     const handleVisualizarFechamento = (fatura: IFatura) => {
         const fechamentoData = verificarFechamentoExistente(fatura.id);
         if (fechamentoData) {
+            // Se não tem PDFs, perguntar se quer regenerar
+            if (!fechamentoData.faturaPdf && !fechamentoData.boletoPdf) {
+                const regenerar = window.confirm(
+                    `Este fechamento foi registrado sem os PDFs.\n\nDeseja regenerar o fechamento com os PDFs?`
+                );
+                if (regenerar) {
+                    handleRealizarFechamento(fatura);
+                    return;
+                }
+                toast.error('PDFs não disponíveis para este fechamento');
+                return;
+            }
+            
             setIsModalFechamento({
                 isOpen: true,
                 faturaPdf: fechamentoData.faturaPdf,
