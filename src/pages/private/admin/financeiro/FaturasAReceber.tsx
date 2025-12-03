@@ -32,6 +32,9 @@ const FinanceiroFaturasAReceber = () => {
     const [data, setData] = useState<IFatura[]>([]);
     const [tab, setTab] = useState('faturamentos');
     const [lastUpdate, setLastUpdate] = useState<Date>();
+    
+    // Estado para armazenar fechamentos carregados do Supabase (para verificação síncrona)
+    const [fechamentosMap, setFechamentosMap] = useState<Record<string, any>>({});
 
     const [isModalConfirmaPagamento, setIsModalConfirmaPagamento] = useState<{ isOpen: boolean; fatura: IFatura }>({ isOpen: false, fatura: {} as IFatura });
     const [isModalBoleto, setIsModalBoleto] = useState<{ isOpen: boolean; fatura: IFatura }>({ isOpen: false, fatura: {} as IFatura });
@@ -126,7 +129,7 @@ const FinanceiroFaturasAReceber = () => {
     };
 
     const handleCancelarBoleto = async (fatura: IFatura) => {
-        const fechamento = await verificarFechamentoExistente(fatura.id);
+        const fechamento = verificarFechamentoExistente(fatura.id);
         
         if (!fechamento?.boletoInfo?.nossoNumero) {
             toast.error('Boleto não encontrado para esta fatura');
@@ -144,14 +147,19 @@ const FinanceiroFaturasAReceber = () => {
             const boletoService = new BoletoService();
             await boletoService.cancelar(fechamento.boletoInfo.nossoNumero, 'OUTROS');
             
-            // Remover dados do fechamento do localStorage
+            // Remover dados do fechamento do localStorage e do estado
             localStorage.removeItem(`fechamento_${fatura.id}`);
+            setFechamentosMap(prev => {
+                const novo = { ...prev };
+                delete novo[fatura.id];
+                return novo;
+            });
             
-            // Remover também do Supabase
+            // Remover também do Supabase (por fatura_id ou subfatura_id)
             await supabase
                 .from('fechamentos_fatura')
                 .delete()
-                .eq('fatura_id', fatura.id);
+                .or(`fatura_id.eq.${fatura.id},subfatura_id.eq.${fatura.id}`);
             
             toast.success('Boleto cancelado com sucesso!');
             
@@ -285,7 +293,7 @@ const FinanceiroFaturasAReceber = () => {
             
             toast.success('Fechamento realizado com sucesso!');
             
-            // Salvar dados do fechamento no localStorage
+            // Salvar dados do fechamento no localStorage e no estado
             const fechamentoData = {
                 faturaPdf: result.fatura_pdf,
                 boletoPdf: result.boleto_pdf,
@@ -295,6 +303,9 @@ const FinanceiroFaturasAReceber = () => {
                 timestamp: new Date().toISOString()
             };
             localStorage.setItem(`fechamento_${faturaId}`, JSON.stringify(fechamentoData));
+            
+            // Atualizar estado em memória para refletir imediatamente na UI
+            setFechamentosMap(prev => ({ ...prev, [faturaId]: fechamentoData }));
             
             // Abrir modal com os PDFs separados
             setIsModalFechamento({
@@ -326,50 +337,15 @@ const FinanceiroFaturasAReceber = () => {
         }
     };
 
-    // Função síncrona para verificação rápida na UI (apenas localStorage)
-    const verificarFechamentoExistenteSync = (faturaId: string) => {
+    // Função síncrona para verificação rápida na UI (usa estado em memória)
+    const verificarFechamentoExistente = (faturaId: string) => {
+        // Primeiro verificar no estado em memória
+        if (fechamentosMap[faturaId]) {
+            return fechamentosMap[faturaId];
+        }
+        // Fallback para localStorage
         const localFechamento = localStorage.getItem(`fechamento_${faturaId}`);
         return localFechamento ? JSON.parse(localFechamento) : null;
-    };
-
-    // Função async completa que verifica localStorage e Supabase
-    const verificarFechamentoExistente = async (faturaId: string) => {
-        // Primeiro tentar localStorage (para sessão atual)
-        const localFechamento = localStorage.getItem(`fechamento_${faturaId}`);
-        if (localFechamento) {
-            return JSON.parse(localFechamento);
-        }
-        
-        // Se não encontrar no localStorage, buscar no Supabase
-        // Verificar tanto por fatura_id quanto por subfatura_id
-        try {
-            const { data, error } = await supabase
-                .from('fechamentos_fatura')
-                .select('*')
-                .or(`fatura_id.eq.${faturaId},subfatura_id.eq.${faturaId}`)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
-            
-            if (data && !error) {
-                // Mapear para o formato esperado
-                const fechamentoData = {
-                    faturaPdf: data.fatura_pdf,
-                    boletoPdf: data.boleto_pdf,
-                    codigoFatura: data.codigo_fatura,
-                    nomeCliente: data.nome_cliente,
-                    boletoInfo: { nossoNumero: data.boleto_id },
-                    timestamp: data.created_at
-                };
-                // Salvar no localStorage para próximas verificações
-                localStorage.setItem(`fechamento_${faturaId}`, JSON.stringify(fechamentoData));
-                return fechamentoData;
-            }
-        } catch (err) {
-            console.error('Erro ao buscar fechamento do Supabase:', err);
-        }
-        
-        return null;
     };
 
     // Carregar fechamentos existentes do Supabase quando a lista de faturas muda
@@ -389,14 +365,28 @@ const FinanceiroFaturasAReceber = () => {
                 }
             });
             
+            const allIds = [...faturaIds, ...subfaturaIds];
+            if (allIds.length === 0) return;
+            
             try {
+                console.log('🔍 Buscando fechamentos para IDs:', allIds);
+                
                 // Buscar por fatura_id OU subfatura_id
-                const { data: fechamentos } = await supabase
+                const { data: fechamentos, error } = await supabase
                     .from('fechamentos_fatura')
                     .select('*')
-                    .or(`fatura_id.in.(${faturaIds.join(',')}),subfatura_id.in.(${[...faturaIds, ...subfaturaIds].join(',')})`);
+                    .or(`fatura_id.in.(${allIds.join(',')}),subfatura_id.in.(${allIds.join(',')})`);
                 
-                if (fechamentos) {
+                if (error) {
+                    console.error('❌ Erro ao buscar fechamentos:', error);
+                    return;
+                }
+                
+                console.log('✅ Fechamentos encontrados:', fechamentos?.length || 0);
+                
+                if (fechamentos && fechamentos.length > 0) {
+                    const novoMap: Record<string, any> = {};
+                    
                     fechamentos.forEach(f => {
                         const fechamentoData = {
                             faturaPdf: f.fatura_pdf,
@@ -408,20 +398,24 @@ const FinanceiroFaturasAReceber = () => {
                         };
                         // Para subfaturas, usar o subfatura_id como chave
                         const keyId = f.subfatura_id || f.fatura_id;
+                        novoMap[keyId] = fechamentoData;
+                        // Também salvar no localStorage como backup
                         localStorage.setItem(`fechamento_${keyId}`, JSON.stringify(fechamentoData));
+                        console.log(`📋 Fechamento mapeado para ID: ${keyId}`);
                     });
-                    setForceUpdate(prev => prev + 1); // Forçar re-render
+                    
+                    setFechamentosMap(prev => ({ ...prev, ...novoMap }));
                 }
             } catch (err) {
-                console.error('Erro ao carregar fechamentos:', err);
+                console.error('❌ Erro ao carregar fechamentos:', err);
             }
         };
         
         carregarFechamentos();
     }, [data]);
 
-    const handleVisualizarFechamento = async (fatura: IFatura) => {
-        const fechamentoData = await verificarFechamentoExistente(fatura.id);
+    const handleVisualizarFechamento = (fatura: IFatura) => {
+        const fechamentoData = verificarFechamentoExistente(fatura.id);
         if (fechamentoData) {
             setIsModalFechamento({
                 isOpen: true,
@@ -532,7 +526,7 @@ const FinanceiroFaturasAReceber = () => {
                         data={data}
                         setIsModalConfirmaPagamento={setIsModalConfirmaPagamento}
                         realizarFechamento={handleRealizarFechamento}
-                        verificarFechamentoExistente={verificarFechamentoExistenteSync}
+                        verificarFechamentoExistente={verificarFechamentoExistente}
                         visualizarFechamento={handleVisualizarFechamento}
                         cancelarBoleto={handleCancelarBoleto}
                         testarPDF={handleTestarPDF}
