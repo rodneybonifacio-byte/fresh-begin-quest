@@ -54,17 +54,26 @@ export const Login = () => {
         });
         reset();
 
-        // Registrar acesso/login
-        const user = authStore.getUser() as TokenPayload | null;
-        if (user?.clienteId) {
-          supabase.functions.invoke('registrar-acesso', {
-            body: {
-              clienteId: user.clienteId,
-              userEmail: user.email,
-              userName: user.name,
-              action: 'login',
-            },
-          }).catch(err => console.error('Erro ao registrar acesso:', err));
+        // Registrar acesso/login - aguardar um momento para o token estar no localStorage
+        try {
+          const user = authStore.getUser() as TokenPayload | null;
+          console.log('📝 Registrando acesso para:', user);
+          
+          if (user?.clienteId) {
+            const registroResponse = await supabase.functions.invoke('registrar-acesso', {
+              body: {
+                clienteId: user.clienteId,
+                userEmail: user.email || data.email,
+                userName: user.name || data.email,
+                action: 'login',
+              },
+            });
+            console.log('✅ Acesso registrado:', registroResponse);
+          } else {
+            console.warn('⚠️ clienteId não encontrado no token:', user);
+          }
+        } catch (err) {
+          console.error('❌ Erro ao registrar acesso:', err);
         }
         
         // Verificar se deve redirecionar para cadastro de remetente (fluxo de autocadastro)
