@@ -99,6 +99,48 @@ serve(async (req) => {
 
     console.log('🔍 Buscando boleto:', { nossoNumero, codigoFatura, cpfCnpj });
 
+    // PRIMEIRO: Verificar se temos o boleto salvo no fechamentos_fatura
+    let boletoSalvo = null;
+    if (codigoFatura) {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      
+      const fechamentoResponse = await fetch(
+        `${supabaseUrl}/rest/v1/fechamentos_fatura?codigo_fatura=eq.${codigoFatura}&select=boleto_id,boleto_pdf,nosso_numero`,
+        {
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+          },
+        }
+      );
+      
+      if (fechamentoResponse.ok) {
+        const fechamentos = await fechamentoResponse.json();
+        if (fechamentos && fechamentos.length > 0) {
+          boletoSalvo = fechamentos[0];
+          console.log('📦 Encontrado fechamento salvo:', { 
+            boleto_id: boletoSalvo.boleto_id,
+            tem_pdf: !!boletoSalvo.boleto_pdf 
+          });
+          
+          // Se já temos o PDF salvo, retornar diretamente
+          if (boletoSalvo.boleto_pdf) {
+            console.log('✅ Retornando PDF do banco de dados');
+            return new Response(
+              JSON.stringify({ 
+                success: true, 
+                pdf: boletoSalvo.boleto_pdf,
+                nossoNumero: boletoSalvo.boleto_id || nossoNumero,
+                fonte: 'database'
+              }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        }
+      }
+    }
+
     // Criar cliente HTTP com mTLS
     const cert = Deno.env.get('BANCO_INTER_CLIENT_CERT')!;
     const key = Deno.env.get('BANCO_INTER_CLIENT_KEY')!;
