@@ -506,13 +506,7 @@ const FinanceiroFaturasAReceber = () => {
                     }
                 });
                 
-                if (error) {
-                    console.error('Erro ao buscar boleto:', error);
-                    toast.error('Erro na comunicação com Banco Inter');
-                    return;
-                }
-                
-                // Também buscar o PDF da fatura
+                // Também buscar o PDF da fatura primeiro
                 try {
                     const pdfResult = await service.gerarFaturaPdf(fatura.faturaId || fatura.id, fatura.id);
                     if (pdfResult?.dados) {
@@ -522,9 +516,9 @@ const FinanceiroFaturasAReceber = () => {
                     console.warn('Não foi possível buscar PDF da fatura:', e);
                 }
                 
-                if (!result?.pdf) {
-                    // Boleto não encontrado - mostrar modal com opção de re-emitir
-                    console.warn('PDF do boleto não encontrado, mostrando modal com opção de re-emitir');
+                // Verificar se houve erro ou boleto não encontrado
+                if (error || !result?.pdf) {
+                    console.error('Boleto não encontrado ou erro:', error);
                     toast.warning('Boleto não encontrado. Você pode re-emitir um novo boleto.');
                     
                     setIsModalFechamento({
