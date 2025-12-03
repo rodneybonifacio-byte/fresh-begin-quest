@@ -13,7 +13,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { clienteId, isOnline, lastSeen } = await req.json();
+    const { clienteId, userEmail, userName, isOnline, lastSeen } = await req.json();
 
     if (!clienteId) {
       throw new Error('clienteId é obrigatório');
@@ -27,6 +27,8 @@ serve(async (req: Request) => {
       .from('sessoes_ativas')
       .upsert({
         cliente_id: clienteId,
+        user_email: userEmail,
+        user_name: userName,
         is_online: isOnline,
         last_seen: lastSeen || new Date().toISOString(),
       }, {
