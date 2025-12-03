@@ -175,8 +175,9 @@ serve(async (req) => {
           if (listData.cobrancas && listData.cobrancas.length > 0) {
             // Pegar o mais recente
             boletoEncontrado = listData.cobrancas[0];
-            boletoNossoNumero = boletoEncontrado.nossoNumero;
-            console.log('✅ Boleto encontrado:', boletoNossoNumero, boletoEncontrado);
+            // O nossoNumero está dentro de boleto.nossoNumero na resposta da API
+            boletoNossoNumero = boletoEncontrado.boleto?.nossoNumero || boletoEncontrado.nossoNumero;
+            console.log('✅ Boleto encontrado, nossoNumero:', boletoNossoNumero);
             break;
           }
         } else {
