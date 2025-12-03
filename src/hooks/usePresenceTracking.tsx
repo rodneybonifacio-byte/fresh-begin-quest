@@ -68,7 +68,11 @@ export function usePresenceTracking() {
 
     useEffect(() => {
         const user = authStore.getUser() as TokenPayload | null;
-        if (!user?.clienteId) return;
+        console.log('🔍 usePresenceTracking - user:', user);
+        if (!user?.clienteId) {
+            console.warn('⚠️ usePresenceTracking - clienteId não encontrado');
+            return;
+        }
 
         // Marcar como online ao montar
         updatePresence(true);
