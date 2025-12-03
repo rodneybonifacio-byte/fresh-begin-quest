@@ -21,7 +21,7 @@ async function getAdminToken(): Promise<string> {
     throw new Error('Credenciais de admin não configuradas');
   }
 
-  const loginUrl = `${baseUrl}/auth/login`;
+  const loginUrl = `${baseUrl}/login`;
   console.log('🌐 URL de login:', loginUrl);
   
   const loginResponse = await fetch(loginUrl, {
