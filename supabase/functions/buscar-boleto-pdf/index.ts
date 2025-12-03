@@ -139,24 +139,14 @@ serve(async (req) => {
       
       console.log(`📅 Período de busca: ${dataInicial} a ${dataFinal}`);
       
-      // Buscar por diferentes critérios
-      const buscas = [];
+      // IMPORTANTE: Buscar primeiro por CPF/CNPJ que é único por cliente
+      // Depois filtrar pelo codigoFatura (seuNumero) para pegar o boleto correto
       
-      // 1. Buscar por seuNumero (codigo da fatura)
-      if (codigoFatura) {
-        buscas.push({ filtro: 'SEUNUMERO', valor: String(codigoFatura).substring(0, 15) });
-      }
-      
-      // 2. Buscar por CPF/CNPJ do pagador
       if (cpfCnpj) {
         const cpfLimpo = String(cpfCnpj).replace(/\D/g, '');
-        buscas.push({ filtro: 'CPFCNPJ', valor: cpfLimpo });
-      }
-      
-      for (const busca of buscas) {
-        console.log(`🔎 Tentando buscar por ${busca.filtro}:`, busca.valor);
+        console.log(`🔎 Buscando por CPFCNPJ: ${cpfLimpo}`);
         
-        const url = `https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas?dataInicial=${dataInicial}&dataFinal=${dataFinal}&filtrarPor=${busca.filtro}&filtro=${encodeURIComponent(busca.valor)}&itensPorPagina=50&paginaAtual=0&ordenarPor=DATASITUACAO`;
+        const url = `https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas?dataInicial=${dataInicial}&dataFinal=${dataFinal}&filtrarPor=CPFCNPJ&filtro=${cpfLimpo}&itensPorPagina=100&paginaAtual=0&ordenarPor=DATASITUACAO`;
         console.log('📡 URL:', url);
         
         const listResponse = await fetch(url, {
@@ -170,23 +160,28 @@ serve(async (req) => {
 
         if (listResponse.ok) {
           const listData = await listResponse.json();
-          console.log(`📋 Boletos encontrados por ${busca.filtro}:`, listData.totalElementos || 0);
+          console.log(`📋 Boletos encontrados por CPFCNPJ:`, listData.totalElementos || 0);
           
           if (listData.cobrancas && listData.cobrancas.length > 0) {
-            // Pegar o mais recente que NÃO esteja cancelado
+            // Filtrar pelo seuNumero (codigoFatura) para pegar o boleto CORRETO
             for (const cobranca of listData.cobrancas) {
-              if (cobranca.cobranca?.situacao !== 'CANCELADO') {
+              const seuNumero = cobranca.cobranca?.seuNumero || '';
+              const situacao = cobranca.cobranca?.situacao;
+              
+              console.log(`  📝 Verificando boleto seuNumero: ${seuNumero}, situacao: ${situacao}`);
+              
+              // Verificar se o seuNumero corresponde ao codigoFatura e não está cancelado
+              if (codigoFatura && seuNumero === codigoFatura && situacao !== 'CANCELADO') {
                 boletoEncontrado = cobranca;
                 boletoNossoNumero = cobranca.boleto?.nossoNumero || cobranca.nossoNumero;
-                console.log('✅ Boleto válido encontrado, nossoNumero:', boletoNossoNumero, 'situacao:', cobranca.cobranca?.situacao);
+                console.log('✅ Boleto CORRETO encontrado! seuNumero:', seuNumero, 'nossoNumero:', boletoNossoNumero);
                 break;
               }
             }
-            if (boletoEncontrado) break;
           }
         } else {
           const errText = await listResponse.text();
-          console.log(`⚠️ Busca por ${busca.filtro} falhou:`, errText);
+          console.log(`⚠️ Busca por CPFCNPJ falhou:`, errText);
         }
       }
     }
