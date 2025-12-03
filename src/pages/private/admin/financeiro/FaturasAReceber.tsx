@@ -45,11 +45,14 @@ const FinanceiroFaturasAReceber = () => {
         codigoFatura?: string;
         nomeCliente?: string;
         boletoInfo?: any;
+        boletoNaoEncontrado?: boolean;
+        faturaParaReemitir?: IFatura;
     }>({ 
         isOpen: false, 
         faturaPdf: '', 
         boletoPdf: null, 
-        codigoFatura: '' 
+        codigoFatura: '',
+        boletoNaoEncontrado: false
     });
     const [debugInfo, setDebugInfo] = useState<{
         httpCode?: number;
@@ -509,18 +512,6 @@ const FinanceiroFaturasAReceber = () => {
                     return;
                 }
                 
-                if (!result?.pdf) {
-                    console.error('PDF não encontrado:', result);
-                    toast.error(`Boleto não encontrado no Banco Inter. Verifique se o boleto foi realmente emitido para ${fechamentoData.nomeCliente}`);
-                    return;
-                }
-                
-                // PDF encontrado! Atualizar dados
-                fechamentoData.boletoPdf = result.pdf;
-                if (result.nossoNumero) {
-                    fechamentoData.boletoInfo = { ...fechamentoData.boletoInfo, nossoNumero: result.nossoNumero };
-                }
-                
                 // Também buscar o PDF da fatura
                 try {
                     const pdfResult = await service.gerarFaturaPdf(fatura.faturaId || fatura.id, fatura.id);
@@ -529,6 +520,30 @@ const FinanceiroFaturasAReceber = () => {
                     }
                 } catch (e) {
                     console.warn('Não foi possível buscar PDF da fatura:', e);
+                }
+                
+                if (!result?.pdf) {
+                    // Boleto não encontrado - mostrar modal com opção de re-emitir
+                    console.warn('PDF do boleto não encontrado, mostrando modal com opção de re-emitir');
+                    toast.warning('Boleto não encontrado. Você pode re-emitir um novo boleto.');
+                    
+                    setIsModalFechamento({
+                        isOpen: true,
+                        faturaPdf: fechamentoData.faturaPdf || '',
+                        boletoPdf: null,
+                        codigoFatura: fechamentoData.codigoFatura,
+                        nomeCliente: fechamentoData.nomeCliente,
+                        boletoInfo: fechamentoData.boletoInfo,
+                        boletoNaoEncontrado: true,
+                        faturaParaReemitir: fatura
+                    });
+                    return;
+                }
+                
+                // PDF encontrado! Atualizar dados
+                fechamentoData.boletoPdf = result.pdf;
+                if (result.nossoNumero) {
+                    fechamentoData.boletoInfo = { ...fechamentoData.boletoInfo, nossoNumero: result.nossoNumero };
                 }
                 
                 // Salvar no localStorage e estado
@@ -559,7 +574,8 @@ const FinanceiroFaturasAReceber = () => {
                     boletoPdf: fechamentoData.boletoPdf,
                     codigoFatura: fechamentoData.codigoFatura,
                     nomeCliente: fechamentoData.nomeCliente,
-                    boletoInfo: fechamentoData.boletoInfo
+                    boletoInfo: fechamentoData.boletoInfo,
+                    boletoNaoEncontrado: false
                 });
                 
             } catch (err) {
@@ -713,6 +729,44 @@ const FinanceiroFaturasAReceber = () => {
                         codigoFatura={isModalFechamento.codigoFatura || ''}
                         nomeCliente={isModalFechamento.nomeCliente}
                         boletoInfo={isModalFechamento.boletoInfo}
+                        boletoNaoEncontrado={isModalFechamento.boletoNaoEncontrado}
+                        onReemitirBoleto={isModalFechamento.faturaParaReemitir ? async () => {
+                            const fatura = isModalFechamento.faturaParaReemitir;
+                            if (!fatura) return;
+                            
+                            // Fechar modal
+                            setIsModalFechamento({ isOpen: false });
+                            
+                            // Deletar fechamento antigo
+                            try {
+                                setIsLoading(true);
+                                const supabaseAuth = getSupabaseWithAuth();
+                                
+                                // Remover do localStorage
+                                localStorage.removeItem(`fechamento_${fatura.id}`);
+                                setFechamentosMap(prev => {
+                                    const novo = { ...prev };
+                                    delete novo[fatura.id];
+                                    return novo;
+                                });
+                                
+                                // Remover do Supabase
+                                await supabaseAuth
+                                    .from('fechamentos_fatura')
+                                    .delete()
+                                    .or(`fatura_id.eq.${fatura.id},subfatura_id.eq.${fatura.id}`);
+                                
+                                toast.info('Fechamento antigo removido. Gerando novo boleto...');
+                                
+                                // Re-emitir boleto
+                                await handleRealizarFechamento(fatura);
+                            } catch (err) {
+                                console.error('Erro ao re-emitir boleto:', err);
+                                toast.error('Erro ao re-emitir boleto');
+                            } finally {
+                                setIsLoading(false);
+                            }
+                        } : undefined}
                     />
                 </>
             )}
