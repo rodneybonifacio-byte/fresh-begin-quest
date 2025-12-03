@@ -8,19 +8,22 @@ interface CotacaoCardProps {
     isSelected?: boolean;
     showSelectButton?: boolean;
     isBestPrice?: boolean;
+    compact?: boolean;
 }
 
-export const CotacaoCard = ({ cotacao, onSelect, isSelected = false, showSelectButton = false, isBestPrice = false }: CotacaoCardProps) => {
-    // O valor da API é o valor real que o cliente paga
-    // Identifica se é Rodonaves ou Correios para aplicar o percentual correto
+export const CotacaoCard = ({ 
+    cotacao, 
+    onSelect, 
+    isSelected = false, 
+    showSelectButton = false, 
+    isBestPrice = false,
+    compact = false
+}: CotacaoCardProps) => {
     const isRodonaves = cotacao.imagem?.toLowerCase().includes('rodonaves') || 
                         cotacao.nomeServico?.toLowerCase().includes('rodonaves');
     
     const precoNumerico = parseFloat(cotacao.preco.replace('R$', '').replace(',', '.').trim());
     
-    // Rodonaves: 50% OFF (1.50) | Correios: 63.8% OFF (2.7657)
-    // Correios: valor_tabela = preço + 176,57% = preço * 2.7657
-    // Exemplo: R$ 8,75 * 2.7657 = R$ 24,20
     const multiplicador = isRodonaves ? 1.50 : 2.7657;
     const percentualDesconto = isRodonaves ? 50 : 63.8;
     
@@ -36,6 +39,83 @@ export const CotacaoCard = ({ cotacao, onSelect, isSelected = false, showSelectB
         style: 'currency',
         currency: 'BRL'
     }).format(economia);
+
+    if (compact) {
+        return (
+            <div
+                className={`group bg-card rounded-xl shadow-md p-3 gap-2 w-full flex flex-col relative border-2 transition-all duration-200 hover:shadow-lg hover:scale-[1.01] ${
+                    isSelected
+                        ? 'border-primary ring-2 ring-primary/20 bg-primary/5'
+                        : isBestPrice
+                        ? 'border-green-500 ring-2 ring-green-500/20 bg-green-50 dark:bg-green-950/20'
+                        : 'border-border hover:border-primary/50'
+                }`}
+            >
+                {/* Badge de melhor preço compacto */}
+                {isBestPrice && (
+                    <div className="absolute -top-2 left-2 z-20">
+                        <div className="bg-gradient-to-br from-green-600 to-green-700 text-white px-2 py-1 rounded-full shadow-sm flex items-center gap-1">
+                            <span className="text-xs">⭐</span>
+                            <span className="font-bold text-[10px]">MELHOR</span>
+                        </div>
+                    </div>
+                )}
+                
+                {/* Badge de desconto compacto */}
+                <div className={`absolute -top-2 z-10 ${isBestPrice ? 'right-2' : 'right-2'}`}>
+                    <div className="bg-gradient-to-br from-green-500 to-green-600 text-white px-2 py-1 rounded-full shadow-sm flex items-center gap-1">
+                        <BadgePercent className="h-3 w-3" />
+                        <span className="font-bold text-[10px]">{percentualDesconto}%</span>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2 mt-2">
+                    <div className="bg-white p-1.5 rounded-md shadow-sm border border-border flex-shrink-0">
+                        <img
+                            src={getTransportadoraImage(cotacao.imagem || '')}
+                            alt={getTransportadoraAltText(cotacao.imagem || '')}
+                            className="w-16 h-6 object-contain"
+                        />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate">{cotacao.nomeServico}</p>
+                        <p className="text-xs text-muted-foreground">
+                            {cotacao.prazo} {cotacao.prazo > 1 ? 'dias' : 'dia'}
+                        </p>
+                    </div>
+                </div>
+
+                {/* Preços compacto */}
+                <div className="flex flex-col gap-1 p-2 bg-gradient-to-br from-primary/5 to-primary/10 rounded-md">
+                    <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-muted-foreground line-through">{valorTabelaFormatado}</span>
+                        <span className="text-lg font-bold text-primary">{cotacao.preco}</span>
+                    </div>
+                    <span className="text-[10px] text-green-600 dark:text-green-400 text-center">
+                        💰 -{economiaFormatada}
+                    </span>
+                </div>
+
+                {showSelectButton && (
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onSelect && onSelect(cotacao);
+                        }}
+                        className={`w-full py-2 px-3 rounded-lg text-xs font-bold transition-all duration-200 ${
+                            isSelected
+                                ? 'bg-primary text-primary-foreground shadow-sm'
+                                : 'bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground'
+                        }`}
+                    >
+                        {isSelected ? '✓ Selecionado' : 'Selecionar'}
+                    </button>
+                )}
+            </div>
+        );
+    }
 
     return (
         <div
