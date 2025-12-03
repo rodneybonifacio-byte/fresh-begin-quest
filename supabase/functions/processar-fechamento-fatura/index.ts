@@ -859,6 +859,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         faturaId: fatura.id,
+        codigoFatura: codigo_fatura, // IMPORTANTE: Passar código da fatura para usar como seuNumero
         valorCobrado: valorBoleto,
         pagadorNome: clienteData.nome,
         pagadorCpfCnpj: cpfCnpj,

@@ -47,7 +47,7 @@ serve(async (req) => {
     });
 
     // Verificar se é um pagamento confirmado
-    if (status !== 'PAGO' && status !== 'BAIXADO') {
+    if (status !== 'PAGO' && status !== 'BAIXADO' && status !== 'RECEBIDO') {
       console.log('⚠️ Status não é pagamento:', status);
       return new Response(
         JSON.stringify({ message: 'Status ignorado', status }),
@@ -55,14 +55,40 @@ serve(async (req) => {
       );
     }
 
-    // Buscar fatura pelo código (seuNumero deve ser o código da fatura)
+    // IMPORTANTE: seuNumero é o codigo_fatura que usamos na criação
     const codigoFatura = seuNumero;
     
-    if (!codigoFatura) {
-      throw new Error('Código da fatura não encontrado no payload');
+    if (!codigoFatura && !nossoNumero) {
+      throw new Error('Código da fatura (seuNumero) ou nossoNumero não encontrado no payload');
     }
 
-    console.log('🔍 Buscando fatura:', codigoFatura);
+    console.log('🔍 Buscando fatura:', codigoFatura || nossoNumero);
+
+    // 1. Buscar fechamento no Supabase pelo código da fatura ou nossoNumero
+    let fechamento = null;
+    
+    if (codigoFatura) {
+      const { data } = await supabase
+        .from('fechamentos_fatura')
+        .select('*')
+        .eq('codigo_fatura', codigoFatura)
+        .maybeSingle();
+      fechamento = data;
+    }
+    
+    // Se não encontrou pelo codigo_fatura, tentar pelo boleto_id (nossoNumero)
+    if (!fechamento && nossoNumero) {
+      const { data } = await supabase
+        .from('fechamentos_fatura')
+        .select('*')
+        .eq('boleto_id', nossoNumero)
+        .maybeSingle();
+      fechamento = data;
+    }
+    
+    if (fechamento) {
+      console.log('✅ Fechamento encontrado no Supabase:', fechamento.codigo_fatura);
+    }
 
     // Chamar API para buscar e atualizar fatura
     const baseApiUrl = Deno.env.get('BASE_API_URL');
@@ -73,7 +99,7 @@ serve(async (req) => {
       throw new Error('Configurações da API não encontradas');
     }
 
-    // 1. Fazer login para obter token
+    // 2. Fazer login para obter token
     console.log('🔑 Fazendo login na API...');
     const loginResponse = await fetch(`${baseApiUrl}/auth/login`, {
       method: 'POST',
@@ -90,10 +116,10 @@ serve(async (req) => {
 
     const { token } = await loginResponse.json();
 
-    // 2. Buscar fatura pelo código
+    // 3. Buscar fatura pelo código
     console.log('📊 Buscando fatura na API...');
     const faturaResponse = await fetch(
-      `${baseApiUrl}/faturas/admin?codigo=${codigoFatura}`,
+      `${baseApiUrl}/faturas/admin?codigo=${codigoFatura || fechamento?.codigo_fatura}`,
       {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -109,7 +135,30 @@ serve(async (req) => {
     const faturaData = await faturaResponse.json();
     
     if (!faturaData.data || faturaData.data.length === 0) {
-      throw new Error(`Fatura não encontrada: ${codigoFatura}`);
+      console.log('⚠️ Fatura não encontrada na API, mas pagamento registrado');
+      
+      // Mesmo sem encontrar na API, registrar o pagamento no Supabase
+      if (fechamento) {
+        // Atualizar fechamento para indicar pagamento
+        await supabase
+          .from('fechamentos_fatura')
+          .update({ 
+            status_pagamento: 'PAGO',
+            data_pagamento: dataPagamento,
+            valor_pago: valorPago 
+          })
+          .eq('id', fechamento.id);
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: 'Pagamento registrado (fatura não encontrada na API)',
+          codigoFatura,
+          nossoNumero,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
     }
 
     const fatura = faturaData.data[0];
@@ -120,7 +169,7 @@ serve(async (req) => {
       valor: fatura.totalFaturado,
     });
 
-    // 3. Confirmar pagamento da fatura
+    // 4. Confirmar pagamento da fatura
     console.log('💳 Confirmando pagamento da fatura...');
     
     const formData = new FormData();
@@ -141,19 +190,20 @@ serve(async (req) => {
 
     if (!confirmaPagamentoResponse.ok) {
       const errorText = await confirmaPagamentoResponse.text();
-      throw new Error(`Erro ao confirmar pagamento: ${confirmaPagamentoResponse.status} - ${errorText}`);
+      console.error('⚠️ Erro ao confirmar pagamento na API:', errorText);
+      // Não lançar erro, apenas logar - ainda vamos registrar no Supabase
+    } else {
+      console.log('✅ Pagamento confirmado na API com sucesso!');
     }
 
-    console.log('✅ Pagamento confirmado com sucesso!');
-
-    // 4. Registrar evento no Supabase para trigger realtime
+    // 5. Registrar evento no Supabase para trigger realtime
     const { error: insertError } = await supabase
       .from('transacoes_credito')
       .insert({
         cliente_id: fatura.clienteId,
         tipo: 'recarga',
         valor: valorPago,
-        descricao: `Pagamento boleto - Fatura ${codigoFatura} - Nosso Número: ${nossoNumero}`,
+        descricao: `Pagamento boleto - Fatura ${codigoFatura || fechamento?.codigo_fatura} - Nosso Número: ${nossoNumero}`,
       });
 
     if (insertError) {
@@ -162,13 +212,26 @@ serve(async (req) => {
       console.log('✅ Transação registrada - Realtime será notificado');
     }
 
-    // 5. Responder ao webhook
+    // 6. Atualizar fechamento_fatura com status de pagamento
+    if (fechamento) {
+      await supabase
+        .from('fechamentos_fatura')
+        .update({ 
+          status_pagamento: 'PAGO',
+          data_pagamento: dataPagamento,
+          valor_pago: valorPago 
+        })
+        .eq('id', fechamento.id);
+      console.log('✅ Fechamento atualizado com status PAGO');
+    }
+
+    // 7. Responder ao webhook
     return new Response(
       JSON.stringify({
         success: true,
         message: 'Pagamento processado com sucesso',
         faturaId: fatura.id,
-        codigoFatura,
+        codigoFatura: codigoFatura || fechamento?.codigo_fatura,
         valorPago,
         dataPagamento,
       }),
