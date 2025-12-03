@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useGlobalConfig } from '../../../../providers/GlobalConfigContext';
 import { useFetchQuery } from '../../../../hooks/useFetchQuery';
 import { Content } from '../../Content';
@@ -23,6 +23,7 @@ import { ModalVisualizarFechamento } from '../../../../components/ModalVisualiza
 import { toast } from 'sonner';
 import { BoletoService } from '../../../../services/BoletoService';
 import { getSupabaseWithAuth } from '../../../../integrations/supabase/custom-auth';
+import { RefreshCw } from 'lucide-react';
 
 const FinanceiroFaturasAReceber = () => {
     const { setIsLoading } = useLoadingSpinner();
@@ -348,72 +349,79 @@ const FinanceiroFaturasAReceber = () => {
         return localFechamento ? JSON.parse(localFechamento) : null;
     };
 
-    // Carregar fechamentos existentes do Supabase quando a lista de faturas muda
-    useEffect(() => {
-        const carregarFechamentos = async () => {
-            if (!data || data.length === 0) return;
+    // Estado para controlar carregamento de fechamentos
+    const [carregandoFechamentos, setCarregandoFechamentos] = useState(false);
+
+    // Função para carregar fechamentos via edge function
+    const carregarFechamentos = useCallback(async () => {
+        if (!data || data.length === 0) return;
+        
+        // Coletar todos os IDs de faturas e subfaturas
+        const faturaIds: string[] = [];
+        data.forEach(fatura => {
+            faturaIds.push(fatura.id);
+            if (fatura.faturas && fatura.faturas.length > 0) {
+                fatura.faturas.forEach(sub => {
+                    faturaIds.push(sub.id);
+                });
+            }
+        });
+        
+        if (faturaIds.length === 0) return;
+        
+        try {
+            setCarregandoFechamentos(true);
+            console.log('🔍 Buscando fechamentos para IDs:', faturaIds);
             
-            // Coletar todos os IDs de faturas e subfaturas
-            const faturaIds: string[] = [];
-            const subfaturaIds: string[] = [];
-            data.forEach(fatura => {
-                faturaIds.push(fatura.id);
-                if (fatura.faturas && fatura.faturas.length > 0) {
-                    fatura.faturas.forEach(sub => {
-                        subfaturaIds.push(sub.id);
-                    });
-                }
+            // Usar edge function com service role para acessar tabela com RLS restritivo
+            const supabaseAuth = getSupabaseWithAuth();
+            const { data: result, error } = await supabaseAuth.functions.invoke('buscar-fechamentos', {
+                body: { faturaIds }
             });
             
-            const allIds = [...faturaIds, ...subfaturaIds];
-            if (allIds.length === 0) return;
-            
-            try {
-                console.log('🔍 Buscando fechamentos para IDs:', allIds);
-                
-                // Usar cliente com autenticação para acessar tabela com RLS restritivo
-                const supabaseAuth = getSupabaseWithAuth();
-                
-                // Buscar por fatura_id OU subfatura_id
-                const { data: fechamentos, error } = await supabaseAuth
-                    .from('fechamentos_fatura')
-                    .select('*')
-                    .or(`fatura_id.in.(${allIds.join(',')}),subfatura_id.in.(${allIds.join(',')})`);
-                
-                if (error) {
-                    console.error('❌ Erro ao buscar fechamentos:', error);
-                    return;
-                }
-                
-                console.log('✅ Fechamentos encontrados:', fechamentos?.length || 0, fechamentos);
-                
-                if (fechamentos && fechamentos.length > 0) {
-                    const novoMap: Record<string, any> = {};
-                    
-                    fechamentos.forEach(f => {
-                        const fechamentoData = {
-                            faturaPdf: f.fatura_pdf,
-                            boletoPdf: f.boleto_pdf,
-                            codigoFatura: f.codigo_fatura,
-                            nomeCliente: f.nome_cliente,
-                            boletoInfo: { nossoNumero: f.boleto_id },
-                            timestamp: f.created_at
-                        };
-                        // Para subfaturas, usar o subfatura_id como chave
-                        const keyId = f.subfatura_id || f.fatura_id;
-                        novoMap[keyId] = fechamentoData;
-                        // Também salvar no localStorage como backup
-                        localStorage.setItem(`fechamento_${keyId}`, JSON.stringify(fechamentoData));
-                        console.log(`📋 Fechamento mapeado para ID: ${keyId}`);
-                    });
-                    
-                    setFechamentosMap(prev => ({ ...prev, ...novoMap }));
-                }
-            } catch (err) {
-                console.error('❌ Erro ao carregar fechamentos:', err);
+            if (error) {
+                console.error('❌ Erro ao buscar fechamentos:', error);
+                return;
             }
-        };
-        
+            
+            const fechamentos = result?.fechamentos || [];
+            console.log('✅ Fechamentos encontrados:', fechamentos.length, fechamentos);
+            
+            if (fechamentos.length > 0) {
+                const novoMap: Record<string, any> = {};
+                
+                fechamentos.forEach((f: any) => {
+                    const fechamentoData = {
+                        faturaPdf: f.fatura_pdf,
+                        boletoPdf: f.boleto_pdf,
+                        codigoFatura: f.codigo_fatura,
+                        nomeCliente: f.nome_cliente,
+                        boletoInfo: { nossoNumero: f.boleto_id },
+                        timestamp: f.created_at
+                    };
+                    // Para subfaturas, usar o subfatura_id como chave
+                    const keyId = f.subfatura_id || f.fatura_id;
+                    novoMap[keyId] = fechamentoData;
+                    // Também salvar no localStorage como backup
+                    localStorage.setItem(`fechamento_${keyId}`, JSON.stringify(fechamentoData));
+                    console.log(`📋 Fechamento mapeado para ID: ${keyId}`);
+                });
+                
+                setFechamentosMap(prev => ({ ...prev, ...novoMap }));
+                toast.success(`${fechamentos.length} fechamento(s) carregado(s)`);
+            } else {
+                toast.info('Nenhum fechamento encontrado');
+            }
+        } catch (err) {
+            console.error('❌ Erro ao carregar fechamentos:', err);
+            toast.error('Erro ao carregar fechamentos');
+        } finally {
+            setCarregandoFechamentos(false);
+        }
+    }, [data]);
+
+    // Carregar fechamentos existentes quando a lista de faturas muda
+    useEffect(() => {
         carregarFechamentos();
     }, [data]);
 
@@ -513,14 +521,24 @@ const FinanceiroFaturasAReceber = () => {
                     </TabsList>
                 </Tabs>
                 
-                {tab === 'faturamentos' && (
-                    <div className="flex justify-center sm:justify-end">
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => carregarFechamentos()}
+                        disabled={carregandoFechamentos}
+                        className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-input bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
+                        title="Atualizar fechamentos"
+                    >
+                        <RefreshCw size={16} className={carregandoFechamentos ? 'animate-spin' : ''} />
+                        Atualizar
+                    </button>
+                    
+                    {tab === 'faturamentos' && (
                         <RealtimeStatusIndicator 
                             isConnected={true}
                             lastUpdate={lastUpdate}
                         />
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
             {!isLoading && !isError && faturas && faturas.data.length > 0 && (
                 <>
