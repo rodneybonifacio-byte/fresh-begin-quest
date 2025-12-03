@@ -8,7 +8,18 @@ import { formatCpfCnpj } from '../utils/lib.formats';
 import { formatarDataVencimento } from '../utils/date-utils';
 import { StatusBadge } from './StatusBadge';
 import { CopiadorDeId } from './CopiadorDeId';
-import { Eye, CheckCircle, CreditCard, MessageCircle, XCircle, Send, FileText } from 'lucide-react';
+import { Eye, CheckCircle, CreditCard, MessageCircle, XCircle, Send, FileText, FileCheck } from 'lucide-react';
+
+// Badge indicador de boleto gerado
+const BoletoGeradoBadge: React.FC<{ temFechamento: boolean }> = ({ temFechamento }) => {
+    if (!temFechamento) return null;
+    return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+            <FileCheck size={12} />
+            Boleto
+        </span>
+    );
+};
 import { ModalEnviarFaturaWhatsApp } from './ModalEnviarFaturaWhatsApp';
 
 interface TabelaFaturasComSubtabelaProps {
@@ -89,7 +100,12 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
                     },
                     {
                         header: 'Status',
-                        accessor: (row) => <StatusBadge status={row.status || ''} tipo="faturamento" />,
+                        accessor: (row) => (
+                            <div className="flex flex-col gap-1">
+                                <StatusBadge status={row.status || ''} tipo="faturamento" />
+                                <BoletoGeradoBadge temFechamento={!!verificarFechamentoExistente(row.id)} />
+                            </div>
+                        ),
                     },
                 ]}
                 actionTitle={(row) => `${row.nome} - ${row.cpfCnpj}`}
@@ -185,7 +201,12 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
                 },
                 {
                     header: 'Status',
-                    accessor: (row) => <StatusBadge status={row.status || ''} tipo="faturamento" />,
+                    accessor: (row) => (
+                        <div className="flex flex-col gap-1">
+                            <StatusBadge status={row.status || ''} tipo="faturamento" />
+                            <BoletoGeradoBadge temFechamento={!!verificarFechamentoExistente(row.id)} />
+                        </div>
+                    ),
                 },
                 {
                     header: 'Criado em',

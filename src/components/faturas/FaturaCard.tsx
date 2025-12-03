@@ -1,13 +1,24 @@
 import React from 'react';
 import { format } from 'date-fns';
 import Decimal from 'decimal.js';
-import { ChevronDown, ChevronUp, Eye, CheckCircle, CreditCard, XCircle, Send } from 'lucide-react';
+import { ChevronDown, ChevronUp, Eye, CheckCircle, CreditCard, XCircle, Send, FileCheck } from 'lucide-react';
 import type { IFatura } from '../../types/IFatura';
 import { calcularLucro, formatCurrencyWithCents } from '../../utils/formatCurrency';
 import { formatCpfCnpj } from '../../utils/lib.formats';
 import { formatarDataVencimento } from '../../utils/date-utils';
 import { StatusBadge } from '../StatusBadge';
 import { CopiadorDeId } from '../CopiadorDeId';
+
+// Badge indicador de boleto gerado
+const BoletoGeradoBadge: React.FC<{ temFechamento: boolean }> = ({ temFechamento }) => {
+    if (!temFechamento) return null;
+    return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+            <FileCheck size={12} />
+            Boleto
+        </span>
+    );
+};
 
 interface FaturaCardProps {
     fatura: IFatura;
@@ -57,7 +68,10 @@ export const FaturaCard: React.FC<FaturaCardProps> = ({
                             <CopiadorDeId id={fatura.id.toString()} />
                         </div>
                     </div>
-                    <StatusBadge status={fatura.status || ''} tipo="faturamento" />
+                    <div className="flex flex-col items-end gap-1">
+                        <StatusBadge status={fatura.status || ''} tipo="faturamento" />
+                        <BoletoGeradoBadge temFechamento={!!temFechamento} />
+                    </div>
                 </div>
 
                 {/* Valores */}
@@ -185,7 +199,10 @@ export const FaturaCard: React.FC<FaturaCardProps> = ({
                                                 {formatCpfCnpj(subfatura.cpfCnpj ?? subfatura.cliente?.cpfCnpj)}
                                             </p>
                                         </div>
-                                        <StatusBadge status={subfatura.status || ''} tipo="faturamento" />
+                                        <div className="flex flex-col items-end gap-1">
+                                            <StatusBadge status={subfatura.status || ''} tipo="faturamento" />
+                                            <BoletoGeradoBadge temFechamento={!!verificarFechamentoExistente(subfatura.id)} />
+                                        </div>
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-2 text-xs">
