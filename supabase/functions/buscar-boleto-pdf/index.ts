@@ -101,12 +101,16 @@ serve(async (req) => {
 
     // PRIMEIRO: Verificar se temos o boleto salvo no fechamentos_fatura
     let boletoSalvo = null;
-    if (codigoFatura) {
-      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    
+    if (codigoFatura && cpfCnpj) {
+      // Buscar pelo codigo_fatura E cpf_cnpj para garantir match correto
+      const cpfLimpoDb = String(cpfCnpj).replace(/\D/g, '');
+      console.log(`📦 Buscando fechamento: codigo_fatura=${codigoFatura}, cpf_cnpj=${cpfLimpoDb}`);
       
       const fechamentoResponse = await fetch(
-        `${supabaseUrl}/rest/v1/fechamentos_fatura?codigo_fatura=eq.${codigoFatura}&select=boleto_id,boleto_pdf,nosso_numero`,
+        `${supabaseUrl}/rest/v1/fechamentos_fatura?codigo_fatura=eq.${codigoFatura}&cpf_cnpj=eq.${cpfLimpoDb}&select=boleto_id,boleto_pdf,nosso_numero,nome_cliente`,
         {
           headers: {
             'apikey': supabaseKey,
@@ -117,11 +121,15 @@ serve(async (req) => {
       
       if (fechamentoResponse.ok) {
         const fechamentos = await fechamentoResponse.json();
+        console.log(`📦 Fechamentos encontrados: ${fechamentos?.length || 0}`);
+        
         if (fechamentos && fechamentos.length > 0) {
           boletoSalvo = fechamentos[0];
-          console.log('📦 Encontrado fechamento salvo:', { 
+          console.log('📦 Fechamento encontrado:', { 
+            nome: boletoSalvo.nome_cliente,
             boleto_id: boletoSalvo.boleto_id,
-            tem_pdf: !!boletoSalvo.boleto_pdf 
+            tem_pdf: !!boletoSalvo.boleto_pdf,
+            nosso_numero: boletoSalvo.nosso_numero
           });
           
           // Se já temos o PDF salvo, retornar diretamente
@@ -131,11 +139,16 @@ serve(async (req) => {
               JSON.stringify({ 
                 success: true, 
                 pdf: boletoSalvo.boleto_pdf,
-                nossoNumero: boletoSalvo.boleto_id || nossoNumero,
+                nossoNumero: boletoSalvo.nosso_numero || boletoSalvo.boleto_id || nossoNumero,
                 fonte: 'database'
               }),
               { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
+          }
+          
+          // Se temos nosso_numero válido (não MANUAL-), usar para buscar
+          if (boletoSalvo.nosso_numero && !boletoSalvo.nosso_numero.startsWith('MANUAL-')) {
+            console.log('📦 Usando nosso_numero do fechamento:', boletoSalvo.nosso_numero);
           }
         }
       }
@@ -235,8 +248,17 @@ serve(async (req) => {
     }
 
     if (!boletoNossoNumero) {
+      console.log('❌ Boleto não encontrado. Dados da busca:', { codigoFatura, cpfCnpj, temFechamento: !!boletoSalvo });
       return new Response(
-        JSON.stringify({ error: 'Boleto não encontrado no Banco Inter' }),
+        JSON.stringify({ 
+          error: 'Boleto não encontrado no Banco Inter. O boleto pode não ter sido gerado corretamente ou precisa ser re-emitido.',
+          detalhes: {
+            codigoFatura,
+            cpfCnpj,
+            temFechamentoLocal: !!boletoSalvo,
+            sugestao: 'Cancele o fechamento atual e emita um novo boleto'
+          }
+        }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -283,6 +305,37 @@ serve(async (req) => {
     }
 
     console.log('✅ PDF obtido com sucesso!');
+
+    // Salvar PDF no banco para cache futuro
+    if (codigoFatura && cpfCnpj) {
+      const cpfLimpoDb = String(cpfCnpj).replace(/\D/g, '');
+      try {
+        console.log('💾 Salvando PDF no banco de dados...');
+        const updateResponse = await fetch(
+          `${supabaseUrl}/rest/v1/fechamentos_fatura?codigo_fatura=eq.${codigoFatura}&cpf_cnpj=eq.${cpfLimpoDb}`,
+          {
+            method: 'PATCH',
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({
+              boleto_pdf: pdfBase64,
+              nosso_numero: boletoNossoNumero
+            })
+          }
+        );
+        if (updateResponse.ok) {
+          console.log('✅ PDF salvo no banco com sucesso');
+        } else {
+          console.log('⚠️ Erro ao salvar PDF:', await updateResponse.text());
+        }
+      } catch (saveErr) {
+        console.log('⚠️ Erro ao salvar PDF no cache:', saveErr);
+      }
+    }
 
     return new Response(
       JSON.stringify({ 

@@ -178,6 +178,7 @@ export type Database = {
           fatura_pdf: string | null
           id: string
           nome_cliente: string
+          nosso_numero: string | null
           pdf_url: string | null
           subfatura_id: string | null
         }
@@ -191,6 +192,7 @@ export type Database = {
           fatura_pdf?: string | null
           id?: string
           nome_cliente: string
+          nosso_numero?: string | null
           pdf_url?: string | null
           subfatura_id?: string | null
         }
@@ -204,6 +206,7 @@ export type Database = {
           fatura_pdf?: string | null
           id?: string
           nome_cliente?: string
+          nosso_numero?: string | null
           pdf_url?: string | null
           subfatura_id?: string | null
         }
