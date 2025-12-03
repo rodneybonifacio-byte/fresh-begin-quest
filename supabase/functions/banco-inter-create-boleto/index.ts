@@ -8,8 +8,9 @@ const corsHeaders = {
 
 interface EmitirBoletoRequest {
   faturaId: string;
+  codigoFatura: string; // IMPORTANTE: Código da fatura para usar como seuNumero
   valorCobrado: number;
-  dataVencimento: string;
+  dataVencimento?: string;
   pagadorNome: string;
   pagadorCpfCnpj: string;
   pagadorEndereco?: {
@@ -189,10 +190,13 @@ serve(async (req) => {
     
     const tipoPessoa = cpfCnpj.length === 11 ? 'FISICA' : 'JURIDICA';
     
-    // Criar seuNumero único: timestamp + parte do UUID (máximo 15 caracteres)
-    const timestamp = Date.now().toString().slice(-8); // últimos 8 dígitos do timestamp
-    const uuidPart = body.faturaId.replace(/-/g, '').slice(0, 7); // 7 primeiros caracteres do UUID sem hífens
-    const seuNumero = timestamp + uuidPart; // Total: 15 caracteres
+    // IMPORTANTE: Usar codigoFatura como seuNumero para facilitar busca posterior
+    // seuNumero máximo 15 caracteres - usar codigoFatura ou fallback
+    const seuNumero = body.codigoFatura 
+      ? body.codigoFatura.substring(0, 15) 
+      : (Date.now().toString().slice(-8) + body.faturaId.replace(/-/g, '').slice(0, 7));
+    
+    console.log('🔑 seuNumero para Banco Inter:', seuNumero, '| codigoFatura:', body.codigoFatura);
 
     const boletoData = {
       seuNumero: seuNumero,
