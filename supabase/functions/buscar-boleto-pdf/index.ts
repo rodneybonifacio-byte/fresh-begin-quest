@@ -173,12 +173,16 @@ serve(async (req) => {
           console.log(`📋 Boletos encontrados por ${busca.filtro}:`, listData.totalElementos || 0);
           
           if (listData.cobrancas && listData.cobrancas.length > 0) {
-            // Pegar o mais recente
-            boletoEncontrado = listData.cobrancas[0];
-            // O nossoNumero está dentro de boleto.nossoNumero na resposta da API
-            boletoNossoNumero = boletoEncontrado.boleto?.nossoNumero || boletoEncontrado.nossoNumero;
-            console.log('✅ Boleto encontrado, nossoNumero:', boletoNossoNumero);
-            break;
+            // Pegar o mais recente que NÃO esteja cancelado
+            for (const cobranca of listData.cobrancas) {
+              if (cobranca.cobranca?.situacao !== 'CANCELADO') {
+                boletoEncontrado = cobranca;
+                boletoNossoNumero = cobranca.boleto?.nossoNumero || cobranca.nossoNumero;
+                console.log('✅ Boleto válido encontrado, nossoNumero:', boletoNossoNumero, 'situacao:', cobranca.cobranca?.situacao);
+                break;
+              }
+            }
+            if (boletoEncontrado) break;
           }
         } else {
           const errText = await listResponse.text();
@@ -194,11 +198,12 @@ serve(async (req) => {
       );
     }
 
-    // Buscar PDF do boleto
-    console.log('📄 Baixando PDF do boleto:', boletoNossoNumero);
+    // Buscar PDF do boleto usando codigoSolicitacao
+    const codigoSolicitacao = boletoEncontrado?.cobranca?.codigoSolicitacao || boletoNossoNumero;
+    console.log('📄 Baixando PDF do boleto, codigoSolicitacao:', codigoSolicitacao);
     
     const pdfResponse = await fetch(
-      `https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas/${boletoNossoNumero}/pdf`,
+      `https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas/${codigoSolicitacao}/pdf`,
       {
         method: 'GET',
         headers: {
