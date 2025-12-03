@@ -12,23 +12,34 @@ async function getAdminToken(): Promise<string> {
   const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
   const adminPassword = Deno.env.get('API_ADMIN_PASSWORD');
 
+  console.log('🔐 Obtendo token admin...');
+  console.log('📍 BASE_API_URL:', baseUrl);
+  console.log('📧 Admin email configurado:', adminEmail ? 'SIM' : 'NÃO');
+  console.log('🔑 Admin password configurado:', adminPassword ? 'SIM' : 'NÃO');
+
   if (!adminEmail || !adminPassword) {
     throw new Error('Credenciais de admin não configuradas');
   }
 
-  console.log('🔐 Obtendo token admin...');
+  const loginUrl = `${baseUrl}/auth/login`;
+  console.log('🌐 URL de login:', loginUrl);
   
-  const loginResponse = await fetch(`${baseUrl}/auth/login`, {
+  const loginResponse = await fetch(loginUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email: adminEmail, password: adminPassword }),
   });
 
+  console.log('📄 Login response status:', loginResponse.status);
+  
+  const responseText = await loginResponse.text();
+  console.log('📄 Login response body:', responseText.substring(0, 500));
+
   if (!loginResponse.ok) {
-    throw new Error('Falha ao autenticar com credenciais admin');
+    throw new Error(`Falha ao autenticar com credenciais admin: ${loginResponse.status} - ${responseText}`);
   }
 
-  const loginData = await loginResponse.json();
+  const loginData = JSON.parse(responseText);
   console.log('✅ Token admin obtido');
   return loginData.data?.token || loginData.token;
 }
