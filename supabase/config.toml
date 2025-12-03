@@ -6,6 +6,9 @@ verify_jwt = false
 [functions.registrar-fechamento]
 verify_jwt = false
 
+[functions.buscar-boleto-pdf]
+verify_jwt = false
+
 [functions.processar-creditos-bloqueados]
 verify_jwt = false
 
