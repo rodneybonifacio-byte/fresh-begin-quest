@@ -341,11 +341,12 @@ const FinanceiroFaturasAReceber = () => {
         }
         
         // Se não encontrar no localStorage, buscar no Supabase
+        // Verificar tanto por fatura_id quanto por subfatura_id
         try {
             const { data, error } = await supabase
                 .from('fechamentos_fatura')
                 .select('*')
-                .eq('fatura_id', faturaId)
+                .or(`fatura_id.eq.${faturaId},subfatura_id.eq.${faturaId}`)
                 .order('created_at', { ascending: false })
                 .limit(1)
                 .maybeSingle();
@@ -378,18 +379,22 @@ const FinanceiroFaturasAReceber = () => {
             
             // Coletar todos os IDs de faturas e subfaturas
             const faturaIds: string[] = [];
+            const subfaturaIds: string[] = [];
             data.forEach(fatura => {
                 faturaIds.push(fatura.id);
                 if (fatura.faturas && fatura.faturas.length > 0) {
-                    fatura.faturas.forEach(sub => faturaIds.push(sub.id));
+                    fatura.faturas.forEach(sub => {
+                        subfaturaIds.push(sub.id);
+                    });
                 }
             });
             
             try {
+                // Buscar por fatura_id OU subfatura_id
                 const { data: fechamentos } = await supabase
                     .from('fechamentos_fatura')
                     .select('*')
-                    .in('fatura_id', faturaIds);
+                    .or(`fatura_id.in.(${faturaIds.join(',')}),subfatura_id.in.(${[...faturaIds, ...subfaturaIds].join(',')})`);
                 
                 if (fechamentos) {
                     fechamentos.forEach(f => {
@@ -401,7 +406,9 @@ const FinanceiroFaturasAReceber = () => {
                             boletoInfo: { nossoNumero: f.boleto_id },
                             timestamp: f.created_at
                         };
-                        localStorage.setItem(`fechamento_${f.fatura_id}`, JSON.stringify(fechamentoData));
+                        // Para subfaturas, usar o subfatura_id como chave
+                        const keyId = f.subfatura_id || f.fatura_id;
+                        localStorage.setItem(`fechamento_${keyId}`, JSON.stringify(fechamentoData));
                     });
                     setForceUpdate(prev => prev + 1); // Forçar re-render
                 }
