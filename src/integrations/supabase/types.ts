@@ -174,13 +174,16 @@ export type Database = {
           codigo_fatura: string
           cpf_cnpj: string | null
           created_at: string
+          data_pagamento: string | null
           fatura_id: string
           fatura_pdf: string | null
           id: string
           nome_cliente: string
           nosso_numero: string | null
           pdf_url: string | null
+          status_pagamento: string | null
           subfatura_id: string | null
+          valor_pago: number | null
         }
         Insert: {
           boleto_id?: string | null
@@ -188,13 +191,16 @@ export type Database = {
           codigo_fatura: string
           cpf_cnpj?: string | null
           created_at?: string
+          data_pagamento?: string | null
           fatura_id: string
           fatura_pdf?: string | null
           id?: string
           nome_cliente: string
           nosso_numero?: string | null
           pdf_url?: string | null
+          status_pagamento?: string | null
           subfatura_id?: string | null
+          valor_pago?: number | null
         }
         Update: {
           boleto_id?: string | null
@@ -202,13 +208,16 @@ export type Database = {
           codigo_fatura?: string
           cpf_cnpj?: string | null
           created_at?: string
+          data_pagamento?: string | null
           fatura_id?: string
           fatura_pdf?: string | null
           id?: string
           nome_cliente?: string
           nosso_numero?: string | null
           pdf_url?: string | null
+          status_pagamento?: string | null
           subfatura_id?: string | null
+          valor_pago?: number | null
         }
         Relationships: []
       }
