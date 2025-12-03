@@ -22,7 +22,6 @@ import { ModalEmitirBoleto } from '../../../../components/ModalEmitirBoleto';
 import { ModalVisualizarFechamento } from '../../../../components/ModalVisualizarFechamento';
 import { toast } from 'sonner';
 import { BoletoService } from '../../../../services/BoletoService';
-import { supabase } from '../../../../integrations/supabase/client';
 import { getSupabaseWithAuth } from '../../../../integrations/supabase/custom-auth';
 
 const FinanceiroFaturasAReceber = () => {
@@ -155,8 +154,9 @@ const FinanceiroFaturasAReceber = () => {
                 return novo;
             });
             
-            // Remover também do Supabase (por fatura_id ou subfatura_id)
-            await supabase
+            // Remover também do Supabase (por fatura_id ou subfatura_id) usando cliente autenticado
+            const supabaseAuth = getSupabaseWithAuth();
+            await supabaseAuth
                 .from('fechamentos_fatura')
                 .delete()
                 .or(`fatura_id.eq.${fatura.id},subfatura_id.eq.${fatura.id}`);
@@ -371,8 +371,11 @@ const FinanceiroFaturasAReceber = () => {
             try {
                 console.log('🔍 Buscando fechamentos para IDs:', allIds);
                 
+                // Usar cliente com autenticação para acessar tabela com RLS restritivo
+                const supabaseAuth = getSupabaseWithAuth();
+                
                 // Buscar por fatura_id OU subfatura_id
-                const { data: fechamentos, error } = await supabase
+                const { data: fechamentos, error } = await supabaseAuth
                     .from('fechamentos_fatura')
                     .select('*')
                     .or(`fatura_id.in.(${allIds.join(',')}),subfatura_id.in.(${allIds.join(',')})`);
@@ -382,7 +385,7 @@ const FinanceiroFaturasAReceber = () => {
                     return;
                 }
                 
-                console.log('✅ Fechamentos encontrados:', fechamentos?.length || 0);
+                console.log('✅ Fechamentos encontrados:', fechamentos?.length || 0, fechamentos);
                 
                 if (fechamentos && fechamentos.length > 0) {
                     const novoMap: Record<string, any> = {};
