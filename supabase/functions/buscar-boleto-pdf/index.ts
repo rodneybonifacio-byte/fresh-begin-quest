@@ -132,6 +132,13 @@ serve(async (req) => {
     if (!boletoNossoNumero) {
       console.log('🔎 Buscando boletos na lista...');
       
+      // Calcular período de busca (últimos 90 dias)
+      const hoje = new Date();
+      const dataFinal = hoje.toISOString().split('T')[0]; // YYYY-MM-DD
+      const dataInicial = new Date(hoje.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      
+      console.log(`📅 Período de busca: ${dataInicial} a ${dataFinal}`);
+      
       // Buscar por diferentes critérios
       const buscas = [];
       
@@ -149,9 +156,10 @@ serve(async (req) => {
       for (const busca of buscas) {
         console.log(`🔎 Tentando buscar por ${busca.filtro}:`, busca.valor);
         
-        const listResponse = await fetch(
-          `https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas?filtrarPor=${busca.filtro}&filtro=${encodeURIComponent(busca.valor)}&itensPorPagina=50&paginaAtual=0&ordenarPor=DATASITUACAO`,
-          {
+        const url = `https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas?dataInicial=${dataInicial}&dataFinal=${dataFinal}&filtrarPor=${busca.filtro}&filtro=${encodeURIComponent(busca.valor)}&itensPorPagina=50&paginaAtual=0&ordenarPor=DATASITUACAO`;
+        console.log('📡 URL:', url);
+        
+        const listResponse = await fetch(url, {
             method: 'GET',
             headers: {
               'Authorization': `Bearer ${accessToken}`,
