@@ -139,12 +139,10 @@ serve(async (req) => {
       
       console.log(`📅 Período de busca: ${dataInicial} a ${dataFinal}`);
       
-      // IMPORTANTE: Buscar primeiro por CPF/CNPJ que é único por cliente
-      // Depois filtrar pelo codigoFatura (seuNumero) para pegar o boleto correto
-      
+      // IMPORTANTE: Buscar por CPF/CNPJ que é único por cliente
       if (cpfCnpj) {
         const cpfLimpo = String(cpfCnpj).replace(/\D/g, '');
-        console.log(`🔎 Buscando por CPFCNPJ: ${cpfLimpo}`);
+        console.log(`🔎 Buscando por CPFCNPJ: ${cpfLimpo}, codigoFatura esperado: ${codigoFatura}`);
         
         const url = `https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas?dataInicial=${dataInicial}&dataFinal=${dataFinal}&filtrarPor=CPFCNPJ&filtro=${cpfLimpo}&itensPorPagina=100&paginaAtual=0&ordenarPor=DATASITUACAO`;
         console.log('📡 URL:', url);
@@ -163,20 +161,37 @@ serve(async (req) => {
           console.log(`📋 Boletos encontrados por CPFCNPJ:`, listData.totalElementos || 0);
           
           if (listData.cobrancas && listData.cobrancas.length > 0) {
-            // Filtrar pelo seuNumero (codigoFatura) para pegar o boleto CORRETO
+            let primeiroValido = null;
+            
+            // Primeiro, tentar encontrar correspondência exata pelo codigoFatura
             for (const cobranca of listData.cobrancas) {
               const seuNumero = cobranca.cobranca?.seuNumero || '';
               const situacao = cobranca.cobranca?.situacao;
               
-              console.log(`  📝 Verificando boleto seuNumero: ${seuNumero}, situacao: ${situacao}`);
+              // Status válidos para boleto ativo
+              const statusValidos = ['A_RECEBER', 'ATRASADO', 'MARCADO_RECEBIDO'];
+              const isStatusValido = statusValidos.includes(situacao);
               
-              // Verificar se o seuNumero corresponde ao codigoFatura e não está cancelado
-              if (codigoFatura && seuNumero === codigoFatura && situacao !== 'CANCELADO') {
+              // Guardar o primeiro boleto válido como fallback
+              if (!primeiroValido && isStatusValido) {
+                primeiroValido = cobranca;
+                console.log(`  💾 Primeiro válido encontrado: seuNumero=${seuNumero}, situacao=${situacao}`);
+              }
+              
+              // Verificar correspondência exata do codigoFatura
+              if (codigoFatura && seuNumero === codigoFatura && isStatusValido) {
                 boletoEncontrado = cobranca;
                 boletoNossoNumero = cobranca.boleto?.nossoNumero || cobranca.nossoNumero;
-                console.log('✅ Boleto CORRETO encontrado! seuNumero:', seuNumero, 'nossoNumero:', boletoNossoNumero);
+                console.log('✅ Boleto com correspondência EXATA! seuNumero:', seuNumero, 'nossoNumero:', boletoNossoNumero);
                 break;
               }
+            }
+            
+            // Se não encontrou correspondência exata, usar o primeiro válido
+            if (!boletoEncontrado && primeiroValido) {
+              boletoEncontrado = primeiroValido;
+              boletoNossoNumero = primeiroValido.boleto?.nossoNumero || primeiroValido.nossoNumero;
+              console.log('⚠️ Usando primeiro boleto válido (sem correspondência exata):', boletoNossoNumero);
             }
           }
         } else {
