@@ -42,7 +42,7 @@ export const ModalEmitirBoleto: React.FC<ModalEmitirBoletoProps> = ({
                 mensagem: `Fatura ${fatura.codigo} - BRHUB Envios`,
                 multa: {
                     tipo: 'PERCENTUAL',
-                    valor: 2, // 2% de multa
+                    valor: 10, // 10% de multa
                 },
                 // Juros mora removido conforme solicitado
             });
@@ -105,7 +105,7 @@ export const ModalEmitirBoleto: React.FC<ModalEmitirBoletoProps> = ({
                                 <strong>Configurações automáticas:</strong>
                             </p>
                             <ul className="list-disc list-inside space-y-1 text-blue-700 dark:text-blue-300">
-                                <li>Multa: 2% após vencimento</li>
+                                <li>Multa: 10% após vencimento</li>
                                 <li>Webhook configurado para atualização automática</li>
                             </ul>
                         </div>
