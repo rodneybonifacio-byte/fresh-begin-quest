@@ -88,16 +88,16 @@ serve(async (req) => {
   let httpClient: Deno.HttpClient | null = null;
 
   try {
-    const { nossoNumero, codigoFatura } = await req.json();
+    const { nossoNumero, codigoFatura, cpfCnpj } = await req.json();
     
-    if (!nossoNumero && !codigoFatura) {
+    if (!nossoNumero && !codigoFatura && !cpfCnpj) {
       return new Response(
-        JSON.stringify({ error: 'nossoNumero ou codigoFatura é obrigatório' }),
+        JSON.stringify({ error: 'nossoNumero, codigoFatura ou cpfCnpj é obrigatório' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('🔍 Buscando boleto:', { nossoNumero, codigoFatura });
+    console.log('🔍 Buscando boleto:', { nossoNumero, codigoFatura, cpfCnpj });
 
     // Criar cliente HTTP com mTLS
     const cert = Deno.env.get('BANCO_INTER_CLIENT_CERT')!;
@@ -120,22 +120,37 @@ serve(async (req) => {
     const accessToken = await obterTokenBancoInter(httpClient);
 
     let boletoNossoNumero = nossoNumero;
+    let boletoEncontrado = null;
 
-    // Se não temos o nossoNumero, buscar na lista de boletos pelo codigoFatura
-    if (!boletoNossoNumero && codigoFatura) {
-      console.log('🔎 Buscando boleto pelo codigoFatura:', codigoFatura);
+    // Se o nossoNumero começa com "MANUAL-", ignorar e buscar pelo codigoFatura
+    if (boletoNossoNumero && boletoNossoNumero.startsWith('MANUAL-')) {
+      console.log('⚠️ nossoNumero é manual, ignorando:', boletoNossoNumero);
+      boletoNossoNumero = null;
+    }
+
+    // Se não temos o nossoNumero válido, buscar na lista de boletos
+    if (!boletoNossoNumero) {
+      console.log('🔎 Buscando boletos na lista...');
       
-      // Tentar diferentes formatos de busca
-      const searchTerms = [
-        codigoFatura,
-        String(codigoFatura).substring(0, 15),
-      ];
+      // Buscar por diferentes critérios
+      const buscas = [];
       
-      for (const searchTerm of searchTerms) {
-        console.log('🔎 Tentando buscar com termo:', searchTerm);
+      // 1. Buscar por seuNumero (codigo da fatura)
+      if (codigoFatura) {
+        buscas.push({ filtro: 'SEUNUMERO', valor: String(codigoFatura).substring(0, 15) });
+      }
+      
+      // 2. Buscar por CPF/CNPJ do pagador
+      if (cpfCnpj) {
+        const cpfLimpo = String(cpfCnpj).replace(/\D/g, '');
+        buscas.push({ filtro: 'CPFCNPJ', valor: cpfLimpo });
+      }
+      
+      for (const busca of buscas) {
+        console.log(`🔎 Tentando buscar por ${busca.filtro}:`, busca.valor);
         
         const listResponse = await fetch(
-          `https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas?filtrarPor=SEUNUMERO&filtro=${encodeURIComponent(searchTerm)}&itensPorPagina=10&paginaAtual=0`,
+          `https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas?filtrarPor=${busca.filtro}&filtro=${encodeURIComponent(busca.valor)}&itensPorPagina=50&paginaAtual=0&ordenarPor=DATASITUACAO`,
           {
             method: 'GET',
             headers: {
@@ -147,15 +162,18 @@ serve(async (req) => {
 
         if (listResponse.ok) {
           const listData = await listResponse.json();
-          console.log('📋 Boletos encontrados:', listData.totalElementos || 0);
+          console.log(`📋 Boletos encontrados por ${busca.filtro}:`, listData.totalElementos || 0);
           
           if (listData.cobrancas && listData.cobrancas.length > 0) {
-            boletoNossoNumero = listData.cobrancas[0].nossoNumero;
-            console.log('✅ Boleto encontrado:', boletoNossoNumero);
+            // Pegar o mais recente
+            boletoEncontrado = listData.cobrancas[0];
+            boletoNossoNumero = boletoEncontrado.nossoNumero;
+            console.log('✅ Boleto encontrado:', boletoNossoNumero, boletoEncontrado);
             break;
           }
         } else {
-          console.log('⚠️ Busca não retornou resultados para:', searchTerm);
+          const errText = await listResponse.text();
+          console.log(`⚠️ Busca por ${busca.filtro} falhou:`, errText);
         }
       }
     }

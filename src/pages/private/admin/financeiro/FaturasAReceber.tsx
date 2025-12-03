@@ -532,11 +532,11 @@ const FinanceiroFaturasAReceber = () => {
     const handleVisualizarFechamento = async (fatura: IFatura) => {
         const fechamentoData = verificarFechamentoExistente(fatura.id);
         if (fechamentoData) {
-            // Se tem PDFs, mostrar direto
-            if (fechamentoData.faturaPdf || fechamentoData.boletoPdf) {
+            // Se tem PDFs válidos, mostrar direto
+            if (fechamentoData.faturaPdf && fechamentoData.boletoPdf) {
                 setIsModalFechamento({
                     isOpen: true,
-                    faturaPdf: fechamentoData.faturaPdf || '',
+                    faturaPdf: fechamentoData.faturaPdf,
                     boletoPdf: fechamentoData.boletoPdf,
                     codigoFatura: fechamentoData.codigoFatura,
                     nomeCliente: fechamentoData.nomeCliente,
@@ -545,32 +545,33 @@ const FinanceiroFaturasAReceber = () => {
                 return;
             }
             
-            // Se não tem PDFs, tentar buscar do Banco Inter
+            // Se não tem PDFs, buscar do Banco Inter usando CPF/CNPJ do cliente
             const codigoFatura = fechamentoData.codigoFatura || fatura.codigo;
+            const cpfCnpj = fatura.cpfCnpj || fatura.cliente?.cpfCnpj;
             const nossoNumero = fechamentoData.boletoInfo?.nossoNumero;
             
             try {
                 setIsLoading(true);
-                toast.info('Buscando PDF do boleto existente no Banco Inter...');
+                toast.info('Buscando boleto existente no Banco Inter...');
                 
                 const supabaseAuth = getSupabaseWithAuth();
                 const { data: result, error } = await supabaseAuth.functions.invoke('buscar-boleto-pdf', {
                     body: { 
                         nossoNumero: nossoNumero || undefined,
-                        codigoFatura: codigoFatura
+                        codigoFatura: codigoFatura,
+                        cpfCnpj: cpfCnpj
                     }
                 });
                 
-                if (error || !result?.pdf) {
-                    console.error('Erro ao buscar boleto:', error, result);
-                    toast.error('Boleto não encontrado no Banco Inter');
-                    
-                    const regenerar = window.confirm(
-                        `Não foi possível recuperar o PDF do boleto existente.\n\nDeseja gerar um NOVO fechamento? (Isso criará um novo boleto)`
-                    );
-                    if (regenerar) {
-                        handleRealizarFechamento(fatura);
-                    }
+                if (error) {
+                    console.error('Erro ao buscar boleto:', error);
+                    toast.error('Erro na comunicação com Banco Inter');
+                    return;
+                }
+                
+                if (!result?.pdf) {
+                    console.error('PDF não encontrado:', result);
+                    toast.error(`Boleto não encontrado no Banco Inter. Verifique se o boleto foi realmente emitido para ${fechamentoData.nomeCliente}`);
                     return;
                 }
                 
@@ -596,7 +597,7 @@ const FinanceiroFaturasAReceber = () => {
                 
                 // Salvar no Supabase também
                 try {
-                    await supabaseAuth
+                    const updateResult = await supabaseAuth
                         .from('fechamentos_fatura')
                         .update({
                             fatura_pdf: fechamentoData.faturaPdf,
@@ -604,6 +605,8 @@ const FinanceiroFaturasAReceber = () => {
                             boleto_id: result.nossoNumero || fechamentoData.boletoInfo?.nossoNumero,
                         })
                         .or(`fatura_id.eq.${fatura.id},subfatura_id.eq.${fatura.id}`);
+                    
+                    console.log('✅ Fechamento atualizado no Supabase:', updateResult);
                 } catch (dbErr) {
                     console.warn('Erro ao atualizar no Supabase:', dbErr);
                 }
@@ -621,14 +624,7 @@ const FinanceiroFaturasAReceber = () => {
                 
             } catch (err) {
                 console.error('Erro:', err);
-                toast.error('Erro ao buscar PDF');
-                
-                const regenerar = window.confirm(
-                    `Erro ao recuperar o PDF.\n\nDeseja gerar um NOVO fechamento?`
-                );
-                if (regenerar) {
-                    handleRealizarFechamento(fatura);
-                }
+                toast.error('Erro ao buscar PDF do Banco Inter');
             } finally {
                 setIsLoading(false);
             }
