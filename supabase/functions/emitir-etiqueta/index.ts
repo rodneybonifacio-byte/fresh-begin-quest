@@ -1,6 +1,7 @@
 // @ts-nocheck
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,35 +14,116 @@ async function getAdminToken(): Promise<string> {
   const adminPassword = Deno.env.get('API_ADMIN_PASSWORD');
 
   console.log('🔐 Obtendo token admin...');
-  console.log('📍 BASE_API_URL:', baseUrl);
-  console.log('📧 Admin email configurado:', adminEmail ? 'SIM' : 'NÃO');
-  console.log('🔑 Admin password configurado:', adminPassword ? 'SIM' : 'NÃO');
 
   if (!adminEmail || !adminPassword) {
     throw new Error('Credenciais de admin não configuradas');
   }
 
-  const loginUrl = `${baseUrl}/login`;
-  console.log('🌐 URL de login:', loginUrl);
-  
-  const loginResponse = await fetch(loginUrl, {
+  const loginResponse = await fetch(`${baseUrl}/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email: adminEmail, password: adminPassword }),
   });
 
-  console.log('📄 Login response status:', loginResponse.status);
-  
-  const responseText = await loginResponse.text();
-  console.log('📄 Login response body:', responseText.substring(0, 500));
-
   if (!loginResponse.ok) {
-    throw new Error(`Falha ao autenticar com credenciais admin: ${loginResponse.status} - ${responseText}`);
+    const errorText = await loginResponse.text();
+    throw new Error(`Falha ao autenticar: ${loginResponse.status} - ${errorText}`);
   }
 
-  const loginData = JSON.parse(responseText);
+  const loginData = await loginResponse.json();
   console.log('✅ Token admin obtido');
   return loginData.data?.token || loginData.token;
+}
+
+async function syncRemetenteToApi(remetenteId: string, clienteId: string, adminToken: string): Promise<boolean> {
+  console.log('🔄 Tentando sincronizar remetente com API BRHUB:', remetenteId);
+
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  );
+
+  const { data: remetente, error } = await supabase
+    .from('remetentes')
+    .select('*')
+    .eq('id', remetenteId)
+    .single();
+
+  if (error || !remetente) {
+    console.error('❌ Remetente não encontrado no Supabase:', error);
+    return false;
+  }
+
+  console.log('📋 Remetente encontrado no Supabase:', remetente.nome);
+
+  const baseUrl = Deno.env.get('BASE_API_URL');
+
+  const remetenteData = {
+    clienteId: clienteId,
+    nome: remetente.nome?.trim(),
+    cpfCnpj: remetente.cpf_cnpj?.replace(/\D/g, ''),
+    documentoEstrangeiro: remetente.documento_estrangeiro || '',
+    celular: remetente.celular || '',
+    telefone: remetente.telefone || '',
+    email: remetente.email?.trim() || '',
+    endereco: {
+      cep: remetente.cep?.replace(/\D/g, ''),
+      logradouro: remetente.logradouro?.trim() || '',
+      numero: remetente.numero?.trim() || '',
+      complemento: remetente.complemento?.trim() || '',
+      bairro: remetente.bairro?.trim() || '',
+      localidade: remetente.localidade?.trim() || '',
+      uf: remetente.uf?.trim() || '',
+    },
+  };
+
+  console.log('📤 Criando remetente na API BRHUB...');
+
+  const createResponse = await fetch(`${baseUrl}/remetentes`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${adminToken}`,
+    },
+    body: JSON.stringify(remetenteData),
+  });
+
+  const responseText = await createResponse.text();
+  console.log('📥 Resposta da criação:', createResponse.status);
+
+  if (createResponse.ok) {
+    console.log('✅ Remetente criado com sucesso na API BRHUB!');
+    
+    // Atualizar sincronização no Supabase
+    await supabase
+      .from('remetentes')
+      .update({ sincronizado_em: new Date().toISOString() })
+      .eq('id', remetenteId);
+    
+    return true;
+  }
+
+  // Se já existe, tentar atualizar
+  if (createResponse.status === 409 || responseText.toLowerCase().includes('já existe')) {
+    console.log('⚠️ Remetente já existe, tentando atualizar...');
+    
+    const updateResponse = await fetch(`${baseUrl}/remetentes/${remetenteId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify(remetenteData),
+    });
+
+    if (updateResponse.ok) {
+      console.log('✅ Remetente atualizado com sucesso!');
+      return true;
+    }
+  }
+
+  console.error('❌ Falha ao sincronizar remetente:', responseText);
+  return false;
 }
 
 serve(async (req) => {
@@ -63,7 +145,6 @@ serve(async (req) => {
     const userToken = requestData.userToken;
     
     if (!userToken) {
-      console.error('❌ Token do usuário não fornecido');
       throw new Error('Token de autenticação não fornecido');
     }
 
@@ -74,7 +155,6 @@ serve(async (req) => {
       clienteId = tokenPayload.clienteId;
       console.log('👤 ClienteId do usuário:', clienteId);
     } catch (e) {
-      console.error('❌ Erro ao extrair clienteId do token:', e.message);
       throw new Error('Token inválido - não foi possível identificar o cliente');
     }
 
@@ -85,49 +165,57 @@ serve(async (req) => {
     // Preparar payload da emissão
     const emissaoPayload = {
       ...requestData.emissaoData,
-      clienteId, // CRÍTICO: Sempre enviar para aplicar regras do cliente
+      clienteId,
     };
 
-    // Remove userToken do payload antes de enviar para API
     delete emissaoPayload.userToken;
-
     console.log('📦 Payload da emissão:', JSON.stringify(emissaoPayload));
 
-    // Primeira tentativa: usar token do próprio usuário
-    console.log('📊 Tentativa 1: Emitindo com token do usuário...');
+    // Obter token admin para as operações
+    const adminToken = await getAdminToken();
+
+    // Tentar emitir com token admin
+    console.log('📊 Emitindo com credenciais admin...');
     
     let emissaoResponse = await fetch(`${baseUrl}/emissoes`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${userToken}`,
+        'Authorization': `Bearer ${adminToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(emissaoPayload),
     });
 
-    // Se for 403, tentar com credenciais admin
-    if (emissaoResponse.status === 403) {
-      console.log('⚠️ Acesso negado com token do usuário. Tentando com credenciais admin...');
-      
-      const adminToken = await getAdminToken();
-      
-      emissaoResponse = await fetch(`${baseUrl}/emissoes`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${adminToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(emissaoPayload),
-      });
-    }
-
-    const responseText = await emissaoResponse.text();
+    let responseText = await emissaoResponse.text();
     console.log('📄 Resposta da emissão (status):', emissaoResponse.status);
+
+    // Se for erro 404 de remetente, tentar sincronizar e retentar
+    if (emissaoResponse.status === 404 && responseText.toLowerCase().includes('remetente')) {
+      console.log('⚠️ Remetente não encontrado na API. Tentando sincronizar...');
+      
+      const remetenteId = emissaoPayload.remetenteId;
+      const synced = await syncRemetenteToApi(remetenteId, clienteId, adminToken);
+      
+      if (synced) {
+        console.log('🔄 Retentando emissão após sincronização...');
+        
+        emissaoResponse = await fetch(`${baseUrl}/emissoes`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${adminToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(emissaoPayload),
+        });
+        
+        responseText = await emissaoResponse.text();
+        console.log('📄 Resposta da segunda tentativa:', emissaoResponse.status);
+      }
+    }
 
     if (!emissaoResponse.ok) {
       console.error('❌ Erro na emissão:', responseText);
       
-      // Parse error response to get proper message
       let errorMessage = 'Erro na emissão de etiqueta';
       try {
         const errorData = JSON.parse(responseText);
@@ -169,9 +257,7 @@ serve(async (req) => {
     console.error('❌ Erro na Edge Function:', error);
     const errorMessage = error instanceof Error ? error.message : 'Erro ao emitir etiqueta';
     return new Response(
-      JSON.stringify({
-        error: errorMessage,
-      }),
+      JSON.stringify({ error: errorMessage }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
