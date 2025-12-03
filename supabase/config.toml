@@ -83,3 +83,6 @@ verify_jwt = false
 
 [functions.emitir-etiqueta]
 verify_jwt = false
+
+[functions.sincronizar-remetente-para-api]
+verify_jwt = false

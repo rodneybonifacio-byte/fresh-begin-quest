@@ -57,4 +57,42 @@ export class RemetenteSupabaseDirectService {
             return { data: [] };
         }
     }
+
+    async sincronizarComApiBrhub(remetenteId: string): Promise<{ success: boolean; message: string; newId?: string }> {
+        try {
+            console.log('📤 Sincronizando remetente com API BRHUB:', remetenteId);
+            
+            const userToken = localStorage.getItem('token');
+            if (!userToken) {
+                throw new Error('Token não encontrado');
+            }
+
+            const { data, error } = await supabase.functions.invoke('sincronizar-remetente-para-api', {
+                body: { remetenteId, userToken },
+            });
+
+            if (error) {
+                console.error('❌ Erro ao sincronizar:', error);
+                throw new Error(error.message || 'Erro ao sincronizar remetente');
+            }
+
+            if (data?.error) {
+                throw new Error(data.error);
+            }
+
+            console.log('✅ Remetente sincronizado:', data);
+            return {
+                success: true,
+                message: data?.message || 'Remetente sincronizado com sucesso',
+                newId: data?.newId,
+            };
+        } catch (error) {
+            console.error('❌ Erro ao sincronizar remetente:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Erro ao sincronizar remetente';
+            return {
+                success: false,
+                message: errorMessage,
+            };
+        }
+    }
 }
