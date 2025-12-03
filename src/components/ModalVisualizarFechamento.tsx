@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Download, FileText, Loader2, ExternalLink } from 'lucide-react';
+import { X, Download, FileText, Loader2, ExternalLink, RefreshCw, AlertTriangle } from 'lucide-react';
 import { ButtonComponent } from './button';
 import { PDFDocument } from 'pdf-lib';
 import { toast } from 'sonner';
@@ -18,6 +18,8 @@ interface ModalVisualizarFechamentoProps {
         dataVencimento: string;
         valor: number;
     };
+    boletoNaoEncontrado?: boolean;
+    onReemitirBoleto?: () => void;
 }
 
 export const ModalVisualizarFechamento: React.FC<ModalVisualizarFechamentoProps> = ({
@@ -27,7 +29,9 @@ export const ModalVisualizarFechamento: React.FC<ModalVisualizarFechamentoProps>
     boletoPdf,
     codigoFatura,
     nomeCliente,
-    boletoInfo
+    boletoInfo,
+    boletoNaoEncontrado = false,
+    onReemitirBoleto
 }) => {
     const [mergedPdfUrl, setMergedPdfUrl] = useState<string | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -81,7 +85,6 @@ export const ModalVisualizarFechamento: React.FC<ModalVisualizarFechamentoProps>
             
             setMergedPdfUrl(url);
             console.log('✅ PDF mesclado com sucesso!');
-            toast.success('PDF gerado com sucesso!');
             
         } catch (err) {
             console.error('❌ Erro ao mesclar PDFs:', err);
@@ -140,8 +143,34 @@ export const ModalVisualizarFechamento: React.FC<ModalVisualizarFechamentoProps>
                         </button>
                     </div>
 
+                    {/* Alerta de boleto não encontrado */}
+                    {boletoNaoEncontrado && (
+                        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 rounded-lg">
+                            <div className="flex items-start gap-3">
+                                <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                                <div className="flex-1">
+                                    <h3 className="font-semibold text-amber-800 dark:text-amber-300">Boleto não encontrado</h3>
+                                    <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
+                                        O boleto original foi gerado com dados incorretos e não pode ser recuperado.
+                                        Clique em "Re-emitir Boleto" para gerar um novo boleto corretamente.
+                                    </p>
+                                    {onReemitirBoleto && (
+                                        <ButtonComponent 
+                                            variant="primary" 
+                                            onClick={onReemitirBoleto}
+                                            className="mt-3 gap-2 bg-amber-600 hover:bg-amber-700"
+                                        >
+                                            <RefreshCw size={16} />
+                                            Re-emitir Boleto
+                                        </ButtonComponent>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Informações do boleto */}
-                    {boletoInfo && (
+                    {boletoInfo && !boletoNaoEncontrado && (
                         <div className="bg-muted p-4 rounded-lg">
                             <h3 className="font-semibold mb-2">Informações do Boleto</h3>
                             <div className="grid grid-cols-2 gap-2 text-sm">
@@ -218,7 +247,7 @@ export const ModalVisualizarFechamento: React.FC<ModalVisualizarFechamentoProps>
                             </ButtonComponent>
                             <ButtonComponent variant="primary" onClick={handleDownload} className="gap-2">
                                 <Download size={18} />
-                                Baixar Fechamento
+                                Baixar {boletoPdf ? 'Fechamento' : 'Fatura'}
                             </ButtonComponent>
                         </>
                     )}
