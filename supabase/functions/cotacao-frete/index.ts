@@ -18,46 +18,32 @@ serve(async (req) => {
     console.log('🚚 Iniciando cotação de frete...');
 
     const baseUrl = Deno.env.get('BASE_API_URL');
-    
-    // Credenciais do usuário com permissões completas na API BRHUB
-    const apiUserEmail = 'contato@guilherme.com.br';
-    const apiUserPassword = '123mudar';
 
     if (!baseUrl) {
       throw new Error('BASE_API_URL não configurada');
     }
 
-    // Autenticar com usuário BRHUB para obter clienteId correto
-    console.log('🔐 Autenticando com usuário BRHUB...');
-    const loginResponse = await fetch(`${baseUrl}/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        email: apiUserEmail,
-        password: apiUserPassword,
-      }),
-    });
-
-    if (!loginResponse.ok) {
-      const errorText = await loginResponse.text();
-      console.error('❌ Erro no login:', errorText);
-      throw new Error('Falha na autenticação com API BRHUB');
+    // Usar o token do cliente que veio na requisição
+    const userToken = requestData.userToken;
+    
+    if (!userToken) {
+      console.error('❌ Token do usuário não fornecido');
+      throw new Error('Token de autenticação não fornecido');
     }
 
-    const loginData = await loginResponse.json();
-    const apiToken = loginData.token;
-    
-    // Extrair clienteId do token do usuário autenticado (Guilherme)
+    // Extrair clienteId do token do usuário
     let clienteId = null;
     try {
-      const tokenPayload = JSON.parse(atob(apiToken.split('.')[1]));
+      const tokenPayload = JSON.parse(atob(userToken.split('.')[1]));
       clienteId = tokenPayload.clienteId;
-      console.log('👤 ClienteId do Guilherme:', clienteId);
+      console.log('👤 ClienteId do usuário:', clienteId);
     } catch (e) {
-      console.error('❌ Erro ao extrair clienteId:', e.message);
-      throw new Error('Não foi possível identificar o cliente');
+      console.error('❌ Erro ao extrair clienteId do token:', e.message);
+      throw new Error('Token inválido - não foi possível identificar o cliente');
+    }
+
+    if (!clienteId) {
+      throw new Error('ClienteId não encontrado no token');
     }
 
     // Preparar dados da cotação - SEMPRE incluir clienteId para aplicar regras específicas
@@ -71,14 +57,14 @@ serve(async (req) => {
       ...(requestData.cpfCnpjLoja && { cpfCnpjLoja: requestData.cpfCnpjLoja }),
     };
 
-    // Realizar cotação com token do usuário autorizado + clienteId no payload
+    // Realizar cotação com token do próprio usuário
     console.log('📊 Realizando cotação com clienteId:', clienteId);
     console.log('📦 Payload:', JSON.stringify(cotacaoPayload));
     
     const cotacaoResponse = await fetch(`${baseUrl}/frete/cotacao`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiToken}`,
+        'Authorization': `Bearer ${userToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(cotacaoPayload),

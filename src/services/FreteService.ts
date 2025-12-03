@@ -14,14 +14,17 @@ export class FreteService extends BaseService<any> {
         console.log('🚚 Chamando edge function cotacao-frete...');
         
         // Obter token do usuário para aplicar regras de negócio do cliente
-        // IMPORTANTE: O login salva como 'token', não 'apiToken'
-        const apiToken = localStorage.getItem('token');
+        const userToken = localStorage.getItem('token');
         
-        console.log('🔑 Token encontrado:', apiToken ? 'SIM' : 'NÃO');
+        console.log('🔑 Token do usuário encontrado:', userToken ? 'SIM' : 'NÃO');
+        
+        if (!userToken) {
+            throw new Error('Usuário não autenticado');
+        }
         
         const payload = {
             ...item,
-            ...(apiToken && { apiToken }),
+            userToken, // Enviar token do usuário para a edge function
         };
         
         const { data, error } = await supabase.functions.invoke('cotacao-frete', {
