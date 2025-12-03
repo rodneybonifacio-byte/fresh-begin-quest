@@ -80,3 +80,6 @@ verify_jwt = false
 
 [functions.buscar-logs-acesso]
 verify_jwt = false
+
+[functions.emitir-etiqueta]
+verify_jwt = false
