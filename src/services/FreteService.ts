@@ -40,8 +40,40 @@ export class FreteService extends BaseService<any> {
         return data;
     }
 
-    // Método para criar uma nova cotação de frete
-    public override create<TResponse, TRequest>(data: TRequest) {
-        return this.httpClient.post<TResponse, TRequest>(`${this.endpoint}/emitir-etiqueta`, data);
+    // Método para criar uma nova emissão de etiqueta usando edge function
+    public override async create<TResponse, TRequest>(emissaoData: TRequest): Promise<TResponse> {
+        console.log('🏷️ Chamando edge function emitir-etiqueta...');
+        
+        // Obter token do usuário para aplicar regras de negócio do cliente
+        const userToken = localStorage.getItem('token');
+        
+        console.log('🔑 Token do usuário encontrado:', userToken ? 'SIM' : 'NÃO');
+        
+        if (!userToken) {
+            throw new Error('Usuário não autenticado');
+        }
+        
+        const payload = {
+            emissaoData, // Dados da emissão
+            userToken, // Token do usuário para a edge function
+        };
+        
+        const { data, error } = await supabase.functions.invoke('emitir-etiqueta', {
+            body: payload
+        });
+
+        if (error) {
+            console.error('❌ Erro na edge function emitir-etiqueta:', error);
+            throw new Error(error.message || 'Erro ao emitir etiqueta');
+        }
+
+        // Verificar se a resposta contém erro
+        if (data?.error) {
+            console.error('❌ Erro retornado pela API:', data.error);
+            throw new Error(data.error);
+        }
+
+        console.log('✅ Etiqueta emitida:', data);
+        return data as TResponse;
     }
 }
