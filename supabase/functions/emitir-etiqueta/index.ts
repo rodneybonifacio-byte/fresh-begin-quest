@@ -35,7 +35,7 @@ async function getAdminToken(): Promise<string> {
   return loginData.data?.token || loginData.token;
 }
 
-async function syncRemetenteToApi(remetenteId: string, clienteId: string, adminToken: string): Promise<boolean> {
+async function syncRemetenteToApi(remetenteId: string, clienteId: string, adminToken: string): Promise<{ success: boolean; newId?: string }> {
   console.log('🔄 Tentando sincronizar remetente com API BRHUB:', remetenteId);
 
   const supabase = createClient(
@@ -51,7 +51,7 @@ async function syncRemetenteToApi(remetenteId: string, clienteId: string, adminT
 
   if (error || !remetente) {
     console.error('❌ Remetente não encontrado no Supabase:', error);
-    return false;
+    return { success: false };
   }
 
   console.log('📋 Remetente encontrado no Supabase:', remetente.nome);
@@ -94,13 +94,31 @@ async function syncRemetenteToApi(remetenteId: string, clienteId: string, adminT
   if (createResponse.ok) {
     console.log('✅ Remetente criado com sucesso na API BRHUB!');
     
-    // Atualizar sincronização no Supabase
-    await supabase
-      .from('remetentes')
-      .update({ sincronizado_em: new Date().toISOString() })
-      .eq('id', remetenteId);
+    // Parse response to get the new ID
+    let newId: string | undefined;
+    try {
+      const responseData = JSON.parse(responseText);
+      newId = responseData.id || responseData.data?.id;
+      console.log('📋 ID retornado pela API:', newId);
+      
+      // Update local Supabase with the new ID if different
+      if (newId && newId !== remetenteId) {
+        console.log('🔄 Atualizando ID do remetente no Supabase:', newId);
+        await supabase
+          .from('remetentes')
+          .update({ id: newId, sincronizado_em: new Date().toISOString() })
+          .eq('id', remetenteId);
+      } else {
+        await supabase
+          .from('remetentes')
+          .update({ sincronizado_em: new Date().toISOString() })
+          .eq('id', remetenteId);
+      }
+    } catch (e) {
+      console.log('⚠️ Não foi possível parsear resposta:', e);
+    }
     
-    return true;
+    return { success: true, newId: newId || remetenteId };
   }
 
   // Se já existe, tentar atualizar
@@ -118,12 +136,12 @@ async function syncRemetenteToApi(remetenteId: string, clienteId: string, adminT
 
     if (updateResponse.ok) {
       console.log('✅ Remetente atualizado com sucesso!');
-      return true;
+      return { success: true, newId: remetenteId };
     }
   }
 
   console.error('❌ Falha ao sincronizar remetente:', responseText);
-  return false;
+  return { success: false };
 }
 
 serve(async (req) => {
@@ -194,10 +212,18 @@ serve(async (req) => {
       console.log('⚠️ Remetente não encontrado na API. Tentando sincronizar...');
       
       const remetenteId = emissaoPayload.remetenteId;
-      const synced = await syncRemetenteToApi(remetenteId, clienteId, adminToken);
+      const syncResult = await syncRemetenteToApi(remetenteId, clienteId, adminToken);
       
-      if (synced) {
-        console.log('🔄 Retentando emissão após sincronização...');
+      if (syncResult.success) {
+        // Use the new ID returned by the API if different
+        const finalRemetenteId = syncResult.newId || remetenteId;
+        console.log('🔄 Retentando emissão após sincronização com ID:', finalRemetenteId);
+        
+        // Update the payload with the correct ID
+        const updatedPayload = {
+          ...emissaoPayload,
+          remetenteId: finalRemetenteId,
+        };
         
         emissaoResponse = await fetch(`${baseUrl}/emissoes`, {
           method: 'POST',
@@ -205,7 +231,7 @@ serve(async (req) => {
             'Authorization': `Bearer ${adminToken}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(emissaoPayload),
+          body: JSON.stringify(updatedPayload),
         });
         
         responseText = await emissaoResponse.text();
