@@ -234,6 +234,27 @@ export const ModalVisualizarFechamento: React.FC<ModalVisualizarFechamentoProps>
                             title="PDF Mesclado"
                             onError={handleIframeError}
                         />
+                    ) : boletoNaoEncontrado ? (
+                        <div className="h-full flex items-center justify-center">
+                            <div className="text-center max-w-md px-4">
+                                <AlertTriangle className="h-16 w-16 mx-auto mb-4 text-amber-500" />
+                                <h3 className="text-xl font-semibold mb-2 text-foreground">PDF Não Disponível</h3>
+                                <p className="text-muted-foreground mb-6">
+                                    O boleto original não foi encontrado no Banco Inter. 
+                                    Use o botão acima para re-emitir um novo boleto com os dados corretos.
+                                </p>
+                                {onReemitirBoleto && (
+                                    <ButtonComponent 
+                                        variant="primary" 
+                                        onClick={onReemitirBoleto}
+                                        className="gap-2 bg-amber-600 hover:bg-amber-700"
+                                    >
+                                        <RefreshCw size={18} />
+                                        Re-emitir Boleto
+                                    </ButtonComponent>
+                                )}
+                            </div>
+                        </div>
                     ) : null}
                 </div>
 
