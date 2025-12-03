@@ -952,13 +952,15 @@ serve(async (req) => {
           nome_cliente: clienteData.nome,
           cpf_cnpj: cpfCnpj,
           boleto_id: boletoData.nossoNumero,
+          nosso_numero: boletoData.nossoNumero, // Salvar nossoNumero separadamente
           fatura_pdf: faturaPdfBase64,
           boleto_pdf: boletoPdfBase64,
+          status_pagamento: 'PENDENTE',
         }, {
           onConflict: 'codigo_fatura,subfatura_id',
           ignoreDuplicates: false,
         });
-        console.log('✅ Fechamento salvo no cache (background)');
+        console.log('✅ Fechamento salvo no cache (background) - nossoNumero:', boletoData.nossoNumero);
       } catch (saveError) {
         console.error('⚠️ Erro ao salvar cache (não crítico):', saveError);
       }
