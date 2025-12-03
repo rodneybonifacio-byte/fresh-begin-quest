@@ -140,16 +140,16 @@ export const ModernHome = () => {
                         {/* Resultados */}
                         {cotacoes && cotacoes.length > 0 && <div className="mt-6 space-y-3 animate-fade-in">
                                 <p className="text-sm font-medium text-muted-foreground">Fretes disponíveis:</p>
-                                {cotacoes.slice(0, 3).map((cotacao, index) => <div key={index} className="p-4 bg-orange-50 dark:bg-orange-950/20 border-2 border-primary/30 rounded-xl hover:shadow-lg hover:border-primary transition-all cursor-pointer hover:scale-[1.02]" onClick={() => navigate('/app/emissao/adicionar')}>
+                                {cotacoes.slice(0, 5).map((cotacao, index) => <div key={index} className="p-4 bg-orange-50 dark:bg-orange-950/20 border-2 border-orange-200 dark:border-orange-800 rounded-xl hover:shadow-lg hover:border-primary transition-all cursor-pointer hover:scale-[1.02]" onClick={() => navigate('/app/emissao/adicionar')}>
                                         <div className="flex justify-between items-center">
                                             <div>
                                                 <p className="font-bold text-foreground">{cotacao.nomeServico}</p>
                                                 <p className="text-sm text-muted-foreground">
-                                                    {cotacao.prazo} dias úteis
+                                                    {cotacao.prazo} {cotacao.prazo === 1 ? 'dia útil' : 'dias úteis'}
                                                 </p>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-3xl font-bold text-primary">
+                                                <p className="text-2xl font-bold text-foreground">
                                                     R$ {parseFloat(cotacao.preco).toFixed(2)}
                                                 </p>
                                             </div>
