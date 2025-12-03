@@ -351,6 +351,66 @@ const FinanceiroFaturasAReceber = () => {
 
     // Estado para controlar carregamento de fechamentos
     const [carregandoFechamentos, setCarregandoFechamentos] = useState(false);
+    const [registrandoFechamentos, setRegistrandoFechamentos] = useState(false);
+
+    // Função para registrar fechamentos em massa (para fechamentos feitos em produção)
+    const registrarFechamentosEmMassa = useCallback(async () => {
+        if (!data || data.length === 0) return;
+        
+        const confirmar = window.confirm(
+            'Isso irá registrar TODAS as subfaturas como já fechadas (boleto gerado).\n\nUse apenas se os boletos foram gerados em produção.\n\nContinuar?'
+        );
+        
+        if (!confirmar) return;
+        
+        try {
+            setRegistrandoFechamentos(true);
+            const supabaseAuth = getSupabaseWithAuth();
+            let registrados = 0;
+            let erros = 0;
+            
+            for (const fatura of data) {
+                // Registrar subfaturas
+                if (fatura.faturas && fatura.faturas.length > 0) {
+                    for (const sub of fatura.faturas) {
+                        try {
+                            const { error } = await supabaseAuth.functions.invoke('registrar-fechamento', {
+                                body: {
+                                    fatura_id: fatura.id,
+                                    subfatura_id: sub.id,
+                                    codigo_fatura: fatura.codigo || sub.codigo,
+                                    nome_cliente: sub.nome ?? sub.cliente?.nome ?? 'Cliente',
+                                    cpf_cnpj: sub.cpfCnpj ?? sub.cliente?.cpfCnpj,
+                                }
+                            });
+                            
+                            if (error) {
+                                console.error('Erro ao registrar:', sub.id, error);
+                                erros++;
+                            } else {
+                                registrados++;
+                            }
+                        } catch (e) {
+                            console.error('Erro:', e);
+                            erros++;
+                        }
+                    }
+                }
+            }
+            
+            toast.success(`${registrados} fechamento(s) registrado(s)${erros > 0 ? `, ${erros} erro(s)` : ''}`);
+            
+            // Recarregar fechamentos
+            await carregarFechamentos();
+            setForceUpdate(prev => prev + 1);
+            
+        } catch (err) {
+            console.error('Erro:', err);
+            toast.error('Erro ao registrar fechamentos');
+        } finally {
+            setRegistrandoFechamentos(false);
+        }
+    }, [data]);
 
     // Função para carregar fechamentos via edge function
     const carregarFechamentos = useCallback(async () => {
@@ -521,7 +581,7 @@ const FinanceiroFaturasAReceber = () => {
                     </TabsList>
                 </Tabs>
                 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                     <button
                         onClick={() => carregarFechamentos()}
                         disabled={carregandoFechamentos}
@@ -530,6 +590,16 @@ const FinanceiroFaturasAReceber = () => {
                     >
                         <RefreshCw size={16} className={carregandoFechamentos ? 'animate-spin' : ''} />
                         Atualizar
+                    </button>
+                    
+                    <button
+                        onClick={() => registrarFechamentosEmMassa()}
+                        disabled={registrandoFechamentos}
+                        className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-orange-300 bg-orange-50 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800 hover:bg-orange-100 dark:hover:bg-orange-900/40 disabled:opacity-50 transition-colors"
+                        title="Registrar fechamentos feitos em produção"
+                    >
+                        {registrandoFechamentos ? <RefreshCw size={16} className="animate-spin" /> : null}
+                        Registrar Fechamentos
                     </button>
                     
                     {tab === 'faturamentos' && (
