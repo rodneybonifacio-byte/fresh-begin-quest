@@ -207,13 +207,11 @@ serve(async (req: Request) => {
 
     // ============================================
     // PASSO 2.5: Atualizar cliente com configurações de transportadora
-    // (A API não aceita transportadoraConfiguracoes no POST, mas aceita no PUT)
-    // IMPORTANTE: PUT requer todos os dados do cliente
+    // IMPORTANTE: Enviar apenas transportadoraConfiguracoes para evitar erro de duplicado
     // ============================================
     console.log('🚚 Atualizando cliente com configurações de transportadora...')
     
-    const clienteDataComTransportadora = {
-      ...clienteData,
+    const transportadoraPayload = {
       transportadoraConfiguracoes: [
         {
           transportadora: 'correios',
@@ -240,17 +238,20 @@ serve(async (req: Request) => {
       ],
     }
     
+    console.log('📤 Payload transportadora:', JSON.stringify(transportadoraPayload, null, 2))
+    
     const updateTransportadoraResponse = await fetch(`${baseApiUrl}/clientes/${clienteId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${adminToken}`,
       },
-      body: JSON.stringify(clienteDataComTransportadora),
+      body: JSON.stringify(transportadoraPayload),
     })
     
     if (updateTransportadoraResponse.ok) {
-      console.log('✅ Configurações de transportadora atualizadas com sucesso')
+      const updateResult = await updateTransportadoraResponse.text()
+      console.log('✅ Configurações de transportadora atualizadas com sucesso:', updateResult)
     } else {
       const updateError = await updateTransportadoraResponse.text()
       console.error('⚠️ Erro ao atualizar configurações de transportadora:', updateError)
