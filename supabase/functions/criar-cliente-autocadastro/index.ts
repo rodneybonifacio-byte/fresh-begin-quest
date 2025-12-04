@@ -289,7 +289,7 @@ serve(async (req: Request) => {
     
     try {
       const addSaldoResponse = await fetch(addSaldoUrl, {
-        method: 'POST',
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${adminToken}`,
