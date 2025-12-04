@@ -184,16 +184,39 @@ serve(async (req: Request) => {
         const buscarResult = await buscarClienteResponse.json()
         console.log('📋 Resposta busca cliente:', JSON.stringify(buscarResult, null, 2))
         
-        // Tentar extrair de array ou objeto
+        // Tentar extrair de array ou objeto - FILTRAR PELO EMAIL EXATO
         if (Array.isArray(buscarResult.data) && buscarResult.data.length > 0) {
-          clienteId = buscarResult.data[0].id || buscarResult.data[0].clienteId
+          // Buscar cliente com email EXATO, não o primeiro da lista
+          const clienteEncontrado = buscarResult.data.find(
+            (c: any) => c.email && c.email.toLowerCase() === body.email.toLowerCase()
+          )
+          if (clienteEncontrado) {
+            clienteId = clienteEncontrado.id || clienteEncontrado.clienteId
+            console.log('✅ ClienteId encontrado por email exato:', clienteId)
+          } else {
+            console.log('⚠️ Nenhum cliente com email exato encontrado, tentando CPF/CNPJ...')
+            // Fallback: buscar por CPF/CNPJ
+            const clientePorCpf = buscarResult.data.find(
+              (c: any) => c.cpfCnpj && c.cpfCnpj.replace(/\D/g, '') === body.cpfCnpj.replace(/\D/g, '')
+            )
+            if (clientePorCpf) {
+              clienteId = clientePorCpf.id || clientePorCpf.clienteId
+              console.log('✅ ClienteId encontrado por CPF/CNPJ:', clienteId)
+            }
+          }
         } else if (buscarResult.data?.id) {
           clienteId = buscarResult.data.id
         } else if (Array.isArray(buscarResult) && buscarResult.length > 0) {
-          clienteId = buscarResult[0].id || buscarResult[0].clienteId
+          // Mesmo filtro para array direto
+          const clienteEncontrado = buscarResult.find(
+            (c: any) => c.email && c.email.toLowerCase() === body.email.toLowerCase()
+          )
+          if (clienteEncontrado) {
+            clienteId = clienteEncontrado.id || clienteEncontrado.clienteId
+          }
         }
         
-        console.log('✅ ClienteId encontrado via busca:', clienteId)
+        console.log('✅ ClienteId final via busca:', clienteId)
       } else {
         const buscarError = await buscarClienteResponse.text()
         console.error('⚠️ Erro ao buscar cliente:', buscarError)
