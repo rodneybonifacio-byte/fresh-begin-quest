@@ -277,7 +277,7 @@ serve(async (req: Request) => {
     // PASSO 2.6: Adicionar crédito inicial via API BRHUB
     // (Usa credenciais admin para adicionar R$50 de saldo)
     // ============================================
-    const addSaldoUrl = `${baseApiUrl}/clientes/${clienteId}/add-saldo`
+    const addSaldoUrl = `${baseApiUrl}/clientes${clienteId}/add-saldo`
     console.log('💰 Adicionando crédito inicial de R$50 via API BRHUB...')
     console.log('📤 URL add-saldo:', addSaldoUrl)
     
