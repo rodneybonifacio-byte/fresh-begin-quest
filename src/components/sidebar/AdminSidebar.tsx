@@ -63,7 +63,7 @@ const AdminSidebar = observer(({
         {
             icon: Wallet,
             label: 'Financeiro',
-            active: ['/admin/financeiro/faturas-a-receber', '/admin/financeiro/contas-a-pagar', '/admin/financeiro/processar-pagamento', '/admin/financeiro/recargas-pendentes'].some(path => isPathActive(path)),
+            active: ['/admin/financeiro/faturas-a-receber', '/admin/financeiro/contas-a-pagar', '/admin/financeiro/processar-pagamento', '/admin/financeiro/recargas-pendentes', '/admin/financeiro/gerenciar-creditos'].some(path => isPathActive(path)),
             submenu: [
                 {
                     icon: FileBarChart,
@@ -88,6 +88,12 @@ const AdminSidebar = observer(({
                     label: 'Processar Pagamento',
                     to: '/admin/financeiro/processar-pagamento',
                     active: isPathActive('/admin/financeiro/processar-pagamento')
+                },
+                {
+                    icon: Wallet,
+                    label: 'Gerenciar Créditos',
+                    to: '/admin/financeiro/gerenciar-creditos',
+                    active: isPathActive('/admin/financeiro/gerenciar-creditos')
                 }
             ]
         },
