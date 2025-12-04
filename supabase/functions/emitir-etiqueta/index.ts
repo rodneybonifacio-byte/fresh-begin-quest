@@ -254,9 +254,12 @@ serve(async (req) => {
     }
 
     // Preparar payload da emissão
+    // Desabilitar notificação WhatsApp para evitar erro de configuração
     const emissaoPayload = {
       ...requestData.emissaoData,
       clienteId,
+      notificarWhatsapp: false,
+      rastreamentoWhatsapp: false,
     };
 
     delete emissaoPayload.userToken;
@@ -329,9 +332,12 @@ serve(async (req) => {
         console.log('📤 Payload com remetente completo:', JSON.stringify(remetenteObj));
         
         // Criar novo payload COM objeto remetente e SEM remetenteId
+        // Desabilitar notificação WhatsApp para evitar erro de configuração
         const updatedPayload = {
           ...emissaoPayload,
           remetente: remetenteObj,
+          notificarWhatsapp: false,
+          rastreamentoWhatsapp: false,
         };
         delete updatedPayload.remetenteId; // Remover remetenteId
         
