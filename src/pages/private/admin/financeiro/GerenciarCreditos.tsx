@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Search, Plus, Minus, Wallet, User } from 'lucide-react';
 import { toast } from 'sonner';
@@ -9,13 +9,20 @@ import { InputLabel } from '../../../../components/input-label';
 import { ModalCustom } from '../../../../components/modal';
 import type { IClienteToFilter } from '../../../../types/viewModel/IClienteToFilter';
 
+interface ClienteComSaldo extends IClienteToFilter {
+    saldo?: number;
+    loadingSaldo?: boolean;
+}
+
 export default function GerenciarCreditos() {
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedCliente, setSelectedCliente] = useState<IClienteToFilter | null>(null);
+    const [selectedCliente, setSelectedCliente] = useState<ClienteComSaldo | null>(null);
     const [modalOpen, setModalOpen] = useState(false);
     const [operacao, setOperacao] = useState<'adicionar' | 'remover'>('adicionar');
     const [valor, setValor] = useState('');
     const [descricao, setDescricao] = useState('');
+    const [saldos, setSaldos] = useState<Record<string, number>>({});
+    const [loadingSaldos, setLoadingSaldos] = useState(false);
     const queryClient = useQueryClient();
     const clienteService = new ClienteService();
 
@@ -26,6 +33,32 @@ export default function GerenciarCreditos() {
             return response;
         },
     });
+
+    // Buscar saldos dos clientes
+    useEffect(() => {
+        const fetchSaldos = async () => {
+            if (!clientes || clientes.length === 0) return;
+            
+            setLoadingSaldos(true);
+            const saldosMap: Record<string, number> = {};
+            
+            for (const cliente of clientes) {
+                try {
+                    const { data } = await supabase.rpc('calcular_saldo_disponivel', {
+                        p_cliente_id: cliente.id
+                    });
+                    saldosMap[cliente.id] = data || 0;
+                } catch {
+                    saldosMap[cliente.id] = 0;
+                }
+            }
+            
+            setSaldos(saldosMap);
+            setLoadingSaldos(false);
+        };
+
+        fetchSaldos();
+    }, [clientes]);
 
     const clientesFiltrados = clientes?.filter(cliente => 
         cliente.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -68,11 +101,24 @@ export default function GerenciarCreditos() {
                 return { success: true };
             }
         },
-        onSuccess: () => {
+        onSuccess: async () => {
             toast.success(operacao === 'adicionar' ? 'Crédito adicionado com sucesso!' : 'Crédito removido com sucesso!');
             setModalOpen(false);
             setValor('');
             setDescricao('');
+            
+            // Atualizar saldo do cliente específico
+            if (selectedCliente) {
+                try {
+                    const { data } = await supabase.rpc('calcular_saldo_disponivel', {
+                        p_cliente_id: selectedCliente.id
+                    });
+                    setSaldos(prev => ({ ...prev, [selectedCliente.id]: data || 0 }));
+                } catch {
+                    // ignore
+                }
+            }
+            
             setSelectedCliente(null);
             queryClient.invalidateQueries({ queryKey: ['clientes-credito'] });
         },
@@ -136,54 +182,71 @@ export default function GerenciarCreditos() {
                             <tr>
                                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Cliente</th>
                                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">CPF/CNPJ</th>
+                                <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">Saldo Atual</th>
                                 <th className="px-4 py-3 text-center text-sm font-medium text-muted-foreground">Ações</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
                             {isLoading ? (
                                 <tr>
-                                    <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
+                                    <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
                                         Carregando...
                                     </td>
                                 </tr>
                             ) : clientesFiltrados.length === 0 ? (
                                 <tr>
-                                    <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
+                                    <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
                                         Nenhum cliente encontrado
                                     </td>
                                 </tr>
                             ) : (
-                                clientesFiltrados.map((cliente) => (
-                                    <tr key={cliente.id} className="hover:bg-muted/30 transition-colors">
-                                        <td className="px-4 py-3">
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                                    <User className="h-4 w-4 text-primary" />
+                                clientesFiltrados.map((cliente) => {
+                                    const saldo = saldos[cliente.id];
+                                    const saldoFormatado = saldo !== undefined 
+                                        ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(saldo)
+                                        : '...';
+                                    
+                                    return (
+                                        <tr key={cliente.id} className="hover:bg-muted/30 transition-colors">
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                                        <User className="h-4 w-4 text-primary" />
+                                                    </div>
+                                                    <span className="font-medium text-foreground">{cliente.nome}</span>
                                                 </div>
-                                                <span className="font-medium text-foreground">{cliente.nome}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-muted-foreground">{cliente.cpfCnpj}</td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <button
-                                                    className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-green-600 border border-green-600 rounded-lg hover:bg-green-50 transition-colors"
-                                                    onClick={() => handleOpenModal(cliente, 'adicionar')}
-                                                >
-                                                    <Plus className="h-4 w-4" />
-                                                    Adicionar
-                                                </button>
-                                                <button
-                                                    className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-red-600 border border-red-600 rounded-lg hover:bg-red-50 transition-colors"
-                                                    onClick={() => handleOpenModal(cliente, 'remover')}
-                                                >
-                                                    <Minus className="h-4 w-4" />
-                                                    Remover
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-muted-foreground">{cliente.cpfCnpj}</td>
+                                            <td className="px-4 py-3 text-right">
+                                                {loadingSaldos ? (
+                                                    <span className="text-muted-foreground">...</span>
+                                                ) : (
+                                                    <span className={`font-semibold ${saldo && saldo > 0 ? 'text-green-600' : saldo && saldo < 0 ? 'text-red-600' : 'text-foreground'}`}>
+                                                        {saldoFormatado}
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <button
+                                                        className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-green-600 border border-green-600 rounded-lg hover:bg-green-50 transition-colors"
+                                                        onClick={() => handleOpenModal(cliente, 'adicionar')}
+                                                    >
+                                                        <Plus className="h-4 w-4" />
+                                                        Adicionar
+                                                    </button>
+                                                    <button
+                                                        className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-red-600 border border-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                                                        onClick={() => handleOpenModal(cliente, 'remover')}
+                                                    >
+                                                        <Minus className="h-4 w-4" />
+                                                        Remover
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
                             )}
                         </tbody>
                     </table>
