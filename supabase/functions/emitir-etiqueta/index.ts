@@ -94,59 +94,16 @@ async function syncRemetenteToApi(remetenteId: string, clienteId: string, adminT
   if (createResponse.ok) {
     console.log('✅ Remetente criado com sucesso na API BRHUB!');
     
-    // Parse response to get the new ID
     let newId: string | undefined;
     try {
       const responseData = JSON.parse(responseText);
-      console.log('📋 Resposta completa da criação:', JSON.stringify(responseData));
-      
-      newId = responseData.id || responseData.data?.id || responseData.remetenteId || responseData.data?.remetenteId;
+      newId = responseData.id || responseData.data?.id;
       console.log('📋 ID extraído da resposta:', newId);
       
       const finalId = newId || remetenteId;
       
-      // IMPORTANTE: Aplicar transportadoraConfiguracoes via PUT após criação
-      console.log('📤 Aplicando configurações de transportadora via PUT...');
-      
-      const transportadoraConfiguracoes = [
-        {
-          transportadora: 'CORREIOS',
-          ativo: true,
-          sobrepreco: 5
-        },
-        {
-          transportadora: 'RODONAVES',
-          ativo: false,
-          sobrepreco: 0
-        }
-      ];
-      
-      const updatePayload = {
-        ...remetenteData,
-        transportadoraConfiguracoes
-      };
-      
-      const putResponse = await fetch(`${baseUrl}/remetentes/${finalId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${adminToken}`,
-        },
-        body: JSON.stringify(updatePayload),
-      });
-      
-      const putResponseText = await putResponse.text();
-      console.log('📥 Resposta do PUT:', putResponse.status, putResponseText);
-      
-      if (putResponse.ok) {
-        console.log('✅ Configurações de transportadora aplicadas com sucesso!');
-      } else {
-        console.log('⚠️ Falha ao aplicar configurações, mas continuando...');
-      }
-      
       // Update local Supabase
       if (newId && newId !== remetenteId) {
-        console.log('🔄 Atualizando ID do remetente no Supabase de', remetenteId, 'para', newId);
         await supabase
           .from('remetentes')
           .update({ id: newId, sincronizado_em: new Date().toISOString() })
@@ -187,6 +144,74 @@ async function syncRemetenteToApi(remetenteId: string, clienteId: string, adminT
 
   console.error('❌ Falha ao sincronizar remetente:', responseText);
   return { success: false };
+}
+
+// Função para aplicar configurações de transportadora no CLIENTE
+async function applyClientTransportadoraConfig(clienteId: string, adminToken: string): Promise<boolean> {
+  const baseUrl = Deno.env.get('BASE_API_URL');
+  
+  console.log('📤 Aplicando configurações de transportadora no cliente:', clienteId);
+  
+  // Primeiro buscar dados atuais do cliente
+  const getResponse = await fetch(`${baseUrl}/clientes/${clienteId}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${adminToken}`,
+    },
+  });
+  
+  if (!getResponse.ok) {
+    console.log('⚠️ Não foi possível buscar dados do cliente');
+    return false;
+  }
+  
+  const clienteData = await getResponse.json();
+  console.log('📋 Dados atuais do cliente:', JSON.stringify(clienteData));
+  
+  // Se já tem configurações, não precisa atualizar
+  if (clienteData.transportadoraConfiguracoes && clienteData.transportadoraConfiguracoes.length > 0) {
+    console.log('✅ Cliente já possui configurações de transportadora');
+    return true;
+  }
+  
+  // Aplicar configurações via PUT
+  const transportadoraConfiguracoes = [
+    {
+      transportadora: 'CORREIOS',
+      ativo: true,
+      sobrepreco: 5
+    },
+    {
+      transportadora: 'RODONAVES',
+      ativo: false,
+      sobrepreco: 0
+    }
+  ];
+  
+  const updatePayload = {
+    ...clienteData,
+    transportadoraConfiguracoes
+  };
+  
+  const putResponse = await fetch(`${baseUrl}/clientes/${clienteId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${adminToken}`,
+    },
+    body: JSON.stringify(updatePayload),
+  });
+  
+  const putText = await putResponse.text();
+  console.log('📥 Resposta do PUT cliente:', putResponse.status, putText);
+  
+  if (putResponse.ok) {
+    console.log('✅ Configurações de transportadora aplicadas no cliente!');
+    return true;
+  }
+  
+  console.log('⚠️ Falha ao aplicar configurações no cliente');
+  return false;
 }
 
 serve(async (req) => {
@@ -255,6 +280,9 @@ serve(async (req) => {
     // Se for erro 404 de remetente, tentar sincronizar e retentar
     if (emissaoResponse.status === 404 && responseText.toLowerCase().includes('remetente')) {
       console.log('⚠️ Remetente não encontrado na API. Tentando sincronizar...');
+      
+      // Primeiro verificar/aplicar configurações de transportadora no CLIENTE
+      await applyClientTransportadoraConfig(clienteId, adminToken);
       
       const remetenteId = emissaoPayload.remetenteId;
       const syncResult = await syncRemetenteToApi(remetenteId, clienteId, adminToken);
