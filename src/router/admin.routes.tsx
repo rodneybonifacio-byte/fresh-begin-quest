@@ -138,6 +138,10 @@ export const adminRoutesConfig: ProtectedRouteItem[] = [
         component: () => import('../pages/private/admin/financeiro/RecargasPendentes'),
     },
     {
+        path: 'financeiro/gerenciar-creditos',
+        component: () => import('../pages/private/admin/financeiro/GerenciarCreditos'),
+    },
+    {
         path: 'logs-acesso',
         component: () => import('../pages/private/admin/logs-acesso'),
     },
