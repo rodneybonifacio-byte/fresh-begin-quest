@@ -243,14 +243,26 @@ async function disableClientWhatsApp(clienteId: string, adminToken: string): Pro
     if (cliente.configuracoes?.rastreio_via_whatsapp === true) {
       console.log('📱 WhatsApp habilitado no cliente. Desabilitando para evitar erro...');
       
+      // Corrigir tipos de dados nas configurações
+      const configuracoesCorrigidas = {
+        ...cliente.configuracoes,
+        rastreio_via_whatsapp: false,
+        fatura_via_whatsapp: false,
+        incluir_valor_declarado_na_nota: cliente.configuracoes?.incluir_valor_declarado_na_nota === 'true' || cliente.configuracoes?.incluir_valor_declarado_na_nota === true,
+        valor_disparo_evento_rastreio_whatsapp: String(cliente.configuracoes?.valor_disparo_evento_rastreio_whatsapp || '0'),
+      };
+      
+      // Corrigir tipos nas configurações de transportadora
+      const transportadoraCorrigidas = (cliente.transportadoraConfiguracoes || []).map((t: any) => ({
+        ...t,
+        valorAcrescimo: typeof t.valorAcrescimo === 'string' ? parseFloat(t.valorAcrescimo) || 0 : t.valorAcrescimo,
+      }));
+      
       // Atualizar configurações para desabilitar WhatsApp
       const updatePayload = {
         ...cliente,
-        configuracoes: {
-          ...cliente.configuracoes,
-          rastreio_via_whatsapp: false,
-          fatura_via_whatsapp: false,
-        },
+        configuracoes: configuracoesCorrigidas,
+        transportadoraConfiguracoes: transportadoraCorrigidas,
       };
       
       const putResponse = await fetch(`${baseUrl}/clientes/${clienteId}`, {
