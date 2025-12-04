@@ -284,9 +284,15 @@ serve(async (req) => {
     if (emissaoResponse.status === 404 && responseText.toLowerCase().includes('remetente')) {
       console.log('⚠️ Remetente não encontrado na API. Enviando dados completos do remetente...');
       
+      // Criar cliente Supabase
+      const supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      );
+      
       // Buscar dados do remetente do Supabase
       const remetenteId = emissaoPayload.remetenteId;
-      const { data: remetente, error: remetenteError } = await supabase
+      const { data: remetente, error: remetenteError } = await supabaseClient
         .from('remetentes')
         .select('*')
         .eq('id', remetenteId)
