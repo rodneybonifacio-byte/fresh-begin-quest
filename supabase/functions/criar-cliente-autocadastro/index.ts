@@ -162,8 +162,16 @@ serve(async (req: Request) => {
     }
 
     const clienteResult = await clienteResponse.json()
-    const clienteId = clienteResult.data?.id || clienteResult.id
-    console.log('✅ Cliente criado com sucesso, ID:', clienteId)
+    console.log('📋 Resposta completa da criação do cliente:', JSON.stringify(clienteResult, null, 2))
+    
+    // Tentar extrair clienteId de várias formas possíveis
+    const clienteId = clienteResult.data?.id || clienteResult.id || clienteResult.data?.clienteId || clienteResult.clienteId
+    console.log('✅ Cliente criado com sucesso, ID extraído:', clienteId)
+    
+    if (!clienteId) {
+      console.error('❌ ERRO CRÍTICO: clienteId não foi extraído da resposta!')
+      throw new Error('Não foi possível obter o ID do cliente criado')
+    }
 
     // ============================================
     // PASSO 2.5: Atualizar cliente com configurações de transportadora
