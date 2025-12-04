@@ -217,6 +217,67 @@ async function applyClientTransportadoraConfig(clienteId: string, adminToken: st
   return false;
 }
 
+// Função para desabilitar WhatsApp do cliente se necessário
+async function disableClientWhatsApp(clienteId: string, adminToken: string): Promise<boolean> {
+  const baseUrl = Deno.env.get('BASE_API_URL');
+  
+  try {
+    // Buscar dados atuais do cliente
+    const getResponse = await fetch(`${baseUrl}/clientes/${clienteId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${adminToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!getResponse.ok) {
+      console.log('⚠️ Não foi possível buscar dados do cliente para desabilitar WhatsApp');
+      return false;
+    }
+    
+    const clienteData = await getResponse.json();
+    const cliente = clienteData.data || clienteData;
+    
+    // Verificar se WhatsApp está habilitado com configuração inválida
+    if (cliente.configuracoes?.rastreio_via_whatsapp === true) {
+      console.log('📱 WhatsApp habilitado no cliente. Desabilitando para evitar erro...');
+      
+      // Atualizar configurações para desabilitar WhatsApp
+      const updatePayload = {
+        ...cliente,
+        configuracoes: {
+          ...cliente.configuracoes,
+          rastreio_via_whatsapp: false,
+          fatura_via_whatsapp: false,
+        },
+      };
+      
+      const putResponse = await fetch(`${baseUrl}/clientes/${clienteId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatePayload),
+      });
+      
+      if (putResponse.ok) {
+        console.log('✅ WhatsApp desabilitado com sucesso no cliente');
+        return true;
+      } else {
+        const errorText = await putResponse.text();
+        console.log('⚠️ Falha ao desabilitar WhatsApp:', errorText);
+      }
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('❌ Erro ao desabilitar WhatsApp:', error);
+    return false;
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -268,6 +329,9 @@ serve(async (req) => {
 
     // Obter token admin para as operações
     const adminToken = await getAdminToken();
+
+    // Desabilitar WhatsApp do cliente para evitar erro de configuração inválida
+    await disableClientWhatsApp(clienteId, adminToken);
 
     // Tentar emitir com token admin
     console.log('📊 Emitindo com credenciais admin...');
