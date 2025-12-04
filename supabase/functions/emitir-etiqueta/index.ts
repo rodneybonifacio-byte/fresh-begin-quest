@@ -65,6 +65,7 @@ async function syncRemetenteToApi(remetenteId: string, clienteId: string, adminT
   console.log('📞 Celular/Telefone do remetente:', { celular: celularFinal, telefone: telefoneFinal });
   
   const remetenteData = {
+    id: remetenteId, // Include ID so BRHUB uses our ID
     clienteId: clienteId,
     nome: remetente.nome?.trim(),
     cpfCnpj: remetente.cpf_cnpj?.replace(/\D/g, ''),
@@ -98,7 +99,7 @@ async function syncRemetenteToApi(remetenteId: string, clienteId: string, adminT
   console.log('📥 Resposta da criação:', createResponse.status, responseText);
 
   if (createResponse.ok) {
-    console.log('✅ Remetente criado com sucesso na API BRHUB!');
+    console.log('✅ Remetente criado/atualizado com sucesso na API BRHUB!');
     
     let newId: string | undefined;
     try {
@@ -108,44 +109,14 @@ async function syncRemetenteToApi(remetenteId: string, clienteId: string, adminT
       
       const finalId = newId || remetenteId;
       
-      // Aplicar transportadoraConfiguracoes ao REMETENTE via PUT
-      console.log('📤 Aplicando transportadoraConfiguracoes ao remetente...');
+      // Update local Supabase with sync timestamp
+      await supabase
+        .from('remetentes')
+        .update({ sincronizado_em: new Date().toISOString() })
+        .eq('id', remetenteId);
       
-      const remetenteWithConfig = {
-        ...remetenteData,
-        transportadoraConfiguracoes: [
-          {
-            transportadora: 'CORREIOS',
-            ativo: true,
-            sobrepreco: 5
-          }
-        ]
-      };
-      
-      const putRemetenteResponse = await fetch(`${baseUrl}/remetentes/${finalId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${adminToken}`,
-        },
-        body: JSON.stringify(remetenteWithConfig),
-      });
-      
-      const putRemetenteText = await putRemetenteResponse.text();
-      console.log('📥 Resposta PUT remetente:', putRemetenteResponse.status, putRemetenteText);
-      
-      // Update local Supabase
-      if (newId && newId !== remetenteId) {
-        await supabase
-          .from('remetentes')
-          .update({ id: newId, sincronizado_em: new Date().toISOString() })
-          .eq('id', remetenteId);
-      } else {
-        await supabase
-          .from('remetentes')
-          .update({ sincronizado_em: new Date().toISOString() })
-          .eq('id', remetenteId);
-      }
+      // Small delay to allow API propagation
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       console.log('🎯 ID final do remetente para emissão:', finalId);
       return { success: true, newId: finalId };
