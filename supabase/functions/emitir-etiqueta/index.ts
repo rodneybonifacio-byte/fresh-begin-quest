@@ -100,42 +100,70 @@ async function syncRemetenteToApi(remetenteId: string, clienteId: string, adminT
       const responseData = JSON.parse(responseText);
       console.log('📋 Resposta completa da criação:', JSON.stringify(responseData));
       
-      // Tentar extrair o ID de várias formas
       newId = responseData.id || responseData.data?.id || responseData.remetenteId || responseData.data?.remetenteId;
-      
-      if (!newId && responseData.data && typeof responseData.data === 'object') {
-        // Se a resposta é um objeto, procurar qualquer campo que pareça um ID
-        for (const key of Object.keys(responseData.data)) {
-          if (key.toLowerCase().includes('id') && responseData.data[key]) {
-            newId = responseData.data[key];
-            break;
-          }
-        }
-      }
-      
       console.log('📋 ID extraído da resposta:', newId);
       
-      // Update local Supabase with the new ID if different
+      const finalId = newId || remetenteId;
+      
+      // IMPORTANTE: Aplicar transportadoraConfiguracoes via PUT após criação
+      console.log('📤 Aplicando configurações de transportadora via PUT...');
+      
+      const transportadoraConfiguracoes = [
+        {
+          transportadora: 'CORREIOS',
+          ativo: true,
+          sobrepreco: 5
+        },
+        {
+          transportadora: 'RODONAVES',
+          ativo: false,
+          sobrepreco: 0
+        }
+      ];
+      
+      const updatePayload = {
+        ...remetenteData,
+        transportadoraConfiguracoes
+      };
+      
+      const putResponse = await fetch(`${baseUrl}/remetentes/${finalId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminToken}`,
+        },
+        body: JSON.stringify(updatePayload),
+      });
+      
+      const putResponseText = await putResponse.text();
+      console.log('📥 Resposta do PUT:', putResponse.status, putResponseText);
+      
+      if (putResponse.ok) {
+        console.log('✅ Configurações de transportadora aplicadas com sucesso!');
+      } else {
+        console.log('⚠️ Falha ao aplicar configurações, mas continuando...');
+      }
+      
+      // Update local Supabase
       if (newId && newId !== remetenteId) {
         console.log('🔄 Atualizando ID do remetente no Supabase de', remetenteId, 'para', newId);
-        const updateResult = await supabase
+        await supabase
           .from('remetentes')
           .update({ id: newId, sincronizado_em: new Date().toISOString() })
           .eq('id', remetenteId);
-        console.log('📋 Resultado da atualização:', JSON.stringify(updateResult));
       } else {
         await supabase
           .from('remetentes')
           .update({ sincronizado_em: new Date().toISOString() })
           .eq('id', remetenteId);
       }
+      
+      console.log('🎯 ID final do remetente para emissão:', finalId);
+      return { success: true, newId: finalId };
     } catch (e) {
       console.log('⚠️ Não foi possível parsear resposta:', e);
+      return { success: true, newId: remetenteId };
     }
-    
-    const finalId = newId || remetenteId;
-    console.log('🎯 ID final do remetente para emissão:', finalId);
-    return { success: true, newId: finalId };
   }
 
   // Se já existe, tentar atualizar
