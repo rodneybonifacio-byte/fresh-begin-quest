@@ -254,15 +254,16 @@ serve(async (req) => {
     }
 
     // Preparar payload da emissão
-    // Desabilitar notificação WhatsApp para evitar erro de configuração
+    // Remover campos de WhatsApp para evitar erro de configuração incompleta
     const emissaoPayload = {
       ...requestData.emissaoData,
       clienteId,
-      notificarWhatsapp: false,
-      rastreamentoWhatsapp: false,
     };
 
+    // Remover campos que podem causar erro
     delete emissaoPayload.userToken;
+    delete emissaoPayload.notificarWhatsapp;
+    delete emissaoPayload.rastreamentoWhatsapp;
     console.log('📦 Payload da emissão:', JSON.stringify(emissaoPayload));
 
     // Obter token admin para as operações
@@ -332,14 +333,13 @@ serve(async (req) => {
         console.log('📤 Payload com remetente completo:', JSON.stringify(remetenteObj));
         
         // Criar novo payload COM objeto remetente e SEM remetenteId
-        // Desabilitar notificação WhatsApp para evitar erro de configuração
         const updatedPayload = {
           ...emissaoPayload,
           remetente: remetenteObj,
-          notificarWhatsapp: false,
-          rastreamentoWhatsapp: false,
         };
-        delete updatedPayload.remetenteId; // Remover remetenteId
+        delete updatedPayload.remetenteId;
+        delete updatedPayload.notificarWhatsapp;
+        delete updatedPayload.rastreamentoWhatsapp;
         
         console.log('🔄 Retentando emissão com objeto remetente completo...');
         
