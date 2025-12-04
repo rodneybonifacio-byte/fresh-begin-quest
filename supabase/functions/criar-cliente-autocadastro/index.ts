@@ -165,11 +165,43 @@ serve(async (req: Request) => {
     console.log('📋 Resposta completa da criação do cliente:', JSON.stringify(clienteResult, null, 2))
     
     // Tentar extrair clienteId de várias formas possíveis
-    const clienteId = clienteResult.data?.id || clienteResult.id || clienteResult.data?.clienteId || clienteResult.clienteId
-    console.log('✅ Cliente criado com sucesso, ID extraído:', clienteId)
+    let clienteId = clienteResult.data?.id || clienteResult.id || clienteResult.data?.clienteId || clienteResult.clienteId
+    console.log('✅ Cliente criado, ID inicial:', clienteId)
+    
+    // Se não conseguiu extrair o ID, buscar pelo email
+    if (!clienteId) {
+      console.log('🔍 ID não encontrado na resposta, buscando cliente pelo email...')
+      
+      const buscarClienteResponse = await fetch(`${baseApiUrl}/clientes?email=${encodeURIComponent(body.email)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminToken}`,
+        },
+      })
+      
+      if (buscarClienteResponse.ok) {
+        const buscarResult = await buscarClienteResponse.json()
+        console.log('📋 Resposta busca cliente:', JSON.stringify(buscarResult, null, 2))
+        
+        // Tentar extrair de array ou objeto
+        if (Array.isArray(buscarResult.data) && buscarResult.data.length > 0) {
+          clienteId = buscarResult.data[0].id || buscarResult.data[0].clienteId
+        } else if (buscarResult.data?.id) {
+          clienteId = buscarResult.data.id
+        } else if (Array.isArray(buscarResult) && buscarResult.length > 0) {
+          clienteId = buscarResult[0].id || buscarResult[0].clienteId
+        }
+        
+        console.log('✅ ClienteId encontrado via busca:', clienteId)
+      } else {
+        const buscarError = await buscarClienteResponse.text()
+        console.error('⚠️ Erro ao buscar cliente:', buscarError)
+      }
+    }
     
     if (!clienteId) {
-      console.error('❌ ERRO CRÍTICO: clienteId não foi extraído da resposta!')
+      console.error('❌ ERRO CRÍTICO: clienteId não foi extraído da resposta nem da busca!')
       throw new Error('Não foi possível obter o ID do cliente criado')
     }
 
