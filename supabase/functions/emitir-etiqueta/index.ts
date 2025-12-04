@@ -89,7 +89,7 @@ async function syncRemetenteToApi(remetenteId: string, clienteId: string, adminT
   });
 
   const responseText = await createResponse.text();
-  console.log('📥 Resposta da criação:', createResponse.status);
+  console.log('📥 Resposta da criação:', createResponse.status, responseText);
 
   if (createResponse.ok) {
     console.log('✅ Remetente criado com sucesso na API BRHUB!');
@@ -98,16 +98,31 @@ async function syncRemetenteToApi(remetenteId: string, clienteId: string, adminT
     let newId: string | undefined;
     try {
       const responseData = JSON.parse(responseText);
-      newId = responseData.id || responseData.data?.id;
-      console.log('📋 ID retornado pela API:', newId);
+      console.log('📋 Resposta completa da criação:', JSON.stringify(responseData));
+      
+      // Tentar extrair o ID de várias formas
+      newId = responseData.id || responseData.data?.id || responseData.remetenteId || responseData.data?.remetenteId;
+      
+      if (!newId && responseData.data && typeof responseData.data === 'object') {
+        // Se a resposta é um objeto, procurar qualquer campo que pareça um ID
+        for (const key of Object.keys(responseData.data)) {
+          if (key.toLowerCase().includes('id') && responseData.data[key]) {
+            newId = responseData.data[key];
+            break;
+          }
+        }
+      }
+      
+      console.log('📋 ID extraído da resposta:', newId);
       
       // Update local Supabase with the new ID if different
       if (newId && newId !== remetenteId) {
-        console.log('🔄 Atualizando ID do remetente no Supabase:', newId);
-        await supabase
+        console.log('🔄 Atualizando ID do remetente no Supabase de', remetenteId, 'para', newId);
+        const updateResult = await supabase
           .from('remetentes')
           .update({ id: newId, sincronizado_em: new Date().toISOString() })
           .eq('id', remetenteId);
+        console.log('📋 Resultado da atualização:', JSON.stringify(updateResult));
       } else {
         await supabase
           .from('remetentes')
@@ -118,7 +133,9 @@ async function syncRemetenteToApi(remetenteId: string, clienteId: string, adminT
       console.log('⚠️ Não foi possível parsear resposta:', e);
     }
     
-    return { success: true, newId: newId || remetenteId };
+    const finalId = newId || remetenteId;
+    console.log('🎯 ID final do remetente para emissão:', finalId);
+    return { success: true, newId: finalId };
   }
 
   // Se já existe, tentar atualizar
