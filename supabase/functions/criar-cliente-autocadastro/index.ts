@@ -207,11 +207,27 @@ serve(async (req: Request) => {
 
     // ============================================
     // PASSO 2.5: Atualizar cliente com configurações de transportadora
-    // IMPORTANTE: Enviar apenas transportadoraConfiguracoes para evitar erro de duplicado
+    // IMPORTANTE: PUT requer todos os dados obrigatórios + transportadoraConfiguracoes
     // ============================================
     console.log('🚚 Atualizando cliente com configurações de transportadora...')
     
     const transportadoraPayload = {
+      nomeEmpresa: body.nomeEmpresa,
+      nomeResponsavel: body.nomeResponsavel,
+      cpfCnpj: body.cpfCnpj,
+      email: body.email,
+      role: 'CLIENTE',
+      celular: body.celular,
+      telefone: body.telefone || '',
+      endereco: {
+        cep: body.endereco.cep,
+        logradouro: body.endereco.logradouro,
+        numero: body.endereco.numero,
+        complemento: body.endereco.complemento || '',
+        bairro: body.endereco.bairro,
+        localidade: body.endereco.localidade,
+        uf: body.endereco.uf,
+      },
       transportadoraConfiguracoes: [
         {
           transportadora: 'correios',
@@ -238,7 +254,7 @@ serve(async (req: Request) => {
       ],
     }
     
-    console.log('📤 Payload transportadora:', JSON.stringify(transportadoraPayload, null, 2))
+    console.log('📤 Payload transportadora com dados completos')
     
     const updateTransportadoraResponse = await fetch(`${baseApiUrl}/clientes/${clienteId}`, {
       method: 'PUT',
