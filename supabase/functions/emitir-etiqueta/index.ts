@@ -280,26 +280,56 @@ serve(async (req) => {
     let responseText = await emissaoResponse.text();
     console.log('📄 Resposta da emissão (status):', emissaoResponse.status);
 
-    // Se for erro 404 de remetente, tentar sincronizar e retentar
+    // Se for erro 404 de remetente, enviar objeto remetente completo ao invés de remetenteId
     if (emissaoResponse.status === 404 && responseText.toLowerCase().includes('remetente')) {
-      console.log('⚠️ Remetente não encontrado na API. Tentando sincronizar...');
+      console.log('⚠️ Remetente não encontrado na API. Enviando dados completos do remetente...');
       
-      // Primeiro verificar/aplicar configurações de transportadora no CLIENTE
-      await applyClientTransportadoraConfig(clienteId, adminToken);
-      
+      // Buscar dados do remetente do Supabase
       const remetenteId = emissaoPayload.remetenteId;
-      const syncResult = await syncRemetenteToApi(remetenteId, clienteId, adminToken);
+      const { data: remetente, error: remetenteError } = await supabase
+        .from('remetentes')
+        .select('*')
+        .eq('id', remetenteId)
+        .single();
       
-      if (syncResult.success) {
-        // Use the new ID returned by the API if different
-        const finalRemetenteId = syncResult.newId || remetenteId;
-        console.log('🔄 Retentando emissão após sincronização com ID:', finalRemetenteId);
+      if (remetenteError || !remetente) {
+        console.error('❌ Remetente não encontrado no Supabase:', remetenteError);
+      } else {
+        console.log('📋 Remetente encontrado:', remetente.nome);
         
-        // Update the payload with the correct ID
+        // Usar celular ou telefone como fallback
+        const celularFinal = remetente.celular || remetente.telefone || '';
+        const telefoneFinal = remetente.telefone || remetente.celular || '';
+        
+        // Montar objeto remetente conforme documentação da API
+        const remetenteObj = {
+          nome: remetente.nome?.trim(),
+          cpfCnpj: remetente.cpf_cnpj?.replace(/\D/g, ''),
+          documentoEstrangeiro: remetente.documento_estrangeiro || '',
+          celular: celularFinal,
+          telefone: telefoneFinal,
+          email: remetente.email?.trim() || '',
+          endereco: {
+            cep: remetente.cep?.replace(/\D/g, ''),
+            logradouro: remetente.logradouro?.trim() || '',
+            numero: remetente.numero?.trim() || '',
+            complemento: remetente.complemento?.trim() || '',
+            bairro: remetente.bairro?.trim() || '',
+            localidade: remetente.localidade?.trim() || '',
+            uf: remetente.uf?.trim() || '',
+          },
+        };
+        
+        console.log('📤 Payload com remetente completo:', JSON.stringify(remetenteObj));
+        
+        // Criar novo payload COM objeto remetente e SEM remetenteId
         const updatedPayload = {
           ...emissaoPayload,
-          remetenteId: finalRemetenteId,
+          remetente: remetenteObj,
         };
+        delete updatedPayload.remetenteId; // Remover remetenteId
+        
+        console.log('🔄 Retentando emissão com objeto remetente completo...');
         
         emissaoResponse = await fetch(`${baseUrl}/emissoes`, {
           method: 'POST',
