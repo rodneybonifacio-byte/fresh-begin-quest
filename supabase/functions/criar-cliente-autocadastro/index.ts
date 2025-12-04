@@ -217,6 +217,36 @@ serve(async (req: Request) => {
     }
 
     // ============================================
+    // PASSO 2.6: Adicionar crédito inicial via API BRHUB
+    // (Usa credenciais admin para adicionar R$50 de saldo)
+    // ============================================
+    console.log('💰 Adicionando crédito inicial de R$50 via API BRHUB...')
+    
+    try {
+      const addSaldoResponse = await fetch(`${baseApiUrl}/clientes/${clienteId}/add-saldo`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminToken}`,
+        },
+        body: JSON.stringify({
+          clienteId: clienteId,
+          valorCredito: '50.00',
+        }),
+      })
+
+      if (addSaldoResponse.ok) {
+        const saldoResult = await addSaldoResponse.text()
+        console.log('✅ Crédito inicial adicionado com sucesso via API BRHUB:', saldoResult)
+      } else {
+        const saldoError = await addSaldoResponse.text()
+        console.error('⚠️ Erro ao adicionar crédito via API BRHUB:', saldoError, 'Status:', addSaldoResponse.status)
+      }
+    } catch (saldoErr) {
+      console.error('⚠️ Exceção ao adicionar crédito via API BRHUB:', saldoErr)
+    }
+
+    // ============================================
     // PASSO 3: Login do novo usuário para obter token
     // ============================================
     console.log('🔑 Fazendo login do novo usuário para obter token...')
