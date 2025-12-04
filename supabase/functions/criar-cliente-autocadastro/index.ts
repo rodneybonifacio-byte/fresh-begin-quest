@@ -261,27 +261,33 @@ serve(async (req: Request) => {
     // PASSO 2.6: Adicionar crédito inicial via API BRHUB
     // (Usa credenciais admin para adicionar R$50 de saldo)
     // ============================================
+    const addSaldoUrl = `${baseApiUrl}/clientes/${clienteId}/add-saldo`
     console.log('💰 Adicionando crédito inicial de R$50 via API BRHUB...')
+    console.log('📤 URL add-saldo:', addSaldoUrl)
+    
+    const addSaldoPayload = {
+      clienteId: clienteId,
+      valorCredito: '50.00',
+    }
+    console.log('📤 Payload add-saldo:', JSON.stringify(addSaldoPayload, null, 2))
     
     try {
-      const addSaldoResponse = await fetch(`${baseApiUrl}/clientes/${clienteId}/add-saldo`, {
+      const addSaldoResponse = await fetch(addSaldoUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${adminToken}`,
         },
-        body: JSON.stringify({
-          clienteId: clienteId,
-          valorCredito: '50.00',
-        }),
+        body: JSON.stringify(addSaldoPayload),
       })
 
+      const saldoResult = await addSaldoResponse.text()
+      console.log('📋 Resposta add-saldo (status', addSaldoResponse.status, '):', saldoResult)
+      
       if (addSaldoResponse.ok) {
-        const saldoResult = await addSaldoResponse.text()
-        console.log('✅ Crédito inicial adicionado com sucesso via API BRHUB:', saldoResult)
+        console.log('✅ Crédito inicial adicionado com sucesso via API BRHUB')
       } else {
-        const saldoError = await addSaldoResponse.text()
-        console.error('⚠️ Erro ao adicionar crédito via API BRHUB:', saldoError, 'Status:', addSaldoResponse.status)
+        console.error('⚠️ Erro ao adicionar crédito via API BRHUB')
       }
     } catch (saldoErr) {
       console.error('⚠️ Exceção ao adicionar crédito via API BRHUB:', saldoErr)
