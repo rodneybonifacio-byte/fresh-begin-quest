@@ -58,13 +58,19 @@ async function syncRemetenteToApi(remetenteId: string, clienteId: string, adminT
 
   const baseUrl = Deno.env.get('BASE_API_URL');
 
+  // Usar telefone como fallback para celular se não estiver definido
+  const celularFinal = remetente.celular || remetente.telefone || '';
+  const telefoneFinal = remetente.telefone || remetente.celular || '';
+  
+  console.log('📞 Celular/Telefone do remetente:', { celular: celularFinal, telefone: telefoneFinal });
+  
   const remetenteData = {
     clienteId: clienteId,
     nome: remetente.nome?.trim(),
     cpfCnpj: remetente.cpf_cnpj?.replace(/\D/g, ''),
     documentoEstrangeiro: remetente.documento_estrangeiro || '',
-    celular: remetente.celular || '',
-    telefone: remetente.telefone || '',
+    celular: celularFinal,
+    telefone: telefoneFinal,
     email: remetente.email?.trim() || '',
     endereco: {
       cep: remetente.cep?.replace(/\D/g, ''),
