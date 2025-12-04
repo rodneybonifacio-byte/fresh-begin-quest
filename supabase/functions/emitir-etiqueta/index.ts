@@ -108,6 +108,32 @@ async function syncRemetenteToApi(remetenteId: string, clienteId: string, adminT
       
       const finalId = newId || remetenteId;
       
+      // Aplicar transportadoraConfiguracoes ao REMETENTE via PUT
+      console.log('📤 Aplicando transportadoraConfiguracoes ao remetente...');
+      
+      const remetenteWithConfig = {
+        ...remetenteData,
+        transportadoraConfiguracoes: [
+          {
+            transportadora: 'CORREIOS',
+            ativo: true,
+            sobrepreco: 5
+          }
+        ]
+      };
+      
+      const putRemetenteResponse = await fetch(`${baseUrl}/remetentes/${finalId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminToken}`,
+        },
+        body: JSON.stringify(remetenteWithConfig),
+      });
+      
+      const putRemetenteText = await putRemetenteResponse.text();
+      console.log('📥 Resposta PUT remetente:', putRemetenteResponse.status, putRemetenteText);
+      
       // Update local Supabase
       if (newId && newId !== remetenteId) {
         await supabase
