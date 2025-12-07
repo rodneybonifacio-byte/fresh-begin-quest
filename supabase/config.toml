@@ -89,3 +89,6 @@ verify_jwt = false
 
 [functions.adicionar-saldo-manual]
 verify_jwt = false
+
+[functions.gerar-fatura-exemplo]
+verify_jwt = false
