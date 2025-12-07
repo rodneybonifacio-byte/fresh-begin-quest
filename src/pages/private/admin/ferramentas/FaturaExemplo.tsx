@@ -14,10 +14,11 @@ const FaturaExemplo = () => {
 
   const dadosFatura = {
     codigo: "FAT-LARAS-001",
-    nomeCliente: "LARAS MODAS",
-    cpfCnpj: "00.000.000/0001-00",
-    telefone: "(11) 99999-9999",
-    endereco: "Rua Exemplo, 123 - Centro, Campinas-SP 13000-000",
+    nomeCliente: "LARAS MODA LTDA",
+    nomeFantasia: "STAR BIJU",
+    cpfCnpj: "15.348.917/0001-59",
+    telefone: "(11) 2618-5231",
+    endereco: "Rua Min Firmino Whitaker, 161 - Loja 02, Brás, São Paulo-SP, 03012-020",
     dataEmissao: new Date().toLocaleDateString('pt-BR'),
     dataVencimento: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR'),
     valorTotal: "300,00",
@@ -81,7 +82,7 @@ const FaturaExemplo = () => {
           <ToggleSection title="Detalhes da Fatura" defaultOpen>
             <div className="bg-white dark:bg-slate-800 w-full p-6 rounded-sm flex flex-col gap-4">
               <div className="flex flex-row justify-between items-center gap-1">
-                <InfoGroup label="Cliente" values={[dadosFatura.nomeCliente, dadosFatura.cpfCnpj]} />
+                <InfoGroup label="Cliente" values={[dadosFatura.nomeCliente, `(${dadosFatura.nomeFantasia})`, dadosFatura.cpfCnpj]} />
                 <InfoGroup label="Telefone" values={[dadosFatura.telefone]} align="right" />
               </div>
               <InfoGroup label="Endereço" values={[dadosFatura.endereco]} />
@@ -181,9 +182,10 @@ function gerarHTMLFatura(dados: any): string {
       <h3>📋 DADOS DO CLIENTE</h3>
       <div class="client-info">
         <p><strong>Razão Social:</strong> ${dados.nomeCliente}</p>
+        <p><strong>Nome Fantasia:</strong> ${dados.nomeFantasia || '-'}</p>
         <p><strong>CNPJ:</strong> ${dados.cpfCnpj}</p>
         <p><strong>Telefone:</strong> ${dados.telefone}</p>
-        <p><strong>Endereço:</strong> ${dados.endereco}</p>
+        <p style="grid-column: span 2"><strong>Endereço:</strong> ${dados.endereco}</p>
       </div>
     </div>
 
