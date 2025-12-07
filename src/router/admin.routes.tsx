@@ -145,6 +145,10 @@ export const adminRoutesConfig: ProtectedRouteItem[] = [
         path: 'logs-acesso',
         component: () => import('../pages/private/admin/logs-acesso'),
     },
+    {
+        path: 'ferramentas/fatura-exemplo',
+        component: () => import('../pages/private/admin/ferramentas/FaturaExemplo'),
+    },
 ];
 
 export const AdminRoutes = generateProtectedRoutes(adminRoutesConfig);
