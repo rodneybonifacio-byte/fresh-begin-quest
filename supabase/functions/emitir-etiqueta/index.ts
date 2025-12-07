@@ -217,9 +217,11 @@ async function applyClientTransportadoraConfig(clienteId: string, adminToken: st
   return false;
 }
 
-// Função para desabilitar WhatsApp do cliente se necessário
+// Função para desabilitar WhatsApp do cliente (SEMPRE executa para garantir)
 async function disableClientWhatsApp(clienteId: string, adminToken: string): Promise<boolean> {
   const baseUrl = Deno.env.get('BASE_API_URL');
+  
+  console.log('📱 Verificando e desabilitando WhatsApp para cliente:', clienteId);
   
   try {
     // Buscar dados atuais do cliente
@@ -239,51 +241,65 @@ async function disableClientWhatsApp(clienteId: string, adminToken: string): Pro
     const clienteData = await getResponse.json();
     const cliente = clienteData.data || clienteData;
     
-    // Verificar se WhatsApp está habilitado com configuração inválida
-    if (cliente.configuracoes?.rastreio_via_whatsapp === true) {
-      console.log('📱 WhatsApp habilitado no cliente. Desabilitando para evitar erro...');
-      
-      // Corrigir tipos de dados nas configurações
-      const configuracoesCorrigidas = {
-        ...cliente.configuracoes,
-        rastreio_via_whatsapp: false,
-        fatura_via_whatsapp: false,
-        incluir_valor_declarado_na_nota: cliente.configuracoes?.incluir_valor_declarado_na_nota === 'true' || cliente.configuracoes?.incluir_valor_declarado_na_nota === true,
-        valor_disparo_evento_rastreio_whatsapp: String(cliente.configuracoes?.valor_disparo_evento_rastreio_whatsapp || '0'),
-      };
-      
-      // Corrigir tipos nas configurações de transportadora
-      const transportadoraCorrigidas = (cliente.transportadoraConfiguracoes || []).map((t: any) => ({
-        ...t,
-        valorAcrescimo: typeof t.valorAcrescimo === 'string' ? parseFloat(t.valorAcrescimo) || 0 : t.valorAcrescimo,
-      }));
-      
-      // Atualizar configurações para desabilitar WhatsApp
-      const updatePayload = {
-        ...cliente,
-        configuracoes: configuracoesCorrigidas,
-        transportadoraConfiguracoes: transportadoraCorrigidas,
-      };
-      
-      const putResponse = await fetch(`${baseUrl}/clientes/${clienteId}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${adminToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updatePayload),
-      });
-      
-      if (putResponse.ok) {
-        console.log('✅ WhatsApp desabilitado com sucesso no cliente');
-        return true;
-      } else {
-        const errorText = await putResponse.text();
-        console.log('⚠️ Falha ao desabilitar WhatsApp:', errorText);
-      }
-    }
+    console.log('📋 Config atual WhatsApp:', JSON.stringify(cliente.configuracoes));
     
-    return false;
+    // SEMPRE desabilitar WhatsApp para evitar erros de configuração
+    console.log('📱 Desabilitando WhatsApp para garantir emissão...');
+    
+    // Criar configurações corrigidas
+    const configuracoesCorrigidas = {
+      ...(cliente.configuracoes || {}),
+      rastreio_via_whatsapp: false,
+      fatura_via_whatsapp: false,
+      incluir_valor_declarado_na_nota: Boolean(cliente.configuracoes?.incluir_valor_declarado_na_nota === 'true' || cliente.configuracoes?.incluir_valor_declarado_na_nota === true),
+      valor_disparo_evento_rastreio_whatsapp: String(cliente.configuracoes?.valor_disparo_evento_rastreio_whatsapp || '0'),
+      eventos_rastreio_whatsapp: [],
+    };
+    
+    // Corrigir tipos nas configurações de transportadora
+    const transportadoraCorrigidas = (cliente.transportadoraConfiguracoes || []).map((t: any) => ({
+      ...t,
+      valorAcrescimo: typeof t.valorAcrescimo === 'string' ? parseFloat(t.valorAcrescimo) || 0 : (t.valorAcrescimo || 0),
+      sobrepreco: typeof t.sobrepreco === 'string' ? parseFloat(t.sobrepreco) || 0 : (t.sobrepreco || 0),
+    }));
+    
+    // Criar payload limpo sem campos problemáticos
+    const updatePayload = {
+      id: cliente.id,
+      nome: cliente.nome,
+      razaoSocial: cliente.razaoSocial,
+      cpfCnpj: cliente.cpfCnpj,
+      email: cliente.email,
+      telefone: cliente.telefone,
+      celular: cliente.celular,
+      endereco: cliente.endereco,
+      configuracoes: configuracoesCorrigidas,
+      transportadoraConfiguracoes: transportadoraCorrigidas,
+    };
+    
+    console.log('📤 Enviando update para desabilitar WhatsApp...');
+    
+    const putResponse = await fetch(`${baseUrl}/clientes/${clienteId}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${adminToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updatePayload),
+    });
+    
+    const responseText = await putResponse.text();
+    console.log('📥 Resposta do PUT WhatsApp:', putResponse.status, responseText.substring(0, 200));
+    
+    if (putResponse.ok) {
+      console.log('✅ WhatsApp desabilitado com sucesso!');
+      // Pequeno delay para a API processar
+      await new Promise(resolve => setTimeout(resolve, 300));
+      return true;
+    } else {
+      console.log('⚠️ Falha ao desabilitar WhatsApp:', responseText);
+      return false;
+    }
   } catch (error) {
     console.error('❌ Erro ao desabilitar WhatsApp:', error);
     return false;
