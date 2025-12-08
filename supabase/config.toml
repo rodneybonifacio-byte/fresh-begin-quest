@@ -92,3 +92,6 @@ verify_jwt = false
 
 [functions.gerar-fatura-exemplo]
 verify_jwt = false
+
+[functions.notificar-aguardando-retirada]
+verify_jwt = false
