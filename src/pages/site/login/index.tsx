@@ -134,6 +134,11 @@ export const Login = () => {
         toast.error("Email ou senha incorretos.", {
           position: "top-center"
         });
+      } else if (error.message?.includes('interno do servidor') || error.response?.status === 500) {
+        toast.error("Servidor temporariamente indisponível. Tente novamente em alguns minutos.", {
+          position: "top-center",
+          duration: 5000
+        });
       } else {
         toast.error(error.message || "Erro ao fazer login. Tente novamente.", {
           position: "top-center"
