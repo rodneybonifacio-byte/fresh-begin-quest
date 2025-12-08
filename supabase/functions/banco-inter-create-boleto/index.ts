@@ -198,6 +198,85 @@ serve(async (req) => {
     
     console.log('🔑 seuNumero para Banco Inter:', seuNumero, '| codigoFatura:', body.codigoFatura);
 
+    // 🚀 VERIFICAR SE JÁ EXISTE BOLETO COM MESMO seuNumero
+    console.log('🔍 Verificando se já existe boleto com seuNumero:', seuNumero);
+    const searchUrl = `https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas?seuNumero=${seuNumero}&situacao=A_RECEBER`;
+    
+    const searchResponse = await fetch(searchUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      client: httpClient,
+    } as any);
+
+    console.log('📡 Resposta busca boleto existente - Status:', searchResponse.status);
+
+    if (searchResponse.ok) {
+      const searchResult = await searchResponse.json();
+      console.log('📋 Resultado busca:', JSON.stringify(searchResult).substring(0, 500));
+      
+      // Verificar se há boletos na resposta (estrutura pode ser { cobrancas: [...] } ou array direto)
+      const cobrancas = searchResult.cobrancas || searchResult || [];
+      
+      if (Array.isArray(cobrancas) && cobrancas.length > 0) {
+        // Boleto já existe - retornar ele ao invés de criar novo
+        const boletoExistente = cobrancas[0];
+        const boletoId = boletoExistente.codigoSolicitacao || boletoExistente.nossoNumero;
+        
+        console.log('✅ Boleto existente encontrado! ID:', boletoId);
+        console.log('📋 Dados boleto existente:', JSON.stringify(boletoExistente).substring(0, 500));
+        
+        // Buscar PDF do boleto existente
+        console.log('📄 Baixando PDF do boleto existente...');
+        const pdfUrl = `https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas/${boletoId}/pdf`;
+        
+        const pdfResponse = await fetch(pdfUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Accept': 'application/json',
+          },
+          client: httpClient,
+        } as any);
+        
+        let pdfBase64 = null;
+        if (pdfResponse.ok) {
+          const pdfData = await pdfResponse.json();
+          pdfBase64 = pdfData.pdf || pdfData.arquivo || (typeof pdfData === 'string' ? pdfData : null);
+          console.log('✅ PDF do boleto existente recuperado');
+        } else {
+          console.warn('⚠️ Não foi possível obter PDF do boleto existente');
+        }
+        
+        const resultado = {
+          nossoNumero: boletoId,
+          seuNumero: boletoExistente.seuNumero || seuNumero,
+          codigoBarras: boletoExistente.codigoBarras,
+          linhaDigitavel: boletoExistente.linhaDigitavel,
+          pdf: pdfBase64,
+          dataVencimento: boletoExistente.dataVencimento,
+          valor: boletoExistente.valorNominal || body.valorCobrado,
+          status: 'EXISTENTE',
+          from_existing: true,
+        };
+        
+        console.log('🔒 Fechando cliente HTTP...');
+        httpClient.close();
+        
+        return new Response(
+          JSON.stringify(resultado),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          }
+        );
+      }
+    }
+    
+    console.log('📝 Nenhum boleto existente encontrado, criando novo...');
+
     const boletoData = {
       seuNumero: seuNumero,
       valorNominal: body.valorCobrado,
