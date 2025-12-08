@@ -53,6 +53,16 @@ export class FreteService extends BaseService<any> {
             throw new Error('Usuário não autenticado');
         }
         
+        // DEBUG: Decodificar token para verificar clienteId
+        try {
+            const tokenPayload = JSON.parse(atob(userToken.split('.')[1]));
+            console.log('🔍 Token decodificado - clienteId:', tokenPayload.clienteId);
+            console.log('🔍 Token decodificado - email:', tokenPayload.email);
+            console.log('🔍 Token decodificado - nome:', tokenPayload.name);
+        } catch (e) {
+            console.error('❌ Erro ao decodificar token:', e);
+        }
+        
         const payload = {
             emissaoData, // Dados da emissão
             userToken, // Token do usuário para a edge function
