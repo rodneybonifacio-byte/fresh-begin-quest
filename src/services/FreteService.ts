@@ -50,17 +50,31 @@ export class FreteService extends BaseService<any> {
         console.log('🔑 Token do usuário encontrado:', userToken ? 'SIM' : 'NÃO');
         
         if (!userToken) {
-            throw new Error('Usuário não autenticado');
+            throw new Error('Usuário não autenticado. Por favor, faça login novamente.');
         }
         
-        // DEBUG: Decodificar token para verificar clienteId
+        // VALIDAÇÃO CRÍTICA: Decodificar token e verificar clienteId
+        let tokenPayload: any;
         try {
-            const tokenPayload = JSON.parse(atob(userToken.split('.')[1]));
+            tokenPayload = JSON.parse(atob(userToken.split('.')[1]));
             console.log('🔍 Token decodificado - clienteId:', tokenPayload.clienteId);
             console.log('🔍 Token decodificado - email:', tokenPayload.email);
             console.log('🔍 Token decodificado - nome:', tokenPayload.name);
-        } catch (e) {
+            
+            // BLOQUEIO: Se for o cliente FINANCEIRO BRHUB, forçar relogin
+            const blockedEmails = ['financeiro@brhub.com.br', 'admin@brhub.com.br'];
+            if (blockedEmails.includes(tokenPayload.email?.toLowerCase())) {
+                console.error('❌ ERRO CRÍTICO: Token incorreto detectado! Email:', tokenPayload.email);
+                localStorage.removeItem('token');
+                throw new Error('Sessão inválida detectada. Por favor, faça login novamente com suas credenciais.');
+            }
+        } catch (e: any) {
+            if (e.message?.includes('Sessão inválida')) {
+                throw e;
+            }
             console.error('❌ Erro ao decodificar token:', e);
+            localStorage.removeItem('token');
+            throw new Error('Token de autenticação inválido. Por favor, faça login novamente.');
         }
         
         const payload = {
