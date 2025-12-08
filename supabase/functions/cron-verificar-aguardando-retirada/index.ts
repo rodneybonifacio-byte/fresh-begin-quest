@@ -114,23 +114,27 @@ serve(async (req: Request) => {
 
     for (const envio of enviosPendentes) {
       try {
-        // Extrair dados do último evento (se disponível)
+        // Extrair dados do último evento de rastreio (se disponível)
         const ultimoEvento = envio.rastreio?.eventos?.[0] || {};
         const unidade = ultimoEvento.unidade || {};
-        const endereco = unidade.endereco || {};
+        const enderecoUnidade = unidade.endereco || {};
 
         // Preparar payload para o webhook DataCrazy
+        // Os campos vêm diretamente no objeto envio (não aninhados)
         const webhookPayload = {
-          destinatario_nome: envio.destinatario?.nome || envio.destinatarioNome || '',
-          codigo_objeto: envio.codigoObjeto,
-          remetente_nome: envio.remetente?.nome || envio.remetenteNome || '',
-          unidade_logradouro: endereco.logradouro || '',
-          unidade_numero: endereco.numero || '',
-          unidade_complemento: endereco.complemento || '',
-          unidade_bairro: endereco.bairro || '',
+          destinatario_nome: envio.destinatarioNome || '',
+          codigo_objeto: envio.codigoObjeto || '',
+          remetente_nome: envio.remetenteNome || '',
+          // Dados da unidade dos Correios (onde está aguardando retirada)
+          unidade_logradouro: enderecoUnidade.logradouro || unidade.nome || '',
+          unidade_numero: enderecoUnidade.numero || '',
+          unidade_complemento: enderecoUnidade.complemento || '',
+          unidade_bairro: enderecoUnidade.bairro || '',
           unidade_tipo: unidade.tipo || '',
-          destinatario_celular: envio.destinatario?.celular || envio.destinatarioCelular || '',
+          destinatario_celular: envio.destinatarioCelular || '',
         };
+
+        console.log('📋 Payload webhook:', JSON.stringify(webhookPayload));
 
         console.log(`📤 Notificando: ${envio.codigoObjeto}`);
 
