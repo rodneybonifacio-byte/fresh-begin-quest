@@ -39,14 +39,15 @@ serve(async (req: Request) => {
     }
 
     console.log('🔐 Fazendo login admin...');
-    const loginResponse = await fetch(`${BASE_API_URL}/api/auth/login`, {
+    const loginResponse = await fetch(`${BASE_API_URL}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: adminEmail, senha: adminPassword }),
+      body: JSON.stringify({ email: adminEmail, password: adminPassword }),
     });
 
     if (!loginResponse.ok) {
-      throw new Error(`Falha no login admin: ${loginResponse.status}`);
+      const errText = await loginResponse.text();
+      throw new Error(`Falha no login admin: ${loginResponse.status} - ${errText}`);
     }
 
     const loginData = await loginResponse.json();
@@ -55,7 +56,7 @@ serve(async (req: Request) => {
     // Buscar envios com status AGUARDANDO_RETIRADA
     console.log('📦 Buscando envios AGUARDANDO_RETIRADA...');
     const enviosResponse = await fetch(
-      `${BASE_API_URL}/api/emissoes?status=AGUARDANDO_RETIRADA&pagina=1&porPagina=100`,
+      `${BASE_API_URL}/emissoes?status=AGUARDANDO_RETIRADA&pagina=1&porPagina=100`,
       {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -65,11 +66,22 @@ serve(async (req: Request) => {
     );
 
     if (!enviosResponse.ok) {
-      throw new Error(`Falha ao buscar envios: ${enviosResponse.status}`);
+      const errText = await enviosResponse.text();
+      throw new Error(`Falha ao buscar envios: ${enviosResponse.status} - ${errText}`);
     }
 
-    const enviosData = await enviosResponse.json();
-    const envios = enviosData.data || enviosData || [];
+    const enviosText = await enviosResponse.text();
+    console.log('📄 Resposta da API:', enviosText.substring(0, 500));
+    
+    let enviosData;
+    try {
+      enviosData = JSON.parse(enviosText);
+    } catch {
+      throw new Error(`Resposta inválida da API: ${enviosText.substring(0, 200)}`);
+    }
+    
+    // A API pode retornar { data: [...] } ou diretamente um array
+    const envios = Array.isArray(enviosData) ? enviosData : (enviosData?.data || []);
 
     console.log(`📊 Encontrados ${envios.length} envios com status AGUARDANDO_RETIRADA`);
 
