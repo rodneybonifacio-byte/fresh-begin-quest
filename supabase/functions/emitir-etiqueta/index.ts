@@ -355,19 +355,19 @@ serve(async (req) => {
     delete emissaoPayload.rastreamentoWhatsapp;
     console.log('📦 Payload da emissão:', JSON.stringify(emissaoPayload));
 
-    // Obter token admin para as operações
+    // Obter token admin APENAS para operações administrativas (configurar cliente)
     const adminToken = await getAdminToken();
 
     // Desabilitar WhatsApp do cliente para evitar erro de configuração inválida
     await disableClientWhatsApp(clienteId, adminToken);
 
-    // Tentar emitir com token admin
-    console.log('📊 Emitindo com credenciais admin...');
+    // USAR TOKEN DO CLIENTE para emissão (não admin!)
+    console.log('📊 Emitindo com TOKEN DO CLIENTE (não admin)...');
     
     let emissaoResponse = await fetch(`${baseUrl}/emissoes`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${adminToken}`,
+        'Authorization': `Bearer ${userToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(emissaoPayload),
@@ -433,12 +433,12 @@ serve(async (req) => {
         delete updatedPayload.notificarWhatsapp;
         delete updatedPayload.rastreamentoWhatsapp;
         
-        console.log('🔄 Retentando emissão com objeto remetente completo...');
+        console.log('🔄 Retentando emissão com objeto remetente completo (TOKEN DO CLIENTE)...');
         
         emissaoResponse = await fetch(`${baseUrl}/emissoes`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${adminToken}`,
+            'Authorization': `Bearer ${userToken}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(updatedPayload),
