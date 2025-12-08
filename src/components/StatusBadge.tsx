@@ -9,6 +9,8 @@ const statusEnvioColors: Record<string, string> = {
     POSTADO: "bg-indigo-100 text-indigo-800",
     EM_TRANSITO: "bg-cyan-100 text-cyan-800",
     COLETADO: "bg-purple-100 text-purple-800",
+    AGUARDANDO_RETIRADA: "bg-orange-100 text-orange-800",
+    EM_ATRASO: "bg-red-200 text-red-900",
     ENTREGUE: "bg-green-100 text-green-800",
     EXPIRADO: "bg-gray-300 text-gray-700",
     CANCELADO: "bg-red-100 text-red-800",

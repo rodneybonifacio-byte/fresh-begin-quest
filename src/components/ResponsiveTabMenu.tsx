@@ -20,6 +20,8 @@ const items: TabItemType[] = [
     { value: "POSTADO", label: "POSTADOS" },
     { value: "COLETADO", label: "COLETADOS" },
     { value: "EM_TRANSITO", label: "EM TRANSITO" },
+    { value: "AGUARDANDO_RETIRADA", label: "AGUARD. RETIRADA" },
+    { value: "EM_ATRASO", label: "EM ATRASO" },
     { value: "ENTREGUE", label: "ENTREGUES" },
     { value: "CANCELADO", label: "CANCELADOS" },
 ]
