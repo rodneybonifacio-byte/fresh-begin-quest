@@ -119,19 +119,21 @@ serve(async (req: Request) => {
         const unidade = ultimoEvento.unidade || {};
         const enderecoUnidade = unidade.endereco || {};
 
+        // Extrair dados do destinatário (objeto aninhado na API)
+        const destinatario = envio.destinatario || {};
+
         // Preparar payload para o webhook DataCrazy
-        // Os campos vêm diretamente no objeto envio (não aninhados)
         const webhookPayload = {
-          destinatario_nome: envio.destinatarioNome || '',
+          destinatario_nome: destinatario.nome || envio.destinatarioNome || '',
           codigo_objeto: envio.codigoObjeto || '',
-          remetente_nome: envio.remetenteNome || '',
+          remetente_nome: envio.remetenteNome || envio.cliente?.nome || '',
           // Dados da unidade dos Correios (onde está aguardando retirada)
           unidade_logradouro: enderecoUnidade.logradouro || unidade.nome || '',
           unidade_numero: enderecoUnidade.numero || '',
           unidade_complemento: enderecoUnidade.complemento || '',
           unidade_bairro: enderecoUnidade.bairro || '',
           unidade_tipo: unidade.tipo || '',
-          destinatario_celular: envio.destinatarioCelular || '',
+          destinatario_celular: destinatario.celular || envio.destinatarioCelular || '',
         };
 
         console.log('📋 Payload webhook:', JSON.stringify(webhookPayload));
