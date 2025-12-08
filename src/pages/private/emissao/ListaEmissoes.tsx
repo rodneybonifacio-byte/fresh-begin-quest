@@ -66,15 +66,21 @@ export const ListaEmissoes = () => {
         const dataIni = searchParams.get('dataIni') || undefined;
         const dataFim = searchParams.get('dataFim') || undefined;
         const destinatario = searchParams.get('destinatario') || undefined;
-        const status = searchParams.get('status') || undefined;
+        const statusFromUrl = searchParams.get('status') || undefined;
         const codigoObjeto = searchParams.get('codigoObjeto') || undefined;
 
         if (dataIni) params.dataIni = dataIni;
         if (dataFim) params.dataFim = dataFim;
         if (destinatario) params.destinatario = destinatario;
-        if (status) params.status = status;
+        if (statusFromUrl) params.status = statusFromUrl;
         if (codigoObjeto) params.codigoObjeto = codigoObjeto;
-        return await service.getAll(params);
+        
+        console.log('🔍 ListaEmissoes - Buscando emissões com params:', params);
+        console.log('🔍 ListaEmissoes - Tab atual:', tab, '| Status enviado:', params.status);
+        
+        const result = await service.getAll(params);
+        console.log('📦 ListaEmissoes - Resultado:', result?.data?.length || 0, 'registros');
+        return result;
     });
 
     useEffect(() => {
