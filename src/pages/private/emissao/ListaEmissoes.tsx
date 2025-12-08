@@ -60,7 +60,6 @@ export const ListaEmissoes = () => {
         } = {
             limit: perPage,
             offset: (page - 1) * perPage,
-            status: tab,
         };
 
         const dataIni = searchParams.get('dataIni') || undefined;
@@ -72,14 +71,25 @@ export const ListaEmissoes = () => {
         if (dataIni) params.dataIni = dataIni;
         if (dataFim) params.dataFim = dataFim;
         if (destinatario) params.destinatario = destinatario;
-        if (statusFromUrl) params.status = statusFromUrl;
         if (codigoObjeto) params.codigoObjeto = codigoObjeto;
         
+        // Se tiver codigoObjeto específico, não filtra por status (busca em todos)
+        // Senão, usa o tab atual como filtro de status
+        if (!codigoObjeto) {
+            params.status = statusFromUrl || tab;
+        }
+        
         console.log('🔍 ListaEmissoes - Buscando emissões com params:', params);
-        console.log('🔍 ListaEmissoes - Tab atual:', tab, '| Status enviado:', params.status);
+        console.log('🔍 ListaEmissoes - Tab atual:', tab, '| Status enviado:', params.status || 'TODOS (busca por código)');
         
         const result = await service.getAll(params);
         console.log('📦 ListaEmissoes - Resultado:', result?.data?.length || 0, 'registros');
+        
+        // Log primeiro registro para debug
+        if (result?.data?.[0]) {
+            console.log('📋 Primeiro registro:', result.data[0].codigoObjeto, '| Status:', result.data[0].status);
+        }
+        
         return result;
     });
 
