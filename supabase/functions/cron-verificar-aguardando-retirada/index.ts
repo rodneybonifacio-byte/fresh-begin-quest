@@ -114,8 +114,31 @@ serve(async (req: Request) => {
 
     for (const envio of enviosPendentes) {
       try {
-        // Extrair dados do último evento de rastreio (se disponível)
-        const ultimoEvento = envio.rastreio?.eventos?.[0] || {};
+        // Buscar dados de rastreio do objeto para obter informações da unidade
+        let rastreioData: any = null;
+        if (envio.codigoObjeto) {
+          try {
+            const rastreioResponse = await fetch(
+              `${BASE_API_URL}/rastreio/${envio.codigoObjeto}`,
+              {
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                },
+              }
+            );
+            if (rastreioResponse.ok) {
+              rastreioData = await rastreioResponse.json();
+              console.log(`📍 Rastreio ${envio.codigoObjeto}:`, JSON.stringify(rastreioData).substring(0, 500));
+            }
+          } catch (rastreioErr) {
+            console.log(`⚠️ Não foi possível obter rastreio de ${envio.codigoObjeto}`);
+          }
+        }
+
+        // Extrair dados do último evento de rastreio (evento mais recente = AGUARDANDO_RETIRADA)
+        const eventos = rastreioData?.eventos || envio.rastreio?.eventos || [];
+        const ultimoEvento = eventos[0] || {};
         const unidade = ultimoEvento.unidade || {};
         const enderecoUnidade = unidade.endereco || {};
 
