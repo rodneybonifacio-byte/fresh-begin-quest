@@ -1,4 +1,4 @@
-import { Activity, Archive, Calculator, ClipboardList, Clock, FileBarChart, FilePen, FileStack, Home, Package, Settings, Truck, UsersRound, Wallet, Tags, FileUp, Gift, FileText } from 'lucide-react';
+import { Activity, Archive, Calculator, ClipboardList, Clock, FileBarChart, FilePen, FileStack, Home, Package, Settings, Truck, UsersRound, Wallet, Tags, FileUp, Gift, FileText, UserCog } from 'lucide-react';
 import { observer } from 'mobx-react-lite';
 import { useLocation } from 'react-router-dom';
 import { SidebarLayout } from './SidebarLayout';
@@ -119,7 +119,7 @@ const AdminSidebar = observer(({
         {
             icon: Settings,
             label: 'Ferramentas',
-            active: ['/admin/ferramentas/cancelar-emissao', '/admin/ferramentas/criar-manifesto', '/admin/ferramentas/realizar-fechamento', '/admin/ferramentas/gerenciar-etiquetas', '/admin/ferramentas/criar-etiquetas-em-massa', '/admin/logs-acesso', '/admin/ferramentas/fatura-exemplo'].some(path => isPathActive(path)),
+            active: ['/admin/ferramentas/cancelar-emissao', '/admin/ferramentas/criar-manifesto', '/admin/ferramentas/realizar-fechamento', '/admin/ferramentas/gerenciar-etiquetas', '/admin/ferramentas/criar-etiquetas-em-massa', '/admin/logs-acesso', '/admin/ferramentas/fatura-exemplo', '/admin/ferramentas/gerenciar-clientes'].some(path => isPathActive(path)),
             submenu: [
                 {
                     icon: Activity,
@@ -168,6 +168,12 @@ const AdminSidebar = observer(({
                     label: 'Fatura Exemplo',
                     to: '/admin/ferramentas/fatura-exemplo',
                     active: isPathActive('/admin/ferramentas/fatura-exemplo')
+                },
+                {
+                    icon: UserCog,
+                    label: 'Gerenciar Clientes',
+                    to: '/admin/ferramentas/gerenciar-clientes',
+                    active: isPathActive('/admin/ferramentas/gerenciar-clientes')
                 }
             ]
         }

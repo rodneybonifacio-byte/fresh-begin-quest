@@ -149,6 +149,10 @@ export const adminRoutesConfig: ProtectedRouteItem[] = [
         path: 'ferramentas/fatura-exemplo',
         component: () => import('../pages/private/admin/ferramentas/FaturaExemplo'),
     },
+    {
+        path: 'ferramentas/gerenciar-clientes',
+        component: () => import('../pages/private/admin/ferramentas/GerenciarClientes'),
+    },
 ];
 
 export const AdminRoutes = generateProtectedRoutes(adminRoutesConfig);
