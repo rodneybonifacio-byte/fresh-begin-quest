@@ -115,30 +115,30 @@ serve(async (req: Request) => {
     for (const envio of enviosPendentes) {
       try {
         // Buscar dados de rastreio do objeto para obter informações da unidade
-        // O endpoint /emissoes/{id} inclui historioRastreio
         let rastreioData: any = null;
-        if (envio.id) {
+        if (envio.codigoObjeto) {
           try {
-            const emissaoUrl = `${BASE_API_URL}/emissoes/${envio.id}`;
-            console.log(`🔍 Buscando emissão com rastreio: ${emissaoUrl}`);
-            const emissaoResponse = await fetch(emissaoUrl, {
+            // Endpoint correto de rastreio: rastrear?codigo={codigo}
+            const rastreioUrl = `${BASE_API_URL}/rastrear?codigo=${envio.codigoObjeto}`;
+            console.log(`🔍 Buscando rastreio: ${rastreioUrl}`);
+            const rastreioResponse = await fetch(rastreioUrl, {
               headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
               },
             });
-            console.log(`📡 Status emissão ${envio.codigoObjeto}: ${emissaoResponse.status}`);
-            if (emissaoResponse.ok) {
-              const emissaoText = await emissaoResponse.text();
-              console.log(`📍 Emissão rastreio ${envio.codigoObjeto}:`, emissaoText.substring(0, 1000));
-              const emissaoCompleta = JSON.parse(emissaoText);
-              rastreioData = emissaoCompleta.historioRastreio || emissaoCompleta.rastreio;
+            console.log(`📡 Status rastreio ${envio.codigoObjeto}: ${rastreioResponse.status}`);
+            if (rastreioResponse.ok) {
+              const rastreioText = await rastreioResponse.text();
+              console.log(`📍 Rastreio raw ${envio.codigoObjeto}:`, rastreioText.substring(0, 1000));
+              const rastreioJson = JSON.parse(rastreioText);
+              rastreioData = rastreioJson.data || rastreioJson;
             } else {
-              const errText = await emissaoResponse.text();
-              console.log(`⚠️ Emissão falhou ${envio.codigoObjeto}: ${errText.substring(0, 200)}`);
+              const errText = await rastreioResponse.text();
+              console.log(`⚠️ Rastreio falhou ${envio.codigoObjeto}: ${errText.substring(0, 200)}`);
             }
-          } catch (emissaoErr) {
-            console.log(`⚠️ Erro ao obter emissão de ${envio.codigoObjeto}:`, emissaoErr);
+          } catch (rastreioErr) {
+            console.log(`⚠️ Erro ao obter rastreio de ${envio.codigoObjeto}:`, rastreioErr);
           }
         }
 
