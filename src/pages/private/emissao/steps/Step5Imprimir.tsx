@@ -1,4 +1,4 @@
-import { Printer, Download, Eye, CheckCircle } from 'lucide-react';
+import { Printer, Download, Eye, CheckCircle, ExternalLink } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { FormCard } from '../../../../components/FormCard';
 import { ButtonComponent } from '../../../../components/button';
@@ -9,15 +9,19 @@ interface Step5ImprimirProps {
   onBack: () => void;
   onFinish: () => void;
   emissaoGerada: IEmissao;
-  pdfData: { nome: string; dados: string } | null;
+  pdfData: { nome: string; dados: string; linkEtiqueta?: string } | null;
 }
 
 export const Step5Imprimir = ({ onBack, onFinish, emissaoGerada, pdfData }: Step5ImprimirProps) => {
   const [pdfUrl, setPdfUrl] = useState<string>('');
 
+  // Determina se temos PDF base64 ou apenas link direto
+  const hasPdfBase64 = pdfData?.dados && pdfData.dados.length > 0;
+  const linkEtiqueta = pdfData?.linkEtiqueta || (emissaoGerada as any)?.link_etiqueta;
+
   // Converte base64 para blob URL que o Chrome não bloqueia
   useEffect(() => {
-    if (pdfData?.dados) {
+    if (hasPdfBase64 && pdfData?.dados) {
       try {
         const base64Data = pdfData.dados;
         const binaryString = atob(base64Data);
@@ -37,25 +41,34 @@ export const Step5Imprimir = ({ onBack, onFinish, emissaoGerada, pdfData }: Step
         console.error('Erro ao converter PDF:', error);
       }
     }
-  }, [pdfData]);
+  }, [pdfData, hasPdfBase64]);
 
   const handlePrint = () => {
-    if (pdfData?.dados) {
+    if (hasPdfBase64 && pdfData?.dados) {
       printPDF(pdfData.dados, pdfData.nome);
+    } else if (linkEtiqueta) {
+      window.open(linkEtiqueta, '_blank');
     }
   };
 
   const handleDownload = () => {
-    if (pdfData?.dados) {
+    if (hasPdfBase64 && pdfData?.dados) {
       downloadPDF(pdfData.dados, pdfData.nome);
+    } else if (linkEtiqueta) {
+      window.open(linkEtiqueta, '_blank');
     }
   };
 
   const handleView = () => {
-    if (pdfData?.dados) {
+    if (hasPdfBase64 && pdfData?.dados) {
       viewPDF(pdfData.dados, pdfData.nome);
+    } else if (linkEtiqueta) {
+      window.open(linkEtiqueta, '_blank');
     }
   };
+
+  // Verifica se temos alguma forma de acessar o PDF
+  const canAccessPdf = hasPdfBase64 || linkEtiqueta;
 
   return (
     <FormCard 
@@ -93,39 +106,69 @@ export const Step5Imprimir = ({ onBack, onFinish, emissaoGerada, pdfData }: Step
           </div>
         </div>
 
-        {/* PDF Preview com Blob URL */}
-        {pdfUrl && (
+        {/* PDF Preview com Blob URL ou iframe para link externo */}
+        {(pdfUrl || linkEtiqueta) && (
           <div className="bg-muted/50 rounded-xl p-4 border border-border">
             <h4 className="font-semibold text-sm text-foreground mb-3 flex items-center gap-2">
               <Eye className="h-4 w-4" />
               Pré-visualização da Etiqueta 👀
             </h4>
             <div className="relative bg-white dark:bg-gray-900 rounded-lg overflow-hidden shadow-md" style={{ height: '500px' }}>
-              <object
-                data={pdfUrl}
-                type="application/pdf"
-                className="w-full h-full"
-                aria-label="Pré-visualização da Etiqueta PDF"
-              >
-                <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-                  <Eye className="h-16 w-16 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground mb-4">
-                    Não foi possível carregar a pré-visualização do PDF no navegador.
-                  </p>
-                  <ButtonComponent
-                    type="button"
-                    onClick={handleView}
-                    className="bg-primary text-primary-foreground"
-                  >
-                    <Eye className="h-4 w-4 mr-2" />
-                    Abrir PDF em Nova Janela
-                  </ButtonComponent>
-                </div>
-              </object>
+              {pdfUrl ? (
+                <object
+                  data={pdfUrl}
+                  type="application/pdf"
+                  className="w-full h-full"
+                  aria-label="Pré-visualização da Etiqueta PDF"
+                >
+                  <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+                    <Eye className="h-16 w-16 text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground mb-4">
+                      Não foi possível carregar a pré-visualização do PDF no navegador.
+                    </p>
+                    <ButtonComponent
+                      type="button"
+                      onClick={handleView}
+                      className="bg-primary text-primary-foreground"
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      Abrir PDF em Nova Janela
+                    </ButtonComponent>
+                  </div>
+                </object>
+              ) : linkEtiqueta ? (
+                <iframe
+                  src={linkEtiqueta}
+                  className="w-full h-full border-0"
+                  title="Pré-visualização da Etiqueta"
+                />
+              ) : null}
             </div>
             <p className="text-xs text-muted-foreground mt-2 text-center">
               💡 Dica: Use os botões abaixo para visualizar em tela cheia, imprimir ou baixar
             </p>
+          </div>
+        )}
+
+        {/* Link direto se não houver preview */}
+        {!pdfUrl && linkEtiqueta && (
+          <div className="bg-blue-50 dark:bg-blue-950/30 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
+            <div className="flex items-center gap-3">
+              <ExternalLink className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <div>
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                  Acesse sua etiqueta diretamente
+                </p>
+                <a 
+                  href={linkEtiqueta} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-sm text-blue-600 dark:text-blue-400 hover:underline break-all"
+                >
+                  {linkEtiqueta}
+                </a>
+              </div>
+            </div>
           </div>
         )}
 
@@ -134,7 +177,7 @@ export const Step5Imprimir = ({ onBack, onFinish, emissaoGerada, pdfData }: Step
           <ButtonComponent
             type="button"
             onClick={handlePrint}
-            disabled={!pdfData?.dados}
+            disabled={!canAccessPdf}
             className="w-full bg-primary hover:bg-primary/90 text-primary-foreground flex items-center justify-center gap-2 py-6"
           >
             <Printer className="h-5 w-5" />
@@ -144,7 +187,7 @@ export const Step5Imprimir = ({ onBack, onFinish, emissaoGerada, pdfData }: Step
           <ButtonComponent
             type="button"
             onClick={handleView}
-            disabled={!pdfData?.dados}
+            disabled={!canAccessPdf}
             border="outline"
             className="w-full flex items-center justify-center gap-2 py-6"
           >
@@ -155,7 +198,7 @@ export const Step5Imprimir = ({ onBack, onFinish, emissaoGerada, pdfData }: Step
           <ButtonComponent
             type="button"
             onClick={handleDownload}
-            disabled={!pdfData?.dados}
+            disabled={!canAccessPdf}
             border="outline"
             className="w-full flex items-center justify-center gap-2 py-6"
           >

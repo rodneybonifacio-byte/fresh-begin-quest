@@ -54,7 +54,7 @@ export const ModernEmissaoWrapper = () => {
     const [_destinatarioSelecionado, setDestinatarioSelecionado] = useState<IDestinatario | undefined>();
     const [cotacaoSelecionado, setCotacaoSelecionado] = useState<ICotacaoMinimaResponse | undefined>();
     const [emissaoGerada, setEmissaoGerada] = useState<IEmissao | null>(null);
-    const [pdfData, setPdfData] = useState<{ nome: string; dados: string } | null>(null);
+    const [pdfData, setPdfData] = useState<{ nome: string; dados: string; linkEtiqueta?: string } | null>(null);
     
     // Função para resetar cotações quando voltar
     const resetCotacoes = () => {
@@ -144,7 +144,7 @@ export const ModernEmissaoWrapper = () => {
         { icon: Printer, label: "Imprimir", description: "Etiqueta gerada" },
     ];
 
-    const handleSuccess = (emissao: any, pdf: { nome: string; dados: string }) => {
+    const handleSuccess = (emissao: any, pdf: { nome: string; dados: string; linkEtiqueta?: string }) => {
         setEmissaoGerada(emissao);
         setPdfData(pdf);
         setCurrentStep(4); // Vai para o step 5 (índice 4)

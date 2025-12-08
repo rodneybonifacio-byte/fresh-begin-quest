@@ -18,7 +18,7 @@ import { ICreatePixChargeResponse } from '../../../../types/IRecargaPix';
 
 interface Step4ConfirmacaoProps {
   onBack: () => void;
-  onSuccess: (emissao: any, pdfData: { nome: string; dados: string }) => void;
+  onSuccess: (emissao: any, pdfData: { nome: string; dados: string; linkEtiqueta?: string }) => void;
   cotacaoSelecionado: any;
   selectedEmbalagem: any;
   clienteSelecionado: any;
@@ -270,13 +270,14 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
       // Fallback: usar link_etiqueta direto se a API de PDF falhar
       if (backendResponse?.link_etiqueta) {
         console.log('🔗 Usando link direto da etiqueta:', backendResponse.link_etiqueta);
-        toast.success('Etiqueta gerada! Abrindo para impressão...');
+        toast.success('Etiqueta gerada com sucesso!');
         
-        // Abre o link em nova aba
-        window.open(backendResponse.link_etiqueta, '_blank');
-        
-        // Passa dados mínimos para o próximo step
-        onSuccess(emissaoCriada, { nome: 'etiqueta.pdf', dados: '' });
+        // Passa dados com link direto para o próximo step
+        onSuccess(emissaoCriada, { 
+          nome: 'etiqueta.pdf', 
+          dados: '', 
+          linkEtiqueta: backendResponse.link_etiqueta 
+        });
         return;
       }
       
