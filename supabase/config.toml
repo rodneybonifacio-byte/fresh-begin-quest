@@ -98,3 +98,6 @@ verify_jwt = false
 
 [functions.cron-verificar-aguardando-retirada]
 verify_jwt = false
+
+[functions.gerenciar-clientes]
+verify_jwt = false

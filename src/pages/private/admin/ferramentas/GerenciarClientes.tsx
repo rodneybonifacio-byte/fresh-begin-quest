@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { LoadSpinner } from '../../../../components/loading';
 import { ModalCustom } from '../../../../components/modal';
 import type { IDestinatario } from '../../../../types/IDestinatario';
+import { supabase } from '../../../../integrations/supabase/client';
 
 interface Cliente {
     id: string;
@@ -27,26 +28,6 @@ const GerenciarClientes = () => {
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [destinatarioToDelete, setDestinatarioToDelete] = useState<IDestinatario | null>(null);
 
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://envios.brhubb.com.br/api';
-
-    const getAdminToken = async (): Promise<string> => {
-        const loginResponse = await fetch(`${baseUrl}/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                email: 'admin@brhub.com.br',
-                password: 'Hub@2025!'
-            })
-        });
-
-        if (!loginResponse.ok) {
-            throw new Error('Falha na autenticação admin');
-        }
-
-        const loginData = await loginResponse.json();
-        return loginData.token;
-    };
-
     const searchClientes = async () => {
         if (!searchTerm.trim()) {
             toast.error('Digite um termo para buscar');
@@ -55,18 +36,14 @@ const GerenciarClientes = () => {
 
         setLoading(true);
         try {
-            const token = await getAdminToken();
-            const response = await fetch(`${baseUrl}/clientes?search=${encodeURIComponent(searchTerm)}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
+            const { data, error } = await supabase.functions.invoke('gerenciar-clientes', {
+                body: { action: 'search_clientes', searchTerm }
             });
 
-            if (!response.ok) throw new Error('Erro ao buscar clientes');
+            if (error) throw error;
+            if (!data?.success) throw new Error(data?.error || 'Erro ao buscar clientes');
 
-            const data = await response.json();
-            setClientes(data.data || data || []);
+            setClientes(data.data || []);
             setSelectedCliente(null);
             setDestinatarios([]);
         } catch (error) {
@@ -82,21 +59,14 @@ const GerenciarClientes = () => {
         setLoadingDestinatarios(true);
         
         try {
-            // Login como o cliente para buscar destinatários
-            const adminToken = await getAdminToken();
-            
-            // Buscar destinatários do cliente
-            const response = await fetch(`${baseUrl}/clientes/destinatarios?clienteId=${cliente.id}`, {
-                headers: {
-                    'Authorization': `Bearer ${adminToken}`,
-                    'Content-Type': 'application/json'
-                }
+            const { data, error } = await supabase.functions.invoke('gerenciar-clientes', {
+                body: { action: 'list_destinatarios', clienteId: cliente.id }
             });
 
-            if (!response.ok) throw new Error('Erro ao buscar destinatários');
+            if (error) throw error;
+            if (!data?.success) throw new Error(data?.error || 'Erro ao buscar destinatários');
 
-            const data = await response.json();
-            setDestinatarios(data.data || data || []);
+            setDestinatarios(data.data || []);
         } catch (error) {
             console.error('Erro ao buscar destinatários:', error);
             toast.error('Erro ao buscar destinatários do cliente');
@@ -117,16 +87,12 @@ const GerenciarClientes = () => {
         setShowConfirmModal(false);
 
         try {
-            const token = await getAdminToken();
-            const response = await fetch(`${baseUrl}/clientes/destinatarios/${destinatarioToDelete.id}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
+            const { data, error } = await supabase.functions.invoke('gerenciar-clientes', {
+                body: { action: 'delete_destinatario', destinatarioId: destinatarioToDelete.id }
             });
 
-            if (!response.ok) throw new Error('Erro ao excluir destinatário');
+            if (error) throw error;
+            if (!data?.success) throw new Error(data?.error || 'Erro ao excluir destinatário');
 
             toast.success('Destinatário excluído com sucesso');
             setDestinatarios(prev => prev.filter(d => d.id !== destinatarioToDelete.id));
