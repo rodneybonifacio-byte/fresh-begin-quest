@@ -118,6 +118,7 @@ serve(async (req: Request) => {
         let rastreioData: any = null;
         if (envio.codigoObjeto) {
           try {
+            console.log(`🔍 Buscando rastreio: ${BASE_API_URL}/rastreio/${envio.codigoObjeto}`);
             const rastreioResponse = await fetch(
               `${BASE_API_URL}/rastreio/${envio.codigoObjeto}`,
               {
@@ -127,12 +128,17 @@ serve(async (req: Request) => {
                 },
               }
             );
+            console.log(`📡 Status rastreio ${envio.codigoObjeto}: ${rastreioResponse.status}`);
             if (rastreioResponse.ok) {
-              rastreioData = await rastreioResponse.json();
-              console.log(`📍 Rastreio ${envio.codigoObjeto}:`, JSON.stringify(rastreioData).substring(0, 500));
+              const rastreioText = await rastreioResponse.text();
+              console.log(`📍 Rastreio raw ${envio.codigoObjeto}:`, rastreioText.substring(0, 800));
+              rastreioData = JSON.parse(rastreioText);
+            } else {
+              const errText = await rastreioResponse.text();
+              console.log(`⚠️ Rastreio falhou ${envio.codigoObjeto}: ${errText.substring(0, 200)}`);
             }
           } catch (rastreioErr) {
-            console.log(`⚠️ Não foi possível obter rastreio de ${envio.codigoObjeto}`);
+            console.log(`⚠️ Erro ao obter rastreio de ${envio.codigoObjeto}:`, rastreioErr);
           }
         }
 
