@@ -142,28 +142,33 @@ serve(async (req: Request) => {
           }
         }
 
-        // Extrair dados do último evento de rastreio (evento mais recente = AGUARDANDO_RETIRADA)
-        // historioRastreio é um array de eventos com unidade.endereco
-        const eventos = Array.isArray(rastreioData) ? rastreioData : (rastreioData?.eventos || envio.rastreio?.eventos || []);
-        const ultimoEvento = eventos[0] || {};
-        const unidade = ultimoEvento.unidade || {};
-        const enderecoUnidade = unidade.endereco || {};
+        // Extrair dados do evento de AGUARDANDO_RETIRADA (LDI = Local de retirada identificado)
+        const eventos = Array.isArray(rastreioData) ? rastreioData : (rastreioData?.eventos || []);
+        // Buscar o evento LDI (aguardando retirada) que contém a unidade correta
+        const eventoLDI = eventos.find((e: any) => e.codigo === 'LDI') || eventos[0] || {};
+        const unidade = eventoLDI.unidade || {};
         
-        console.log(`📍 Último evento: ${JSON.stringify(ultimoEvento).substring(0, 500)}`);
+        // A API dos Correios só fornece tipo e cidadeUf (ex: "Unidade de Distribuição", "CAMPINAS-SP")
+        // Não fornece endereço completo (logradouro, número, bairro)
+        const cidadeUf = unidade.cidadeUf || '';
+        const [cidade, uf] = cidadeUf.includes('-') ? cidadeUf.split('-') : [cidadeUf, ''];
+        
+        console.log(`📍 Evento LDI: ${JSON.stringify(eventoLDI).substring(0, 500)}`);
 
         // Extrair dados do destinatário (objeto aninhado na API)
         const destinatario = envio.destinatario || {};
 
         // Preparar payload para o webhook DataCrazy
+        // Nota: A API dos Correios não fornece endereço completo da unidade, apenas tipo e cidade/UF
         const webhookPayload = {
           destinatario_nome: destinatario.nome || envio.destinatarioNome || '',
           codigo_objeto: envio.codigoObjeto || '',
           remetente_nome: envio.remetenteNome || envio.cliente?.nome || '',
-          // Dados da unidade dos Correios (onde está aguardando retirada)
-          unidade_logradouro: enderecoUnidade.logradouro || unidade.nome || '',
-          unidade_numero: enderecoUnidade.numero || '',
-          unidade_complemento: enderecoUnidade.complemento || '',
-          unidade_bairro: enderecoUnidade.bairro || '',
+          // Dados da unidade dos Correios - usando cidade como "logradouro" já que não há endereço completo
+          unidade_logradouro: cidade || '',
+          unidade_numero: '',
+          unidade_complemento: uf || '',
+          unidade_bairro: '',
           unidade_tipo: unidade.tipo || '',
           destinatario_celular: destinatario.celular || envio.destinatarioCelular || '',
         };
