@@ -118,16 +118,15 @@ serve(async (req: Request) => {
         let rastreioData: any = null;
         if (envio.codigoObjeto) {
           try {
-            console.log(`🔍 Buscando rastreio: ${BASE_API_URL}/rastreio/${envio.codigoObjeto}`);
-            const rastreioResponse = await fetch(
-              `${BASE_API_URL}/rastreio/${envio.codigoObjeto}`,
-              {
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json',
-                },
-              }
-            );
+            // Endpoint de rastreio
+            const rastreioUrl = `${BASE_API_URL}/frete/rastrear/${envio.codigoObjeto}`;
+            console.log(`🔍 Buscando rastreio: ${rastreioUrl}`);
+            const rastreioResponse = await fetch(rastreioUrl, {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+            });
             console.log(`📡 Status rastreio ${envio.codigoObjeto}: ${rastreioResponse.status}`);
             if (rastreioResponse.ok) {
               const rastreioText = await rastreioResponse.text();
