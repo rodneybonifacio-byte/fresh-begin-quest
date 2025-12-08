@@ -45,8 +45,9 @@ export const Login = () => {
         password: data.password
       });
 
-      // Exemplo: Armazenar o token no localStorage
+      // Limpa token antigo antes de setar o novo
       if (response.token) {
+        localStorage.removeItem("token");
         localStorage.setItem("token", response.token);
         authStore.login({
           email: data.email,
