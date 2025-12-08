@@ -16,7 +16,7 @@ async function getAdminToken(): Promise<string> {
     throw new Error('Credenciais de admin não configuradas');
   }
 
-  const loginResponse = await fetch(`${baseUrl}/auth/login`, {
+  const loginResponse = await fetch(`${baseUrl}/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
