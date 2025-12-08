@@ -73,21 +73,25 @@ export const ListaEmissoes = () => {
         if (destinatario) params.destinatario = destinatario;
         if (codigoObjeto) params.codigoObjeto = codigoObjeto;
         
-        // Se tiver codigoObjeto específico, não filtra por status (busca em todos)
-        // Senão, usa o tab atual como filtro de status
-        if (!codigoObjeto) {
-            params.status = statusFromUrl || tab;
-        }
+        // Aplicar filtro de status
+        params.status = statusFromUrl || tab;
         
         console.log('🔍 ListaEmissoes - Buscando emissões com params:', params);
-        console.log('🔍 ListaEmissoes - Tab atual:', tab, '| Status enviado:', params.status || 'TODOS (busca por código)');
         
         const result = await service.getAll(params);
         console.log('📦 ListaEmissoes - Resultado:', result?.data?.length || 0, 'registros');
         
-        // Log primeiro registro para debug
-        if (result?.data?.[0]) {
-            console.log('📋 Primeiro registro:', result.data[0].codigoObjeto, '| Status:', result.data[0].status);
+        // Se não encontrou nada no status atual, tenta buscar TODOS para diagnóstico
+        if (!result?.data?.length && tab === 'PRE_POSTADO') {
+            console.log('⚠️ Nenhum registro em PRE_POSTADO, buscando TODOS os status para diagnóstico...');
+            const paramsAll = { limit: 50, offset: 0 };
+            const allResult = await service.getAll(paramsAll);
+            console.log('📊 Total de etiquetas do usuário (todos status):', allResult?.data?.length || 0);
+            if (allResult?.data?.length) {
+                allResult.data.slice(0, 10).forEach((e: IEmissao) => {
+                    console.log(`  📋 ${e.codigoObjeto} | Status: ${e.status} | Criado: ${e.criadoEm}`);
+                });
+            }
         }
         
         return result;
