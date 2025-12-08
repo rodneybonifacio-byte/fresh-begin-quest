@@ -71,7 +71,7 @@ serve(async (req: Request) => {
     }
 
     const enviosText = await enviosResponse.text();
-    console.log('📄 Resposta da API:', enviosText.substring(0, 500));
+    console.log('📄 Resposta da API:', enviosText.substring(0, 1500));
     
     let enviosData;
     try {
