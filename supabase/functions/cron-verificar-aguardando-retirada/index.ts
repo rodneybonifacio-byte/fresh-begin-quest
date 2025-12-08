@@ -115,37 +115,41 @@ serve(async (req: Request) => {
     for (const envio of enviosPendentes) {
       try {
         // Buscar dados de rastreio do objeto para obter informações da unidade
+        // O endpoint /emissoes/{id} inclui historioRastreio
         let rastreioData: any = null;
-        if (envio.codigoObjeto) {
+        if (envio.id) {
           try {
-            // Endpoint de rastreio
-            const rastreioUrl = `${BASE_API_URL}/frete/rastrear/${envio.codigoObjeto}`;
-            console.log(`🔍 Buscando rastreio: ${rastreioUrl}`);
-            const rastreioResponse = await fetch(rastreioUrl, {
+            const emissaoUrl = `${BASE_API_URL}/emissoes/${envio.id}`;
+            console.log(`🔍 Buscando emissão com rastreio: ${emissaoUrl}`);
+            const emissaoResponse = await fetch(emissaoUrl, {
               headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
               },
             });
-            console.log(`📡 Status rastreio ${envio.codigoObjeto}: ${rastreioResponse.status}`);
-            if (rastreioResponse.ok) {
-              const rastreioText = await rastreioResponse.text();
-              console.log(`📍 Rastreio raw ${envio.codigoObjeto}:`, rastreioText.substring(0, 800));
-              rastreioData = JSON.parse(rastreioText);
+            console.log(`📡 Status emissão ${envio.codigoObjeto}: ${emissaoResponse.status}`);
+            if (emissaoResponse.ok) {
+              const emissaoText = await emissaoResponse.text();
+              console.log(`📍 Emissão rastreio ${envio.codigoObjeto}:`, emissaoText.substring(0, 1000));
+              const emissaoCompleta = JSON.parse(emissaoText);
+              rastreioData = emissaoCompleta.historioRastreio || emissaoCompleta.rastreio;
             } else {
-              const errText = await rastreioResponse.text();
-              console.log(`⚠️ Rastreio falhou ${envio.codigoObjeto}: ${errText.substring(0, 200)}`);
+              const errText = await emissaoResponse.text();
+              console.log(`⚠️ Emissão falhou ${envio.codigoObjeto}: ${errText.substring(0, 200)}`);
             }
-          } catch (rastreioErr) {
-            console.log(`⚠️ Erro ao obter rastreio de ${envio.codigoObjeto}:`, rastreioErr);
+          } catch (emissaoErr) {
+            console.log(`⚠️ Erro ao obter emissão de ${envio.codigoObjeto}:`, emissaoErr);
           }
         }
 
         // Extrair dados do último evento de rastreio (evento mais recente = AGUARDANDO_RETIRADA)
-        const eventos = rastreioData?.eventos || envio.rastreio?.eventos || [];
+        // historioRastreio é um array de eventos com unidade.endereco
+        const eventos = Array.isArray(rastreioData) ? rastreioData : (rastreioData?.eventos || envio.rastreio?.eventos || []);
         const ultimoEvento = eventos[0] || {};
         const unidade = ultimoEvento.unidade || {};
         const enderecoUnidade = unidade.endereco || {};
+        
+        console.log(`📍 Último evento: ${JSON.stringify(ultimoEvento).substring(0, 500)}`);
 
         // Extrair dados do destinatário (objeto aninhado na API)
         const destinatario = envio.destinatario || {};
