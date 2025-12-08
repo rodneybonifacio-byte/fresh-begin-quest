@@ -293,6 +293,39 @@ export type Database = {
         }
         Relationships: []
       }
+      notificacoes_aguardando_retirada: {
+        Row: {
+          codigo_objeto: string
+          created_at: string
+          destinatario_celular: string | null
+          destinatario_nome: string | null
+          id: string
+          notificado_em: string
+          remetente_nome: string | null
+          webhook_response: string | null
+        }
+        Insert: {
+          codigo_objeto: string
+          created_at?: string
+          destinatario_celular?: string | null
+          destinatario_nome?: string | null
+          id?: string
+          notificado_em?: string
+          remetente_nome?: string | null
+          webhook_response?: string | null
+        }
+        Update: {
+          codigo_objeto?: string
+          created_at?: string
+          destinatario_celular?: string | null
+          destinatario_nome?: string | null
+          id?: string
+          notificado_em?: string
+          remetente_nome?: string | null
+          webhook_response?: string | null
+        }
+        Relationships: []
+      }
       recargas_pix: {
         Row: {
           cliente_id: string

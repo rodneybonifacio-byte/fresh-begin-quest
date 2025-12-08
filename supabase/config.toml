@@ -95,3 +95,6 @@ verify_jwt = false
 
 [functions.notificar-aguardando-retirada]
 verify_jwt = false
+
+[functions.cron-verificar-aguardando-retirada]
+verify_jwt = false
