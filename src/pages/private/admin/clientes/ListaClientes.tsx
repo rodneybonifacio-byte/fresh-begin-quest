@@ -76,6 +76,8 @@ export const ListaClientes = () => {
         setIsLoading(true);
         try {
             const response = await service.loginAsClient({ email: cliente.email });
+            // Limpa token antigo antes de setar o novo
+            localStorage.removeItem('token');
             localStorage.setItem('token', response.token);
             authStore.login({ email: cliente.email, token: response.token });
 

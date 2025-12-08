@@ -194,6 +194,8 @@ export const CadastroCliente = () => {
       const userToken = responseData.userToken;
       if (userToken) {
         console.log('✅ Token do usuário recebido, salvando para login automático...');
+        // Limpa token antigo antes de setar o novo
+        localStorage.removeItem('token');
         localStorage.setItem('token', userToken);
         localStorage.setItem('auto_login', 'true');
         // Limpa verificação de remetente para forçar abertura do modal
