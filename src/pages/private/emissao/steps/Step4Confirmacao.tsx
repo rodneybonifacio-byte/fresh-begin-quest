@@ -248,24 +248,39 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
       // Aguarda 500ms para garantir que o backend processou
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Depois busca o PDF da etiqueta usando a emissão com ID
-      const pdfResponse = await onEmissaoImprimir(
-        emissaoCriada,
-        'etiqueta',
-        setIsSubmitting
-      );
-      
-      console.log('✅ PDF recebido:', pdfResponse);
-      
-      if (!pdfResponse?.data?.dados) {
-        console.error('❌ PDF sem dados:', pdfResponse);
-        throw new Error('Erro ao gerar PDF: dados não retornados');
+      // Tenta buscar o PDF da etiqueta via API
+      try {
+        const pdfResponse = await onEmissaoImprimir(
+          emissaoCriada,
+          'etiqueta',
+          setIsSubmitting
+        );
+        
+        console.log('✅ PDF recebido:', pdfResponse);
+        
+        if (pdfResponse?.data?.dados) {
+          toast.success('Etiqueta gerada com sucesso!');
+          onSuccess(emissaoCriada, pdfResponse.data);
+          return;
+        }
+      } catch (pdfError: any) {
+        console.warn('⚠️ Erro ao buscar PDF via API, usando link direto:', pdfError?.message);
       }
       
-      toast.success('Etiqueta gerada com sucesso!');
+      // Fallback: usar link_etiqueta direto se a API de PDF falhar
+      if (backendResponse?.link_etiqueta) {
+        console.log('🔗 Usando link direto da etiqueta:', backendResponse.link_etiqueta);
+        toast.success('Etiqueta gerada! Abrindo para impressão...');
+        
+        // Abre o link em nova aba
+        window.open(backendResponse.link_etiqueta, '_blank');
+        
+        // Passa dados mínimos para o próximo step
+        onSuccess(emissaoCriada, { nome: 'etiqueta.pdf', dados: '' });
+        return;
+      }
       
-      // Passa a emissão criada e o PDF para o próximo step
-      onSuccess(emissaoCriada, pdfResponse.data);
+      throw new Error('Erro ao gerar PDF: nenhum método de download disponível');
     } catch (error: any) {
       console.error('❌ Erro completo ao gerar etiqueta:', error);
       console.error('Stack:', error?.stack);
