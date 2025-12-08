@@ -53,10 +53,10 @@ serve(async (req: Request) => {
     const loginData = await loginResponse.json();
     const token = loginData.token;
 
-    // Buscar envios com status AGUARDANDO_RETIRADA
+    // Buscar envios com status AGUARDANDO_RETIRADA usando endpoint admin
     console.log('📦 Buscando envios AGUARDANDO_RETIRADA...');
     const enviosResponse = await fetch(
-      `${BASE_API_URL}/emissoes?status=AGUARDANDO_RETIRADA&pagina=1&porPagina=100`,
+      `${BASE_API_URL}/emissoes/admin?status=AGUARDANDO_RETIRADA&limit=100&offset=0`,
       {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -80,8 +80,8 @@ serve(async (req: Request) => {
       throw new Error(`Resposta inválida da API: ${enviosText.substring(0, 200)}`);
     }
     
-    // A API pode retornar { data: [...] } ou diretamente um array
-    const envios = Array.isArray(enviosData) ? enviosData : (enviosData?.data || []);
+    // A API retorna { data: [...], meta: {...} }
+    const envios = enviosData?.data || [];
 
     console.log(`📊 Encontrados ${envios.length} envios com status AGUARDANDO_RETIRADA`);
 
