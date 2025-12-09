@@ -123,7 +123,7 @@ export const ModalBemVindoCadastro = ({
               </motion.div>
               
               <h2 className="text-2xl font-bold text-white">
-                Bem-vindo ao <span className="text-primary text-slate-100">BRHUB Envios</span>! 🎉
+                Bem-vindo ao <span className="text-primary text-slate-50">BRHUB Envios</span>! 🎉
               </h2>
               
               <p className="text-white/80 text-sm leading-relaxed">
