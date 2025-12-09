@@ -81,17 +81,13 @@ export default function GerenciarCreditos() {
                 if (error) throw error;
                 return data;
             } else {
-                // Remover saldo - apenas registra no Supabase local
-                const { error } = await supabase.from('transacoes_credito').insert({
-                    cliente_id: clienteId,
-                    tipo: 'consumo',
-                    valor: -Math.abs(valor),
-                    descricao: descricao || 'Crédito removido pelo administrador',
-                    status: 'consumido',
+                // Remover saldo via edge function com service role
+                const { data, error } = await supabase.functions.invoke('remover-saldo-manual', {
+                    body: { clienteId, valor, descricao: descricao || 'Crédito removido pelo administrador' }
                 });
                 
                 if (error) throw error;
-                return { success: true };
+                return data;
             }
         },
         onSuccess: async () => {
