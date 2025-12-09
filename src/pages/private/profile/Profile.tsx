@@ -10,7 +10,7 @@ import { InputLabel } from '../../../components/input-label';
 import { ProfileSkeleton } from '../../../components/skeletons/ProfileSkeleton';
 import { ProfileAvatar } from '../../../components/ProfileAvatar';
 import { useAddress } from '../../../hooks/useAddress';
-import { useFetchQuery } from '../../../hooks/useFetchQuery';
+import { useUsuarioDados } from '../../../hooks/useUsuarioDados';
 import { useLoadingSpinner } from '../../../providers/LoadingSpinnerContext';
 import { AccountService } from '../../../services/AccountService';
 import type { IUserProfile } from '../../../types/user/IUserProfile';
@@ -78,12 +78,40 @@ const Profile = () => {
     } = methods;
 
     const {
-        data: profile,
+        data: usuarioDados,
         isLoading,
         isError,
-    } = useFetchQuery<IUserProfile>(['profile', user?.id], async () => {
-        return await service.getProfile();
-    });
+    } = useUsuarioDados();
+
+    // Mapeia dados do remetente principal para o formato de perfil
+    const remetente = usuarioDados?.remetentes?.[0];
+    const profile = remetente ? {
+        id: remetente.id || '',
+        name: remetente.nome || '',
+        documento: remetente.cpfCnpj || '',
+        document: remetente.cpfCnpj || '',
+        telefone: remetente.telefone || remetente.celular || '',
+        email: remetente.email || '',
+        dataNascimento: '',
+        endereco: {
+            cep: remetente.endereco?.cep || '',
+            logradouro: remetente.endereco?.logradouro || '',
+            numero: remetente.endereco?.numero || '',
+            complemento: remetente.endereco?.complemento || '',
+            bairro: remetente.endereco?.bairro || '',
+            localidade: remetente.endereco?.localidade || '',
+            uf: remetente.endereco?.uf || '',
+        },
+        preferenciasNotificacao: {
+            email: true,
+            sms: false,
+            push: true,
+        },
+        lastLogin: {
+            lastLoginAt: '',
+            ipAddress: '',
+        },
+    } : null;
 
     const mutation = useMutation({
         mutationFn: async (data: ProfileFormData) => {
