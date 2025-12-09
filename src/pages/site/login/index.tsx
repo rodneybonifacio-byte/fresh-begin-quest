@@ -17,7 +17,7 @@ import { RemetenteSupabaseDirectService } from "../../../services/RemetenteSupab
 import { PromoBannerRecarga } from "../../../components/PromoBannerRecarga";
 import { supabase } from "../../../integrations/supabase/client";
 import type { TokenPayload } from "../../../types/ITokenPayload";
-import { ModalBemVindoCadastro } from "../../../components/ModalBemVindoCadastro";
+
 
 const loginSchame = yup.object({
   email: yup.string().required("Informe seu email."),
@@ -28,7 +28,7 @@ export const Login = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
-  const [showTestModal, setShowTestModal] = useState(false);
+  
   const clientHttp = new CustomHttpClient();
   const {
     register,
@@ -216,24 +216,9 @@ export const Login = () => {
                             Criar Conta
                         </ButtonComponent>
 
-                        {/* Botão temporário para testar modal */}
-                        <button
-                            type="button"
-                            onClick={() => setShowTestModal(true)}
-                            className="w-full mt-3 py-2 text-xs text-muted-foreground border border-dashed border-muted-foreground/30 rounded-lg hover:bg-muted/50 transition-colors"
-                        >
-                            🧪 Testar Modal de Boas-vindas
-                        </button>
                     </div>
                 </div>
             </div>
-
-            {/* Modal de teste */}
-            <ModalBemVindoCadastro 
-                isOpen={showTestModal} 
-                onClose={() => setShowTestModal(false)} 
-                posicaoCadastro={42}
-            />
         </div>
     </>;
 };
