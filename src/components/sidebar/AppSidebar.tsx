@@ -135,7 +135,7 @@ const AppSidebar = observer(({
 
     return (
         <>
-            <SidebarLayout navItems={navItems} isOpen={isOpen} onClose={onClose} onNavigate={onNavigate} title="BRHUB" />
+            <SidebarLayout navItems={navItems} isOpen={isOpen} onClose={onClose} onNavigate={onNavigate} title="BRHUB" hideUserProfile />
         </>
     );
 });

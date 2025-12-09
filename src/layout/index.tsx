@@ -30,10 +30,8 @@ export const LayoutBase = () => {
 
             {/* Main content area */}
             <div className="flex-1 flex flex-col overflow-hidden">
-                {/* Topbar - apenas mobile */}
-                <div className="lg:hidden">
-                    <AppTopbar toggleSidebar={toggleSidebar} />
-                </div>
+                {/* Topbar - todas as telas */}
+                <AppTopbar toggleSidebar={toggleSidebar} />
 
                 {/* Banner promocional */}
                 <PromoBannerRecarga />
