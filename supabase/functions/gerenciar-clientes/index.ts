@@ -150,8 +150,8 @@ serve(async (req) => {
     if (action === 'list_destinatarios') {
       console.log('📋 Listando destinatários do cliente:', clienteId);
       
-      // Rota correta: clientes/destinatarios
-      const response = await fetch(`${baseUrl}/clientes/destinatarios?clienteId=${clienteId}`, {
+      // Rota correta: /clientes/{clienteId}/destinatarios
+      const response = await fetch(`${baseUrl}/clientes/${clienteId}/destinatarios`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${adminToken}`,
@@ -162,25 +162,20 @@ serve(async (req) => {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Erro ao buscar destinatários:', errorText);
-        throw new Error('Erro ao buscar destinatários');
+        // Retornar array vazio se não encontrar, ao invés de erro
+        return new Response(
+          JSON.stringify({ success: true, data: [] }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
 
       const data = await response.json();
       const destinatarios = data.data || data || [];
       
       console.log('📊 Total destinatários da API:', destinatarios.length);
-      if (destinatarios.length > 0) {
-        console.log('📋 Exemplo de destinatário:', JSON.stringify(destinatarios[0]));
-      }
-      
-      // Filtrar por clienteId - verificar diferentes formatos possíveis
-      const filteredDestinatarios = destinatarios.filter((d: any) => 
-        d.clienteId === clienteId || d.cliente_id === clienteId
-      );
-      console.log('✅ Destinatários filtrados:', filteredDestinatarios.length);
 
       return new Response(
-        JSON.stringify({ success: true, data: filteredDestinatarios }),
+        JSON.stringify({ success: true, data: destinatarios }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
