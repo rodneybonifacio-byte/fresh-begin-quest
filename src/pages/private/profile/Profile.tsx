@@ -154,12 +154,32 @@ const Profile = () => {
     ];
 
     useEffect(() => {
-        if (profile) {
-            //remove campos que não existem no form lastLogin
-            const { lastLogin, ...rest } = profile;
-            reset(rest);
+        if (remetente) {
+            const formData = {
+                name: remetente.nome || '',
+                documento: remetente.cpfCnpj || '',
+                telefone: remetente.telefone || remetente.celular || '',
+                email: remetente.email || '',
+                endereco: {
+                    cep: remetente.endereco?.cep || '',
+                    logradouro: remetente.endereco?.logradouro || '',
+                    numero: remetente.endereco?.numero || '',
+                    complemento: remetente.endereco?.complemento || '',
+                    bairro: remetente.endereco?.bairro || '',
+                    localidade: remetente.endereco?.localidade || '',
+                    uf: remetente.endereco?.uf || '',
+                },
+                preferenciasNotificacao: {
+                    email: true,
+                    sms: false,
+                    push: true,
+                    whatsapp: true,
+                },
+            };
+            reset(formData);
         }
-    }, [profile, reset]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [remetente?.id]);
 
     if (isLoading) {
         return (
