@@ -1,15 +1,124 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Eye, EyeOff, ArrowLeft, Loader2, CheckCircle2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Eye, EyeOff, ArrowLeft, Loader2, CheckCircle2, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '../../../integrations/supabase/client';
+
+const TermosModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
+  if (!isOpen) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+        onClick={onClose}
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between p-6 border-b border-gray-100">
+            <h2 className="text-xl font-bold text-gray-900">Termos do Programa Conecta+</h2>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
+          </div>
+          
+          <div className="p-6 overflow-y-auto max-h-[60vh] space-y-4 text-gray-600 text-sm leading-relaxed">
+            <h3 className="font-semibold text-gray-900">1. Definições</h3>
+            <p>
+              O Programa BRHUB Conecta+ é um programa de indicação que permite que parceiros 
+              cadastrados recebam comissões por indicar novos clientes para a plataforma BRHUB Envios.
+            </p>
+
+            <h3 className="font-semibold text-gray-900">2. Elegibilidade</h3>
+            <p>
+              Qualquer pessoa física ou jurídica pode se tornar um parceiro Conecta+, desde que 
+              possua CPF ou CNPJ válido e aceite integralmente estes termos.
+            </p>
+
+            <h3 className="font-semibold text-gray-900">3. Comissões</h3>
+            <p>
+              O parceiro receberá <strong>10% (dez por cento) do lucro líquido</strong> gerado 
+              por cada cliente indicado, enquanto este permanecer ativo na plataforma. O lucro 
+              líquido é calculado como a diferença entre o valor cobrado do cliente e o custo 
+              operacional do frete.
+            </p>
+
+            <h3 className="font-semibold text-gray-900">4. Vinculação de Clientes</h3>
+            <p>
+              Um cliente é vinculado ao parceiro quando se cadastra utilizando o link de indicação 
+              ou código do parceiro. A vinculação é vitalícia, desde que o cliente permaneça ativo.
+            </p>
+
+            <h3 className="font-semibold text-gray-900">5. Pagamentos</h3>
+            <p>
+              Os pagamentos são realizados mensalmente, via PIX, até o dia 10 do mês subsequente 
+              ao período de apuração. O valor mínimo para saque é de R$ 50,00. Valores inferiores 
+              serão acumulados para o próximo período.
+            </p>
+
+            <h3 className="font-semibold text-gray-900">6. Obrigações do Parceiro</h3>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Manter dados cadastrais atualizados</li>
+              <li>Não fazer promessas falsas sobre a plataforma</li>
+              <li>Não utilizar práticas de spam ou marketing abusivo</li>
+              <li>Respeitar as políticas de uso da marca BRHUB</li>
+            </ul>
+
+            <h3 className="font-semibold text-gray-900">7. Cancelamento</h3>
+            <p>
+              O BRHUB reserva-se o direito de suspender ou cancelar a participação de qualquer 
+              parceiro que viole estes termos, pratique fraude ou prejudique a reputação da marca.
+            </p>
+
+            <h3 className="font-semibold text-gray-900">8. Alterações</h3>
+            <p>
+              Estes termos podem ser alterados a qualquer momento, com aviso prévio de 30 dias 
+              aos parceiros cadastrados.
+            </p>
+
+            <h3 className="font-semibold text-gray-900">9. Foro</h3>
+            <p>
+              Fica eleito o foro da comarca de São Paulo/SP para dirimir quaisquer controvérsias 
+              decorrentes deste programa.
+            </p>
+
+            <p className="text-xs text-gray-400 pt-4 border-t border-gray-100">
+              Última atualização: Dezembro de 2024
+            </p>
+          </div>
+
+          <div className="p-6 border-t border-gray-100 bg-gray-50">
+            <button
+              onClick={onClose}
+              className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-semibold transition-all"
+            >
+              Entendi
+            </button>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
 
 export const CadastroParceiro = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [showTermos, setShowTermos] = useState(false);
   const [formData, setFormData] = useState({
     nome: '',
     email: '',
@@ -270,9 +379,19 @@ export const CadastroParceiro = () => {
               className="mt-1 w-5 h-5 rounded border-gray-300 bg-white text-orange-500 focus:ring-orange-500"
             />
             <label htmlFor="termos" className="text-sm text-gray-600">
-              Li e aceito os <span className="text-orange-500 font-medium">Termos do Programa Conecta+</span> e concordo em receber 10% de comissão sobre o lucro líquido dos clientes que eu indicar.
+              Li e aceito os{' '}
+              <button 
+                type="button"
+                onClick={() => setShowTermos(true)}
+                className="text-orange-500 font-medium hover:underline"
+              >
+                Termos do Programa Conecta+
+              </button>{' '}
+              e concordo em receber 10% de comissão sobre o lucro líquido dos clientes que eu indicar.
             </label>
           </div>
+
+          <TermosModal isOpen={showTermos} onClose={() => setShowTermos(false)} />
 
           <button
             type="submit"
