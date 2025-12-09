@@ -184,7 +184,7 @@ const Profile = () => {
                 {/* Header do perfil com avatar */}
                 <div className="bg-card rounded-xl p-6 border border-border">
                     <div className="flex flex-col sm:flex-row items-center gap-6">
-                        <ProfileAvatar name={userName} size="xl" />
+                        <ProfileAvatar name={userName} size="xl" showIcon />
                         <div className="text-center sm:text-left">
                             <h2 className="text-2xl font-bold text-foreground">{userName}</h2>
                             <p className="text-muted-foreground">{userEmail}</p>
