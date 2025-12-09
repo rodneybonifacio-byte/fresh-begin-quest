@@ -4,30 +4,31 @@ import { PromoBannerRecarga } from "../../components/PromoBannerRecarga";
 
 export const Home = () => {
     return (
-        <div className="w-full bg-gray-600 dark:bg-slate-900">
+        <div className="w-full bg-white">
             <PromoBannerRecarga variant="featured" />
             <NavBarPublico />
 
-            <div className="bg-gradient-to-r from-secondary/75 to-orange-600/85 dark:from-secondary-dark/75 dark:to-orange-500/85">
+            {/* Hero Section */}
+            <div className="bg-white border-b border-gray-100">
                 <div className="max-w-7xl mx-auto py-16 px-4 sm:py-24 sm:px-6 lg:px-8">
                     <div className="text-center animate-fade-in">
-                        <h1 className="text-4xl font-extrabold text-white sm:text-5xl md:text-6xl">
-                            Bem-vindo ao BrHub Envios
+                        <h1 className="text-4xl font-extrabold text-gray-900 sm:text-5xl md:text-6xl">
+                            Bem-vindo ao <span className="text-[#F2541B]">BrHub Envios</span>
                         </h1>
-                        <p className="mt-3 max-w-md mx-auto text-xl text-gray-200 sm:text-2xl md:mt-5 md:max-w-3xl">
+                        <p className="mt-3 max-w-md mx-auto text-xl text-gray-600 sm:text-2xl md:mt-5 md:max-w-3xl">
                             Sua solução completa para criação de etiquetas, gerenciamento de postagens e integração com os
                             Correios.
                         </p>
                         <div className="mt-5 max-w-md mx-auto sm:flex sm:justify-center md:mt-8">
                             <div className="rounded-md shadow">
                                 <a href="/cadastro-cliente"
-                                    className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-secondary hover:bg-secondary/90 dark:bg-secondary-dark dark:hover:bg-secondary-dark/90 md:py-4 md:text-lg md:px-10 transition duration-300">
+                                    className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-[#F2541B] hover:bg-[#d94a17] md:py-4 md:text-lg md:px-10 transition duration-300">
                                     Criar Conta
                                 </a>
                             </div>
                             <div className="mt-3 sm:mt-0 sm:ml-3">
                                 <a href="/login"
-                                    className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-orange-700 dark:text-orange-300 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 md:py-4 md:text-lg md:px-10 transition duration-300">
+                                    className="w-full flex items-center justify-center px-8 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 md:py-4 md:text-lg md:px-10 transition duration-300">
                                     Fazer Login
                                 </a>
                             </div>
@@ -37,33 +38,39 @@ export const Home = () => {
             </div>
 
             {/* Seção de Recursos Principais */}
-            <div className="py-16 bg-white dark:bg-slate-900">
+            <div className="py-16 bg-white">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center mb-12">
-                        <h2 className="text-3xl font-extrabold text-gray-900 dark:text-gray-100 sm:text-4xl">
+                        <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
                             Recursos que fazem a diferença
                         </h2>
-                        <p className="mt-4 max-w-2xl mx-auto text-xl text-gray-600 dark:text-gray-300">
+                        <p className="mt-4 max-w-2xl mx-auto text-xl text-gray-600">
                             Descubra tudo o que nossa plataforma pode fazer pelo seu negócio
                         </p>
                     </div>
                     <div className="grid md:grid-cols-3 gap-8">
-                        <div className="p-6 bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-xl transition duration-300 border border-gray-200 dark:border-slate-700">
-                            <div className="text-orange-600 dark:text-orange-400 text-4xl mb-4">🏷️</div>
-                            <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-gray-100">Criação de Etiquetas</h3>
-                            <p className="text-gray-600 dark:text-gray-300">Gere etiquetas postais de forma rápida e prática com nossa interface
+                        <div className="p-6 bg-white rounded-xl shadow-sm hover:shadow-lg transition duration-300 border border-gray-100">
+                            <div className="w-12 h-12 bg-[#F2541B]/10 rounded-xl flex items-center justify-center mb-4">
+                                <span className="text-2xl">🏷️</span>
+                            </div>
+                            <h3 className="text-xl font-semibold mb-2 text-gray-900">Criação de Etiquetas</h3>
+                            <p className="text-gray-600">Gere etiquetas postais de forma rápida e prática com nossa interface
                                 intuitiva.</p>
                         </div>
-                        <div className="p-6 bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-xl transition duration-300 border border-gray-200 dark:border-slate-700">
-                            <div className="text-orange-600 dark:text-orange-400 text-4xl mb-4">📦</div>
-                            <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-gray-100">Gerenciamento de Postagens</h3>
-                            <p className="text-gray-600 dark:text-gray-300">Controle todas as suas postagens em um único lugar com ferramentas
+                        <div className="p-6 bg-white rounded-xl shadow-sm hover:shadow-lg transition duration-300 border border-gray-100">
+                            <div className="w-12 h-12 bg-[#F2541B]/10 rounded-xl flex items-center justify-center mb-4">
+                                <span className="text-2xl">📦</span>
+                            </div>
+                            <h3 className="text-xl font-semibold mb-2 text-gray-900">Gerenciamento de Postagens</h3>
+                            <p className="text-gray-600">Controle todas as suas postagens em um único lugar com ferramentas
                                 poderosas.</p>
                         </div>
-                        <div className="p-6 bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-xl transition duration-300 border border-gray-200 dark:border-slate-700">
-                            <div className="text-orange-600 dark:text-orange-400 text-4xl mb-4">🚚</div>
-                            <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-gray-100">Integração com Correios</h3>
-                            <p className="text-gray-600 dark:text-gray-300">Envie e rastreie suas encomendas diretamente com os Correios de forma
+                        <div className="p-6 bg-white rounded-xl shadow-sm hover:shadow-lg transition duration-300 border border-gray-100">
+                            <div className="w-12 h-12 bg-[#F2541B]/10 rounded-xl flex items-center justify-center mb-4">
+                                <span className="text-2xl">🚚</span>
+                            </div>
+                            <h3 className="text-xl font-semibold mb-2 text-gray-900">Integração com Correios</h3>
+                            <p className="text-gray-600">Envie e rastreie suas encomendas diretamente com os Correios de forma
                                 integrada.</p>
                         </div>
                     </div>
@@ -71,41 +78,41 @@ export const Home = () => {
             </div>
 
             {/* Seção Como Funciona */}
-            <div className="py-16 bg-gray-50 dark:bg-slate-800">
+            <div className="py-16 bg-gray-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center mb-12">
-                        <h2 className="text-3xl font-extrabold text-gray-900 dark:text-gray-100 sm:text-4xl">
+                        <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
                             Como funciona nossa plataforma
                         </h2>
-                        <p className="mt-4 max-w-2xl mx-auto text-xl text-gray-600 dark:text-gray-300">
+                        <p className="mt-4 max-w-2xl mx-auto text-xl text-gray-600">
                             Em apenas 3 passos simples, você pode começar a usar nossa solução
                         </p>
                     </div>
                     <div className="grid md:grid-cols-3 gap-8">
                         <div className="text-center">
-                            <div className="mx-auto w-16 h-16 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center mb-6">
-                                <span className="text-2xl font-bold text-orange-600 dark:text-orange-400">1</span>
+                            <div className="mx-auto w-16 h-16 bg-[#F2541B]/10 rounded-full flex items-center justify-center mb-6">
+                                <span className="text-2xl font-bold text-[#F2541B]">1</span>
                             </div>
-                            <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">Cadastre-se</h3>
-                            <p className="text-gray-600 dark:text-gray-300">
+                            <h3 className="text-xl font-semibold mb-4 text-gray-900">Cadastre-se</h3>
+                            <p className="text-gray-600">
                                 Crie sua conta gratuitamente e configure suas preferências de envio em minutos.
                             </p>
                         </div>
                         <div className="text-center">
-                            <div className="mx-auto w-16 h-16 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center mb-6">
-                                <span className="text-2xl font-bold text-orange-600 dark:text-orange-400">2</span>
+                            <div className="mx-auto w-16 h-16 bg-[#F2541B]/10 rounded-full flex items-center justify-center mb-6">
+                                <span className="text-2xl font-bold text-[#F2541B]">2</span>
                             </div>
-                            <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">Configure</h3>
-                            <p className="text-gray-600 dark:text-gray-300">
+                            <h3 className="text-xl font-semibold mb-4 text-gray-900">Configure</h3>
+                            <p className="text-gray-600">
                                 Integre com sua loja virtual ou adicione seus produtos manualmente na plataforma.
                             </p>
                         </div>
                         <div className="text-center">
-                            <div className="mx-auto w-16 h-16 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center mb-6">
-                                <span className="text-2xl font-bold text-orange-600 dark:text-orange-400">3</span>
+                            <div className="mx-auto w-16 h-16 bg-[#F2541B]/10 rounded-full flex items-center justify-center mb-6">
+                                <span className="text-2xl font-bold text-[#F2541B]">3</span>
                             </div>
-                            <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">Envie</h3>
-                            <p className="text-gray-600 dark:text-gray-300">
+                            <h3 className="text-xl font-semibold mb-4 text-gray-900">Envie</h3>
+                            <p className="text-gray-600">
                                 Gere etiquetas, acompanhe entregas e gerencie todo seu processo logístico.
                             </p>
                         </div>
@@ -114,32 +121,32 @@ export const Home = () => {
             </div>
 
             {/* Seção de Estatísticas */}
-            <div className="py-16 bg-secondary dark:bg-secondary-dark">
+            <div className="py-16 bg-[#F2541B]">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center mb-12">
                         <h2 className="text-3xl font-extrabold text-white sm:text-4xl">
                             Números que impressionam
                         </h2>
-                        <p className="mt-4 max-w-2xl mx-auto text-xl text-gray-200">
+                        <p className="mt-4 max-w-2xl mx-auto text-xl text-white/80">
                             Confira alguns dados sobre nossa plataforma
                         </p>
                     </div>
                     <div className="grid md:grid-cols-4 gap-8">
                         <div className="text-center">
                             <div className="text-4xl font-bold text-white mb-2">10K+</div>
-                            <p className="text-gray-200">Usuários ativos</p>
+                            <p className="text-white/80">Usuários ativos</p>
                         </div>
                         <div className="text-center">
                             <div className="text-4xl font-bold text-white mb-2">500K+</div>
-                            <p className="text-gray-200">Etiquetas geradas</p>
+                            <p className="text-white/80">Etiquetas geradas</p>
                         </div>
                         <div className="text-center">
                             <div className="text-4xl font-bold text-white mb-2">99.9%</div>
-                            <p className="text-gray-200">Taxa de entrega</p>
+                            <p className="text-white/80">Taxa de entrega</p>
                         </div>
                         <div className="text-center">
                             <div className="text-4xl font-bold text-white mb-2">24/7</div>
-                            <p className="text-gray-200">Suporte técnico</p>
+                            <p className="text-white/80">Suporte técnico</p>
                         </div>
                     </div>
                 </div>
@@ -269,62 +276,62 @@ export const Home = () => {
             </div> */}
 
             {/* Seção de Depoimentos */}
-            <div className="py-16 bg-gray-50 dark:bg-slate-800">
+            <div className="py-16 bg-gray-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center mb-12">
-                        <h2 className="text-3xl font-extrabold text-gray-900 dark:text-gray-100 sm:text-4xl">
+                        <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
                             O que nossos clientes dizem
                         </h2>
-                        <p className="mt-4 max-w-2xl mx-auto text-xl text-gray-600 dark:text-gray-300">
+                        <p className="mt-4 max-w-2xl mx-auto text-xl text-gray-600">
                             Veja alguns depoimentos de quem já usa nossa plataforma
                         </p>
                     </div>
                     <div className="grid md:grid-cols-3 gap-8">
-                        <div className="bg-white dark:bg-slate-900 rounded-lg shadow-lg p-8 border border-gray-200 dark:border-slate-700">
+                        <div className="bg-white rounded-xl shadow-sm p-8 border border-gray-100">
                             <div className="flex items-center mb-4">
                                 <div className="flex-shrink-0">
-                                    <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
-                                        <span className="text-orange-600 dark:text-orange-400 font-semibold">MF</span>
+                                    <div className="w-12 h-12 bg-[#F2541B]/10 rounded-full flex items-center justify-center">
+                                        <span className="text-[#F2541B] font-semibold">MF</span>
                                     </div>
                                 </div>
                                 <div className="ml-4">
-                                    <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Maria Fernanda</h4>
-                                    <p className="text-gray-600 dark:text-gray-300">Loja Virtual Fashion</p>
+                                    <h4 className="text-lg font-semibold text-gray-900">Maria Fernanda</h4>
+                                    <p className="text-gray-500">Loja Virtual Fashion</p>
                                 </div>
                             </div>
-                            <p className="text-gray-600 dark:text-gray-300 italic">
+                            <p className="text-gray-600 italic">
                                 "A plataforma revolucionou nosso processo de envios. Economizamos 70% do tempo na criação de etiquetas!"
                             </p>
                         </div>
-                        <div className="bg-white dark:bg-slate-900 rounded-lg shadow-lg p-8 border border-gray-200 dark:border-slate-700">
+                        <div className="bg-white rounded-xl shadow-sm p-8 border border-gray-100">
                             <div className="flex items-center mb-4">
                                 <div className="flex-shrink-0">
-                                    <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
-                                        <span className="text-orange-600 dark:text-orange-400 font-semibold">JS</span>
+                                    <div className="w-12 h-12 bg-[#F2541B]/10 rounded-full flex items-center justify-center">
+                                        <span className="text-[#F2541B] font-semibold">JS</span>
                                     </div>
                                 </div>
                                 <div className="ml-4">
-                                    <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">João Silva</h4>
-                                    <p className="text-gray-600 dark:text-gray-300">E-commerce Tech Store</p>
+                                    <h4 className="text-lg font-semibold text-gray-900">João Silva</h4>
+                                    <p className="text-gray-500">E-commerce Tech Store</p>
                                 </div>
                             </div>
-                            <p className="text-gray-600 dark:text-gray-300 italic">
+                            <p className="text-gray-600 italic">
                                 "Integração perfeita com nossa loja. O suporte é excepcional e a plataforma é muito intuitiva."
                             </p>
                         </div>
-                        <div className="bg-white dark:bg-slate-900 rounded-lg shadow-lg p-8 border border-gray-200 dark:border-slate-700">
+                        <div className="bg-white rounded-xl shadow-sm p-8 border border-gray-100">
                             <div className="flex items-center mb-4">
                                 <div className="flex-shrink-0">
-                                    <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center">
-                                        <span className="text-orange-600 dark:text-orange-400 font-semibold">AC</span>
+                                    <div className="w-12 h-12 bg-[#F2541B]/10 rounded-full flex items-center justify-center">
+                                        <span className="text-[#F2541B] font-semibold">AC</span>
                                     </div>
                                 </div>
                                 <div className="ml-4">
-                                    <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Ana Costa</h4>
-                                    <p className="text-gray-600 dark:text-gray-300">Artesanatos Online</p>
+                                    <h4 className="text-lg font-semibold text-gray-900">Ana Costa</h4>
+                                    <p className="text-gray-500">Artesanatos Online</p>
                                 </div>
                             </div>
-                            <p className="text-gray-600 dark:text-gray-300 italic">
+                            <p className="text-gray-600 italic">
                                 "Como pequena empresária, essa ferramenta me deu profissionalismo nos envios que eu nunca tive antes."
                             </p>
                         </div>
@@ -333,49 +340,49 @@ export const Home = () => {
             </div>
 
             {/* Seção FAQ */}
-            <div className="py-16 bg-white dark:bg-slate-900">
+            <div className="py-16 bg-white">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center mb-12">
-                        <h2 className="text-3xl font-extrabold text-gray-900 dark:text-gray-100 sm:text-4xl">
+                        <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
                             Perguntas Frequentes
                         </h2>
-                        <p className="mt-4 text-xl text-gray-600 dark:text-gray-300">
+                        <p className="mt-4 text-xl text-gray-600">
                             Tire suas principais dúvidas sobre nossa plataforma
                         </p>
                     </div>
                     <div className="space-y-6">
-                        <div className="bg-gray-50 dark:bg-slate-800 rounded-lg p-6 border border-gray-200 dark:border-slate-700">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                        <div className="bg-gray-50 rounded-xl p-6 border border-gray-100">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-3">
                                 Como funciona a integração com os Correios?
                             </h3>
-                            <p className="text-gray-600 dark:text-gray-300">
+                            <p className="text-gray-600">
                                 Nossa plataforma se conecta diretamente com a API dos Correios, permitindo criação automática de etiquetas, 
                                 cálculo de fretes em tempo real e rastreamento completo das encomendas.
                             </p>
                         </div>
-                        <div className="bg-gray-50 dark:bg-slate-800 rounded-lg p-6 border border-gray-200 dark:border-slate-700">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                        <div className="bg-gray-50 rounded-xl p-6 border border-gray-100">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-3">
                                 Posso integrar com minha loja virtual?
                             </h3>
-                            <p className="text-gray-600 dark:text-gray-300">
+                            <p className="text-gray-600">
                                 Sim! Oferecemos integrações nativas com as principais plataformas de e-commerce como Shopify, WooCommerce, 
                                 Magento e muitas outras. Também temos API própria para integrações customizadas.
                             </p>
                         </div>
-                        <div className="bg-gray-50 dark:bg-slate-800 rounded-lg p-6 border border-gray-200 dark:border-slate-700">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                        <div className="bg-gray-50 rounded-xl p-6 border border-gray-100">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-3">
                                 Qual o prazo para começar a usar?
                             </h3>
-                            <p className="text-gray-600 dark:text-gray-300">
+                            <p className="text-gray-600">
                                 Você pode começar a usar imediatamente após o cadastro. A configuração básica leva apenas alguns minutos, 
                                 e nossa equipe de suporte está disponível para ajudar na integração.
                             </p>
                         </div>
-                        <div className="bg-gray-50 dark:bg-slate-800 rounded-lg p-6 border border-gray-200 dark:border-slate-700">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                        <div className="bg-gray-50 rounded-xl p-6 border border-gray-100">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-3">
                                 Existe período de teste gratuito?
                             </h3>
-                            <p className="text-gray-600 dark:text-gray-300">
+                            <p className="text-gray-600">
                                 Sim! Oferecemos um plano gratuito permanente com até 100 etiquetas por mês. 
                                 Também disponibilizamos 30 dias de teste gratuito dos planos pagos.
                             </p>
@@ -385,64 +392,64 @@ export const Home = () => {
             </div>
 
             {/* Seção de Blog/Artigos */}
-            <div className="py-16 bg-gray-50 dark:bg-slate-800">
+            <div className="py-16 bg-gray-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center mb-12">
-                        <h2 className="text-3xl font-extrabold text-gray-900 dark:text-gray-100 sm:text-4xl">
+                        <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
                             Últimas novidades
                         </h2>
-                        <p className="mt-4 max-w-2xl mx-auto text-xl text-gray-600 dark:text-gray-300">
+                        <p className="mt-4 max-w-2xl mx-auto text-xl text-gray-600">
                             Fique por dentro das atualizações e dicas sobre logística
                         </p>
                     </div>
                     <div className="grid md:grid-cols-3 gap-8">
-                        <article className="bg-white dark:bg-slate-900 rounded-lg shadow-lg overflow-hidden border border-gray-200 dark:border-slate-700">
-                            <div className="h-48 bg-gradient-to-r from-orange-400 to-orange-600"></div>
+                        <article className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+                            <div className="h-48 bg-gradient-to-r from-[#F2541B] to-orange-500"></div>
                             <div className="p-6">
-                                <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-2">
+                                <div className="flex items-center text-sm text-gray-500 mb-2">
                                     <span>15 de Outubro, 2024</span>
                                 </div>
-                                <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                                <h3 className="text-xl font-semibold text-gray-900 mb-3">
                                     Nova integração com Rodonaves
                                 </h3>
-                                <p className="text-gray-600 dark:text-gray-300 mb-4">
+                                <p className="text-gray-600 mb-4">
                                     Agora você pode enviar suas encomendas com a Rodonaves diretamente pela nossa plataforma.
                                 </p>
-                                <a href="#" className="text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-500 font-medium">
+                                <a href="#" className="text-[#F2541B] hover:text-[#d94a17] font-medium">
                                     Leia mais →
                                 </a>
                             </div>
                         </article>
-                        <article className="bg-white dark:bg-slate-900 rounded-lg shadow-lg overflow-hidden border border-gray-200 dark:border-slate-700">
+                        <article className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
                             <div className="h-48 bg-gradient-to-r from-blue-400 to-blue-600"></div>
                             <div className="p-6">
-                                <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-2">
+                                <div className="flex items-center text-sm text-gray-500 mb-2">
                                     <span>12 de Outubro, 2024</span>
                                 </div>
-                                <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                                <h3 className="text-xl font-semibold text-gray-900 mb-3">
                                     Dicas para reduzir custos de frete
                                 </h3>
-                                <p className="text-gray-600 dark:text-gray-300 mb-4">
+                                <p className="text-gray-600 mb-4">
                                     Aprenda estratégias comprovadas para otimizar seus custos de envio e aumentar a margem de lucro do seu negócio.
                                 </p>
-                                <a href="#" className="text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-500 font-medium">
+                                <a href="#" className="text-[#F2541B] hover:text-[#d94a17] font-medium">
                                     Leia mais →
                                 </a>
                             </div>
                         </article>
-                        <article className="bg-white dark:bg-slate-900 rounded-lg shadow-lg overflow-hidden border border-gray-200 dark:border-slate-700">
+                        <article className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
                             <div className="h-48 bg-gradient-to-r from-green-400 to-green-600"></div>
                             <div className="p-6">
-                                <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-2">
+                                <div className="flex items-center text-sm text-gray-500 mb-2">
                                     <span>08 de Outubro, 2024</span>
                                 </div>
-                                <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                                <h3 className="text-xl font-semibold text-gray-900 mb-3">
                                     API v2.0 disponível
                                 </h3>
-                                <p className="text-gray-600 dark:text-gray-300 mb-4">
+                                <p className="text-gray-600 mb-4">
                                     Nova versão da nossa API com mais funcionalidades, melhor performance e documentação completa para desenvolvedores.
                                 </p>
-                                <a href="#" className="text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-500 font-medium">
+                                <a href="#" className="text-[#F2541B] hover:text-[#d94a17] font-medium">
                                     Leia mais →
                                 </a>
                             </div>
@@ -452,37 +459,37 @@ export const Home = () => {
             </div>
 
             {/* Seção CTA Final */}
-            <div className="bg-gray-100 dark:bg-slate-800">
+            <div className="bg-white border-t border-gray-100">
                 <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:py-16 lg:px-8">
                     <div className="text-center">
-                        <h2 className="text-3xl font-extrabold text-gray-900 dark:text-gray-100 sm:text-4xl">
+                        <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
                             Pronto para começar?
                         </h2>
-                        <p className="mt-4 text-lg leading-6 text-gray-600 dark:text-gray-300">
+                        <p className="mt-4 text-lg leading-6 text-gray-600">
                             Junte-se a milhares de usuários que já simplificaram seu processo postal.
                         </p>
                         <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
                             <div className="inline-flex rounded-md shadow">
-                                <a href="#"
-                                    className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-orange-600 dark:bg-orange-500 hover:bg-orange-700 dark:hover:bg-orange-600 transition duration-300">
+                                <a href="/cadastro-cliente"
+                                    className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-[#F2541B] hover:bg-[#d94a17] transition duration-300">
                                     Começar teste gratuito
                                 </a>
                             </div>
                             <div className="inline-flex rounded-md shadow">
                                 <a href="#"
-                                    className="inline-flex items-center justify-center px-6 py-3 border border-gray-300 dark:border-slate-600 text-base font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600 transition duration-300">
+                                    className="inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition duration-300">
                                     Agendar demonstração
                                 </a>
                             </div>
                         </div>
-                        <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+                        <p className="mt-4 text-sm text-gray-500">
                             ✓ Sem compromisso • ✓ Configuração gratuita • ✓ Suporte incluído
                         </p>
                     </div>
                 </div>
             </div>
 
-            <footer className="bg-gray-800 dark:bg-slate-950 text-white pt-12">
+            <footer className="bg-gray-900 text-white pt-12">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
 
@@ -490,11 +497,11 @@ export const Home = () => {
                             <div className="flex items-center">
                                 <LogoApp light />
                             </div>
-                            <p className="mt-4 text-gray-400 dark:text-gray-500 text-sm">
+                            <p className="mt-4 text-gray-400 text-sm">
                                 Soluções postais integradas para seu negócio. Economize tempo e simplifique seus envios.
                             </p>
                             <div className="mt-6 flex space-x-4">
-                                <a href="#" className="text-gray-300 dark:text-gray-400 hover:text-secondary dark:hover:text-secondary-dark">
+                                <a href="#" className="text-gray-400 hover:text-[#F2541B]">
                                     <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                         <path fill-rule="evenodd"
                                             d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"
