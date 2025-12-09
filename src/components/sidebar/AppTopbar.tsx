@@ -1,10 +1,11 @@
-import { Menu, Search, ChevronDown, Sun, Moon, User, Settings, LogOut, Shield } from 'lucide-react';
+import { Menu, Search, ChevronDown, Sun, Moon, User, LogOut, Shield } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { observer } from 'mobx-react-lite';
 import authStore from '../../authentica/authentication.store';
 import { useTheme } from '../../providers/ThemeContext';
+import { ProfileAvatar } from '../ProfileAvatar';
 
 const AppTopbar = observer(({
   toggleSidebar
@@ -26,7 +27,6 @@ const AppTopbar = observer(({
   const userInfo = {
     name: userData?.name || 'Usuário',
     email: userData?.email || 'usuario@exemplo.com',
-    avatar: userData?.name ? userData.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'US'
   };
 
   const handleLogout = () => {
@@ -73,9 +73,7 @@ const AppTopbar = observer(({
               onClick={() => setShowProfilePopover(!showProfilePopover)} 
               className="flex items-center space-x-2 cursor-pointer hover:bg-accent rounded-lg p-2 transition-colors"
             >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
-                <span className="text-sm font-bold text-primary-foreground">{userInfo.avatar}</span>
-              </div>
+              <ProfileAvatar name={userInfo.name} size="sm" />
               <ChevronDown className="w-4 h-4 text-muted-foreground" />
             </div>
 
@@ -88,8 +86,8 @@ const AppTopbar = observer(({
                 {/* Header do perfil */}
                 <div className="px-4 py-3 border-b border-border">
                   <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center relative">
-                      <span className="text-sm font-bold text-primary-foreground">{userInfo.avatar}</span>
+                    <div className="relative">
+                      <ProfileAvatar name={userInfo.name} size="md" />
                       {isAdmin && (
                         <div className="absolute -top-0.5 -left-0.5 w-3 h-3 bg-purple-500 border-2 border-popover rounded-full" title="Administrador" />
                       )}
@@ -115,15 +113,6 @@ const AppTopbar = observer(({
                   >
                     <User className="w-4 h-4" />
                     <span className="text-sm">Meu Perfil</span>
-                  </Link>
-                  
-                  <Link 
-                    to="/app/configuracoes" 
-                    className="flex items-center space-x-3 px-4 py-2 hover:bg-accent transition-colors text-popover-foreground" 
-                    onClick={() => setShowProfilePopover(false)}
-                  >
-                    <Settings className="w-4 h-4" />
-                    <span className="text-sm">Configurações</span>
                   </Link>
                 </div>
 
