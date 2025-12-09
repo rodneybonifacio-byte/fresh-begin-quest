@@ -363,6 +363,25 @@ export const CadastroCliente = () => {
                 }} />
                                     </div>
 
+                                    {/* Campo Código de Indicação Conecta+ */}
+                                    <div className="relative">
+                                        <InputLabel 
+                                            labelTitulo="Código de Indicação (opcional)" 
+                                            placeholder="Ex: PARCEIRO123" 
+                                            value={codigoParceiro || ''}
+                                            onChange={(e) => setCodigoParceiro(e.target.value.toUpperCase() || null)}
+                                        />
+                                        {codigoParceiro && (
+                                            <div className="absolute right-3 top-9 flex items-center gap-1.5 px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded-full">
+                                                <Check className="w-3 h-3" />
+                                                Indicação ativa
+                                            </div>
+                                        )}
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            Recebeu um código de um parceiro? Insira aqui para vincular sua conta.
+                                        </p>
+                                    </div>
+
                                     <InputLabel labelTitulo="Celular (WhatsApp) *" placeholder="(00) 9 0000-0000" {...register("celular")} fieldError={errors.celular?.message} maxLength={16} onChange={e => {
                 const value = e.target.value.replace(/\D/g, '');
                 let formatted = value;
