@@ -1,3 +1,5 @@
+// @ts-nocheck
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -21,7 +23,7 @@ async function getAdminToken(): Promise<string> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       email: adminEmail,
-      password: adminPassword,
+      senha: adminPassword,
     }),
   });
 
@@ -33,7 +35,7 @@ async function getAdminToken(): Promise<string> {
 
   const loginData = await loginResponse.json();
   console.log('✅ Token admin obtido com sucesso');
-  return loginData.token;
+  return loginData.data?.token || loginData.token;
 }
 
 serve(async (req) => {
@@ -82,6 +84,7 @@ serve(async (req) => {
       console.log('📋 Listando remetentes do cliente:', clienteId);
       
       const response = await fetch(`${baseUrl}/remetentes?clienteId=${clienteId}`, {
+        method: 'GET',
         headers: {
           'Authorization': `Bearer ${adminToken}`,
           'Content-Type': 'application/json'
@@ -106,7 +109,8 @@ serve(async (req) => {
     if (action === 'list_destinatarios') {
       console.log('📋 Listando destinatários do cliente:', clienteId);
       
-      const response = await fetch(`${baseUrl}/clientes/destinatarios?clienteId=${clienteId}`, {
+      const response = await fetch(`${baseUrl}/destinatarios?clienteId=${clienteId}`, {
+        method: 'GET',
         headers: {
           'Authorization': `Bearer ${adminToken}`,
           'Content-Type': 'application/json'
@@ -156,7 +160,7 @@ serve(async (req) => {
     if (action === 'delete_destinatario') {
       console.log('🗑️ Excluindo destinatário:', destinatarioId);
       
-      const response = await fetch(`${baseUrl}/clientes/destinatarios/${destinatarioId}`, {
+      const response = await fetch(`${baseUrl}/destinatarios/${destinatarioId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${adminToken}`,
