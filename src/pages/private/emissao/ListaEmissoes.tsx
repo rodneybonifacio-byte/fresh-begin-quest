@@ -177,7 +177,7 @@ export const ListaEmissoes = () => {
                             </button>
                             <div className="flex items-center gap-1 p-1 bg-muted rounded-xl">
                                 <button onClick={() => setShowDashboard(!showDashboard)} className={`p-2 rounded-lg transition-all ${showDashboard ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`} title="Dashboard">
-                                    <BarChart3 className="h-4 w-4" />
+                                    <BarChart3 className="h-4 w-4 text-slate-50" />
                                 </button>
                                 <button onClick={handlerToggleFilter} className="p-2 rounded-lg text-muted-foreground hover:text-foreground transition-all" title="Filtros">
                                     <Filter className="h-4 w-4" />
