@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -56,6 +56,7 @@ const steps = [{
 }];
 export const CadastroCliente = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [showErrorModal, setShowErrorModal] = useState(false);
@@ -63,9 +64,19 @@ export const CadastroCliente = () => {
   const [userEmail, setUserEmail] = useState('');
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [posicaoCadastro, setPosicaoCadastro] = useState(0);
+  const [codigoParceiro, setCodigoParceiro] = useState<string | null>(null);
   const {
     onBuscaCep
   } = useAddress();
+
+  // Captura código de indicação do parceiro via URL (?ref=CODIGO)
+  useEffect(() => {
+    const refCode = searchParams.get('ref');
+    if (refCode) {
+      setCodigoParceiro(refCode);
+      console.log('🔗 Código de indicação capturado:', refCode);
+    }
+  }, [searchParams]);
   const {
     register,
     handleSubmit,
@@ -160,7 +171,8 @@ export const CadastroCliente = () => {
             uf: data.uf
           },
           email: data.email,
-          senha: data.senha
+          senha: data.senha,
+          codigoParceiro: codigoParceiro // Código de indicação do parceiro Conecta+
         })
       });
       let responseData: any = {};
