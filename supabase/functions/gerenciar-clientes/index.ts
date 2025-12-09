@@ -81,7 +81,7 @@ serve(async (req) => {
     if (action === 'list_remetentes') {
       console.log('📋 Listando remetentes do cliente:', clienteId);
       
-      const response = await fetch(`${baseUrl}/clientes/remetentes?clienteId=${clienteId}`, {
+      const response = await fetch(`${baseUrl}/remetentes?clienteId=${clienteId}`, {
         headers: {
           'Authorization': `Bearer ${adminToken}`,
           'Content-Type': 'application/json'
@@ -131,7 +131,7 @@ serve(async (req) => {
     if (action === 'delete_remetente') {
       console.log('🗑️ Excluindo remetente:', remetenteId);
       
-      const response = await fetch(`${baseUrl}/clientes/remetentes/${remetenteId}`, {
+      const response = await fetch(`${baseUrl}/remetentes/${remetenteId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${adminToken}`,
