@@ -141,6 +141,7 @@ const Profile = () => {
         try {
             await mutation.mutateAsync(_data);
             setIsEditing(false);
+            setActiveTab('personal');
         } catch (_error) {}
     };
 
