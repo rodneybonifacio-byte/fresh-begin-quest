@@ -1,11 +1,17 @@
 import { useState, useEffect } from 'react';
-import { Smartphone } from 'lucide-react';
+import { Smartphone, Share, Plus, Check } from 'lucide-react';
 
 export const InstallAppButtons = () => {
     const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+    const [isInstalled, setIsInstalled] = useState(false);
     const [showIOSInstructions, setShowIOSInstructions] = useState(false);
 
     useEffect(() => {
+        // Verificar se já está instalado
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            setIsInstalled(true);
+        }
+
         // Capturar evento de instalação (Android/Chrome)
         const handler = (e: any) => {
             e.preventDefault();
@@ -13,6 +19,13 @@ export const InstallAppButtons = () => {
         };
 
         window.addEventListener('beforeinstallprompt', handler);
+        
+        // Detectar quando foi instalado
+        window.addEventListener('appinstalled', () => {
+            setIsInstalled(true);
+            setDeferredPrompt(null);
+        });
+
         return () => window.removeEventListener('beforeinstallprompt', handler);
     }, []);
 
@@ -22,6 +35,7 @@ export const InstallAppButtons = () => {
             const { outcome } = await deferredPrompt.userChoice;
             if (outcome === 'accepted') {
                 setDeferredPrompt(null);
+                setIsInstalled(true);
             }
         } else {
             // Fallback: mostrar instruções manuais
@@ -32,6 +46,15 @@ export const InstallAppButtons = () => {
     const installIOS = () => {
         setShowIOSInstructions(true);
     };
+
+    if (isInstalled) {
+        return (
+            <div className="flex items-center justify-center gap-2 py-2 text-sm text-green-600 dark:text-green-400">
+                <Check className="w-4 h-4" />
+                <span>App instalado!</span>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-3">
@@ -65,35 +88,47 @@ export const InstallAppButtons = () => {
                 </button>
             </div>
 
-            {/* Modal de instruções iOS */}
+            {/* Modal de instruções iOS com visual mais direto */}
             {showIOSInstructions && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowIOSInstructions(false)}>
-                    <div className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="p-2 bg-primary/10 rounded-xl">
-                                <Smartphone className="w-6 h-6 text-primary" />
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center" onClick={() => setShowIOSInstructions(false)}>
+                    <div className="bg-card border border-border rounded-t-3xl sm:rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-in slide-in-from-bottom duration-300" onClick={e => e.stopPropagation()}>
+                        <div className="w-12 h-1 bg-muted rounded-full mx-auto mb-4 sm:hidden" />
+                        
+                        <div className="text-center mb-6">
+                            <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                                <Smartphone className="w-8 h-8 text-primary" />
                             </div>
-                            <h3 className="text-lg font-bold text-foreground">Instalar no iPhone</h3>
+                            <h3 className="text-xl font-bold text-foreground">Instalar no iPhone</h3>
+                            <p className="text-sm text-muted-foreground mt-1">Siga os 2 passos abaixo</p>
                         </div>
                         
-                        <div className="space-y-4 text-sm text-muted-foreground">
-                            <div className="flex items-start gap-3">
-                                <span className="flex-shrink-0 w-6 h-6 bg-primary/10 text-primary rounded-full flex items-center justify-center text-xs font-bold">1</span>
-                                <p>Toque no botão <strong className="text-foreground">Compartilhar</strong> (ícone de quadrado com seta para cima) na barra inferior do Safari</p>
+                        <div className="space-y-4">
+                            {/* Passo 1 */}
+                            <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-xl">
+                                <div className="flex-shrink-0 w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center">
+                                    <Share className="w-6 h-6 text-white" />
+                                </div>
+                                <div>
+                                    <p className="font-semibold text-foreground">Toque em Compartilhar</p>
+                                    <p className="text-xs text-muted-foreground">Na barra inferior do Safari</p>
+                                </div>
                             </div>
-                            <div className="flex items-start gap-3">
-                                <span className="flex-shrink-0 w-6 h-6 bg-primary/10 text-primary rounded-full flex items-center justify-center text-xs font-bold">2</span>
-                                <p>Role para baixo e toque em <strong className="text-foreground">"Adicionar à Tela de Início"</strong></p>
-                            </div>
-                            <div className="flex items-start gap-3">
-                                <span className="flex-shrink-0 w-6 h-6 bg-primary/10 text-primary rounded-full flex items-center justify-center text-xs font-bold">3</span>
-                                <p>Toque em <strong className="text-foreground">"Adicionar"</strong> no canto superior direito</p>
+
+                            {/* Passo 2 */}
+                            <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-xl">
+                                <div className="flex-shrink-0 w-12 h-12 bg-primary rounded-xl flex items-center justify-center">
+                                    <Plus className="w-6 h-6 text-primary-foreground" />
+                                </div>
+                                <div>
+                                    <p className="font-semibold text-foreground">Adicionar à Tela de Início</p>
+                                    <p className="text-xs text-muted-foreground">Role para baixo e toque</p>
+                                </div>
                             </div>
                         </div>
 
                         <button
                             onClick={() => setShowIOSInstructions(false)}
-                            className="w-full mt-6 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-medium transition-colors"
+                            className="w-full mt-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-semibold transition-colors"
                         >
                             Entendi
                         </button>
