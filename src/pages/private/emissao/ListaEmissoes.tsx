@@ -1,4 +1,4 @@
-import { Filter, Import, Plus, Printer, ReceiptText, BarChart3, Download, Package, ChevronLeft, ChevronRight, XCircle } from 'lucide-react';
+import { Filter, Import, Plus, Printer, ReceiptText, BarChart3, Download, Package, ChevronLeft, ChevronRight, XCircle, MapPin } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ModalCustom } from '../../../components/modal';
@@ -163,57 +163,59 @@ export const ListaEmissoes = () => {
     const totalPages = emissoes?.meta?.totalPages || Math.ceil((emissoes?.total || 0) / perPage);
 
     return (
-        <div className="min-h-screen bg-background">
-            {/* Header */}
-            <div className="bg-card border-b">
+        <div className="min-h-screen bg-gradient-to-b from-muted/30 to-background">
+            {/* Header Premium */}
+            <div className="sticky top-0 z-20 bg-card/80 backdrop-blur-lg border-b border-border/50 shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 py-4">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-primary/10 rounded-xl">
-                                <Package className="h-6 w-6 text-primary" />
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-gradient-to-br from-primary to-primary/70 rounded-2xl shadow-lg">
+                                <Package className="h-6 w-6 text-primary-foreground" />
                             </div>
                             <div>
-                                <h1 className="text-xl font-bold text-foreground">Pré-Postagem</h1>
-                                <p className="text-sm text-muted-foreground">Gerencie suas etiquetas de envio</p>
+                                <h1 className="text-2xl font-bold text-foreground tracking-tight">Pré-Postagem</h1>
+                                <p className="text-sm text-muted-foreground">Gerencie e acompanhe seus envios</p>
                             </div>
                         </div>
                         
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                             <a
                                 href="/app/emissao/adicionar"
-                                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
+                                className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-all shadow-md hover:shadow-lg text-sm font-semibold"
                             >
                                 <Plus className="h-4 w-4" />
                                 Nova Etiqueta
                             </a>
                             <a
                                 href="/app/emissao/importacao"
-                                className="flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors text-sm font-medium"
+                                className="flex items-center gap-2 px-4 py-2.5 bg-secondary text-secondary-foreground rounded-xl hover:bg-secondary/80 transition-all text-sm font-medium"
                             >
                                 <Import className="h-4 w-4" />
-                                Importar
+                                <span className="hidden sm:inline">Importar</span>
                             </a>
                             <button
                                 onClick={handleExportToExcel}
-                                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                                className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all text-sm font-medium"
                             >
                                 <Download className="h-4 w-4" />
-                                Exportar
+                                <span className="hidden sm:inline">Exportar</span>
                             </button>
-                            <button
-                                onClick={() => setShowDashboard(!showDashboard)}
-                                className={`p-2 rounded-lg transition-colors ${showDashboard ? 'bg-primary/20 text-primary' : 'bg-secondary text-secondary-foreground'}`}
-                                title="Mostrar/Ocultar Dashboard"
-                            >
-                                <BarChart3 className="h-5 w-5" />
-                            </button>
-                            <button
-                                onClick={handlerToggleFilter}
-                                className="p-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors"
-                                title="Filtros"
-                            >
-                                <Filter className="h-5 w-5" />
-                            </button>
+                            <div className="flex items-center gap-1 p-1 bg-muted rounded-xl">
+                                <button
+                                    onClick={() => setShowDashboard(!showDashboard)}
+                                    className={`p-2 rounded-lg transition-all ${showDashboard ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                                    title="Dashboard"
+                                >
+                                    <BarChart3 className="h-4 w-4" />
+                                </button>
+                                <button
+                                    onClick={handlerToggleFilter}
+                                    className="p-2 rounded-lg text-muted-foreground hover:text-foreground transition-all"
+                                    title="Filtros"
+                                >
+                                    <Filter className="h-4 w-4" />
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -243,79 +245,89 @@ export const ListaEmissoes = () => {
                             <p className="text-sm">Crie sua primeira etiqueta clicando em "Nova Etiqueta"</p>
                         </div>
                     ) : (
-                        <div className="bg-card border rounded-xl overflow-hidden shadow-sm">
+                        <div className="bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm">
                             <div className="overflow-x-auto">
                                 <table className="w-full">
-                                    <thead className="bg-muted/50 border-b">
+                                    <thead className="bg-muted/30">
                                         <tr>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Código</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Transportadora</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase hidden md:table-cell">Destinatário</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Valor</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Status</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase hidden lg:table-cell">Data</th>
-                                            <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase">Ações</th>
+                                            <th className="px-5 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Código</th>
+                                            <th className="px-5 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Transportadora</th>
+                                            <th className="px-5 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Destinatário</th>
+                                            <th className="px-5 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Valor</th>
+                                            <th className="px-5 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
+                                            <th className="px-5 py-4 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Data</th>
+                                            <th className="px-5 py-4 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ações</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y">
-                                        {data.map((row) => (
-                                            <tr key={row.id} className="hover:bg-muted/30 transition-colors">
-                                                <td className="px-4 py-3">
-                                                    <span className="font-mono text-sm font-semibold text-primary">{row.codigoObjeto}</span>
+                                    <tbody className="divide-y divide-border/50">
+                                        {data.map((row, idx) => (
+                                            <tr 
+                                                key={row.id} 
+                                                className={`hover:bg-muted/40 transition-all ${idx % 2 === 0 ? 'bg-transparent' : 'bg-muted/10'}`}
+                                            >
+                                                <td className="px-5 py-4">
+                                                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/5 rounded-lg border border-primary/10">
+                                                        <span className="font-mono text-sm font-bold text-primary">{row.codigoObjeto}</span>
+                                                    </div>
                                                 </td>
-                                                <td className="px-4 py-3">
-                                                    <div className="flex flex-col">
-                                                        <span className="font-medium text-sm">{row.transportadora}</span>
+                                                <td className="px-5 py-4">
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <span className="font-semibold text-sm text-foreground">{row.transportadora}</span>
                                                         {row.servico && (
-                                                            <span className="text-xs text-muted-foreground">{row.servico}</span>
+                                                            <span className="inline-flex items-center px-2 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 rounded text-xs font-medium w-fit">
+                                                                {row.servico}
+                                                            </span>
                                                         )}
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-3 hidden md:table-cell">
-                                                    <div className="flex flex-col">
-                                                        <span className="font-medium text-sm truncate max-w-[150px]">{row.destinatario?.nome}</span>
-                                                        <span className="text-xs text-muted-foreground">
+                                                <td className="px-5 py-4 hidden md:table-cell">
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <span className="font-medium text-sm text-foreground truncate max-w-[180px]">{row.destinatario?.nome}</span>
+                                                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                                            <MapPin className="h-3 w-3" />
                                                             {row.destinatario?.endereco?.localidade} - {row.destinatario?.endereco?.uf}
                                                         </span>
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-3">
-                                                    <span className="font-semibold text-green-600">R$ {row.valor}</span>
+                                                <td className="px-5 py-4">
+                                                    <span className="inline-flex items-center px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full text-sm font-bold">
+                                                        R$ {row.valor}
+                                                    </span>
                                                 </td>
-                                                <td className="px-4 py-3">
+                                                <td className="px-5 py-4">
                                                     <StatusBadgeEmissao
                                                         status={row.status}
                                                         mensagensErrorPostagem={row.mensagensErrorPostagem}
                                                         handleOnViewErroPostagem={handleOnViewErroPostagem}
                                                     />
                                                 </td>
-                                                <td className="px-4 py-3 text-sm text-muted-foreground hidden lg:table-cell">
-                                                    {formatDateTime(row.criadoEm)}
+                                                <td className="px-5 py-4 hidden lg:table-cell">
+                                                    <span className="text-sm text-muted-foreground">{formatDateTime(row.criadoEm)}</span>
                                                 </td>
-                                                <td className="px-4 py-3">
+                                                <td className="px-5 py-4">
                                                     <div className="flex items-center justify-center gap-1">
                                                         <a
                                                             href={`/app/emissao/detail/${row.id}`}
-                                                            className="p-2 hover:bg-muted rounded-lg transition-colors"
+                                                            className="p-2.5 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-xl transition-all group"
                                                             title="Ver detalhes"
                                                         >
-                                                            <ReceiptText className="h-4 w-4 text-purple-600" />
+                                                            <ReceiptText className="h-4 w-4 text-purple-600 group-hover:scale-110 transition-transform" />
                                                         </a>
                                                         {!row.mensagensErrorPostagem && row.status === 'PRE_POSTADO' && (
                                                             <>
                                                                 <button
                                                                     onClick={() => handleOnPDF(row, true)}
-                                                                    className="p-2 hover:bg-muted rounded-lg transition-colors"
+                                                                    className="p-2.5 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-xl transition-all group"
                                                                     title="Imprimir etiqueta"
                                                                 >
-                                                                    <Printer className="h-4 w-4 text-blue-600" />
+                                                                    <Printer className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
                                                                 </button>
                                                                 <button
                                                                     onClick={() => handleCancelarEtiqueta(row)}
-                                                                    className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                                                    className="p-2.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-xl transition-all group"
                                                                     title="Cancelar etiqueta"
                                                                 >
-                                                                    <XCircle className="h-4 w-4 text-red-600" />
+                                                                    <XCircle className="h-4 w-4 text-red-500 group-hover:scale-110 transition-transform" />
                                                                 </button>
                                                             </>
                                                         )}
