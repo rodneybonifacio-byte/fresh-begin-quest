@@ -154,7 +154,7 @@ export const ListaEmissoes = () => {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         <div className="flex items-center gap-4">
                             <div className="p-3 bg-gradient-to-br from-primary to-primary/70 rounded-2xl shadow-lg">
-                                <Package className="h-6 w-6 text-primary-foreground" />
+                                <Package className="h-6 w-6 text-primary-foreground text-slate-50" />
                             </div>
                             <div>
                                 <h1 className="text-2xl font-bold text-foreground tracking-tight">Pré-Postagem</h1>
