@@ -150,8 +150,8 @@ serve(async (req) => {
     if (action === 'list_destinatarios') {
       console.log('📋 Listando destinatários do cliente:', clienteId);
       
-      // Buscar emissões do cliente para extrair destinatários únicos
-      const response = await fetch(`${baseUrl}/emissoes?clienteId=${clienteId}&limit=1000`, {
+      // Buscar emissões para extrair destinatários únicos
+      const response = await fetch(`${baseUrl}/emissoes?limit=2000`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${adminToken}`,
@@ -171,18 +171,20 @@ serve(async (req) => {
       const data = await response.json();
       const emissoes = data.data || data || [];
       
-      console.log('📊 Total emissões do cliente:', emissoes.length);
+      console.log('📊 Total emissões da API:', emissoes.length);
       
-      // Extrair destinatários únicos das emissões
+      // Filtrar emissões pelo clienteId e extrair destinatários únicos
       const destinatariosMap = new Map();
       for (const emissao of emissoes) {
-        if (emissao.destinatario && emissao.destinatario.id) {
+        // Verificar se a emissão pertence ao cliente
+        const emissaoClienteId = emissao.cliente?.id || emissao.clienteId || emissao.cliente_id;
+        if (emissaoClienteId === clienteId && emissao.destinatario && emissao.destinatario.id) {
           destinatariosMap.set(emissao.destinatario.id, emissao.destinatario);
         }
       }
       
       const destinatarios = Array.from(destinatariosMap.values());
-      console.log('✅ Destinatários únicos encontrados:', destinatarios.length);
+      console.log('✅ Destinatários únicos do cliente:', destinatarios.length);
 
       return new Response(
         JSON.stringify({ success: true, data: destinatarios }),
