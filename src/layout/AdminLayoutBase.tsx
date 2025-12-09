@@ -2,7 +2,7 @@ import { Outlet } from 'react-router-dom';
 import { useState } from 'react';
 import AdminSidebar from '../components/sidebar/AdminSidebar';
 import AppTopbar from '../components/sidebar/AppTopbar';
-import { usePresenceTracking } from '../hooks/usePresenceTracking';
+import { usePresenceTracking } from '../hooks/usePresenceTracking.tsx';
 
 export const AdminLayoutBase = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
