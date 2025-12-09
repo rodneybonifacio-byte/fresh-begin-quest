@@ -136,7 +136,7 @@ export const ModalBemVindoCadastro = ({
                 Bem-vindo ao <span className="text-primary">BRHUB Envios</span>! 🎉
               </h2>
               
-              <p className="text-slate-300 text-sm leading-relaxed">
+              <p className="text-white/80 text-sm leading-relaxed">
                 Seu cadastro foi recebido com sucesso! Assim que aprovado, você receberá uma mensagem no seu <span className="text-green-400 font-semibold">WhatsApp</span> com os dados de acesso.
               </p>
             </div>
@@ -163,13 +163,13 @@ export const ModalBemVindoCadastro = ({
                     </div>
                     <div>
                       <p className="text-amber-400 font-bold text-lg">Promoção de Lançamento!</p>
-                      <p className="text-slate-400 text-xs">Para os 100 primeiros cadastros</p>
+                      <p className="text-white/60 text-xs">Para os 100 primeiros cadastros</p>
                     </div>
                   </div>
                   
                   {/* Prize Amount */}
                   <div className="flex items-center justify-center gap-2 py-3">
-                    <span className="text-slate-400 text-lg">Ganhe</span>
+                    <span className="text-white/70 text-lg">Ganhe</span>
                     <motion.span
                       animate={{ scale: [1, 1.05, 1] }}
                       transition={{ duration: 1.5, repeat: Infinity }}
@@ -177,19 +177,19 @@ export const ModalBemVindoCadastro = ({
                     >
                       R$ 50
                     </motion.span>
-                    <span className="text-slate-400 text-lg">em créditos!</span>
+                    <span className="text-white/70 text-lg">em créditos!</span>
                   </div>
                   
                   {/* Progress Bar */}
                   <div className="space-y-2">
                     <div className="flex justify-between text-xs">
-                      <span className="text-slate-400">Vagas preenchidas</span>
+                      <span className="text-white/60">Vagas preenchidas</span>
                       <span className="text-amber-400 font-semibold">
                         {contadorAtual} de {limiteTotal}
                       </span>
                     </div>
                     
-                    <div className="relative h-3 bg-slate-700/50 rounded-full overflow-hidden">
+                    <div className="relative h-3 bg-white/10 rounded-full overflow-hidden">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${progressoPercentual}%` }}
@@ -206,7 +206,7 @@ export const ModalBemVindoCadastro = ({
                     </div>
                     
                     <div className="flex justify-between items-center">
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-white/50">
                         {vagasRestantes > 0 
                           ? `Restam apenas ${vagasRestantes} vagas!` 
                           : 'Promoção encerrada!'}
@@ -236,7 +236,7 @@ export const ModalBemVindoCadastro = ({
               Entendido! 👍
             </motion.button>
             
-            <p className="text-center text-xs text-slate-500">
+            <p className="text-center text-xs text-white/50">
               Fique atento ao seu WhatsApp para receber as notificações
             </p>
           </div>
