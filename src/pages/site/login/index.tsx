@@ -17,7 +17,7 @@ import { RemetenteSupabaseDirectService } from "../../../services/RemetenteSupab
 import { PromoBannerRecarga } from "../../../components/PromoBannerRecarga";
 import { supabase } from "../../../integrations/supabase/client";
 import type { TokenPayload } from "../../../types/ITokenPayload";
-
+import { InstallAppButtons } from "../../../components/InstallAppButtons";
 
 const loginSchame = yup.object({
   email: yup.string().required("Informe seu email."),
@@ -215,7 +215,11 @@ export const Login = () => {
                         >
                             Criar Conta
                         </ButtonComponent>
+                    </div>
 
+                    {/* Botões de instalação do app */}
+                    <div className="mt-6 pt-6 border-t border-border">
+                        <InstallAppButtons />
                     </div>
                 </div>
             </div>
