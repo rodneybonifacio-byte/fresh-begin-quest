@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { clienteId, valor } = await req.json()
+    const { clienteId, valor, descricao } = await req.json()
     
     if (!clienteId || !valor) {
       return new Response(
@@ -40,9 +41,9 @@ serve(async (req) => {
     const loginData = await loginResponse.json()
     const adminToken = loginData.token
 
-    // Adicionar saldo
+    // Adicionar saldo na API BRHUB
     const addSaldoUrl = `${BASE_API_URL}/clientes/${clienteId}/add-saldo`
-    console.log('💰 Adicionando saldo:', addSaldoUrl)
+    console.log('💰 Adicionando saldo na API:', addSaldoUrl, 'Valor:', valor)
     
     const addSaldoResponse = await fetch(addSaldoUrl, {
       method: 'PUT',
@@ -57,10 +58,31 @@ serve(async (req) => {
     })
 
     const responseText = await addSaldoResponse.text()
-    console.log('📋 Resposta add-saldo:', addSaldoResponse.status, responseText)
+    console.log('📋 Resposta add-saldo API:', addSaldoResponse.status, responseText)
 
     if (!addSaldoResponse.ok) {
-      throw new Error(`Erro ao adicionar saldo: ${responseText}`)
+      throw new Error(`Erro ao adicionar saldo na API: ${responseText}`)
+    }
+
+    // Registrar transação no Supabase
+    console.log('💾 Registrando transação no Supabase...')
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const supabase = createClient(supabaseUrl, supabaseKey)
+
+    const { error: insertError } = await supabase.from('transacoes_credito').insert({
+      cliente_id: clienteId,
+      tipo: 'recarga',
+      valor: valor,
+      descricao: descricao || 'Crédito adicionado pelo administrador',
+      status: 'consumido',
+    })
+
+    if (insertError) {
+      console.error('❌ Erro ao registrar transação:', insertError)
+      // Não falhar a operação se o registro local falhar, já que o saldo foi adicionado na API
+    } else {
+      console.log('✅ Transação registrada no Supabase')
     }
 
     return new Response(

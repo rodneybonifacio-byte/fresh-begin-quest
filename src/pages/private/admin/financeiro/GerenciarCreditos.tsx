@@ -73,22 +73,15 @@ export default function GerenciarCreditos() {
             descricao: string;
         }) => {
             if (operacao === 'adicionar') {
+                // Adicionar saldo na API BRHUB
                 const { data, error } = await supabase.functions.invoke('adicionar-saldo-manual', {
-                    body: { clienteId, valor }
+                    body: { clienteId, valor, descricao: descricao || 'Crédito adicionado pelo administrador' }
                 });
                 
                 if (error) throw error;
-                
-                await supabase.from('transacoes_credito').insert({
-                    cliente_id: clienteId,
-                    tipo: 'recarga',
-                    valor: valor,
-                    descricao: descricao || 'Crédito adicionado pelo administrador',
-                    status: 'consumido',
-                });
-                
                 return data;
             } else {
+                // Remover saldo - apenas registra no Supabase local
                 const { error } = await supabase.from('transacoes_credito').insert({
                     cliente_id: clienteId,
                     tipo: 'consumo',
