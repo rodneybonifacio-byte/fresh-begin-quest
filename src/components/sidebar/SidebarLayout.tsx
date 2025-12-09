@@ -11,9 +11,10 @@ interface Props {
     onClose?: () => void;
     onNavigate?: (page: string) => void;
     title?: string;
+    hideUserProfile?: boolean;
 }
 
-export const SidebarLayout: React.FC<Props> = ({ navItems, isOpen, onClose, onNavigate }) => {
+export const SidebarLayout: React.FC<Props> = ({ navItems, isOpen, onClose, onNavigate, hideUserProfile = false }) => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [showAccountPopover, setShowAccountPopover] = useState(false);
     const accountButtonRef = useRef<HTMLDivElement>(null);
@@ -87,6 +88,7 @@ export const SidebarLayout: React.FC<Props> = ({ navItems, isOpen, onClose, onNa
                         </ul>
                     </nav>
 
+                    {!hideUserProfile && (
                     <div className="p-4 border-t border-gray-200 dark:border-slate-700">
                         <div className="relative">
                             <div
@@ -233,6 +235,7 @@ export const SidebarLayout: React.FC<Props> = ({ navItems, isOpen, onClose, onNa
                             {showAccountPopover && <div className="fixed inset-0 z-[60]" onClick={() => setShowAccountPopover(false)} />}
                         </div>
                     </div>
+                    )}
                 </div>
             </aside>
         </>
