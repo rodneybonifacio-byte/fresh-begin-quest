@@ -48,8 +48,8 @@ serve(async (req) => {
       throw new Error('BASE_API_URL não configurada');
     }
 
-    const { action, searchTerm, clienteId, destinatarioId } = await req.json();
-    console.log('📋 Ação recebida:', action, { searchTerm, clienteId, destinatarioId });
+    const { action, searchTerm, clienteId, destinatarioId, remetenteId } = await req.json();
+    console.log('📋 Ação recebida:', action, { searchTerm, clienteId, destinatarioId, remetenteId });
 
     const adminToken = await getAdminToken();
 
@@ -78,6 +78,31 @@ serve(async (req) => {
       );
     }
 
+    if (action === 'list_remetentes') {
+      console.log('📋 Listando remetentes do cliente:', clienteId);
+      
+      const response = await fetch(`${baseUrl}/clientes/remetentes?clienteId=${clienteId}`, {
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Erro ao buscar remetentes:', errorText);
+        throw new Error('Erro ao buscar remetentes');
+      }
+
+      const data = await response.json();
+      console.log('✅ Remetentes encontrados:', data?.data?.length || data?.length || 0);
+
+      return new Response(
+        JSON.stringify({ success: true, data: data.data || data || [] }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     if (action === 'list_destinatarios') {
       console.log('📋 Listando destinatários do cliente:', clienteId);
       
@@ -99,6 +124,31 @@ serve(async (req) => {
 
       return new Response(
         JSON.stringify({ success: true, data: data.data || data || [] }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'delete_remetente') {
+      console.log('🗑️ Excluindo remetente:', remetenteId);
+      
+      const response = await fetch(`${baseUrl}/clientes/remetentes/${remetenteId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Erro ao excluir remetente:', errorText);
+        throw new Error('Erro ao excluir remetente');
+      }
+
+      console.log('✅ Remetente excluído com sucesso');
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Remetente excluído com sucesso' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
