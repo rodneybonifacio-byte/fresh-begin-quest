@@ -150,7 +150,8 @@ serve(async (req) => {
     if (action === 'list_destinatarios') {
       console.log('📋 Listando destinatários do cliente:', clienteId);
       
-      const response = await fetch(`${baseUrl}/destinatarios?clienteId=${clienteId}`, {
+      // Rota correta: clientes/destinatarios
+      const response = await fetch(`${baseUrl}/clientes/destinatarios?clienteId=${clienteId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${adminToken}`,
