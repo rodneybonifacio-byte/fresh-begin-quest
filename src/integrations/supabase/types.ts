@@ -44,6 +44,109 @@ export type Database = {
         }
         Relationships: []
       }
+      clientes_indicados: {
+        Row: {
+          cliente_email: string | null
+          cliente_id: string
+          cliente_nome: string | null
+          comissao_gerada: number | null
+          consumo_total: number | null
+          data_associacao: string
+          id: string
+          parceiro_id: string
+          status: string | null
+          ultima_atividade: string | null
+        }
+        Insert: {
+          cliente_email?: string | null
+          cliente_id: string
+          cliente_nome?: string | null
+          comissao_gerada?: number | null
+          consumo_total?: number | null
+          data_associacao?: string
+          id?: string
+          parceiro_id: string
+          status?: string | null
+          ultima_atividade?: string | null
+        }
+        Update: {
+          cliente_email?: string | null
+          cliente_id?: string
+          cliente_nome?: string | null
+          comissao_gerada?: number | null
+          consumo_total?: number | null
+          data_associacao?: string
+          id?: string
+          parceiro_id?: string
+          status?: string | null
+          ultima_atividade?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clientes_indicados_parceiro_id_fkey"
+            columns: ["parceiro_id"]
+            isOneToOne: false
+            referencedRelation: "parceiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comissoes_conecta: {
+        Row: {
+          cliente_id: string
+          codigo_objeto: string | null
+          comissao_calculada: number
+          created_at: string
+          etiqueta_id: string | null
+          id: string
+          margem_liquida: number
+          mes_referencia: string | null
+          parceiro_id: string
+          percentual_comissao: number | null
+          status: string | null
+          valor_custo_frete: number
+          valor_total_frete: number
+        }
+        Insert: {
+          cliente_id: string
+          codigo_objeto?: string | null
+          comissao_calculada: number
+          created_at?: string
+          etiqueta_id?: string | null
+          id?: string
+          margem_liquida: number
+          mes_referencia?: string | null
+          parceiro_id: string
+          percentual_comissao?: number | null
+          status?: string | null
+          valor_custo_frete: number
+          valor_total_frete: number
+        }
+        Update: {
+          cliente_id?: string
+          codigo_objeto?: string | null
+          comissao_calculada?: number
+          created_at?: string
+          etiqueta_id?: string | null
+          id?: string
+          margem_liquida?: number
+          mes_referencia?: string | null
+          parceiro_id?: string
+          percentual_comissao?: number | null
+          status?: string | null
+          valor_custo_frete?: number
+          valor_total_frete?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comissoes_conecta_parceiro_id_fkey"
+            columns: ["parceiro_id"]
+            isOneToOne: false
+            referencedRelation: "parceiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contador_cadastros: {
         Row: {
           ativo: boolean
@@ -323,6 +426,110 @@ export type Database = {
           notificado_em?: string
           remetente_nome?: string | null
           webhook_response?: string | null
+        }
+        Relationships: []
+      }
+      pagamentos_parceiros: {
+        Row: {
+          comprovante_url: string | null
+          created_at: string
+          data_pagamento: string | null
+          id: string
+          mes_referencia: string
+          observacao: string | null
+          parceiro_id: string
+          status: string | null
+          valor_pago: number
+        }
+        Insert: {
+          comprovante_url?: string | null
+          created_at?: string
+          data_pagamento?: string | null
+          id?: string
+          mes_referencia: string
+          observacao?: string | null
+          parceiro_id: string
+          status?: string | null
+          valor_pago: number
+        }
+        Update: {
+          comprovante_url?: string | null
+          created_at?: string
+          data_pagamento?: string | null
+          id?: string
+          mes_referencia?: string
+          observacao?: string | null
+          parceiro_id?: string
+          status?: string | null
+          valor_pago?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pagamentos_parceiros_parceiro_id_fkey"
+            columns: ["parceiro_id"]
+            isOneToOne: false
+            referencedRelation: "parceiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parceiros: {
+        Row: {
+          agencia: string | null
+          banco: string | null
+          chave_pix: string | null
+          codigo_parceiro: string
+          conta: string | null
+          cpf_cnpj: string
+          created_at: string
+          email: string
+          id: string
+          link_indicacao: string
+          nome: string
+          senha_hash: string
+          status: Database["public"]["Enums"]["parceiro_status"]
+          telefone: string
+          total_clientes_ativos: number | null
+          total_comissao_acumulada: number | null
+          updated_at: string
+        }
+        Insert: {
+          agencia?: string | null
+          banco?: string | null
+          chave_pix?: string | null
+          codigo_parceiro: string
+          conta?: string | null
+          cpf_cnpj: string
+          created_at?: string
+          email: string
+          id?: string
+          link_indicacao: string
+          nome: string
+          senha_hash: string
+          status?: Database["public"]["Enums"]["parceiro_status"]
+          telefone: string
+          total_clientes_ativos?: number | null
+          total_comissao_acumulada?: number | null
+          updated_at?: string
+        }
+        Update: {
+          agencia?: string | null
+          banco?: string | null
+          chave_pix?: string | null
+          codigo_parceiro?: string
+          conta?: string | null
+          cpf_cnpj?: string
+          created_at?: string
+          email?: string
+          id?: string
+          link_indicacao?: string
+          nome?: string
+          senha_hash?: string
+          status?: Database["public"]["Enums"]["parceiro_status"]
+          telefone?: string
+          total_clientes_ativos?: number | null
+          total_comissao_acumulada?: number | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -616,6 +823,7 @@ export type Database = {
         Returns: boolean
       }
       get_cliente_id_from_jwt: { Args: never; Returns: string }
+      get_parceiro_id_from_jwt: { Args: never; Returns: string }
       incrementar_contador_cadastro: { Args: never; Returns: number }
       is_admin_from_jwt: { Args: never; Returns: boolean }
       liberar_credito_bloqueado: {
@@ -650,7 +858,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      parceiro_status: "pendente" | "aprovado" | "suspenso" | "cancelado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -777,6 +985,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      parceiro_status: ["pendente", "aprovado", "suspenso", "cancelado"],
+    },
   },
 } as const
