@@ -1,10 +1,7 @@
-import { Filter, Import, Plus, Printer, ReceiptText, BarChart3, Download } from 'lucide-react';
+import { Filter, Import, Plus, Printer, ReceiptText, BarChart3, Download, Package, ChevronLeft, ChevronRight, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { DataTable } from '../../../components/DataTable';
-import { LoadSpinner } from '../../../components/loading';
 import { ModalCustom } from '../../../components/modal';
-import { PaginacaoCustom } from '../../../components/PaginacaoCustom';
 import { ResponsiveTabMenu } from '../../../components/ResponsiveTabMenu';
 import { StatusBadgeEmissao } from '../../../components/StatusBadgeEmissao';
 import { useFetchQuery } from '../../../hooks/useFetchQuery';
@@ -16,14 +13,15 @@ import { EmissaoService } from '../../../services/EmissaoService';
 import type { IEmissao } from '../../../types/IEmissao';
 import type { IResponse } from '../../../types/IResponse';
 import { formatDateTime } from '../../../utils/date-utils';
-import { formatCpfCnpj } from '../../../utils/lib.formats';
+
 import { exportEmissoesToExcel } from '../../../utils/exportToExcel';
-import { Content } from '../Content';
 import { FiltroEmissao } from './FiltroEmissao';
 import { ModalViewDeclaracaoConteudo } from './ModalViewDeclaracaoConteudo';
 import { ModalViewErroPostagem } from './ModalViewErroPostagem';
 import { ModalViewPDF } from './ModalViewPDF';
 import { DashboardEmissoes } from './DashboardEmissoes';
+import { supabase } from '../../../integrations/supabase/client';
+import { toast } from 'sonner';
 
 export const ListaEmissoes = () => {
     const { user } = useAuth();
@@ -48,6 +46,7 @@ export const ListaEmissoes = () => {
         data: emissoes,
         isLoading,
         isError,
+        refetch,
     } = useFetchQuery<IResponse<IEmissao[]>>(['emissoes', searchParams.toString(), user?.email, page, tab], async () => {
         const params: {
             limit: number;
@@ -73,27 +72,9 @@ export const ListaEmissoes = () => {
         if (destinatario) params.destinatario = destinatario;
         if (codigoObjeto) params.codigoObjeto = codigoObjeto;
         
-        // Aplicar filtro de status
         params.status = statusFromUrl || tab;
         
-        console.log('🔍 ListaEmissoes - Buscando emissões com params:', params);
-        
         const result = await service.getAll(params);
-        console.log('📦 ListaEmissoes - Resultado:', result?.data?.length || 0, 'registros');
-        
-        // Se não encontrou nada no status atual, tenta buscar TODOS para diagnóstico
-        if (!result?.data?.length && tab === 'PRE_POSTADO') {
-            console.log('⚠️ Nenhum registro em PRE_POSTADO, buscando TODOS os status para diagnóstico...');
-            const paramsAll = { limit: 50, offset: 0 };
-            const allResult = await service.getAll(paramsAll);
-            console.log('📊 Total de etiquetas do usuário (todos status):', allResult?.data?.length || 0);
-            if (allResult?.data?.length) {
-                allResult.data.slice(0, 10).forEach((e: IEmissao) => {
-                    console.log(`  📋 ${e.codigoObjeto} | Status: ${e.status} | Criado: ${e.criadoEm}`);
-                });
-            }
-        }
-        
         return result;
     });
 
@@ -145,194 +126,243 @@ export const ListaEmissoes = () => {
         }
     };
 
+    const handleCancelarEtiqueta = async (emissao: IEmissao) => {
+        if (!emissao.codigoObjeto || !emissao.id) {
+            toast.error('Dados insuficientes para cancelar');
+            return;
+        }
+
+        if (!confirm(`Deseja realmente cancelar a etiqueta ${emissao.codigoObjeto}?`)) {
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            const { error } = await supabase.functions.invoke('cancelar-etiqueta-admin', {
+                body: {
+                    codigoObjeto: emissao.codigoObjeto,
+                    motivo: 'Cancelado pelo usuário',
+                    emissaoId: emissao.id,
+                },
+            });
+
+            if (error) {
+                throw error;
+            }
+
+            toast.success('Etiqueta cancelada com sucesso!');
+            refetch();
+        } catch (error: any) {
+            console.error('Erro ao cancelar:', error);
+            toast.error(error.message || 'Erro ao cancelar etiqueta');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const totalPages = emissoes?.meta?.totalPages || Math.ceil((emissoes?.total || 0) / perPage);
 
     return (
-        <Content
-            titulo="Etiquetas de envio"
-            subTitulo="Lista de etiquetas cadastradas no sistema"
-            isButton
-            button={[
-                {
-                    label: 'Adicionar',
-                    link: '/app/emissao/adicionar',
-                    icon: <Plus size={22} />,
-                },
-                {
-                    label: 'Importar',
-                    link: '/app/emissao/importacao',
-                    icon: <Import size={22} />,
-                    bgColor: 'bg-slate-600',
-                },
-                {
-                    label: 'Exportar XLSX',
-                    onClick: handleExportToExcel,
-                    icon: <Download size={22} />,
-                    bgColor: 'bg-green-600',
-                },
-                {
-                    label: '',
-                    onClick: () => setShowDashboard(!showDashboard),
-                    icon: <BarChart3 size={22} className="text-purple-600" />,
-                    bgColor: showDashboard ? 'bg-purple-100' : 'bg-slate-200',
-                },
-                {
-                    label: '',
-                    onClick: () => handlerToggleFilter(),
-                    icon: <Filter size={22} className="text-slate-500" />,
-                    bgColor: 'bg-slate-300',
-                },
-            ]}
-            data={emissoes?.data && emissoes.data.length > 0 ? emissoes.data : []}
-        >
-            {isLoading ? <LoadSpinner mensagem="Carregando..." /> : null}
-            
-            {/* Dashboard Analítico */}
-            {showDashboard && emissoes?.data && emissoes.data.length > 0 && (
-                <DashboardEmissoes emissoes={emissoes.data} />
-            )}
+        <div className="min-h-screen bg-background">
+            {/* Header */}
+            <div className="bg-card border-b">
+                <div className="max-w-7xl mx-auto px-4 py-4">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-primary/10 rounded-xl">
+                                <Package className="h-6 w-6 text-primary" />
+                            </div>
+                            <div>
+                                <h1 className="text-xl font-bold text-foreground">Pré-Postagem</h1>
+                                <p className="text-sm text-muted-foreground">Gerencie suas etiquetas de envio</p>
+                            </div>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-2">
+                            <a
+                                href="/app/emissao/adicionar"
+                                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
+                            >
+                                <Plus className="h-4 w-4" />
+                                Nova Etiqueta
+                            </a>
+                            <a
+                                href="/app/emissao/importacao"
+                                className="flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors text-sm font-medium"
+                            >
+                                <Import className="h-4 w-4" />
+                                Importar
+                            </a>
+                            <button
+                                onClick={handleExportToExcel}
+                                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                            >
+                                <Download className="h-4 w-4" />
+                                Exportar
+                            </button>
+                            <button
+                                onClick={() => setShowDashboard(!showDashboard)}
+                                className={`p-2 rounded-lg transition-colors ${showDashboard ? 'bg-primary/20 text-primary' : 'bg-secondary text-secondary-foreground'}`}
+                                title="Mostrar/Ocultar Dashboard"
+                            >
+                                <BarChart3 className="h-5 w-5" />
+                            </button>
+                            <button
+                                onClick={handlerToggleFilter}
+                                className="p-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors"
+                                title="Filtros"
+                            >
+                                <Filter className="h-5 w-5" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-            <ResponsiveTabMenu tab={tab} setTab={setTab}>
-                {!isLoading && !isError && emissoes && emissoes.data.length > 0 && (
-                    <>
-                        <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm overflow-visible">
-                            <DataTable<IEmissao>
-                                data={data}
-                                rowKey={(row) => row.id?.toString() || ''}
-                                columns={[
-                                    {
-                                        header: 'Código Objeto',
-                                        accessor: (row) => (
-                                            <div className="flex flex-col">
-                                                <span className="font-semibold text-primary">{row.codigoObjeto}</span>
-                                            </div>
-                                        ),
-                                    },
-                                    {
-                                        header: 'Transportadora',
-                                        accessor: (row) => (
-                                            <div className="flex flex-col gap-0.5">
-                                                <span className="font-medium">{row.transportadora}</span>
-                                                {row.transportadora?.toLocaleUpperCase() === 'CORREIOS' && (
-                                                    <small className="text-slate-500 dark:text-slate-400">{row.servico}</small>
-                                                )}
-                                            </div>
-                                        ),
-                                    },
-                                    {
-                                        header: 'Remetente',
-                                        accessor: (row) => (
-                                            <div className="flex flex-col gap-0.5">
-                                                <span className="font-medium">{row.remetenteNome}</span>
-                                                <small className="text-slate-500 dark:text-slate-400">
-                                                    {row.remetente?.endereco?.localidade || ''} - {row.remetente?.endereco?.uf || ''}
-                                                </small>
-                                            </div>
-                                        ),
-                                    },
-                                    {
-                                        header: 'Cliente',
-                                        accessor: (row) => (
-                                            <div className="flex flex-col gap-0.5">
-                                                <span className="font-medium text-sm">{row.cliente?.nome}</span>
-                                                <small className="text-slate-500 dark:text-slate-400">
-                                                    {formatCpfCnpj(row.cliente?.cpfCnpj || '')}
-                                                </small>
-                                            </div>
-                                        ),
-                                    },
-                                    {
-                                        header: 'Destinatário',
-                                        accessor: (row) => (
-                                            <div className="flex flex-col gap-0.5">
-                                                <span className="font-medium">{row.destinatario?.nome}</span>
-                                                <small className="text-slate-500 dark:text-slate-400">
-                                                    {row.destinatario?.endereco?.localidade || ''} - {row.destinatario?.endereco?.uf || ''}
-                                                </small>
-                                            </div>
-                                        ),
-                                    },
-                                    {
-                                        header: 'Valores',
-                                        accessor: (row) => (
-                                            <div className="flex flex-col gap-0.5">
-                                                <span className="font-semibold text-green-600 dark:text-green-400">
-                                                    R$ {row.valor}
-                                                </span>
-                                                {row.valorDeclarado > 0 && (
-                                                    <small className="text-slate-500 dark:text-slate-400">
-                                                        VD: R$ {row.valorDeclarado}
-                                                    </small>
-                                                )}
-                                            </div>
-                                        ),
-                                    },
-                                    {
-                                        header: 'NF',
-                                        accessor: (row) => (
-                                            <div className="flex flex-col gap-0.5">
-                                                {row.numeroNotaFiscal && (
-                                                    <span className="text-sm">{row.numeroNotaFiscal}</span>
-                                                )}
-                                                {row.valorNotaFiscal > 0 && (
-                                                    <small className="text-slate-500 dark:text-slate-400">
-                                                        R$ {row.valorNotaFiscal}
-                                                    </small>
-                                                )}
-                                            </div>
-                                        ),
-                                    },
-                                    {
-                                        header: 'Status',
-                                        accessor: (row) => (
-                                            <StatusBadgeEmissao
-                                                status={row.status}
-                                                mensagensErrorPostagem={row.mensagensErrorPostagem}
-                                                handleOnViewErroPostagem={handleOnViewErroPostagem}
-                                            />
-                                        ),
-                                    },
-                                    {
-                                        header: 'Criado em',
-                                        accessor: (row) => {
-                                            return (
-                                                <span className="text-sm whitespace-nowrap">
-                                                    {formatDateTime(row.criadoEm)}
-                                                </span>
-                                            );
-                                        },
-                                    },
-                                ]}
-                                actionTitle={(row) => row.codigoObjeto || '---'}
-                                actions={[
-                                    {
-                                        label: 'Detalhamento',
-                                        icon: <ReceiptText size={16} className="text-purple-600" />,
-                                        to: (row) => `./detail/${row.id}`,
-                                        show: true,
-                                    },
-                                    {
-                                        label: 'Imprimir Etiqueta',
-                                        icon: <Printer size={16} className="text-blue-600" />,
-                                        onClick: (row) => handleOnPDF(row, true),
-                                        show: (row) => !row.mensagensErrorPostagem && !['ENTREGUE', 'EM_TRANSITO', 'POSTADO'].includes(row.status as string),
-                                    },
-                                ]}
-                            />
-                        </div>
-                        <div className="py-3">
-                            <PaginacaoCustom meta={emissoes?.meta} onPageChange={handlePageChange} />
-                        </div>
-                    </>
+            <div className="max-w-7xl mx-auto px-4 py-4">
+                {/* Dashboard */}
+                {showDashboard && emissoes?.data && emissoes.data.length > 0 && (
+                    <DashboardEmissoes emissoes={emissoes.data} />
                 )}
-            </ResponsiveTabMenu>
 
+                {/* Tabs e Tabela */}
+                <ResponsiveTabMenu tab={tab} setTab={setTab}>
+                    {isLoading ? (
+                        <div className="flex items-center justify-center py-20">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        </div>
+                    ) : isError ? (
+                        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+                            <Package className="h-12 w-12 mb-4 opacity-50" />
+                            <p>Erro ao carregar dados</p>
+                        </div>
+                    ) : !emissoes?.data || emissoes.data.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground bg-card border rounded-xl">
+                            <Package className="h-12 w-12 mb-4 opacity-50" />
+                            <p className="font-medium">Nenhuma etiqueta encontrada</p>
+                            <p className="text-sm">Crie sua primeira etiqueta clicando em "Nova Etiqueta"</p>
+                        </div>
+                    ) : (
+                        <div className="bg-card border rounded-xl overflow-hidden shadow-sm">
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="bg-muted/50 border-b">
+                                        <tr>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Código</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Transportadora</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase hidden md:table-cell">Destinatário</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Valor</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Status</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase hidden lg:table-cell">Data</th>
+                                            <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y">
+                                        {data.map((row) => (
+                                            <tr key={row.id} className="hover:bg-muted/30 transition-colors">
+                                                <td className="px-4 py-3">
+                                                    <span className="font-mono text-sm font-semibold text-primary">{row.codigoObjeto}</span>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex flex-col">
+                                                        <span className="font-medium text-sm">{row.transportadora}</span>
+                                                        {row.servico && (
+                                                            <span className="text-xs text-muted-foreground">{row.servico}</span>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 hidden md:table-cell">
+                                                    <div className="flex flex-col">
+                                                        <span className="font-medium text-sm truncate max-w-[150px]">{row.destinatario?.nome}</span>
+                                                        <span className="text-xs text-muted-foreground">
+                                                            {row.destinatario?.endereco?.localidade} - {row.destinatario?.endereco?.uf}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span className="font-semibold text-green-600">R$ {row.valor}</span>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <StatusBadgeEmissao
+                                                        status={row.status}
+                                                        mensagensErrorPostagem={row.mensagensErrorPostagem}
+                                                        handleOnViewErroPostagem={handleOnViewErroPostagem}
+                                                    />
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-muted-foreground hidden lg:table-cell">
+                                                    {formatDateTime(row.criadoEm)}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center justify-center gap-1">
+                                                        <a
+                                                            href={`/app/emissao/detail/${row.id}`}
+                                                            className="p-2 hover:bg-muted rounded-lg transition-colors"
+                                                            title="Ver detalhes"
+                                                        >
+                                                            <ReceiptText className="h-4 w-4 text-purple-600" />
+                                                        </a>
+                                                        {!row.mensagensErrorPostagem && row.status === 'PRE_POSTADO' && (
+                                                            <>
+                                                                <button
+                                                                    onClick={() => handleOnPDF(row, true)}
+                                                                    className="p-2 hover:bg-muted rounded-lg transition-colors"
+                                                                    title="Imprimir etiqueta"
+                                                                >
+                                                                    <Printer className="h-4 w-4 text-blue-600" />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleCancelarEtiqueta(row)}
+                                                                    className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                                                    title="Cancelar etiqueta"
+                                                                >
+                                                                    <XCircle className="h-4 w-4 text-red-600" />
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Paginação */}
+                            <div className="flex items-center justify-between px-4 py-3 border-t bg-muted/30">
+                                <span className="text-sm text-muted-foreground">
+                                    Página {page} de {totalPages || 1} • {emissoes?.total || data.length} registros
+                                </span>
+                                <div className="flex gap-2">
+                                    <button
+                                        className="flex items-center gap-1 px-3 py-1.5 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                                        disabled={page === 1}
+                                        onClick={() => handlePageChange(page - 1)}
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                        Anterior
+                                    </button>
+                                    <button
+                                        className="flex items-center gap-1 px-3 py-1.5 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                                        disabled={page >= (totalPages || 1)}
+                                        onClick={() => handlePageChange(page + 1)}
+                                    >
+                                        Próxima
+                                        <ChevronRight className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </ResponsiveTabMenu>
+            </div>
+
+            {/* Modais */}
             <ModalViewDeclaracaoConteudo
                 isOpen={isModalViewDeclaracaoConteudo}
                 htmlContent={etiqueta?.dados || ''}
                 onCancel={() => setIsModalViewDeclaracaoConteudo(false)}
             />
             <ModalViewPDF isOpen={isModalViewPDF} base64={etiqueta?.dados || ''} onCancel={() => setIsModalViewPDF(false)} />
-
             <ModalViewErroPostagem isOpen={isModalViewErroPostagem} jsonContent={erroPostagem || ''} onCancel={() => setIsModalViewErroPostagem(false)} />
 
             {isFilterOpen && (
@@ -340,6 +370,6 @@ export const ListaEmissoes = () => {
                     <FiltroEmissao onCancel={handlerToggleFilter} />
                 </ModalCustom>
             )}
-        </Content>
+        </div>
     );
 };
