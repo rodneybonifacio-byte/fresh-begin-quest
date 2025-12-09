@@ -1,5 +1,5 @@
 import { yupResolver } from '@hookform/resolvers/yup';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Bell, Clock, Lock, User } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
@@ -8,9 +8,10 @@ import authStore from '../../../authentica/authentication.store';
 import { ButtonComponent } from '../../../components/button';
 import { InputLabel } from '../../../components/input-label';
 import { ProfileSkeleton } from '../../../components/skeletons/ProfileSkeleton';
-import { ProfileAvatar } from '../../../components/ProfileAvatar';
+import { AvatarUpload } from '../../../components/AvatarUpload';
 import { useAddress } from '../../../hooks/useAddress';
 import { useUsuarioDados } from '../../../hooks/useUsuarioDados';
+import { useUserAvatar } from '../../../hooks/useUserAvatar';
 import { useLoadingSpinner } from '../../../providers/LoadingSpinnerContext';
 import { AccountService } from '../../../services/AccountService';
 import type { IUserProfile } from '../../../types/user/IUserProfile';
@@ -76,6 +77,9 @@ const Profile = () => {
         setFocus,
         formState: { errors },
     } = methods;
+
+    const queryClient = useQueryClient();
+    const { data: avatarUrl } = useUserAvatar();
 
     const {
         data: usuarioDados,
@@ -184,7 +188,12 @@ const Profile = () => {
                 {/* Header do perfil com avatar */}
                 <div className="bg-card rounded-xl p-6 border border-border">
                     <div className="flex flex-col sm:flex-row items-center gap-6">
-                        <ProfileAvatar name={userName} size="xl" showIcon />
+                        <AvatarUpload 
+                            name={userName} 
+                            currentAvatarUrl={avatarUrl}
+                            onAvatarChange={() => queryClient.invalidateQueries({ queryKey: ['user-avatar'] })}
+                            size="xl"
+                        />
                         <div className="text-center sm:text-left">
                             <h2 className="text-2xl font-bold text-foreground">{userName}</h2>
                             <p className="text-muted-foreground">{userEmail}</p>
