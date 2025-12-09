@@ -23,6 +23,7 @@ interface ClienteAutocadastroRequest {
   }
   email: string
   senha: string
+  codigoParceiro?: string // Código de indicação do parceiro Conecta+
 }
 
 serve(async (req: Request) => {
@@ -567,7 +568,7 @@ serve(async (req: Request) => {
               },
               body: JSON.stringify({
                 cliente_id: clienteId,
-                origem: 'autocadastro',
+                origem: body.codigoParceiro ? `conecta_${body.codigoParceiro}` : 'autocadastro',
                 nome_cliente: body.nomeEmpresa,
                 email_cliente: body.email,
                 telefone_cliente: body.celular,
@@ -577,6 +578,91 @@ serve(async (req: Request) => {
           
           if (origemResponse.ok) {
             console.log('✅ Origem do cadastro registrada')
+          }
+
+          // ============================================
+          // PASSO 7.1: Vincular cliente ao parceiro Conecta+
+          // ============================================
+          if (body.codigoParceiro && clienteId) {
+            console.log('🔗 Vinculando cliente ao parceiro Conecta+:', body.codigoParceiro)
+            
+            // Buscar parceiro pelo código
+            const buscarParceiroResponse = await fetch(
+              `${supabaseUrl}/rest/v1/parceiros?codigo_parceiro=eq.${encodeURIComponent(body.codigoParceiro)}&select=id,nome,email`,
+              {
+                method: 'GET',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'apikey': supabaseServiceKey,
+                  'Authorization': `Bearer ${supabaseServiceKey}`,
+                },
+              }
+            )
+            
+            if (buscarParceiroResponse.ok) {
+              const parceiros = await buscarParceiroResponse.json()
+              
+              if (parceiros && parceiros.length > 0) {
+                const parceiro = parceiros[0]
+                console.log('✅ Parceiro encontrado:', parceiro.nome, parceiro.id)
+                
+                // Inserir na tabela clientes_indicados
+                const vincularClienteResponse = await fetch(
+                  `${supabaseUrl}/rest/v1/clientes_indicados`,
+                  {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'apikey': supabaseServiceKey,
+                      'Authorization': `Bearer ${supabaseServiceKey}`,
+                      'Prefer': 'return=minimal',
+                    },
+                    body: JSON.stringify({
+                      parceiro_id: parceiro.id,
+                      cliente_id: clienteId,
+                      cliente_nome: body.nomeEmpresa,
+                      cliente_email: body.email,
+                      status: 'ativo',
+                      consumo_total: 0,
+                      comissao_gerada: 0,
+                    }),
+                  }
+                )
+                
+                if (vincularClienteResponse.ok) {
+                  console.log('✅ Cliente vinculado ao parceiro Conecta+ com sucesso!')
+                  
+                  // Atualizar contador de clientes ativos do parceiro
+                  const updateParceiroResponse = await fetch(
+                    `${supabaseUrl}/rest/v1/parceiros?id=eq.${parceiro.id}`,
+                    {
+                      method: 'PATCH',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': supabaseServiceKey,
+                        'Authorization': `Bearer ${supabaseServiceKey}`,
+                        'Prefer': 'return=minimal',
+                      },
+                      body: JSON.stringify({
+                        total_clientes_ativos: (parceiro.total_clientes_ativos || 0) + 1,
+                      }),
+                    }
+                  )
+                  
+                  if (updateParceiroResponse.ok) {
+                    console.log('✅ Contador de clientes do parceiro atualizado')
+                  }
+                } else {
+                  const vincularError = await vincularClienteResponse.text()
+                  console.error('⚠️ Erro ao vincular cliente ao parceiro:', vincularError)
+                }
+              } else {
+                console.log('⚠️ Código de parceiro não encontrado:', body.codigoParceiro)
+              }
+            } else {
+              const buscarError = await buscarParceiroResponse.text()
+              console.error('⚠️ Erro ao buscar parceiro:', buscarError)
+            }
           }
         }
       } catch (contadorErr) {
