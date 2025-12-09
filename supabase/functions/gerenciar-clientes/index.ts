@@ -23,7 +23,7 @@ async function getAdminToken(): Promise<string> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       email: adminEmail,
-      senha: adminPassword,
+      password: adminPassword,
     }),
   });
 
