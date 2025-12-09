@@ -8,6 +8,7 @@ import authStore from '../../../authentica/authentication.store';
 import { ButtonComponent } from '../../../components/button';
 import { InputLabel } from '../../../components/input-label';
 import { ProfileSkeleton } from '../../../components/skeletons/ProfileSkeleton';
+import { ProfileAvatar } from '../../../components/ProfileAvatar';
 import { useAddress } from '../../../hooks/useAddress';
 import { useFetchQuery } from '../../../hooks/useFetchQuery';
 import { useLoadingSpinner } from '../../../providers/LoadingSpinnerContext';
@@ -116,8 +117,8 @@ const Profile = () => {
     const tabs = [
         { id: 'personal', label: 'Dados Pessoais', icon: User },
         { id: 'access', label: 'Dados de Acesso', icon: Lock },
-        { id: 'notifications', label: 'Preferências de Notificação', icon: Bell },
-        { id: 'activity', label: 'Última Atividade', icon: Clock },
+        { id: 'notifications', label: 'Notificações', icon: Bell },
+        { id: 'activity', label: 'Atividade', icon: Clock },
     ];
 
     useEffect(() => {
@@ -146,32 +147,54 @@ const Profile = () => {
         );
     }
 
+    const userName = profile?.name || user?.name || 'Usuário';
+    const userEmail = profile?.email || user?.email || '';
+
     return (
         <Content titulo="Meu Perfil" subTitulo="Gerencie suas informações pessoais">
-            <div className="flex flex-col md:flex-row gap-6">
-                {/* Aside com as abas */}
-                <aside className="w-full md:w-64 bg-white dark:bg-gray-800 rounded-xl p-4">
-                    <nav className="space-y-2">
-                        {tabs.map((tab) => {
-                            const Icon = tab.icon;
-                            return (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setActiveTab(tab.id)}
-                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                                        activeTab === tab.id ? 'bg-primary text-primary-foreground' : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                                    }`}
-                                >
-                                    <Icon size={20} />
-                                    <span>{tab.label}</span>
-                                </button>
-                            );
-                        })}
-                    </nav>
-                </aside>
+            <div className="flex flex-col gap-6">
+                {/* Header do perfil com avatar */}
+                <div className="bg-card rounded-xl p-6 border border-border">
+                    <div className="flex flex-col sm:flex-row items-center gap-6">
+                        <ProfileAvatar name={userName} size="xl" />
+                        <div className="text-center sm:text-left">
+                            <h2 className="text-2xl font-bold text-foreground">{userName}</h2>
+                            <p className="text-muted-foreground">{userEmail}</p>
+                            {(profile as any)?.documento && (
+                                <p className="text-sm text-muted-foreground mt-1">
+                                    {formatCpfCnpj((profile as any).documento)}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex flex-col md:flex-row gap-6">
+                    {/* Aside com as abas */}
+                    <aside className="w-full md:w-56 bg-card rounded-xl p-4 border border-border h-fit">
+                        <nav className="flex md:flex-col gap-2 overflow-x-auto">
+                            {tabs.map((tab) => {
+                                const Icon = tab.icon;
+                                return (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => setActiveTab(tab.id)}
+                                        className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-colors whitespace-nowrap text-sm ${
+                                            activeTab === tab.id 
+                                                ? 'bg-primary text-primary-foreground' 
+                                                : 'hover:bg-accent text-foreground'
+                                        }`}
+                                    >
+                                        <Icon size={18} />
+                                        <span className="hidden sm:inline">{tab.label}</span>
+                                    </button>
+                                );
+                            })}
+                        </nav>
+                    </aside>
 
                 {/* Conteúdo principal */}
-                <div className="flex-1 bg-white dark:bg-gray-800 rounded-xl p-6">
+                <div className="flex-1 bg-card rounded-xl p-6 border border-border">
                     <FormProvider {...methods}>
                         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                             {activeTab !== 'activity' && (
@@ -302,6 +325,7 @@ const Profile = () => {
                             </div>
                         </div>
                     )}
+                </div>
                 </div>
             </div>
         </Content>
