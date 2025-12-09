@@ -182,30 +182,44 @@ export default function GerenciarEtiquetas() {
       const results: any[] = [];
       const errors: any[] = [];
       
+      // Importar supabase para chamar edge function
+      const { supabase } = await import("../../../../integrations/supabase/client");
+      
       for (let i = 0; i < ids.length; i += batchSize) {
         const batch = ids.slice(i, i + batchSize);
         console.log(`Excluindo lote ${i / batchSize + 1}:`, batch);
         
         try {
-          const promises = batch.map(id => {
+          const promises = batch.map(async (id) => {
             const meta = selectedMeta[id];
             if (!meta?.codigoObjeto) {
               console.warn(`Sem codigoObjeto para id ${id}, pulando.`);
               errors.push({ id, error: 'Sem codigoObjeto' });
-              return Promise.resolve(null);
+              return null;
             }
 
-            const payload = {
-              codigoObjeto: meta.codigoObjeto,
-              motivo: 'Cancelado via Gerenciar Etiquetas',
-            };
-
-            return emissaoService.cancelarEmissao(payload)
-              .catch(err => {
-                console.error(`Erro ao excluir ${id}:`, err);
-                errors.push({ id, error: err });
-                return null;
+            try {
+              // Usar edge function com credenciais admin
+              const { data, error } = await supabase.functions.invoke('cancelar-etiqueta-admin', {
+                body: {
+                  codigoObjeto: meta.codigoObjeto,
+                  motivo: 'Cancelado via Gerenciar Etiquetas',
+                  emissaoId: id,
+                },
               });
+
+              if (error) {
+                console.error(`Erro ao excluir ${id}:`, error);
+                errors.push({ id, error: error.message });
+                return null;
+              }
+
+              return data;
+            } catch (err: any) {
+              console.error(`Erro ao excluir ${id}:`, err);
+              errors.push({ id, error: err.message || err });
+              return null;
+            }
           });
 
           const batchResults = await Promise.all(promises);
