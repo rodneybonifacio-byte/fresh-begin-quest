@@ -54,27 +54,27 @@ export const ModernHome = () => {
     description: "Acompanhe seus envios em tempo real",
     color: "text-purple-600"
   }];
-  return <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background">
+  return <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background overflow-x-hidden">
             {/* Hero Section */}
-            <div className="container mx-auto px-4 py-12">
-                <div className="grid lg:grid-cols-2 gap-12 items-center mb-16">
+            <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12">
+                <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center mb-12 lg:mb-16">
                     {/* Left Column - Text */}
-                    <div className="space-y-6 animate-fade-in">
-                        <h1 className="text-3xl sm:text-4xl lg:text-6xl font-bold leading-tight">
+                    <div className="space-y-4 sm:space-y-6 animate-fade-in">
+                        <h1 className="text-2xl sm:text-3xl lg:text-5xl xl:text-6xl font-bold leading-tight">
                             Calcular frete e emitir com{" "}
                             <span className="text-primary">desconto</span>
                         </h1>
-                        <p className="text-xl text-muted-foreground">
+                        <p className="text-base sm:text-lg lg:text-xl text-muted-foreground">
                             Venda mais com fretes <strong className="text-primary">até 80% mais baratos</strong> com a BRHUB: 
                             sem mensalidades ou taxas escondidas
                         </p>
-                        <button onClick={() => navigate('/app/emissao/adicionar')} className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-4 rounded-full text-lg font-bold shadow-2xl shadow-primary/40 transition-all duration-300 hover:scale-105 hover:shadow-primary/50 text-slate-50">
+                        <button onClick={() => navigate('/app/emissao/adicionar')} className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 sm:px-8 py-3 sm:py-4 rounded-full text-base sm:text-lg font-bold shadow-2xl shadow-primary/40 transition-all duration-300 hover:scale-105 hover:shadow-primary/50 text-slate-50">
                             Emitir frete com desconto
                         </button>
                     </div>
 
                     {/* Right Column - Calculator */}
-                    <div className="bg-card border border-border rounded-3xl shadow-2xl p-8 animate-scale-in">
+                    <div className="bg-card border border-border rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 lg:p-8 animate-scale-in">
                         <h2 className="text-2xl font-bold mb-6 text-primary">
                             Simule seu frete em segundos
                         </h2>
