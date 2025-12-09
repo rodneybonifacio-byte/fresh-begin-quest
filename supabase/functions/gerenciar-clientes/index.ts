@@ -38,6 +38,36 @@ async function getAdminToken(): Promise<string> {
   return loginData.data?.token || loginData.token;
 }
 
+async function getClientToken(clienteEmail: string): Promise<string | null> {
+  const baseUrl = Deno.env.get('BASE_API_URL');
+  
+  // Tentar fazer login com a senha padrão de clientes novos
+  const defaultPasswords = ['Hub@2025!', '123456', 'senha123'];
+  
+  for (const senha of defaultPasswords) {
+    try {
+      const loginResponse = await fetch(`${baseUrl}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: clienteEmail,
+          senha: senha,
+        }),
+      });
+
+      if (loginResponse.ok) {
+        const loginData = await loginResponse.json();
+        console.log('✅ Token do cliente obtido com sucesso');
+        return loginData.data?.token || loginData.token;
+      }
+    } catch (e) {
+      // Continuar tentando
+    }
+  }
+  
+  return null;
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -50,8 +80,8 @@ serve(async (req) => {
       throw new Error('BASE_API_URL não configurada');
     }
 
-    const { action, searchTerm, clienteId, destinatarioId, remetenteId } = await req.json();
-    console.log('📋 Ação recebida:', action, { searchTerm, clienteId, destinatarioId, remetenteId });
+    const { action, searchTerm, clienteId, clienteEmail, destinatarioId, remetenteId } = await req.json();
+    console.log('📋 Ação recebida:', action, { searchTerm, clienteId, clienteEmail, destinatarioId, remetenteId });
 
     const adminToken = await getAdminToken();
 
@@ -98,10 +128,14 @@ serve(async (req) => {
       }
 
       const data = await response.json();
-      console.log('✅ Remetentes encontrados:', data?.data?.length || data?.length || 0);
+      const remetentes = data.data || data || [];
+      
+      // Filtrar por clienteId no cliente
+      const filteredRemetentes = remetentes.filter((r: any) => r.clienteId === clienteId);
+      console.log('✅ Remetentes encontrados:', filteredRemetentes.length);
 
       return new Response(
-        JSON.stringify({ success: true, data: data.data || data || [] }),
+        JSON.stringify({ success: true, data: filteredRemetentes }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -124,10 +158,14 @@ serve(async (req) => {
       }
 
       const data = await response.json();
-      console.log('✅ Destinatários encontrados:', data?.data?.length || data?.length || 0);
+      const destinatarios = data.data || data || [];
+      
+      // Filtrar por clienteId no cliente (a API pode não estar filtrando corretamente)
+      const filteredDestinatarios = destinatarios.filter((d: any) => d.clienteId === clienteId);
+      console.log('✅ Destinatários encontrados:', filteredDestinatarios.length, 'de', destinatarios.length, 'total');
 
       return new Response(
-        JSON.stringify({ success: true, data: data.data || data || [] }),
+        JSON.stringify({ success: true, data: filteredDestinatarios }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
