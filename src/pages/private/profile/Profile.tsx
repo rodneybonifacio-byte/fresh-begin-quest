@@ -129,8 +129,8 @@ const Profile = () => {
             await service.updateProfile(profileData);
         },
         onSuccess: () => {
-            reset();
             setIsEditing(false);
+            setActiveTab('personal');
         },
         onError: (_error) => {
             toastError('Erro ao atualizar perfil:');
@@ -140,8 +140,6 @@ const Profile = () => {
     const onSubmit = async (_data: ProfileFormData) => {
         try {
             await mutation.mutateAsync(_data);
-            setIsEditing(false);
-            setActiveTab('personal');
         } catch (_error) {}
     };
 
