@@ -25,6 +25,13 @@ const VisualizarPdf = lazy(() => import('../pages/site/VisualizarPdf'));
 const CadastroCliente = lazy(() => import('../pages/site/cadastro/cadastro-cliente').then(module => ({ default: module.CadastroCliente })));
 const CadastroRemetente = lazy(() => import('../pages/site/cadastro/cadastro-remetente').then(module => ({ default: module.CadastroRemetente })));
 
+// Conecta+ Pages
+const LandingHome = lazy(() => import('../pages/conecta/LandingHome'));
+const LandingConecta = lazy(() => import('../pages/conecta/LandingConecta'));
+const LoginParceiro = lazy(() => import('../pages/conecta/auth/LoginParceiro'));
+const CadastroParceiro = lazy(() => import('../pages/conecta/auth/CadastroParceiro'));
+const DashboardParceiro = lazy(() => import('../pages/conecta/dashboard/DashboardParceiro'));
+
 // Loading component
 const LoadingFallback = () => (
     <div className="flex items-center justify-center h-screen">
@@ -46,6 +53,7 @@ export const RouterBase = () => {
                 <Routes>
                     {/* Público */}
                     <Route index element={<RootRedirect />} />
+                    <Route path="/home" element={<LandingHome />} />
                     <Route path="/error" element={<ErrorPage id={404} />} />
                     <Route path="*" element={<ErrorPage id={404} />} />
                     <Route path="/relatorio-desempenho" element={<RelatorioDesempenho />} />
@@ -58,6 +66,11 @@ export const RouterBase = () => {
                     <Route path="/manutencao" element={<Manutencao />} />
                     <Route path="/view/pdf/:pdfId/print" element={<VisualizarPdf />} />
 
+                    {/* Conecta+ Routes */}
+                    <Route path="/conecta" element={<LandingConecta />} />
+                    <Route path="/conecta/login" element={<LoginParceiro />} />
+                    <Route path="/conecta/cadastro" element={<CadastroParceiro />} />
+                    <Route path="/conecta/dashboard" element={<DashboardParceiro />} />
                     <Route element={<RotaPublica />}>
                         <Route path="/login" element={<Login />} />
                         <Route path="/recuperar-senha" element={<RecuperarSenha />} />

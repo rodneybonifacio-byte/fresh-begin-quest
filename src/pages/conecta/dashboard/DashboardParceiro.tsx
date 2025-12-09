@@ -23,19 +23,19 @@ interface ParceiroData {
   email: string;
   codigo_parceiro: string;
   link_indicacao: string;
-  total_clientes_ativos: number;
-  total_comissao_acumulada: number;
+  total_clientes_ativos: number | null;
+  total_comissao_acumulada: number | null;
   chave_pix: string | null;
 }
 
 interface ClienteIndicado {
   id: string;
-  cliente_nome: string;
-  cliente_email: string;
+  cliente_nome: string | null;
+  cliente_email: string | null;
   data_associacao: string;
-  status: string;
-  consumo_total: number;
-  comissao_gerada: number;
+  status: string | null;
+  consumo_total: number | null;
+  comissao_gerada: number | null;
 }
 
 export const DashboardParceiro = () => {
