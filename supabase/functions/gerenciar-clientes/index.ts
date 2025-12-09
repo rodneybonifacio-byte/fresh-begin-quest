@@ -130,9 +130,16 @@ serve(async (req) => {
       const data = await response.json();
       const remetentes = data.data || data || [];
       
-      // Filtrar por clienteId no cliente
-      const filteredRemetentes = remetentes.filter((r: any) => r.clienteId === clienteId);
-      console.log('✅ Remetentes encontrados:', filteredRemetentes.length);
+      console.log('📊 Total remetentes da API:', remetentes.length);
+      if (remetentes.length > 0) {
+        console.log('📋 Exemplo de remetente:', JSON.stringify(remetentes[0]));
+      }
+      
+      // Filtrar por clienteId - verificar diferentes formatos possíveis
+      const filteredRemetentes = remetentes.filter((r: any) => 
+        r.clienteId === clienteId || r.cliente_id === clienteId
+      );
+      console.log('✅ Remetentes filtrados:', filteredRemetentes.length);
 
       return new Response(
         JSON.stringify({ success: true, data: filteredRemetentes }),
@@ -160,9 +167,16 @@ serve(async (req) => {
       const data = await response.json();
       const destinatarios = data.data || data || [];
       
-      // Filtrar por clienteId no cliente (a API pode não estar filtrando corretamente)
-      const filteredDestinatarios = destinatarios.filter((d: any) => d.clienteId === clienteId);
-      console.log('✅ Destinatários encontrados:', filteredDestinatarios.length, 'de', destinatarios.length, 'total');
+      console.log('📊 Total destinatários da API:', destinatarios.length);
+      if (destinatarios.length > 0) {
+        console.log('📋 Exemplo de destinatário:', JSON.stringify(destinatarios[0]));
+      }
+      
+      // Filtrar por clienteId - verificar diferentes formatos possíveis
+      const filteredDestinatarios = destinatarios.filter((d: any) => 
+        d.clienteId === clienteId || d.cliente_id === clienteId
+      );
+      console.log('✅ Destinatários filtrados:', filteredDestinatarios.length);
 
       return new Response(
         JSON.stringify({ success: true, data: filteredDestinatarios }),
