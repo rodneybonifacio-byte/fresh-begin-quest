@@ -13,7 +13,8 @@ import { ThemeToggle } from "../../../components/theme/ThemeToggle";
 import { useAddress } from "../../../hooks/useAddress";
 import { ModalBemVindoCadastro } from "../../../components/ModalBemVindoCadastro";
 import { PromoBannerRecarga } from "../../../components/PromoBannerRecarga";
-import { Building2, MapPin, Lock, Check, ChevronRight, ChevronLeft } from "lucide-react";
+import { supabase } from "../../../integrations/supabase/client";
+import { Building2, MapPin, Lock, Check, ChevronRight, ChevronLeft, Loader2, X } from "lucide-react";
 const schemaCadastroCliente = yup.object().shape({
   nomeEmpresa: yup.string().required("O nome da empresa é obrigatório").min(3, "O nome deve ter pelo menos 3 caracteres"),
   nomeResponsavel: yup.string().required("O nome do responsável é obrigatório").min(3, "O nome do responsável deve ter pelo menos 3 caracteres"),
@@ -65,15 +66,54 @@ export const CadastroCliente = () => {
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [posicaoCadastro, setPosicaoCadastro] = useState(0);
   const [codigoParceiro, setCodigoParceiro] = useState<string | null>(null);
+  const [parceiroValidado, setParceiroValidado] = useState<{ valido: boolean; nome: string | null } | null>(null);
+  const [validandoParceiro, setValidandoParceiro] = useState(false);
   const {
     onBuscaCep
   } = useAddress();
+
+  // Validar código do parceiro
+  const validarCodigoParceiro = async (codigo: string) => {
+    if (!codigo || codigo.length < 3) {
+      setParceiroValidado(null);
+      return;
+    }
+    
+    setValidandoParceiro(true);
+    try {
+      const { data, error } = await supabase
+        .from('parceiros')
+        .select('nome, codigo_parceiro, status')
+        .eq('codigo_parceiro', codigo.toUpperCase())
+        .eq('status', 'aprovado')
+        .maybeSingle();
+      
+      if (error) {
+        console.error('Erro ao validar parceiro:', error);
+        setParceiroValidado({ valido: false, nome: null });
+        return;
+      }
+      
+      if (data) {
+        setParceiroValidado({ valido: true, nome: data.nome });
+        console.log('✅ Parceiro validado:', data.nome);
+      } else {
+        setParceiroValidado({ valido: false, nome: null });
+      }
+    } catch (error) {
+      console.error('Erro ao validar parceiro:', error);
+      setParceiroValidado({ valido: false, nome: null });
+    } finally {
+      setValidandoParceiro(false);
+    }
+  };
 
   // Captura código de indicação do parceiro via URL (?ref=CODIGO)
   useEffect(() => {
     const refCode = searchParams.get('ref');
     if (refCode) {
-      setCodigoParceiro(refCode);
+      setCodigoParceiro(refCode.toUpperCase());
+      validarCodigoParceiro(refCode);
       console.log('🔗 Código de indicação capturado:', refCode);
     }
   }, [searchParams]);
@@ -369,17 +409,56 @@ export const CadastroCliente = () => {
                                             labelTitulo="Código de Indicação (opcional)" 
                                             placeholder="Ex: PARCEIRO123" 
                                             value={codigoParceiro || ''}
-                                            onChange={(e) => setCodigoParceiro(e.target.value.toUpperCase() || null)}
+                                            onChange={(e) => {
+                                                const value = e.target.value.toUpperCase() || null;
+                                                setCodigoParceiro(value);
+                                                setParceiroValidado(null);
+                                            }}
+                                            onBlur={() => {
+                                                if (codigoParceiro) {
+                                                    validarCodigoParceiro(codigoParceiro);
+                                                }
+                                            }}
                                         />
-                                        {codigoParceiro && (
-                                            <div className="absolute right-3 top-9 flex items-center gap-1.5 px-2 py-1 bg-primary/10 text-primary text-xs font-medium rounded-full">
+                                        {/* Status da validação */}
+                                        <div className="absolute right-3 top-9">
+                                            {validandoParceiro && (
+                                                <div className="flex items-center gap-1.5 px-2 py-1 bg-muted text-muted-foreground text-xs font-medium rounded-full">
+                                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                                    Validando...
+                                                </div>
+                                            )}
+                                            {!validandoParceiro && parceiroValidado?.valido && (
+                                                <div className="flex items-center gap-1.5 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium rounded-full">
+                                                    <Check className="w-3 h-3" />
+                                                    Válido
+                                                </div>
+                                            )}
+                                            {!validandoParceiro && parceiroValidado && !parceiroValidado.valido && (
+                                                <div className="flex items-center gap-1.5 px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-xs font-medium rounded-full">
+                                                    <X className="w-3 h-3" />
+                                                    Inválido
+                                                </div>
+                                            )}
+                                        </div>
+                                        
+                                        {/* Mensagem de feedback */}
+                                        {parceiroValidado?.valido && parceiroValidado.nome && (
+                                            <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
                                                 <Check className="w-3 h-3" />
-                                                Indicação ativa
-                                            </div>
+                                                Indicado por: <span className="font-semibold">{parceiroValidado.nome}</span>
+                                            </p>
                                         )}
-                                        <p className="text-xs text-muted-foreground mt-1">
-                                            Recebeu um código de um parceiro? Insira aqui para vincular sua conta.
-                                        </p>
+                                        {parceiroValidado && !parceiroValidado.valido && (
+                                            <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                                                Código de parceiro não encontrado ou inativo.
+                                            </p>
+                                        )}
+                                        {!parceiroValidado && (
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                Recebeu um código de um parceiro? Insira aqui para vincular sua conta.
+                                            </p>
+                                        )}
                                     </div>
 
                                     <InputLabel labelTitulo="Celular (WhatsApp) *" placeholder="(00) 9 0000-0000" {...register("celular")} fieldError={errors.celular?.message} maxLength={16} onChange={e => {
