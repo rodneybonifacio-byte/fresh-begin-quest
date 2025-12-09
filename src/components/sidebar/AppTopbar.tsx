@@ -80,7 +80,7 @@ const AppTopbar = observer(({
             {/* Popover de perfil */}
             {showProfilePopover && createPortal(
               <div 
-                className="fixed bg-popover border border-border rounded-lg shadow-xl py-2 min-w-[220px] z-[70]" 
+                className="fixed bg-white dark:bg-slate-800 border border-border rounded-lg shadow-xl py-2 min-w-[220px] z-[70]" 
                 style={{ top: '60px', right: '20px' }}
               >
                 {/* Header do perfil */}
