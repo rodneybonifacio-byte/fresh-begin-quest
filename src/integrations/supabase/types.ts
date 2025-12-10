@@ -190,6 +190,7 @@ export type Database = {
           emissao_id: string
           id: string
           remetente_nome: string | null
+          servico: string | null
         }
         Insert: {
           cliente_id?: string | null
@@ -200,6 +201,7 @@ export type Database = {
           emissao_id: string
           id?: string
           remetente_nome?: string | null
+          servico?: string | null
         }
         Update: {
           cliente_id?: string | null
@@ -210,6 +212,7 @@ export type Database = {
           emissao_id?: string
           id?: string
           remetente_nome?: string | null
+          servico?: string | null
         }
         Relationships: []
       }

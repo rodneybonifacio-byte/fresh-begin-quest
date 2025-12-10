@@ -7,6 +7,7 @@ interface EmissaoResponse {
   id: string
   codigoObjeto: string
   status: string
+  servico?: string
   cliente?: {
     id: string
     nome: string
@@ -139,6 +140,7 @@ async function salvarEmissaoAtrasada(supabase: any, emissao: EmissaoResponse, da
         cliente_id: emissao.cliente?.id || null,
         remetente_nome: emissao.remetenteNome || null,
         destinatario_nome: emissao.destinatario?.nome || null,
+        servico: emissao.servico || null,
       }, {
         onConflict: 'emissao_id',
       })
