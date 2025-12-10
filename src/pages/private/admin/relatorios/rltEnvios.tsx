@@ -1,4 +1,4 @@
-import { DollarSign, Filter, PackageCheck, Printer, ReceiptText, ShoppingCart, Users, Wallet, Download, Bell } from 'lucide-react';
+import { DollarSign, Filter, PackageCheck, Printer, ReceiptText, ShoppingCart, Users, Wallet, Download, Bell, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { LoadSpinner } from '../../../../components/loading';
@@ -156,6 +156,30 @@ const RltEnvios = () => {
         }
     };
 
+    const handleAtualizarAtrasos = async () => {
+        try {
+            setIsLoading(true);
+            const { data, error } = await supabase.functions.invoke('cron-verificar-atrasos', {
+                body: { manual: true }
+            });
+            
+            if (error) {
+                toast.error('Erro ao atualizar atrasos');
+                console.error('Erro:', error);
+                return;
+            }
+            
+            toast.success(`Atrasos atualizados: ${data?.total_atrasos_registrados || 0} envios em atraso detectados`);
+            // Recarregar a página para mostrar os dados atualizados
+            window.location.reload();
+        } catch (error) {
+            console.error('Erro ao atualizar atrasos:', error);
+            toast.error('Erro ao atualizar atrasos');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const handleExportToExcel = async () => {
         try {
             setIsLoading(true);
@@ -248,12 +272,20 @@ const RltEnvios = () => {
             subTitulo="Acompanhe os envios realizados, visualize detalhes e estatísticas em geral."
             isButton
             button={[
-                ...(tab === 'EM_ATRASO' ? [{
-                    label: 'Enviar Avisos',
-                    onClick: handleEnviarAvisosAtraso,
-                    icon: <Bell size={22} />,
-                    bgColor: 'bg-orange-600',
-                }] : []),
+                ...(tab === 'EM_ATRASO' ? [
+                    {
+                        label: 'Atualizar Atrasos',
+                        onClick: handleAtualizarAtrasos,
+                        icon: <RefreshCw size={22} />,
+                        bgColor: 'bg-blue-600',
+                    },
+                    {
+                        label: 'Enviar Avisos',
+                        onClick: handleEnviarAvisosAtraso,
+                        icon: <Bell size={22} />,
+                        bgColor: 'bg-orange-600',
+                    }
+                ] : []),
                 {
                     label: 'Exportar XLSX',
                     onClick: handleExportToExcel,
