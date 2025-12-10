@@ -11,6 +11,7 @@ export interface EmissaoEmAtraso {
   cliente_id: string | null;
   remetente_nome: string | null;
   destinatario_nome: string | null;
+  servico: string | null;
   diasAtraso?: number;
 }
 
