@@ -404,8 +404,8 @@ const RltEnvios = () => {
                                             </div>
                                         ),
                                     }] : []),
-                                    // Tipo de Frete (PAC/SEDEX)
-                                    {
+                                    // Tipo de Frete (PAC/SEDEX) - apenas na aba EM_ATRASO
+                                    ...(tab === 'EM_ATRASO' ? [{
                                         header: 'Tipo Frete',
                                         accessor: (row: IEmissao) => {
                                             if (!row.servico) return '-';
@@ -422,7 +422,7 @@ const RltEnvios = () => {
                                                 </span>
                                             );
                                         },
-                                    },
+                                    }] : []),
                                     {
                                         header: 'Remetente',
                                         accessor: (row) => (
