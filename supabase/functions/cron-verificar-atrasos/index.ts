@@ -1,7 +1,20 @@
+// @ts-nocheck
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+
 interface EmissaoResponse {
   id: string
   codigoObjeto: string
   status: string
+  cliente?: {
+    id: string
+    nome: string
+  }
+  remetenteNome?: string
+  destinatario?: {
+    nome: string
+  }
 }
 
 interface RastreioData {
@@ -113,31 +126,32 @@ async function fetchRastreio(token: string, codigoObjeto: string): Promise<Rastr
   }
 }
 
-async function atualizarStatusEmissao(token: string, emissaoId: string): Promise<boolean> {
-  const baseApiUrl = Deno.env.get('BASE_API_URL')
-
+async function salvarEmissaoAtrasada(supabase: any, emissao: EmissaoResponse, dataPrevisao: string): Promise<boolean> {
   try {
-    const response = await fetch(
-      `${baseApiUrl}/emissoes/admin/${emissaoId}`,
-      {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: 'EM_ATRASO' }),
-      }
-    )
+    // Upsert para evitar duplicatas
+    const { error } = await supabase
+      .from('emissoes_em_atraso')
+      .upsert({
+        emissao_id: emissao.id,
+        codigo_objeto: emissao.codigoObjeto,
+        data_previsao_entrega: new Date(dataPrevisao).toISOString(),
+        detectado_em: new Date().toISOString(),
+        cliente_id: emissao.cliente?.id || null,
+        remetente_nome: emissao.remetenteNome || null,
+        destinatario_nome: emissao.destinatario?.nome || null,
+      }, {
+        onConflict: 'emissao_id',
+      })
 
-    if (!response.ok) {
-      console.warn(`[CRON-ATRASOS] Erro ao atualizar status da emissão ${emissaoId}: ${response.status}`)
+    if (error) {
+      console.warn(`[CRON-ATRASOS] Erro ao salvar emissão ${emissao.codigoObjeto}:`, error.message)
       return false
     }
 
-    console.log(`[CRON-ATRASOS] Status atualizado para EM_ATRASO: ${emissaoId}`)
+    console.log(`[CRON-ATRASOS] ✅ Emissão ${emissao.codigoObjeto} salva na tabela emissoes_em_atraso`)
     return true
   } catch (err) {
-    console.warn(`[CRON-ATRASOS] Exceção ao atualizar emissão ${emissaoId}:`, err)
+    console.warn(`[CRON-ATRASOS] Exceção ao salvar emissão ${emissao.codigoObjeto}:`, err)
     return false
   }
 }
@@ -175,7 +189,7 @@ function isAtrasado(dataPrevisao: Date): boolean {
   return hoje > dataPrevisao
 }
 
-Deno.serve(async (req: Request) => {
+serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -184,6 +198,11 @@ Deno.serve(async (req: Request) => {
   try {
     console.log('[CRON-ATRASOS] Iniciando verificação de atrasos...')
     const startTime = Date.now()
+
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     // Login como admin
     const token = await loginAdmin()
@@ -231,8 +250,9 @@ Deno.serve(async (req: Request) => {
       if (isAtrasado(dataPrevisao)) {
         console.log(`[CRON-ATRASOS] Emissão ${emissao.codigoObjeto} está atrasada! Previsão: ${rastreio.data.dataPrevisaoEntrega}`)
         
-        const atualizado = await atualizarStatusEmissao(token, emissao.id)
-        if (atualizado) {
+        // Salvar na tabela do Supabase em vez de atualizar API externa
+        const salvo = await salvarEmissaoAtrasada(supabase, emissao, rastreio.data.dataPrevisaoEntrega)
+        if (salvo) {
           totalAtrasadas++
         }
       }
