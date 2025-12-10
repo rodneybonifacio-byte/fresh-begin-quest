@@ -25,6 +25,7 @@ import { ModalViewPDF } from '../../emissao/ModalViewPDF';
 import { ModalAtualizarPrecos } from './ModalAtualizarPrecos';
 import { exportEmissoesToExcel } from '../../../../utils/exportToExcel';
 import { fetchEmissoesEmAtraso, type EmissaoEmAtraso } from '../../../../services/EmissoesEmAtrasoService';
+import { differenceInDays, parseISO, format } from 'date-fns';
 
 const RltEnvios = () => {
     const config = useGlobalConfig();
@@ -364,9 +365,10 @@ const RltEnvios = () => {
                                             </div>
                                         ),
                                     },
-                                    {
+                                    // Transportadora - oculta na aba EM_ATRASO
+                                    ...(tab !== 'EM_ATRASO' ? [{
                                         header: 'Transportadora',
-                                        accessor: (row) => (
+                                        accessor: (row: IEmissao) => (
                                             <div className="flex flex-col gap-0.5">
                                                 <span className="font-medium">{row.transportadora}</span>
                                                 {row.transportadora?.toLocaleUpperCase() === 'CORREIOS' && (
@@ -374,7 +376,7 @@ const RltEnvios = () => {
                                                 )}
                                             </div>
                                         ),
-                                    },
+                                    }] : []),
                                     {
                                         header: 'Remetente',
                                         accessor: (row) => (
@@ -408,9 +410,10 @@ const RltEnvios = () => {
                                             </div>
                                         ),
                                     },
-                                    {
+                                    // Valores - oculta na aba EM_ATRASO
+                                    ...(tab !== 'EM_ATRASO' ? [{
                                         header: 'Valores',
-                                        accessor: (row) => (
+                                        accessor: (row: IEmissao) => (
                                             <div className="flex flex-col gap-0.5">
                                                 <span className="font-semibold text-green-600 dark:text-green-400">
                                                     R$ {row.valor || 0}
@@ -423,10 +426,45 @@ const RltEnvios = () => {
                                                 </small>
                                             </div>
                                         ),
-                                    },
-                                    {
+                                    }] : []),
+                                    // Previsão Entrega - só na aba EM_ATRASO
+                                    ...(tab === 'EM_ATRASO' ? [{
+                                        header: 'Previsão Entrega',
+                                        accessor: (row: IEmissao) => {
+                                            const previsao = (row as any).dataPrevisaoEntrega;
+                                            if (!previsao) return '-';
+                                            try {
+                                                const date = parseISO(previsao);
+                                                return format(date, 'dd/MM/yyyy');
+                                            } catch {
+                                                return previsao;
+                                            }
+                                        },
+                                    }] : []),
+                                    // Dias em Atraso - só na aba EM_ATRASO
+                                    ...(tab === 'EM_ATRASO' ? [{
+                                        header: 'Dias em Atraso',
+                                        accessor: (row: IEmissao) => {
+                                            const previsao = (row as any).dataPrevisaoEntrega;
+                                            if (!previsao) return '-';
+                                            try {
+                                                const previsaoDate = parseISO(previsao);
+                                                const hoje = new Date();
+                                                const diasAtraso = differenceInDays(hoje, previsaoDate);
+                                                return (
+                                                    <span className={`font-semibold ${diasAtraso > 7 ? 'text-red-600' : diasAtraso > 3 ? 'text-orange-600' : 'text-yellow-600'}`}>
+                                                        {diasAtraso} {diasAtraso === 1 ? 'dia' : 'dias'}
+                                                    </span>
+                                                );
+                                            } catch {
+                                                return '-';
+                                            }
+                                        },
+                                    }] : []),
+                                    // NF - oculta na aba EM_ATRASO
+                                    ...(tab !== 'EM_ATRASO' ? [{
                                         header: 'NF',
-                                        accessor: (row) => (
+                                        accessor: (row: IEmissao) => (
                                             <div className="flex flex-col gap-0.5">
                                                 {row.numeroNotaFiscal && (
                                                     <span className="text-sm">{row.numeroNotaFiscal}</span>
@@ -438,7 +476,7 @@ const RltEnvios = () => {
                                                 )}
                                             </div>
                                         ),
-                                    },
+                                    }] : []),
                                     {
                                         header: 'Status',
                                         accessor: (row) => (
@@ -449,16 +487,17 @@ const RltEnvios = () => {
                                             />
                                         ),
                                     },
-                                    {
-                                        header: 'Status',
-                                        accessor: (row) => (
+                                    // Status Faturamento - oculta na aba EM_ATRASO
+                                    ...(tab !== 'EM_ATRASO' ? [{
+                                        header: 'Status Faturamento',
+                                        accessor: (row: IEmissao) => (
                                             <StatusBadgeEmissao
                                                 status={row.statusFaturamento}
                                                 mensagensErrorPostagem={row.mensagensErrorPostagem}
                                                 handleOnViewErroPostagem={handleOnViewErroPostagem}
                                             />
                                         ),
-                                    },
+                                    }] : []),
                                     {
                                         header: 'Criado em',
                                         accessor: (row) => {
