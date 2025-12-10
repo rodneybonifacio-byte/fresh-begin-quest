@@ -180,6 +180,39 @@ export type Database = {
         }
         Relationships: []
       }
+      emissoes_em_atraso: {
+        Row: {
+          cliente_id: string | null
+          codigo_objeto: string
+          data_previsao_entrega: string | null
+          destinatario_nome: string | null
+          detectado_em: string
+          emissao_id: string
+          id: string
+          remetente_nome: string | null
+        }
+        Insert: {
+          cliente_id?: string | null
+          codigo_objeto: string
+          data_previsao_entrega?: string | null
+          destinatario_nome?: string | null
+          detectado_em?: string
+          emissao_id: string
+          id?: string
+          remetente_nome?: string | null
+        }
+        Update: {
+          cliente_id?: string | null
+          codigo_objeto?: string
+          data_previsao_entrega?: string | null
+          destinatario_nome?: string | null
+          detectado_em?: string
+          emissao_id?: string
+          id?: string
+          remetente_nome?: string | null
+        }
+        Relationships: []
+      }
       etiquetas_pendentes_correcao: {
         Row: {
           altura: number | null
