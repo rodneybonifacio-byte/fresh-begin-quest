@@ -1,0 +1,272 @@
+interface EmissaoResponse {
+  id: string
+  codigoObjeto: string
+  status: string
+}
+
+interface RastreioData {
+  codigoObjeto: string
+  dataPrevisaoEntrega: string
+  eventos: Array<{
+    codigo: string
+    descricao: string
+    date: string
+  }>
+}
+
+interface RastreioResponse {
+  data: RastreioData
+}
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+async function loginAdmin(): Promise<string> {
+  const baseApiUrl = Deno.env.get('BASE_API_URL')
+  const email = Deno.env.get('API_ADMIN_EMAIL')
+  const password = Deno.env.get('API_ADMIN_PASSWORD')
+
+  console.log('[CRON-ATRASOS] Iniciando login admin...')
+
+  const response = await fetch(`${baseApiUrl}/auth/sign-in`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  })
+
+  if (!response.ok) {
+    throw new Error(`Falha no login admin: ${response.status}`)
+  }
+
+  const data = await response.json()
+  console.log('[CRON-ATRASOS] Login admin bem-sucedido')
+  return data.accessToken || data.token
+}
+
+async function fetchEmissoesEmTransito(token: string): Promise<EmissaoResponse[]> {
+  const baseApiUrl = Deno.env.get('BASE_API_URL')
+  const allEmissoes: EmissaoResponse[] = []
+  let offset = 0
+  const limit = 100
+  let hasMore = true
+
+  console.log('[CRON-ATRASOS] Buscando emissões em trânsito...')
+
+  while (hasMore) {
+    const response = await fetch(
+      `${baseApiUrl}/emissoes/admin?status=EM_TRANSITO&limit=${limit}&offset=${offset}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    )
+
+    if (!response.ok) {
+      console.error(`[CRON-ATRASOS] Erro ao buscar emissões: ${response.status}`)
+      break
+    }
+
+    const result = await response.json()
+    const emissoes = result.data || []
+    
+    allEmissoes.push(...emissoes)
+    
+    if (emissoes.length < limit) {
+      hasMore = false
+    } else {
+      offset += limit
+    }
+  }
+
+  console.log(`[CRON-ATRASOS] Total de emissões em trânsito: ${allEmissoes.length}`)
+  return allEmissoes
+}
+
+async function fetchRastreio(token: string, codigoObjeto: string): Promise<RastreioResponse | null> {
+  const baseApiUrl = Deno.env.get('BASE_API_URL')
+
+  try {
+    const response = await fetch(
+      `${baseApiUrl}/rastrear?codigo=${codigoObjeto}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    )
+
+    if (!response.ok) {
+      console.warn(`[CRON-ATRASOS] Erro ao rastrear ${codigoObjeto}: ${response.status}`)
+      return null
+    }
+
+    const result = await response.json()
+    return result
+  } catch (err) {
+    console.warn(`[CRON-ATRASOS] Exceção ao rastrear ${codigoObjeto}:`, err)
+    return null
+  }
+}
+
+async function atualizarStatusEmissao(token: string, emissaoId: string): Promise<boolean> {
+  const baseApiUrl = Deno.env.get('BASE_API_URL')
+
+  try {
+    const response = await fetch(
+      `${baseApiUrl}/emissoes/${emissaoId}/atualizar-status`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'EM_ATRASO' }),
+      }
+    )
+
+    if (!response.ok) {
+      console.warn(`[CRON-ATRASOS] Erro ao atualizar status da emissão ${emissaoId}: ${response.status}`)
+      return false
+    }
+
+    console.log(`[CRON-ATRASOS] Status atualizado para EM_ATRASO: ${emissaoId}`)
+    return true
+  } catch (err) {
+    console.warn(`[CRON-ATRASOS] Exceção ao atualizar emissão ${emissaoId}:`, err)
+    return false
+  }
+}
+
+function parseDataPrevisao(dataPrevisao: string): Date | null {
+  if (!dataPrevisao) return null
+
+  // Tenta parsear diferentes formatos
+  // Formato ISO: 2024-12-15T00:00:00
+  // Formato BR: 15/12/2024
+  let parsed: Date | null = null
+
+  if (dataPrevisao.includes('T')) {
+    parsed = new Date(dataPrevisao)
+  } else if (dataPrevisao.includes('/')) {
+    const [dia, mes, ano] = dataPrevisao.split('/')
+    parsed = new Date(parseInt(ano), parseInt(mes) - 1, parseInt(dia))
+  } else if (dataPrevisao.includes('-')) {
+    parsed = new Date(dataPrevisao)
+  }
+
+  if (parsed && isNaN(parsed.getTime())) {
+    return null
+  }
+
+  return parsed
+}
+
+function isAtrasado(dataPrevisao: Date): boolean {
+  const hoje = new Date()
+  // Zerar horas para comparar apenas datas
+  hoje.setHours(0, 0, 0, 0)
+  dataPrevisao.setHours(0, 0, 0, 0)
+  
+  return hoje > dataPrevisao
+}
+
+Deno.serve(async (req: Request) => {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders })
+  }
+
+  try {
+    console.log('[CRON-ATRASOS] Iniciando verificação de atrasos...')
+    const startTime = Date.now()
+
+    // Login como admin
+    const token = await loginAdmin()
+
+    // Buscar emissões em trânsito
+    const emissoesEmTransito = await fetchEmissoesEmTransito(token)
+
+    if (emissoesEmTransito.length === 0) {
+      console.log('[CRON-ATRASOS] Nenhuma emissão em trânsito encontrada')
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: 'Nenhuma emissão em trânsito para verificar',
+          totalVerificadas: 0,
+          totalAtrasadas: 0 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    let totalAtrasadas = 0
+    let totalVerificadas = 0
+
+    // Processar cada emissão
+    for (const emissao of emissoesEmTransito) {
+      if (!emissao.codigoObjeto) continue
+
+      totalVerificadas++
+
+      // Buscar rastreio
+      const rastreio = await fetchRastreio(token, emissao.codigoObjeto)
+      
+      if (!rastreio?.data?.dataPrevisaoEntrega) {
+        console.log(`[CRON-ATRASOS] Sem previsão de entrega para ${emissao.codigoObjeto}`)
+        continue
+      }
+
+      const dataPrevisao = parseDataPrevisao(rastreio.data.dataPrevisaoEntrega)
+      
+      if (!dataPrevisao) {
+        console.log(`[CRON-ATRASOS] Não foi possível parsear data: ${rastreio.data.dataPrevisaoEntrega}`)
+        continue
+      }
+
+      if (isAtrasado(dataPrevisao)) {
+        console.log(`[CRON-ATRASOS] Emissão ${emissao.codigoObjeto} está atrasada! Previsão: ${rastreio.data.dataPrevisaoEntrega}`)
+        
+        const atualizado = await atualizarStatusEmissao(token, emissao.id)
+        if (atualizado) {
+          totalAtrasadas++
+        }
+      }
+
+      // Delay para evitar rate limiting
+      await new Promise(resolve => setTimeout(resolve, 200))
+    }
+
+    const duration = Date.now() - startTime
+    console.log(`[CRON-ATRASOS] Verificação concluída em ${duration}ms. Total verificadas: ${totalVerificadas}, Atrasadas: ${totalAtrasadas}`)
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: 'Verificação de atrasos concluída',
+        totalVerificadas,
+        totalAtrasadas,
+        durationMs: duration
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+    console.error('[CRON-ATRASOS] Erro:', errorMessage)
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: errorMessage 
+      }),
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    )
+  }
+})

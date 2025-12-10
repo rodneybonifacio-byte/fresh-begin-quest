@@ -104,3 +104,6 @@ verify_jwt = false
 
 [functions.remover-saldo-manual]
 verify_jwt = false
+
+[functions.cron-verificar-atrasos]
+verify_jwt = false
