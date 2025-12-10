@@ -107,3 +107,6 @@ verify_jwt = false
 
 [functions.cron-verificar-atrasos]
 verify_jwt = false
+
+[functions.cron-aviso-atraso]
+verify_jwt = false
