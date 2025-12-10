@@ -24,6 +24,7 @@ import { formatCpfCnpj } from '../../../../utils/lib.formats';
 import { ModalViewPDF } from '../../emissao/ModalViewPDF';
 import { ModalAtualizarPrecos } from './ModalAtualizarPrecos';
 import { exportEmissoesToExcel } from '../../../../utils/exportToExcel';
+import { fetchEmissoesEmAtraso, type EmissaoEmAtraso } from '../../../../services/EmissoesEmAtrasoService';
 
 const RltEnvios = () => {
     const config = useGlobalConfig();
@@ -55,6 +56,38 @@ const RltEnvios = () => {
         isLoading,
         isError,
     } = useFetchQuery<IResponse<IEmissao[]>>(['emissoes', filtros, 'admin', page, tab], async () => {
+        // Para EM_ATRASO, buscar da tabela do Supabase
+        if (tab === 'EM_ATRASO') {
+            const atrasadas = await fetchEmissoesEmAtraso();
+            const mapped = atrasadas.map((atraso: EmissaoEmAtraso) => ({
+                id: atraso.emissao_id,
+                codigoObjeto: atraso.codigo_objeto,
+                status: 'EM_ATRASO',
+                remetenteNome: atraso.remetente_nome || '',
+                destinatario: atraso.destinatario_nome ? { nome: atraso.destinatario_nome } : undefined,
+                dataPrevisaoEntrega: atraso.data_previsao_entrega || undefined,
+                clienteId: atraso.cliente_id || undefined,
+            })) as unknown as IEmissao[];
+            
+            // Aplicar paginação local
+            const start = (page - 1) * perPage;
+            const end = start + perPage;
+            const paginatedData = mapped.slice(start, end);
+            
+            return {
+                data: paginatedData,
+                meta: {
+                    totalRecords: mapped.length,
+                    totalPages: Math.ceil(mapped.length / perPage),
+                    currentPage: page,
+                    nextPage: page < Math.ceil(mapped.length / perPage) ? page + 1 : null,
+                    prevPage: page > 1 ? page - 1 : null,
+                    recordsOnPage: paginatedData.length,
+                }
+            } as IResponse<IEmissao[]>;
+        }
+        
+        // Para outros status, buscar da API normalmente
         const params: {
             limit: number;
             offset: number;
