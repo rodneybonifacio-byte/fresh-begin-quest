@@ -30,7 +30,7 @@ async function loginAdmin(): Promise<string> {
 
   console.log('[CRON-ATRASOS] Iniciando login admin...')
 
-  const response = await fetch(`${baseApiUrl}/auth/sign-in`, {
+  const response = await fetch(`${baseApiUrl}/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
@@ -42,7 +42,7 @@ async function loginAdmin(): Promise<string> {
 
   const data = await response.json()
   console.log('[CRON-ATRASOS] Login admin bem-sucedido')
-  return data.accessToken || data.token
+  return data.token
 }
 
 async function fetchEmissoesEmTransito(token: string): Promise<EmissaoResponse[]> {
@@ -118,7 +118,7 @@ async function atualizarStatusEmissao(token: string, emissaoId: string): Promise
 
   try {
     const response = await fetch(
-      `${baseApiUrl}/emissoes/${emissaoId}/atualizar-status`,
+      `${baseApiUrl}/emissoes/admin/${emissaoId}`,
       {
         method: 'PATCH',
         headers: {
