@@ -1,4 +1,4 @@
-import { DollarSign, Filter, PackageCheck, Printer, ReceiptText, ShoppingCart, Users, Wallet, Download } from 'lucide-react';
+import { DollarSign, Filter, PackageCheck, Printer, ReceiptText, ShoppingCart, Users, Wallet, Download, Bell } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { LoadSpinner } from '../../../../components/loading';
@@ -26,6 +26,8 @@ import { ModalAtualizarPrecos } from './ModalAtualizarPrecos';
 import { exportEmissoesToExcel } from '../../../../utils/exportToExcel';
 import { fetchEmissoesEmAtraso, type EmissaoEmAtraso } from '../../../../services/EmissoesEmAtrasoService';
 import { differenceInDays, parseISO, format } from 'date-fns';
+import { supabase } from '../../../../integrations/supabase/client';
+import { toast } from 'sonner';
 
 const RltEnvios = () => {
     const config = useGlobalConfig();
@@ -132,6 +134,28 @@ const RltEnvios = () => {
         setIsFilterOpen((prev) => !prev);
     };
 
+    const handleEnviarAvisosAtraso = async () => {
+        try {
+            setIsLoading(true);
+            const { data, error } = await supabase.functions.invoke('cron-aviso-atraso', {
+                body: { manual: true }
+            });
+            
+            if (error) {
+                toast.error('Erro ao enviar avisos de atraso');
+                console.error('Erro:', error);
+                return;
+            }
+            
+            toast.success(`Avisos enviados: ${data?.avisos_enviados || 0} | Falhas: ${data?.falhas || 0}`);
+        } catch (error) {
+            console.error('Erro ao disparar avisos:', error);
+            toast.error('Erro ao enviar avisos de atraso');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const handleExportToExcel = async () => {
         try {
             setIsLoading(true);
@@ -224,6 +248,12 @@ const RltEnvios = () => {
             subTitulo="Acompanhe os envios realizados, visualize detalhes e estatísticas em geral."
             isButton
             button={[
+                ...(tab === 'EM_ATRASO' ? [{
+                    label: 'Enviar Avisos',
+                    onClick: handleEnviarAvisosAtraso,
+                    icon: <Bell size={22} />,
+                    bgColor: 'bg-orange-600',
+                }] : []),
                 {
                     label: 'Exportar XLSX',
                     onClick: handleExportToExcel,
