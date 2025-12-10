@@ -401,11 +401,27 @@ const RltEnvios = () => {
                                         accessor: (row: IEmissao) => (
                                             <div className="flex flex-col gap-0.5">
                                                 <span className="font-medium">{row.transportadora}</span>
-                                                {row.transportadora?.toLocaleUpperCase() === 'CORREIOS' && (
-                                                    <small className="text-slate-500 dark:text-slate-400">{row.servico}</small>
-                                                )}
                                             </div>
                                         ),
+                                    }] : []),
+                                    // Tipo de Frete (PAC/SEDEX) - oculta na aba EM_ATRASO
+                                    ...(tab !== 'EM_ATRASO' ? [{
+                                        header: 'Tipo Frete',
+                                        accessor: (row: IEmissao) => {
+                                            if (!row.servico) return '-';
+                                            const servico = row.servico.toUpperCase();
+                                            const isPac = servico.includes('PAC');
+                                            const isSedex = servico.includes('SEDEX');
+                                            return (
+                                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                                    isSedex ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' :
+                                                    isPac ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
+                                                    'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                                                }`}>
+                                                    {row.servico}
+                                                </span>
+                                            );
+                                        },
                                     }] : []),
                                     {
                                         header: 'Remetente',
