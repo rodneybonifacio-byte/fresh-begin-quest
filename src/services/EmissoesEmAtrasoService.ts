@@ -1,5 +1,6 @@
 import { supabase } from "../integrations/supabase/client";
 import type { IEmissao } from "../types/IEmissao";
+import { differenceInDays, parseISO } from "date-fns";
 
 export interface EmissaoEmAtraso {
   id: string;
@@ -10,20 +11,39 @@ export interface EmissaoEmAtraso {
   cliente_id: string | null;
   remetente_nome: string | null;
   destinatario_nome: string | null;
+  diasAtraso?: number;
 }
 
 export async function fetchEmissoesEmAtraso(): Promise<EmissaoEmAtraso[]> {
   const { data, error } = await supabase
     .from('emissoes_em_atraso')
-    .select('*')
-    .order('detectado_em', { ascending: false });
+    .select('*');
 
   if (error) {
     console.error('Erro ao buscar emissões em atraso:', error);
     return [];
   }
 
-  return data || [];
+  const hoje = new Date();
+  
+  // Calcular dias de atraso, filtrar máximo 30 dias e ordenar do mais atrasado para menos
+  const processedData = (data || [])
+    .map((item) => {
+      let diasAtraso = 0;
+      if (item.data_previsao_entrega) {
+        try {
+          const dataPrevisao = parseISO(item.data_previsao_entrega);
+          diasAtraso = differenceInDays(hoje, dataPrevisao);
+        } catch {
+          diasAtraso = 0;
+        }
+      }
+      return { ...item, diasAtraso };
+    })
+    .filter((item) => item.diasAtraso > 0 && item.diasAtraso <= 30) // Apenas atrasos de 1 a 30 dias
+    .sort((a, b) => b.diasAtraso - a.diasAtraso); // Ordenar do mais atrasado para o menos atrasado
+
+  return processedData;
 }
 
 export async function getEmissoesEmAtrasoIds(): Promise<string[]> {
