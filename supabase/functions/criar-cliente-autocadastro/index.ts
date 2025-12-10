@@ -489,128 +489,98 @@ serve(async (req: Request) => {
     }
 
     // ============================================
-    // PASSO 7: Contador e crédito bônus
+    // PASSO 7: Registrar origem do cadastro (sem crédito bônus - desativado)
     // ============================================
     let posicaoCadastro = 0
     let elegivelPremio = false
     let creditoAdicionado = false
     
     if (supabaseUrl && supabaseServiceKey) {
-      console.log('📊 Atualizando contador de cadastros...')
+      console.log('📊 Registrando origem do cadastro...')
       
       try {
-        // Incrementar contador
-        const incrementResponse = await fetch(
-          `${supabaseUrl}/rest/v1/rpc/incrementar_contador_cadastro`,
+        // Registrar origem do cadastro
+        const origemResponse = await fetch(
+          `${supabaseUrl}/rest/v1/cadastros_origem`,
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'apikey': supabaseServiceKey,
               'Authorization': `Bearer ${supabaseServiceKey}`,
+              'Prefer': 'return=minimal',
             },
-            body: JSON.stringify({}),
+            body: JSON.stringify({
+              cliente_id: clienteId,
+              origem: body.codigoParceiro ? `conecta_${body.codigoParceiro}` : 'autocadastro',
+              nome_cliente: body.nomeEmpresa,
+              email_cliente: body.email,
+              telefone_cliente: body.celular,
+            }),
           }
         )
         
-        if (incrementResponse.ok) {
-          posicaoCadastro = await incrementResponse.json()
-          elegivelPremio = posicaoCadastro <= 100
-          console.log(`✅ Posição: ${posicaoCadastro}, Elegível: ${elegivelPremio}`)
+        if (origemResponse.ok) {
+          console.log('✅ Origem do cadastro registrada')
+        }
+
+        // ============================================
+        // PASSO 7.1: Vincular cliente ao parceiro Conecta+
+        // ============================================
+        if (body.codigoParceiro && clienteId) {
+          console.log('🔗 Vinculando cliente ao parceiro Conecta+:', body.codigoParceiro)
           
-          // REGRA 1: Se está entre os 100 primeiros, adiciona R$50
-          if (elegivelPremio && clienteId) {
-            console.log('🎁 Adicionando R$50 de crédito bônus para cliente:', clienteId)
-            
-            // Inserir diretamente na tabela transacoes_credito
-            const insertCreditoResponse = await fetch(
-              `${supabaseUrl}/rest/v1/transacoes_credito`,
-              {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'apikey': supabaseServiceKey,
-                  'Authorization': `Bearer ${supabaseServiceKey}`,
-                  'Prefer': 'return=minimal',
-                },
-                body: JSON.stringify({
-                  cliente_id: clienteId,
-                  tipo: 'recarga',
-                  valor: 50,
-                  descricao: `🎁 Bônus dos 100 primeiros - Posição #${posicaoCadastro}`,
-                  status: 'consumido',
-                  cobrada: false,
-                }),
-              }
-            )
-            
-            if (insertCreditoResponse.ok) {
-              creditoAdicionado = true
-              console.log('✅ Crédito bônus adicionado com sucesso!')
-            } else {
-              const errorText = await insertCreditoResponse.text()
-              console.error('⚠️ Erro ao adicionar crédito bônus:', errorText, 'Status:', insertCreditoResponse.status)
-            }
-          } else {
-            console.log('ℹ️ Cliente não elegível para bônus ou clienteId inválido. Elegível:', elegivelPremio, 'ClienteId:', clienteId)
-          }
-          
-          // Registrar origem do cadastro
-          const origemResponse = await fetch(
-            `${supabaseUrl}/rest/v1/cadastros_origem`,
+          // Buscar parceiro pelo código
+          const buscarParceiroResponse = await fetch(
+            `${supabaseUrl}/rest/v1/parceiros?codigo_parceiro=eq.${encodeURIComponent(body.codigoParceiro)}&select=id,nome,email`,
             {
-              method: 'POST',
+              method: 'GET',
               headers: {
                 'Content-Type': 'application/json',
                 'apikey': supabaseServiceKey,
                 'Authorization': `Bearer ${supabaseServiceKey}`,
-                'Prefer': 'return=minimal',
               },
-              body: JSON.stringify({
-                cliente_id: clienteId,
-                origem: body.codigoParceiro ? `conecta_${body.codigoParceiro}` : 'autocadastro',
-                nome_cliente: body.nomeEmpresa,
-                email_cliente: body.email,
-                telefone_cliente: body.celular,
-              }),
             }
           )
           
-          if (origemResponse.ok) {
-            console.log('✅ Origem do cadastro registrada')
-          }
-
-          // ============================================
-          // PASSO 7.1: Vincular cliente ao parceiro Conecta+
-          // ============================================
-          if (body.codigoParceiro && clienteId) {
-            console.log('🔗 Vinculando cliente ao parceiro Conecta+:', body.codigoParceiro)
+          if (buscarParceiroResponse.ok) {
+            const parceiros = await buscarParceiroResponse.json()
             
-            // Buscar parceiro pelo código
-            const buscarParceiroResponse = await fetch(
-              `${supabaseUrl}/rest/v1/parceiros?codigo_parceiro=eq.${encodeURIComponent(body.codigoParceiro)}&select=id,nome,email`,
-              {
-                method: 'GET',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'apikey': supabaseServiceKey,
-                  'Authorization': `Bearer ${supabaseServiceKey}`,
-                },
-              }
-            )
-            
-            if (buscarParceiroResponse.ok) {
-              const parceiros = await buscarParceiroResponse.json()
+            if (parceiros && parceiros.length > 0) {
+              const parceiro = parceiros[0]
+              console.log('✅ Parceiro encontrado:', parceiro.nome, parceiro.id)
               
-              if (parceiros && parceiros.length > 0) {
-                const parceiro = parceiros[0]
-                console.log('✅ Parceiro encontrado:', parceiro.nome, parceiro.id)
+              // Inserir na tabela clientes_indicados
+              const vincularClienteResponse = await fetch(
+                `${supabaseUrl}/rest/v1/clientes_indicados`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': supabaseServiceKey,
+                    'Authorization': `Bearer ${supabaseServiceKey}`,
+                    'Prefer': 'return=minimal',
+                  },
+                  body: JSON.stringify({
+                    parceiro_id: parceiro.id,
+                    cliente_id: clienteId,
+                    cliente_nome: body.nomeEmpresa,
+                    cliente_email: body.email,
+                    status: 'ativo',
+                    consumo_total: 0,
+                    comissao_gerada: 0,
+                  }),
+                }
+              )
+              
+              if (vincularClienteResponse.ok) {
+                console.log('✅ Cliente vinculado ao parceiro Conecta+ com sucesso!')
                 
-                // Inserir na tabela clientes_indicados
-                const vincularClienteResponse = await fetch(
-                  `${supabaseUrl}/rest/v1/clientes_indicados`,
+                // Atualizar contador de clientes ativos do parceiro
+                const updateParceiroResponse = await fetch(
+                  `${supabaseUrl}/rest/v1/parceiros?id=eq.${parceiro.id}`,
                   {
-                    method: 'POST',
+                    method: 'PATCH',
                     headers: {
                       'Content-Type': 'application/json',
                       'apikey': supabaseServiceKey,
@@ -618,55 +588,28 @@ serve(async (req: Request) => {
                       'Prefer': 'return=minimal',
                     },
                     body: JSON.stringify({
-                      parceiro_id: parceiro.id,
-                      cliente_id: clienteId,
-                      cliente_nome: body.nomeEmpresa,
-                      cliente_email: body.email,
-                      status: 'ativo',
-                      consumo_total: 0,
-                      comissao_gerada: 0,
+                      total_clientes_ativos: (parceiro.total_clientes_ativos || 0) + 1,
                     }),
                   }
                 )
                 
-                if (vincularClienteResponse.ok) {
-                  console.log('✅ Cliente vinculado ao parceiro Conecta+ com sucesso!')
-                  
-                  // Atualizar contador de clientes ativos do parceiro
-                  const updateParceiroResponse = await fetch(
-                    `${supabaseUrl}/rest/v1/parceiros?id=eq.${parceiro.id}`,
-                    {
-                      method: 'PATCH',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'apikey': supabaseServiceKey,
-                        'Authorization': `Bearer ${supabaseServiceKey}`,
-                        'Prefer': 'return=minimal',
-                      },
-                      body: JSON.stringify({
-                        total_clientes_ativos: (parceiro.total_clientes_ativos || 0) + 1,
-                      }),
-                    }
-                  )
-                  
-                  if (updateParceiroResponse.ok) {
-                    console.log('✅ Contador de clientes do parceiro atualizado')
-                  }
-                } else {
-                  const vincularError = await vincularClienteResponse.text()
-                  console.error('⚠️ Erro ao vincular cliente ao parceiro:', vincularError)
+                if (updateParceiroResponse.ok) {
+                  console.log('✅ Contador de clientes do parceiro atualizado')
                 }
               } else {
-                console.log('⚠️ Código de parceiro não encontrado:', body.codigoParceiro)
+                const vincularError = await vincularClienteResponse.text()
+                console.error('⚠️ Erro ao vincular cliente ao parceiro:', vincularError)
               }
             } else {
-              const buscarError = await buscarParceiroResponse.text()
-              console.error('⚠️ Erro ao buscar parceiro:', buscarError)
+              console.log('⚠️ Código de parceiro não encontrado:', body.codigoParceiro)
             }
+          } else {
+            const buscarError = await buscarParceiroResponse.text()
+            console.error('⚠️ Erro ao buscar parceiro:', buscarError)
           }
         }
       } catch (contadorErr) {
-        console.error('⚠️ Erro contador:', contadorErr)
+        console.error('⚠️ Erro ao registrar origem:', contadorErr)
       }
     }
 
