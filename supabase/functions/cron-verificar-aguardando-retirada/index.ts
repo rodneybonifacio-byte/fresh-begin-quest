@@ -147,13 +147,13 @@ serve(async (req: Request) => {
         // Buscar o evento LDI (aguardando retirada) que contém a unidade correta
         const eventoLDI = eventos.find((e: any) => e.codigo === 'LDI') || eventos[0] || {};
         const unidade = eventoLDI.unidade || {};
+        const enderecoUnidade = unidade.endereco || {};
         
-        // A API dos Correios só fornece tipo e cidadeUf (ex: "Unidade de Distribuição", "CAMPINAS-SP")
-        // Não fornece endereço completo (logradouro, número, bairro)
+        // Extrair cidade e UF do cidadeUf (fallback)
         const cidadeUf = unidade.cidadeUf || '';
-        const [cidade, uf] = cidadeUf.includes('-') ? cidadeUf.split('-') : [cidadeUf, ''];
+        const [cidadeFallback, ufFallback] = cidadeUf.includes('-') ? cidadeUf.split('-') : [cidadeUf, ''];
         
-        console.log(`📍 Evento LDI: ${JSON.stringify(eventoLDI).substring(0, 500)}`);
+        console.log(`📍 Evento LDI: ${JSON.stringify(eventoLDI).substring(0, 800)}`);
 
         // Extrair dados do destinatário (objeto aninhado na API)
         const destinatario = envio.destinatario || {};
@@ -173,10 +173,14 @@ serve(async (req: Request) => {
           destinatario_bairro: enderecoDestinatario.bairro || '',
           destinatario_cidade: enderecoDestinatario.localidade || '',
           destinatario_uf: enderecoDestinatario.uf || '',
-          // Dados da unidade dos Correios (onde retirar)
+          // Dados COMPLETOS da unidade dos Correios (onde retirar)
           unidade_tipo: unidade.tipo || '',
-          unidade_cidade: cidade || '',
-          unidade_uf: uf || '',
+          unidade_cep: enderecoUnidade.cep || '',
+          unidade_logradouro: enderecoUnidade.logradouro || '',
+          unidade_numero: enderecoUnidade.numero || '',
+          unidade_bairro: enderecoUnidade.bairro || '',
+          unidade_cidade: enderecoUnidade.cidade || cidadeFallback || '',
+          unidade_uf: enderecoUnidade.uf || ufFallback || '',
         };
 
         console.log('📋 Payload webhook:', JSON.stringify(webhookPayload));
