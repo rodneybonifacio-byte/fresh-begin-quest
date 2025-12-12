@@ -157,20 +157,26 @@ serve(async (req: Request) => {
 
         // Extrair dados do destinatário (objeto aninhado na API)
         const destinatario = envio.destinatario || {};
+        const enderecoDestinatario = destinatario.endereco || {};
 
         // Preparar payload para o webhook DataCrazy
-        // Nota: A API dos Correios não fornece endereço completo da unidade, apenas tipo e cidade/UF
         const webhookPayload = {
           destinatario_nome: destinatario.nome || envio.destinatarioNome || '',
           codigo_objeto: envio.codigoObjeto || '',
           remetente_nome: envio.remetenteNome || envio.cliente?.nome || '',
-          // Dados da unidade dos Correios - usando cidade como "logradouro" já que não há endereço completo
-          unidade_logradouro: cidade || '',
-          unidade_numero: '',
-          unidade_complemento: uf || '',
-          unidade_bairro: '',
-          unidade_tipo: unidade.tipo || '',
           destinatario_celular: destinatario.celular || envio.destinatarioCelular || '',
+          // Endereço do destinatário
+          destinatario_cep: enderecoDestinatario.cep || '',
+          destinatario_logradouro: enderecoDestinatario.logradouro || '',
+          destinatario_numero: enderecoDestinatario.numero || '',
+          destinatario_complemento: enderecoDestinatario.complemento || '',
+          destinatario_bairro: enderecoDestinatario.bairro || '',
+          destinatario_cidade: enderecoDestinatario.localidade || '',
+          destinatario_uf: enderecoDestinatario.uf || '',
+          // Dados da unidade dos Correios (onde retirar)
+          unidade_tipo: unidade.tipo || '',
+          unidade_cidade: cidade || '',
+          unidade_uf: uf || '',
         };
 
         console.log('📋 Payload webhook:', JSON.stringify(webhookPayload));
