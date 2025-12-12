@@ -5,6 +5,7 @@ import { MapPin, Package, Truck, CheckCircle, Clock, Navigation, Layers, Play, P
 import type { IEmissao } from '../../types/IEmissao';
 import { motion } from 'framer-motion';
 import { useMapTrackingData } from '../../hooks/useMapTrackingData';
+import { useTrackingLocationCache } from '../../hooks/useTrackingLocationCache';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -197,6 +198,20 @@ export const ShipmentTrackingMap = ({
   // Use tracked emissoes if auto-refresh is enabled, otherwise use props
   const dataEmissoes = enableAutoRefresh ? trackedEmissoes : emissoes;
 
+  // Get tracking codes for EM_TRANSITO shipments only
+  const inTransitCodigos = useMemo(() => {
+    return dataEmissoes
+      .filter(e => e.status === 'EM_TRANSITO' && e.codigoObjeto)
+      .map(e => e.codigoObjeto as string);
+  }, [dataEmissoes]);
+
+  // Use tracking location cache (fetches real location from API every 1 hour)
+  const { 
+    getLocation: getTrackedLocation, 
+    isLoading: isLoadingTracking,
+    lastFetchTime: trackingLastFetch 
+  } = useTrackingLocationCache(inTransitCodigos);
+
   // Process emissions with origin and destination coordinates
   const processedEmissoes = useMemo(() => {
     return dataEmissoes.map(emissao => {
@@ -222,11 +237,31 @@ export const ShipmentTrackingMap = ({
         lng: destination.lng + (Math.random() - 0.5) * 0.3
       };
       
-      // Calculate current position based on status
+      // Get real tracking location for EM_TRANSITO
+      let realTrackingLocation = null;
+      if (emissao.status === 'EM_TRANSITO' && emissao.codigoObjeto) {
+        realTrackingLocation = getTrackedLocation(emissao.codigoObjeto);
+      }
+      
+      // Calculate current position based on status or real tracking
       const progress = getProgressByStatus(emissao.status || 'PRE_POSTADO');
       const routePoints = calculateRoutePoints(originJitter, destJitter, 1);
-      const currentPointIndex = Math.floor(routePoints.length * progress);
-      const currentPosition = routePoints[Math.min(currentPointIndex, routePoints.length - 1)] || originJitter;
+      
+      let currentPosition;
+      if (realTrackingLocation?.cidadeUf) {
+        // Extract city/state from tracked location and get coordinates
+        const parts = realTrackingLocation.cidadeUf.split('/');
+        const trackedCity = parts[0]?.trim();
+        const trackedUf = parts[1]?.trim();
+        const trackedCoords = getCoordinates(trackedCity, trackedUf);
+        currentPosition = {
+          lat: trackedCoords.lat + (Math.random() - 0.5) * 0.2,
+          lng: trackedCoords.lng + (Math.random() - 0.5) * 0.2
+        };
+      } else {
+        const currentPointIndex = Math.floor(routePoints.length * progress);
+        currentPosition = routePoints[Math.min(currentPointIndex, routePoints.length - 1)] || originJitter;
+      }
       
       return {
         ...emissao,
@@ -234,10 +269,11 @@ export const ShipmentTrackingMap = ({
         destination: destJitter,
         currentPosition,
         progress,
-        routePoints
+        routePoints,
+        realTrackingLocation
       };
     });
-  }, [dataEmissoes]);
+  }, [dataEmissoes, getTrackedLocation]);
 
   // Statistics by state
   const statsByState = useMemo(() => {
@@ -463,27 +499,37 @@ export const ShipmentTrackingMap = ({
         destCep
       ].filter(Boolean).join('<br/>') || 'Endereço não disponível';
       
-      // Estimated current location based on status
+      // Get real tracking location or estimated based on status
       const getLocalizacaoAtual = () => {
+        // For EM_TRANSITO, use real tracking data if available
+        if (status === 'EM_TRANSITO' && emissao.realTrackingLocation) {
+          const tracking = emissao.realTrackingLocation;
+          return { 
+            texto: tracking.descricao || 'Em trânsito',
+            local: tracking.cidadeUf || 'A caminho do destino',
+            dataHora: tracking.dataCompleta || ''
+          };
+        }
+        
         switch (status) {
           case 'PRE_POSTADO':
-            return { texto: 'Aguardando postagem', local: origemCidade && origemUf ? `${origemCidade} - ${origemUf}` : 'Na origem' };
+            return { texto: 'Aguardando postagem', local: origemCidade && origemUf ? `${origemCidade} - ${origemUf}` : 'Na origem', dataHora: '' };
           case 'POSTADO':
-            return { texto: 'Postado', local: origemCidade && origemUf ? `${origemCidade} - ${origemUf}` : 'Na origem' };
+            return { texto: 'Postado', local: origemCidade && origemUf ? `${origemCidade} - ${origemUf}` : 'Na origem', dataHora: '' };
           case 'COLETADO':
-            return { texto: 'Em coleta', local: origemCidade && origemUf ? `${origemCidade} - ${origemUf}` : 'Na origem' };
+            return { texto: 'Em coleta', local: origemCidade && origemUf ? `${origemCidade} - ${origemUf}` : 'Na origem', dataHora: '' };
           case 'EM_TRANSITO':
-            return { texto: 'Em trânsito', local: 'A caminho do destino' };
+            return { texto: 'Em trânsito', local: 'A caminho do destino', dataHora: '' };
           case 'SAIU_PARA_ENTREGA':
-            return { texto: 'Saiu para entrega', local: destCidade && destUf ? `${destCidade} - ${destUf}` : 'Próximo ao destino' };
+            return { texto: 'Saiu para entrega', local: destCidade && destUf ? `${destCidade} - ${destUf}` : 'Próximo ao destino', dataHora: '' };
           case 'AGUARDANDO_RETIRADA':
-            return { texto: 'Aguardando retirada', local: destCidade && destUf ? `Agência em ${destCidade} - ${destUf}` : 'Na agência' };
+            return { texto: 'Aguardando retirada', local: destCidade && destUf ? `Agência em ${destCidade} - ${destUf}` : 'Na agência', dataHora: '' };
           case 'ENTREGUE':
-            return { texto: 'Entregue', local: destCidade && destUf ? `${destCidade} - ${destUf}` : 'No destino' };
+            return { texto: 'Entregue', local: destCidade && destUf ? `${destCidade} - ${destUf}` : 'No destino', dataHora: '' };
           case 'CANCELADO':
-            return { texto: 'Cancelado', local: '-' };
+            return { texto: 'Cancelado', local: '-', dataHora: '' };
           default:
-            return { texto: 'Desconhecido', local: '-' };
+            return { texto: 'Desconhecido', local: '-', dataHora: '' };
         }
       };
       const locAtual = getLocalizacaoAtual();
@@ -532,7 +578,7 @@ export const ShipmentTrackingMap = ({
                   <circle cx="12" cy="10" r="3"/>
                   <path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 7 8 11.7z"/>
                 </svg>
-                Localização Atual
+                Localização Atual ${emissao.realTrackingLocation ? '<span style="font-size: 9px; background: #10B981; color: white; padding: 1px 4px; border-radius: 4px; margin-left: 4px;">RASTREIO</span>' : ''}
               </div>
               <div style="font-size: 12px; color: #78350F; font-weight: 600;">
                 ${locAtual.texto}
@@ -540,6 +586,7 @@ export const ShipmentTrackingMap = ({
               <div style="font-size: 11px; color: #92400E;">
                 ${locAtual.local}
               </div>
+              ${locAtual.dataHora ? `<div style="font-size: 10px; color: #A16207; margin-top: 2px;">📅 ${locAtual.dataHora}</div>` : ''}
             </div>
             
             <!-- Destino -->
@@ -694,14 +741,29 @@ export const ShipmentTrackingMap = ({
         {/* Admin badge & last updated */}
         {isAdmin && (
           <div className="flex items-center justify-between mt-3 px-1">
-            <span className="text-xs text-slate-500 bg-slate-700/50 px-2 py-1 rounded">
-              Admin View - Todos os clientes
-            </span>
-            {lastUpdated && enableAutoRefresh && (
-              <span className="text-xs text-slate-500">
-                Atualizado {formatDistanceToNow(lastUpdated, { locale: ptBR, addSuffix: true })}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500 bg-slate-700/50 px-2 py-1 rounded">
+                Admin View - Todos os clientes
               </span>
-            )}
+              {isLoadingTracking && (
+                <span className="text-xs text-amber-400 bg-amber-500/20 px-2 py-1 rounded flex items-center gap-1">
+                  <RefreshCw className="h-3 w-3 animate-spin" />
+                  Rastreando...
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              {trackingLastFetch && (
+                <span title="Último rastreio real">
+                  📍 Rastreio: {formatDistanceToNow(trackingLastFetch, { locale: ptBR, addSuffix: true })}
+                </span>
+              )}
+              {lastUpdated && enableAutoRefresh && (
+                <span>
+                  Dados: {formatDistanceToNow(lastUpdated, { locale: ptBR, addSuffix: true })}
+                </span>
+              )}
+            </div>
           </div>
         )}
 
