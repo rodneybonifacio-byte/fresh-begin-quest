@@ -107,7 +107,31 @@ serve(async (req: Request) => {
         link_whatsapp: '111',
       },
 
-      // Configurações de transportadoras serão aplicadas via PUT separado após criação
+      // Configurações de transportadoras incluídas diretamente no POST de criação
+      transportadoraConfiguracoes: [
+        {
+          transportadora: 'correios',
+          ativo: true,
+          tipoAcrescimo: 'PERCENTUAL',
+          valorAcrescimo: 5,
+          porcentagem: 5,
+          alturaMaxima: 100,
+          larguraMaxima: 100,
+          comprimentoMaximo: 100,
+          pesoMaximo: 30000,
+        },
+        {
+          transportadora: 'rodonave',
+          ativo: false,
+          tipoAcrescimo: 'PERCENTUAL',
+          valorAcrescimo: 0,
+          porcentagem: 0,
+          alturaMaxima: 0,
+          larguraMaxima: 0,
+          comprimentoMaximo: 0,
+          pesoMaximo: 0,
+        },
+      ],
     }
 
     // ============================================
@@ -229,73 +253,7 @@ serve(async (req: Request) => {
       throw new Error('Não foi possível obter o ID do cliente criado')
     }
 
-    // ============================================
-    // PASSO 2.5: Atualizar cliente com configurações de transportadora
-    // IMPORTANTE: PUT requer todos os dados obrigatórios + transportadoraConfiguracoes
-    // ============================================
-    console.log('🚚 Atualizando cliente com configurações de transportadora...')
-    
-    const transportadoraPayload = {
-      nomeEmpresa: body.nomeEmpresa,
-      nomeResponsavel: body.nomeResponsavel,
-      cpfCnpj: body.cpfCnpj,
-      email: body.email,
-      role: 'CLIENTE',
-      celular: body.celular,
-      telefone: body.telefone || '',
-      endereco: {
-        cep: body.endereco.cep,
-        logradouro: body.endereco.logradouro,
-        numero: body.endereco.numero,
-        complemento: body.endereco.complemento || '',
-        bairro: body.endereco.bairro,
-        localidade: body.endereco.localidade,
-        uf: body.endereco.uf,
-      },
-      transportadoraConfiguracoes: [
-        {
-          transportadora: 'correios',
-          ativo: true,
-          tipoAcrescimo: 'PERCENTUAL',
-          valorAcrescimo: 5,
-          porcentagem: 5,
-          alturaMaxima: 100,
-          larguraMaxima: 100,
-          comprimentoMaximo: 100,
-          pesoMaximo: 30000,
-        },
-        {
-          transportadora: 'rodonave',
-          ativo: false,
-          tipoAcrescimo: 'PERCENTUAL',
-          valorAcrescimo: 0,
-          porcentagem: 0,
-          alturaMaxima: 0,
-          larguraMaxima: 0,
-          comprimentoMaximo: 0,
-          pesoMaximo: 0,
-        },
-      ],
-    }
-    
-    console.log('📤 Payload transportadora com dados completos')
-    
-    const updateTransportadoraResponse = await fetch(`${baseApiUrl}/clientes/${clienteId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${adminToken}`,
-      },
-      body: JSON.stringify(transportadoraPayload),
-    })
-    
-    if (updateTransportadoraResponse.ok) {
-      const updateResult = await updateTransportadoraResponse.text()
-      console.log('✅ Configurações de transportadora atualizadas com sucesso:', updateResult)
-    } else {
-      const updateError = await updateTransportadoraResponse.text()
-      console.error('⚠️ Erro ao atualizar configurações de transportadora:', updateError)
-    }
+    // PASSO 2.5 REMOVIDO: transportadoraConfiguracoes agora está incluído no POST de criação do cliente
 
     // ============================================
     // PASSO 2.6: Adicionar crédito inicial via API BRHUB
