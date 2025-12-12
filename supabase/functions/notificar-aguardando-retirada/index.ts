@@ -12,12 +12,15 @@ interface EnvioData {
   destinatarioNome: string;
   codigoObjeto: string;
   remetenteNome: string;
+  destinatarioCelular: string;
+  // Dados completos da unidade de retirada
+  unidadeTipo?: string;
+  unidadeCep?: string;
   unidadeLogradouro?: string;
   unidadeNumero?: string;
-  unidadeComplemento?: string;
   unidadeBairro?: string;
-  unidadeTipo?: string;
-  destinatarioCelular: string;
+  unidadeCidade?: string;
+  unidadeUf?: string;
 }
 
 serve(async (req: Request) => {
@@ -43,17 +46,32 @@ serve(async (req: Request) => {
       );
     }
 
-    // Preparar payload para o webhook
+    // Montar endereço completo da unidade para exibição
+    const enderecoUnidadeCompleto = [
+      body.unidadeLogradouro,
+      body.unidadeNumero ? `nº ${body.unidadeNumero}` : '',
+      body.unidadeBairro,
+      body.unidadeCidade,
+      body.unidadeUf,
+      body.unidadeCep ? `CEP: ${body.unidadeCep}` : ''
+    ].filter(Boolean).join(', ');
+
+    // Preparar payload para o webhook DataCrazy
     const webhookPayload = {
       destinatario_nome: body.destinatarioNome,
       codigo_objeto: body.codigoObjeto,
       remetente_nome: body.remetenteNome || '',
+      destinatario_celular: body.destinatarioCelular,
+      // Dados da unidade de retirada
+      unidade_tipo: body.unidadeTipo || '',
+      unidade_cep: body.unidadeCep || '',
       unidade_logradouro: body.unidadeLogradouro || '',
       unidade_numero: body.unidadeNumero || '',
-      unidade_complemento: body.unidadeComplemento || '',
       unidade_bairro: body.unidadeBairro || '',
-      unidade_tipo: body.unidadeTipo || '',
-      destinatario_celular: body.destinatarioCelular,
+      unidade_cidade: body.unidadeCidade || '',
+      unidade_uf: body.unidadeUf || '',
+      // Endereço formatado para exibição direta
+      unidade_endereco_completo: enderecoUnidadeCompleto,
     };
 
     console.log('📤 Enviando para webhook DataCrazy:', JSON.stringify(webhookPayload, null, 2));
