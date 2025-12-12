@@ -165,6 +165,7 @@ serve(async (req: Request) => {
     // PASSO 2: Criar cliente na API BRHUB
     // ============================================
     console.log('👤 Criando cliente na API BRHUB...')
+    console.log('📤 Payload inclui transportadoraConfiguracoes:', JSON.stringify(clienteData.transportadoraConfiguracoes, null, 2))
     const clienteResponse = await fetch(`${baseApiUrl}/clientes`, {
       method: 'POST',
       headers: {
