@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, MapPin, Package, Scale, Calculator, Truck } from 'lucide-react';
+import { ArrowLeft, MapPin, Package, Scale, Calculator, Truck, ChevronRight, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCotacao } from '../../hooks/useCotacao';
 import { useAddress } from '../../hooks/useAddress';
@@ -10,6 +10,21 @@ import { formatCep, removeNegativo } from '../../utils/lib.formats';
 import { formatCurrency } from '../../utils/formatCurrency';
 import type { IEmbalagem } from '../../types/IEmbalagem';
 import type { ICotacaoMinimaResponse } from '../../types/ICotacao';
+import { ModalListaRemetente } from '../../pages/private/remetente/ModalListaRemetente';
+
+interface Remetente {
+  id: string;
+  nome: string;
+  endereco?: {
+    logradouro?: string;
+    numero?: string;
+    complemento?: string;
+    bairro?: string;
+    localidade?: string;
+    uf?: string;
+    cep?: string;
+  };
+}
 
 export const MobileSimulador = () => {
   const navigate = useNavigate();
@@ -23,8 +38,15 @@ export const MobileSimulador = () => {
   const [selectedEmbalagem, setSelectedEmbalagem] = useState<IEmbalagem | null>(null);
   const [valorDeclarado, setValorDeclarado] = useState('');
   const [cepDestino, setCepDestino] = useState('');
+  const [remetenteSelecionado, setRemetenteSelecionado] = useState<Remetente | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  
+  // Inicializa o remetente com o cliente quando carregado
+  useEffect(() => {
+    if (cliente && !remetenteSelecionado) {
+      setRemetenteSelecionado(cliente as Remetente);
+    }
+  }, [cliente, remetenteSelecionado]);
 
   useEffect(() => {
     if (dimensoes.altura && dimensoes.largura && dimensoes.comprimento && dimensoes.peso) {
@@ -50,21 +72,21 @@ export const MobileSimulador = () => {
   };
 
   const handleCalcular = async () => {
-    if (!cliente?.endereco?.cep || !cepDestino || !selectedEmbalagem) return;
+    if (!remetenteSelecionado?.endereco?.cep || !cepDestino || !selectedEmbalagem) return;
     
     setIsLoading(true);
     await onGetCotacaoCorreios(
-      cliente.endereco.cep,
+      remetenteSelecionado.endereco.cep,
       cepDestino,
       selectedEmbalagem,
       valorDeclarado,
       'N',
-      cliente
+      remetenteSelecionado
     );
     setIsLoading(false);
   };
 
-  const canCalculate = cepDestino && selectedEmbalagem;
+  const canCalculate = cepDestino && selectedEmbalagem && remetenteSelecionado;
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -85,25 +107,42 @@ export const MobileSimulador = () => {
       </div>
 
       <div className="px-4 py-4 space-y-4">
-        {/* Origin Card */}
-        <div className="bg-card rounded-2xl p-4 border border-border">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-primary/10 rounded-xl">
-              <MapPin className="h-5 w-5 text-primary" />
+        {/* Origin Card - Seleção de Remetente */}
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="w-full bg-card rounded-2xl p-4 border border-border text-left active:scale-[0.98] transition-all"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-xl">
+                <User className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Origem (Remetente)</p>
+                {remetenteSelecionado ? (
+                  <>
+                    <p className="font-semibold text-foreground">{remetenteSelecionado.nome}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {remetenteSelecionado.endereco?.cep} - {remetenteSelecionado.endereco?.localidade}/{remetenteSelecionado.endereco?.uf}
+                    </p>
+                  </>
+                ) : (
+                  <p className="font-medium text-primary">Selecionar remetente</p>
+                )}
+              </div>
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Origem</p>
-              <p className="font-semibold text-foreground">
-                {cliente?.endereco?.cep || 'Carregando...'}
-              </p>
-            </div>
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
           </div>
-          {cliente?.endereco && (
-            <p className="text-xs text-muted-foreground pl-12">
-              {cliente.endereco.localidade}/{cliente.endereco.uf}
-            </p>
-          )}
-        </div>
+        </button>
+
+        <ModalListaRemetente
+          isOpen={isModalOpen}
+          onCancel={() => setIsModalOpen(false)}
+          onSelect={(remetente) => {
+            setRemetenteSelecionado(remetente);
+            setIsModalOpen(false);
+          }}
+        />
 
         {/* Destination Input */}
         <div className="bg-card rounded-2xl p-4 border border-border">
