@@ -47,6 +47,7 @@
         "laravel-echo": "^1.18.0",
         "lovable-tagger": "^1.1.11",
         "lucide-react": "^0.468.0",
+        "mapbox-gl": "^3.17.0",
         "mobx": "^6.13.5",
         "mobx-react-lite": "^4.1.0",
         "moment-timezone": "^0.5.48",
