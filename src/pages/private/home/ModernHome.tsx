@@ -2,7 +2,12 @@ import { useState } from "react";
 import { Package, Truck, DollarSign, Clock, Plus } from "lucide-react";
 import { useCotacao } from "../../../hooks/useCotacao";
 import { useNavigate } from "react-router-dom";
+import { MobileHomeScreen } from "../../../components/mobile/MobileHomeScreen";
+import { useBreakpoint } from "../../../hooks/useBreakpoint";
+
 export const ModernHome = () => {
+  const isMobile = !useBreakpoint('md');
+  
   const navigate = useNavigate();
   const {
     onGetCotacaoCorreios,
@@ -54,6 +59,11 @@ export const ModernHome = () => {
     description: "Acompanhe seus envios em tempo real",
     color: "text-purple-600"
   }];
+  // Mobile view
+  if (isMobile) {
+    return <MobileHomeScreen />;
+  }
+
   return <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-background overflow-x-hidden">
             {/* Hero Section */}
             <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12">
