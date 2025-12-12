@@ -38,7 +38,7 @@ export const LayoutBase = () => {
                 </div>
 
                 {/* Mobile Header */}
-                <MobileHeader onMenuClick={toggleSidebar} />
+                <MobileHeader />
 
                 {/* Banner promocional */}
                 <PromoBannerRecarga />
