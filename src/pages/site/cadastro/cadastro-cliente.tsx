@@ -257,7 +257,20 @@ export const CadastroCliente = () => {
       setPosicaoCadastro(posicao);
       setUserEmail(data.email);
       localStorage.setItem('redirect_to_remetente', 'true');
-      setShowWelcomeModal(true);
+      
+      // Modal de boas-vindas desativado - redirecionar diretamente
+      toast.success('Conta criada com sucesso!');
+      const hasAutoLogin = localStorage.getItem('auto_login') === 'true';
+      if (hasAutoLogin) {
+        navigate('/app');
+      } else {
+        navigate('/login', {
+          state: {
+            email: data.email,
+            mensagem: 'Conta criada com sucesso!'
+          }
+        });
+      }
     } catch (error) {
       console.error('Erro ao criar cliente:', error);
       toast.error('Erro ao criar conta. Tente novamente.');
