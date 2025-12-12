@@ -18,7 +18,9 @@ export class CorreriosService extends BaseService<any> {
     }
 
     async rastreio(codigo: string): Promise<IRastreioResponse> {
+        console.log('🔍 Buscando rastreio para código:', codigo);
         const response = await this.httpClient.get<IResponse<IRastreioResponse>>(`rastrear?codigo=${codigo}`);
+        console.log('📦 Resposta rastreio API:', JSON.stringify(response).substring(0, 500));
         return response.data;
     }
 
