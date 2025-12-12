@@ -109,6 +109,9 @@ serve(async (req: Request) => {
     const unidade = eventoLDI.unidade || {};
     const enderecoUnidade = unidade.endereco || {};
     
+    // Extrair data prevista de entrega do rastreio
+    const dataPrevisaoEntrega = rastreioData?.dataPrevisaoEntrega || rastreioCompleto?.data?.dataPrevisaoEntrega || rastreioCompleto?.dataPrevisaoEntrega || '';
+    
     const cidadeUf = unidade.cidadeUf || '';
     const [cidadeFallback, ufFallback] = cidadeUf.includes('-') ? cidadeUf.split('-') : [cidadeUf, ''];
 
@@ -158,6 +161,7 @@ serve(async (req: Request) => {
       valor_declarado: envio.valorDeclarado || 0,
       prazo: envio.prazo || '',
       criado_em: envio.criadoEm || '',
+      data_previsao_entrega: dataPrevisaoEntrega,
       
       // === Dados da Unidade de Retirada (Correios) ===
       unidade_tipo: unidade.tipo || '',
