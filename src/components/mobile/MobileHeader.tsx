@@ -1,4 +1,4 @@
-import { Sun, Moon, ChevronDown, User, LogOut, Shield, Menu } from 'lucide-react';
+import { Sun, Moon, ChevronDown, User, LogOut, Shield } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
@@ -8,11 +8,7 @@ import authStore from '../../authentica/authentication.store';
 import { useTheme } from '../../providers/ThemeContext';
 import { ProfileAvatar } from '../ProfileAvatar';
 
-interface MobileHeaderProps {
-    onMenuClick?: () => void;
-}
-
-export const MobileHeader = observer(({ onMenuClick }: MobileHeaderProps) => {
+export const MobileHeader = observer(() => {
     const { theme, toggleTheme } = useTheme();
     const [showProfilePopover, setShowProfilePopover] = useState(false);
     const profileButtonRef = useRef<HTMLDivElement>(null);
@@ -37,18 +33,10 @@ export const MobileHeader = observer(({ onMenuClick }: MobileHeaderProps) => {
         <>
             <header className="sticky top-0 z-40 bg-background border-b border-border lg:hidden">
                 <div className="flex items-center justify-between px-4 h-14">
-                    {/* Left side - Menu + Logo */}
-                    <div className="flex items-center space-x-3">
-                        <button
-                            onClick={onMenuClick}
-                            className="p-2 -ml-2 rounded-lg hover:bg-accent transition-colors"
-                        >
-                            <Menu className="w-5 h-5 text-foreground" />
-                        </button>
-                        <Link to="/app" className="flex items-center">
-                            <span className="text-xl font-bold text-primary">BRHUB</span>
-                        </Link>
-                    </div>
+                    {/* Left side - Logo */}
+                    <Link to="/app" className="flex items-center">
+                        <span className="text-xl font-bold text-primary">BRHUB</span>
+                    </Link>
 
                     {/* Right side - actions */}
                     <div className="flex items-center space-x-2">
