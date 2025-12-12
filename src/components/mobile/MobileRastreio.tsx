@@ -4,7 +4,16 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Package, Search, MapPin, Clock, ChevronRight, Truck } from "lucide-react";
+import { 
+  PackageSearch, 
+  Search, 
+  MapPinned, 
+  CalendarClock, 
+  ArrowRight, 
+  Waypoints,
+  Navigation,
+  PackageCheck
+} from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { IRastreioResponse } from "../../types/rastreio/IRastreio";
@@ -92,7 +101,7 @@ export const MobileRastreio = ({ numeroObjeto }: MobileRastreioProps) => {
       <div className="bg-primary px-4 pt-6 pb-8 rounded-b-3xl">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-            <Package className="w-6 h-6 text-white" />
+            <PackageSearch className="w-6 h-6 text-white" />
           </div>
           <div>
             <h1 className="text-xl font-bold text-white">Rastreio</h1>
@@ -143,7 +152,7 @@ export const MobileRastreio = ({ numeroObjeto }: MobileRastreioProps) => {
               </p>
               {rastreio.dataPrevisaoEntrega && (
                 <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
-                  <Clock className="w-4 h-4" />
+                  <CalendarClock className="w-4 h-4" />
                   <span>Previsão: {format(parseISO(rastreio.dataPrevisaoEntrega), "dd/MM/yyyy", { locale: ptBR })}</span>
                 </div>
               )}
@@ -152,7 +161,7 @@ export const MobileRastreio = ({ numeroObjeto }: MobileRastreioProps) => {
             {/* Timeline */}
             <div className="p-4">
               <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                <Truck className="w-4 h-4 text-primary" />
+                <Waypoints className="w-4 h-4 text-primary" />
                 Histórico de Movimentação
               </h3>
               
@@ -192,7 +201,7 @@ export const MobileRastreio = ({ numeroObjeto }: MobileRastreioProps) => {
                             
                             {evento.unidade && (
                               <div className="flex items-center gap-1.5 mt-1.5 text-xs text-muted-foreground">
-                                <MapPin className="w-3 h-3" />
+                                <Navigation className="w-3 h-3" />
                                 <span>
                                   {evento.unidadeDestino ? "De " : ""}
                                   {evento.unidade.tipo}: {evento.unidade.cidadeUf}
@@ -203,7 +212,7 @@ export const MobileRastreio = ({ numeroObjeto }: MobileRastreioProps) => {
                             {/* Endereço completo de retirada para eventos LDI */}
                             {enderecoCompleto && (
                               <div className="flex items-start gap-2 bg-primary/10 p-2 rounded-md mt-2">
-                                <MapPin className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                                <MapPinned className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
                                 <div className="flex flex-col">
                                   <span className="text-xs font-semibold text-primary">
                                     Local de retirada:
@@ -217,7 +226,7 @@ export const MobileRastreio = ({ numeroObjeto }: MobileRastreioProps) => {
                             
                             {evento.unidadeDestino && (
                               <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
-                                <ChevronRight className="w-3 h-3" />
+                                <ArrowRight className="w-3 h-3" />
                                 <span>
                                   Para {evento.unidadeDestino.tipo}: {evento.unidadeDestino.cidadeUf}
                                 </span>
@@ -248,7 +257,7 @@ export const MobileRastreio = ({ numeroObjeto }: MobileRastreioProps) => {
           /* Empty State */
           <div className="bg-card rounded-2xl shadow-lg border border-border p-8 text-center mt-4">
             <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-              <Package className="w-8 h-8 text-muted-foreground" />
+              <PackageCheck className="w-8 h-8 text-muted-foreground" />
             </div>
             <h3 className="text-lg font-semibold text-foreground mb-2">
               Rastreie sua encomenda

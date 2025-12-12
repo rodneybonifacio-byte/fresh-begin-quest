@@ -1,7 +1,7 @@
 import { format, parseISO } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import type { IRastreioResponse } from "../../../types/rastreio/IRastreio"
-import { MapPin } from "lucide-react"
+import { MapPinned, Navigation, ArrowRight } from "lucide-react"
 
 interface ListaRastreioProps {
     historicoRastreios: IRastreioResponse | undefined
@@ -43,15 +43,18 @@ export const ListaHistoricoRastreio = ({ historicoRastreios }: ListaRastreioProp
                                     {rastreio.descricao}
                                 </p>
                                 {rastreio?.unidade && (
-                                    <p className="text-xs font-normal text-slate-400 dark:text-slate-500 text-start mb-2 leading-4">
-                                        {rastreio?.unidadeDestino ? 'de ' : ''}
-                                        {rastreio?.unidade.tipo}:  {rastreio?.unidade.cidadeUf}
-                                    </p>
+                                    <div className="flex items-center gap-1.5 text-xs font-normal text-slate-400 dark:text-slate-500 text-start mb-2 leading-4">
+                                        <Navigation className="w-3 h-3" />
+                                        <span>
+                                            {rastreio?.unidadeDestino ? 'de ' : ''}
+                                            {rastreio?.unidade.tipo}: {rastreio?.unidade.cidadeUf}
+                                        </span>
+                                    </div>
                                 )}
                                 {/* Endereço completo de retirada para eventos LDI */}
                                 {enderecoCompleto && (
                                     <div className="flex items-start gap-2 bg-orange-50 dark:bg-orange-900/20 p-2 rounded-md mt-1">
-                                        <MapPin className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" />
+                                        <MapPinned className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" />
                                         <div className="flex flex-col">
                                             <span className="text-xs font-semibold text-orange-700 dark:text-orange-400">
                                                 Local de retirada:
@@ -63,9 +66,12 @@ export const ListaHistoricoRastreio = ({ historicoRastreios }: ListaRastreioProp
                                     </div>
                                 )}
                                 {rastreio?.unidadeDestino && (
-                                    <p className="text-xs font-normal text-slate-400 dark:text-slate-500 text-start mb-2 leading-4">
-                                        para {rastreio?.unidadeDestino.tipo}:  {rastreio?.unidadeDestino.cidadeUf}
-                                    </p>
+                                    <div className="flex items-center gap-1.5 text-xs font-normal text-slate-400 dark:text-slate-500 text-start mb-2 leading-4">
+                                        <ArrowRight className="w-3 h-3" />
+                                        <span>
+                                            para {rastreio?.unidadeDestino.tipo}: {rastreio?.unidadeDestino.cidadeUf}
+                                        </span>
+                                    </div>
                                 )}
                                 <span className="text-red-500 text-xs font-medium">
                                     {rastreio?.detalhes ? rastreio?.detalhes : ''}
