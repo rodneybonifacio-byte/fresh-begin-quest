@@ -80,6 +80,22 @@ export const MobileEmissaoList = () => {
     }
   );
 
+  // Busca todos os dados sem filtro de status para o dashboard
+  const { data: allEmissoes } = useFetchQuery<IResponse<IEmissao[]>>(
+    ['emissoes-dashboard-mobile', searchParams.get('dataIni'), searchParams.get('dataFim')],
+    async () => {
+      const params: any = {
+        limit: 1000,
+        offset: 0
+      };
+      const dataIni = searchParams.get('dataIni');
+      const dataFim = searchParams.get('dataFim');
+      if (dataIni) params.dataIni = dataIni;
+      if (dataFim) params.dataFim = dataFim;
+      return service.getAll(params);
+    }
+  );
+
   const handleViewDetails = (emissao: IEmissao) => {
     navigate(`/app/emissao/detail/${emissao.id}`);
   };
@@ -190,9 +206,9 @@ export const MobileEmissaoList = () => {
 
       <div className="px-4 -mt-4">
         {/* Dashboard */}
-        {showDashboard && emissoes?.data && emissoes.data.length > 0 && (
+        {showDashboard && allEmissoes?.data && allEmissoes.data.length > 0 && (
           <div className="mb-4">
-            <DashboardEmissoes emissoes={emissoes.data} />
+            <DashboardEmissoes emissoes={allEmissoes.data} />
           </div>
         )}
 
