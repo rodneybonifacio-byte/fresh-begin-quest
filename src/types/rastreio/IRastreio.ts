@@ -6,6 +6,7 @@ export interface IRastreioResponse {
     servico: string
     eventos: IRastreio[]
 }
+
 export interface IRastreio {
     codigo: any
     descricao: string
@@ -16,10 +17,19 @@ export interface IRastreio {
     unidade?: Unidade
     dataCompleta: string
     unidadeDestino: any
-  }
-  
-  export interface Unidade {
+}
+
+export interface EnderecoUnidade {
+    cep?: string
+    logradouro?: string
+    numero?: string
+    bairro?: string
+    cidade?: string
+    uf?: string
+}
+
+export interface Unidade {
     cidadeUf: string
     tipo: string
-  }
-  
+    endereco?: EnderecoUnidade
+}

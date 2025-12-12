@@ -31,6 +31,21 @@ interface MobileRastreioProps {
   numeroObjeto?: string;
 }
 
+// Formata endereço completo da unidade de retirada
+const formatarEnderecoUnidade = (unidade: any) => {
+  if (!unidade?.endereco) return null;
+  const end = unidade.endereco;
+  const partes = [
+    end.logradouro,
+    end.numero ? `nº ${end.numero}` : '',
+    end.bairro,
+    end.cidade || unidade.cidadeUf?.split('-')[0],
+    end.uf || unidade.cidadeUf?.split('-')[1],
+    end.cep ? `CEP: ${end.cep}` : ''
+  ].filter(Boolean);
+  return partes.join(', ');
+}
+
 export const MobileRastreio = ({ numeroObjeto }: MobileRastreioProps) => {
   const { setIsLoading } = useLoadingSpinner();
   const [rastreio, setRastreio] = useState<IRastreioResponse | undefined>();
@@ -129,7 +144,7 @@ export const MobileRastreio = ({ numeroObjeto }: MobileRastreioProps) => {
               {rastreio.dataPrevisaoEntrega && (
                 <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
                   <Clock className="w-4 h-4" />
-                  <span>Previsão: {rastreio.dataPrevisaoEntrega}</span>
+                  <span>Previsão: {format(parseISO(rastreio.dataPrevisaoEntrega), "dd/MM/yyyy", { locale: ptBR })}</span>
                 </div>
               )}
             </div>
@@ -142,71 +157,90 @@ export const MobileRastreio = ({ numeroObjeto }: MobileRastreioProps) => {
               </h3>
               
               <div className="space-y-0">
-                {rastreio.eventos.map((evento, index) => (
-                  <div key={index} className="flex gap-3">
-                    {/* Timeline indicator */}
-                    <div className="flex flex-col items-center">
-                      <div
-                        className={`w-3 h-3 rounded-full ${getStatusColor(
-                          index,
-                          rastreio.eventos.length
-                        )} ring-4 ring-background`}
-                      />
-                      {index < rastreio.eventos.length - 1 && (
-                        <div className="w-0.5 h-full min-h-[60px] bg-border" />
-                      )}
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 pb-6">
-                      <div className="flex items-start gap-3">
-                        {evento.image && (
-                          <img
-                            src={evento.image}
-                            alt=""
-                            className="w-10 h-10 object-contain rounded-lg bg-muted p-1"
-                          />
+                {rastreio.eventos.map((evento, index) => {
+                  const enderecoCompleto = evento.codigo === 'LDI' ? formatarEnderecoUnidade(evento.unidade) : null;
+                  
+                  return (
+                    <div key={index} className="flex gap-3">
+                      {/* Timeline indicator */}
+                      <div className="flex flex-col items-center">
+                        <div
+                          className={`w-3 h-3 rounded-full ${getStatusColor(
+                            index,
+                            rastreio.eventos.length
+                          )} ring-4 ring-background`}
+                        />
+                        {index < rastreio.eventos.length - 1 && (
+                          <div className="w-0.5 h-full min-h-[60px] bg-border" />
                         )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-foreground leading-snug">
-                            {evento.descricao}
-                          </p>
-                          
-                          {evento.unidade && (
-                            <div className="flex items-center gap-1.5 mt-1.5 text-xs text-muted-foreground">
-                              <MapPin className="w-3 h-3" />
-                              <span>
-                                {evento.unidadeDestino ? "De " : ""}
-                                {evento.unidade.tipo}: {evento.unidade.cidadeUf}
-                              </span>
-                            </div>
-                          )}
-                          
-                          {evento.unidadeDestino && (
-                            <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
-                              <ChevronRight className="w-3 h-3" />
-                              <span>
-                                Para {evento.unidadeDestino.tipo}: {evento.unidadeDestino.cidadeUf}
-                              </span>
-                            </div>
-                          )}
+                      </div>
 
-                          {evento.detalhes && (
-                            <p className="text-xs text-destructive mt-1.5 font-medium">
-                              {evento.detalhes}
+                      {/* Content */}
+                      <div className="flex-1 pb-6">
+                        <div className="flex items-start gap-3">
+                          {evento.image && (
+                            <img
+                              src={evento.image}
+                              alt=""
+                              className="w-10 h-10 object-contain rounded-lg bg-muted p-1"
+                            />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-foreground leading-snug">
+                              {evento.descricao}
                             </p>
-                          )}
+                            
+                            {evento.unidade && (
+                              <div className="flex items-center gap-1.5 mt-1.5 text-xs text-muted-foreground">
+                                <MapPin className="w-3 h-3" />
+                                <span>
+                                  {evento.unidadeDestino ? "De " : ""}
+                                  {evento.unidade.tipo}: {evento.unidade.cidadeUf}
+                                </span>
+                              </div>
+                            )}
+                            
+                            {/* Endereço completo de retirada para eventos LDI */}
+                            {enderecoCompleto && (
+                              <div className="flex items-start gap-2 bg-primary/10 p-2 rounded-md mt-2">
+                                <MapPin className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                                <div className="flex flex-col">
+                                  <span className="text-xs font-semibold text-primary">
+                                    Local de retirada:
+                                  </span>
+                                  <span className="text-xs text-foreground">
+                                    {enderecoCompleto}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {evento.unidadeDestino && (
+                              <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
+                                <ChevronRight className="w-3 h-3" />
+                                <span>
+                                  Para {evento.unidadeDestino.tipo}: {evento.unidadeDestino.cidadeUf}
+                                </span>
+                              </div>
+                            )}
 
-                          <time className="text-xs text-muted-foreground mt-2 block">
-                            {format(parseISO(evento.dataCompleta), "dd MMM yyyy 'às' HH:mm", {
-                              locale: ptBR,
-                            })}
-                          </time>
+                            {evento.detalhes && (
+                              <p className="text-xs text-destructive mt-1.5 font-medium">
+                                {evento.detalhes}
+                              </p>
+                            )}
+
+                            <time className="text-xs text-muted-foreground mt-2 block">
+                              {format(parseISO(evento.dataCompleta), "dd MMM yyyy 'às' HH:mm", {
+                                locale: ptBR,
+                              })}
+                            </time>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
