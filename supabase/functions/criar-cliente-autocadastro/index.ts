@@ -108,30 +108,19 @@ serve(async (req: Request) => {
       },
 
       // Configurações de transportadoras incluídas diretamente no POST de criação
-      transportadoraConfiguracoes: [
-        {
-          transportadora: 'correios',
-          ativo: true,
-          tipoAcrescimo: 'PERCENTUAL',
-          valorAcrescimo: 5,
-          porcentagem: 5,
-          alturaMaxima: 100,
-          larguraMaxima: 100,
-          comprimentoMaximo: 100,
-          pesoMaximo: 30000,
-        },
-        {
-          transportadora: 'rodonave',
-          ativo: false,
-          tipoAcrescimo: 'PERCENTUAL',
-          valorAcrescimo: 0,
-          porcentagem: 0,
-          alturaMaxima: 0,
-          larguraMaxima: 0,
-          comprimentoMaximo: 0,
-          pesoMaximo: 0,
-        },
-      ],
+      // Os IDs serão preenchidos dinamicamente após consulta à API
+      transportadoraConfiguracoes: [] as Array<{
+        transportadora: string;
+        transportadoraId: string;
+        ativo: boolean;
+        tipoAcrescimo: string;
+        valorAcrescimo: number;
+        porcentagem: number;
+        alturaMaxima: number;
+        larguraMaxima: number;
+        comprimentoMaximo: number;
+        pesoMaximo: number;
+      }>,
     }
 
     // ============================================
@@ -160,6 +149,65 @@ serve(async (req: Request) => {
       throw new Error('Token admin não retornado no login')
     }
     console.log('✅ Login admin realizado com sucesso')
+
+    // ============================================
+    // PASSO 1.5: Buscar IDs das transportadoras
+    // ============================================
+    console.log('🚚 Buscando IDs das transportadoras...')
+    const transportadorasResponse = await fetch(`${baseApiUrl}/transportadoras`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${adminToken}`,
+      },
+    })
+
+    let correiosId = ''
+    let rodonavesId = ''
+
+    if (transportadorasResponse.ok) {
+      const transportadoras = await transportadorasResponse.json()
+      console.log('📦 Transportadoras disponíveis:', JSON.stringify(transportadoras, null, 2))
+      
+      for (const t of transportadoras) {
+        if (t.nome?.toUpperCase() === 'CORREIOS') {
+          correiosId = t.id
+        } else if (t.nome?.toUpperCase() === 'RODONAVES') {
+          rodonavesId = t.id
+        }
+      }
+      console.log(`✅ IDs encontrados - CORREIOS: ${correiosId}, RODONAVES: ${rodonavesId}`)
+    } else {
+      console.warn('⚠️ Não foi possível buscar transportadoras, continuando sem IDs')
+    }
+
+    // Atualizar transportadoraConfiguracoes com os IDs dinâmicos
+    clienteData.transportadoraConfiguracoes = [
+      {
+        transportadora: 'correios',
+        transportadoraId: correiosId,
+        ativo: true,
+        tipoAcrescimo: 'PERCENTUAL',
+        valorAcrescimo: 5,
+        porcentagem: 5,
+        alturaMaxima: 100,
+        larguraMaxima: 100,
+        comprimentoMaximo: 100,
+        pesoMaximo: 30000,
+      },
+      {
+        transportadora: 'rodonave',
+        transportadoraId: rodonavesId,
+        ativo: false,
+        tipoAcrescimo: 'PERCENTUAL',
+        valorAcrescimo: 0,
+        porcentagem: 0,
+        alturaMaxima: 0,
+        larguraMaxima: 0,
+        comprimentoMaximo: 0,
+        pesoMaximo: 0,
+      },
+    ]
 
     // ============================================
     // PASSO 2: Criar cliente na API BRHUB
