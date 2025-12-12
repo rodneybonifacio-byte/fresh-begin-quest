@@ -12,6 +12,8 @@ export const ModalBemVindoCadastro = ({
   onClose,
   posicaoCadastro = 0
 }: ModalBemVindoCadastroProps) => {
+  // Promoção desativada - retorna null
+  return null;
   const [contadorAtual, setContadorAtual] = useState(posicaoCadastro);
   const [limiteTotal] = useState(100);
   const [elegivel, setElegivel] = useState(posicaoCadastro <= 105);
