@@ -163,9 +163,13 @@ export const FiltroEmissao = ({ onFiltrar, isDestinatario, isCodigoObjeto, onCan
                             data={[
                                 { label: 'PRE POSTADO', value: 'PRE_POSTADO' },
                                 { label: 'POSTADO', value: 'POSTADO' },
-                                { label: 'EM TRANSITO', value: 'EM_TRANSITO' },
                                 { label: 'COLETADO', value: 'COLETADO' },
+                                { label: 'EM TRANSITO', value: 'EM_TRANSITO' },
+                                { label: 'SAIU P/ ENTREGA', value: 'SAIU_PARA_ENTREGA' },
+                                { label: 'AGUARD. RETIRADA', value: 'AGUARDANDO_RETIRADA' },
+                                { label: 'EM ATRASO', value: 'EM_ATRASO' },
                                 { label: 'ENTREGUE', value: 'ENTREGUE' },
+                                { label: 'CANCELADO', value: 'CANCELADO' },
                             ]}
                             valueSelected={form.status}
                             searchable
