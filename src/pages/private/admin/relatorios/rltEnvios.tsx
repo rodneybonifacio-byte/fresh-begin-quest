@@ -506,7 +506,9 @@ const RltEnvios = () => {
                 </div>
                 {showMap && allEmissoesForMap && allEmissoesForMap.length > 0 && (
                     <ShipmentTrackingMap 
-                        emissoes={allEmissoesForMap} 
+                        emissoes={allEmissoesForMap.filter(e => 
+                            ['EM_TRANSITO', 'POSTADO', 'SAIU_PARA_ENTREGA', 'EM_ATRASO', 'AGUARDANDO_RETIRADA'].includes(e.status || '')
+                        )} 
                         enableAutoRefresh={true}
                         refreshIntervalMs={5 * 60 * 1000}
                         isAdmin={true}
