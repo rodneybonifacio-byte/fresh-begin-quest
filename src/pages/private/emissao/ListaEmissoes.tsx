@@ -77,6 +77,28 @@ export const ListaEmissoes = () => {
     const result = await service.getAll(params);
     return result;
   });
+
+  // Busca todos os dados sem filtro de status para o dashboard
+  const { data: allEmissoes } = useFetchQuery<IResponse<IEmissao[]>>(
+    ['emissoes-dashboard', searchParams.get('dataIni'), searchParams.get('dataFim')],
+    async () => {
+      const params: {
+        limit: number;
+        offset: number;
+        dataIni?: string;
+        dataFim?: string;
+      } = {
+        limit: 1000,
+        offset: 0
+      };
+      const dataIni = searchParams.get('dataIni') || undefined;
+      const dataFim = searchParams.get('dataFim') || undefined;
+      if (dataIni) params.dataIni = dataIni;
+      if (dataFim) params.dataFim = dataFim;
+      const result = await service.getAll(params);
+      return result;
+    }
+  );
   useEffect(() => {
     const params = Object.fromEntries(searchParams.entries());
     setSearchParams(params);
@@ -190,7 +212,7 @@ export const ListaEmissoes = () => {
 
             <div className="max-w-7xl mx-auto px-4 py-4">
                 {/* Dashboard */}
-                {showDashboard && emissoes?.data && emissoes.data.length > 0 && <DashboardEmissoes emissoes={emissoes.data} />}
+                {showDashboard && allEmissoes?.data && allEmissoes.data.length > 0 && <DashboardEmissoes emissoes={allEmissoes.data} />}
 
                 {/* Tabs e Tabela */}
                 <ResponsiveTabMenu tab={tab} setTab={setTab}>
