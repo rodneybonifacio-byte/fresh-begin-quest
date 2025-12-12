@@ -15,6 +15,8 @@ import type { IEmbalagem } from '../../../types/IEmbalagem';
 import { formatCurrency } from '../../../utils/formatCurrency';
 import { formatCep, removeNegativo } from '../../../utils/lib.formats';
 import { Content } from '../Content';
+import { useBreakpoint } from '../../../hooks/useBreakpoint';
+import { MobileSimulador } from '../../../components/mobile/MobileSimulador';
 
 const schame = yup.object().shape({
     cepOrigem: yup.string().required('O  cep de origem é obrigatório'),
@@ -40,6 +42,13 @@ const schame = yup.object().shape({
 type FormDataSchema = yup.InferType<typeof schame>;
 
 const SimuladorFreteForm = () => {
+    const isMobile = !useBreakpoint('md');
+    
+    // Mobile view
+    if (isMobile) {
+        return <MobileSimulador />;
+    }
+    
     const { setIsLoading } = useLoadingSpinner();
     const { user: userPayload } = useAuth();
     const { onBuscaCep, response: enderecoDestino } = useAddress();
