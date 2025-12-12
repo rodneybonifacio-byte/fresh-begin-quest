@@ -194,15 +194,30 @@ serve(async (req: Request) => {
           body: JSON.stringify(webhookPayload),
         });
 
+        const status = webhookResponse.status;
         const responseText = await webhookResponse.text();
+        console.log(`📬 Resposta webhook (${envio.codigoObjeto}):`, status, responseText.substring(0, 500));
 
-        // Registrar notificação no Supabase
+        if (!webhookResponse.ok) {
+          // Registrar tentativa com erro
+          await supabase.from('notificacoes_aguardando_retirada').insert({
+            codigo_objeto: envio.codigoObjeto,
+            destinatario_nome: webhookPayload.destinatario_nome,
+            remetente_nome: webhookPayload.remetente_nome,
+            destinatario_celular: webhookPayload.destinatario_celular,
+            webhook_response: `ERRO ${status}: ${responseText.substring(0, 450)}`,
+          });
+
+          throw new Error(`Webhook retornou status ${status}`);
+        }
+
+        // Registrar notificação com sucesso
         await supabase.from('notificacoes_aguardando_retirada').insert({
           codigo_objeto: envio.codigoObjeto,
           destinatario_nome: webhookPayload.destinatario_nome,
           remetente_nome: webhookPayload.remetente_nome,
           destinatario_celular: webhookPayload.destinatario_celular,
-          webhook_response: responseText.substring(0, 500),
+          webhook_response: `OK ${status}: ${responseText.substring(0, 450)}`,
         });
 
         notificados++;
