@@ -113,3 +113,6 @@ verify_jwt = false
 
 [functions.teste-webhook-aguardando-retirada]
 verify_jwt = false
+
+[functions.testar-rastreio]
+verify_jwt = false
