@@ -166,8 +166,11 @@ serve(async (req: Request) => {
     let rodonavesId = ''
 
     if (transportadorasResponse.ok) {
-      const transportadoras = await transportadorasResponse.json()
-      console.log('📦 Transportadoras disponíveis:', JSON.stringify(transportadoras, null, 2))
+      const transportadorasData = await transportadorasResponse.json()
+      console.log('📦 Transportadoras disponíveis:', JSON.stringify(transportadorasData, null, 2))
+      
+      // A API retorna { data: [...] }, então precisamos acessar o array dentro de data
+      const transportadoras = transportadorasData.data || transportadorasData
       
       for (const t of transportadoras) {
         if (t.nome?.toUpperCase() === 'CORREIOS') {
