@@ -205,11 +205,12 @@ export const ShipmentTrackingMap = ({
       .map(e => e.codigoObjeto as string);
   }, [dataEmissoes]);
 
-  // Use tracking location cache (fetches real location from API every 1 hour)
+  // Use tracking location cache (on-demand fetching - only when clicking package)
   const { 
     getLocation: getTrackedLocation, 
     isLoading: isLoadingTracking,
-    lastFetchTime: trackingLastFetch 
+    fetchSingleTracking,
+    isLoadingCodigo
   } = useTrackingLocationCache(inTransitCodigos);
 
   // Process emissions with origin and destination coordinates
@@ -674,26 +675,39 @@ export const ShipmentTrackingMap = ({
       // Add animated package marker at CURRENT REAL POSITION (for in-transit statuses)
       const inTransitStatuses = ['EM_TRANSITO', 'POSTADO', 'COLETADO', 'SAIU_PARA_ENTREGA'];
       if (inTransitStatuses.includes(status) && isAnimating) {
+        const isLoading = isLoadingCodigo(emissao.codigoObjeto || '');
+        
         const packageMarker = L.marker(
           [emissao.currentPosition.lat, emissao.currentPosition.lng],
           { icon: createPackageIcon(status) }
         );
         
         // Show real tracking indicator in tooltip
-        const trackingInfo = emissao.realTrackingLocation 
-          ? `📍 ${emissao.realTrackingLocation.cidadeUf}` 
-          : '🔄 Posição estimada';
+        const trackingInfo = isLoading
+          ? '⏳ Buscando localização...'
+          : emissao.realTrackingLocation 
+            ? `📍 ${emissao.realTrackingLocation.cidadeUf}` 
+            : '🖱️ Clique para rastrear';
         
         packageMarker.bindTooltip(
           `<strong>${emissao.codigoObjeto}</strong><br/>${trackingInfo}`,
           { direction: 'top', permanent: false }
         );
         packageMarker.bindPopup(popupContent, { maxWidth: 300 });
+        
+        // On-demand tracking: fetch real location when marker is clicked
+        packageMarker.on('click', async () => {
+          if (emissao.codigoObjeto && !emissao.realTrackingLocation && !isLoading) {
+            console.log(`[Map] On-demand tracking for: ${emissao.codigoObjeto}`);
+            await fetchSingleTracking(emissao.codigoObjeto);
+          }
+        });
+        
         animatedMarkersRef.current?.addLayer(packageMarker);
       }
     });
 
-  }, [processedEmissoes, activeFilter, mapStyle, showRoutes, isAnimating]);
+  }, [processedEmissoes, activeFilter, mapStyle, showRoutes, isAnimating, fetchSingleTracking, isLoadingCodigo]);
 
   // Status filter counts
   const statusCounts = useMemo(() => {
@@ -797,9 +811,9 @@ export const ShipmentTrackingMap = ({
               )}
             </div>
             <div className="flex items-center gap-2 text-xs text-slate-500">
-              {trackingLastFetch && (
-                <span title="Último rastreio real">
-                  📍 Rastreio: {formatDistanceToNow(trackingLastFetch, { locale: ptBR, addSuffix: true })}
+              {isLoadingTracking && (
+                <span title="Buscando rastreio" className="flex items-center gap-1">
+                  ⏳ <span className="animate-pulse">Rastreando...</span>
                 </span>
               )}
               {lastUpdated && enableAutoRefresh && (
