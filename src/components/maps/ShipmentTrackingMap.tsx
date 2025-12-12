@@ -215,16 +215,31 @@ export const ShipmentTrackingMap = ({
   // Process emissions with origin and destination coordinates
   const processedEmissoes = useMemo(() => {
     return dataEmissoes.map(emissao => {
-      // Origin from remetente
-      const remetenteUf = emissao.remetente?.endereco?.uf || 'SP';
-      const remetenteCidade = emissao.remetente?.endereco?.localidade;
+      // Origin from remetente address (with multiple fallback sources)
+      const remetenteEndereco = emissao.remetente?.endereco;
+      const remetenteUf = remetenteEndereco?.uf || 'SP';
+      const remetenteCidade = remetenteEndereco?.localidade || '';
+      const remetenteCep = remetenteEndereco?.cep || '';
+      const remetenteLogradouro = remetenteEndereco?.logradouro || '';
+      const remetenteBairro = remetenteEndereco?.bairro || '';
+      const remetenteNumero = remetenteEndereco?.numero || '';
+      
+      // Get coordinates from city/uf
       const origin = getCoordinates(remetenteCidade, remetenteUf);
       
       // Add small jitter to origin to prevent stacking
       const originJitter = {
-        lat: origin.lat + (Math.random() - 0.5) * 0.3,
-        lng: origin.lng + (Math.random() - 0.5) * 0.3
+        lat: origin.lat + (Math.random() - 0.5) * 0.15,
+        lng: origin.lng + (Math.random() - 0.5) * 0.15
       };
+      
+      // Store full origin address for display
+      const origemEnderecoCompleto = [
+        remetenteLogradouro && remetenteNumero ? `${remetenteLogradouro}, ${remetenteNumero}` : remetenteLogradouro,
+        remetenteBairro,
+        remetenteCidade && remetenteUf ? `${remetenteCidade} - ${remetenteUf}` : remetenteCidade || remetenteUf,
+        remetenteCep
+      ].filter(Boolean).join(', ');
       
       // Destination from destinatario
       const destUf = emissao.destinatario?.endereco?.uf || 'RJ';
@@ -270,7 +285,10 @@ export const ShipmentTrackingMap = ({
         currentPosition,
         progress,
         routePoints,
-        realTrackingLocation
+        realTrackingLocation,
+        origemEnderecoCompleto,
+        remetenteCidade,
+        remetenteUf
       };
     });
   }, [dataEmissoes, getTrackedLocation]);
@@ -470,7 +488,9 @@ export const ShipmentTrackingMap = ({
           icon: createOriginIcon(),
         });
         originMarker.bindTooltip(
-          `<strong>Origem</strong><br/>${emissao.remetente?.nome || 'Remetente'}<br/><small>${emissao.remetente?.endereco?.localidade || ''} - ${emissao.remetente?.endereco?.uf || ''}</small>`,
+          `<strong>📦 Origem</strong><br/>
+           <b>${emissao.remetente?.nome || 'Remetente'}</b><br/>
+           <small>${emissao.origemEnderecoCompleto || `${emissao.remetenteCidade} - ${emissao.remetenteUf}`}</small>`,
           { direction: 'top', className: 'origin-tooltip' }
         );
         markersRef.current?.addLayer(originMarker);
