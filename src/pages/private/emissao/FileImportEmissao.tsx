@@ -8,7 +8,7 @@ import { Content } from '../Content';
 import { UploadArquivo } from '../../../components/UploadArquivo';
 import { LoadSpinner } from '../../../components/loading';
 import { ButtonComponent } from '../../../components/button';
-import { Box, RefreshCcw, Tag } from 'lucide-react';
+import { Box, RefreshCcw, Tag, Download } from 'lucide-react';
 
 interface ParsedRow {
     [key: string]: string;
@@ -54,6 +54,35 @@ export default function FileMapper() {
         'ufDestinatario', 'logisticaReversa', 'altura', 'largura', 'comprimento',
         'peso', 'valorDeclarado', 'modalidadeFrete'
     ];
+
+    const handleDownloadTemplate = () => {
+        const templateData = [
+            {
+                nomeDesitinatario: 'João da Silva',
+                cpfCnpjDestinatario: '12345678901',
+                celularDestinatario: '11999999999',
+                cepDestinatario: '01310100',
+                logradouroDestinatario: 'Av Paulista',
+                numeroDestinatario: '1000',
+                complementoDestinatario: 'Sala 101',
+                bairroDestinatario: 'Bela Vista',
+                localidadeDestinatario: 'São Paulo',
+                ufDestinatario: 'SP',
+                logisticaReversa: 'N',
+                altura: '10',
+                largura: '15',
+                comprimento: '20',
+                peso: '500',
+                valorDeclarado: '100.00',
+                modalidadeFrete: 'SEDEX'
+            }
+        ];
+
+        const worksheet = XLSX.utils.json_to_sheet(templateData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Modelo');
+        XLSX.writeFile(workbook, 'modelo_importacao_etiquetas.xlsx');
+    };
 
     const handleFileUpload = (_arquivos: File[], e?: React.ChangeEvent<HTMLInputElement>) => {
         const file = e?.target.files?.[0];
@@ -156,11 +185,17 @@ export default function FileMapper() {
             titulo="Importação de Arquivo"
             subTitulo="Importe um arquivo CSV, TXT ou XLSX e mapeie os campos para enviar os dados para a API."
         >
-            {/* <input type="file" accept=".csv,.txt,.xlsx" onChange={handleFileUpload} className="mb-4" /> */}
-            <UploadArquivo
-                onChange={handleFileUpload}
-                allowTypes={['csv', 'txt', 'xlsx']}
-            />
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end mb-4">
+                <div className="flex-1">
+                    <UploadArquivo
+                        onChange={handleFileUpload}
+                        allowTypes={['csv', 'txt', 'xlsx']}
+                    />
+                </div>
+                <ButtonComponent onClick={handleDownloadTemplate} type="button" variant='ghost'>
+                    <Download className="w-4 h-4" /> Baixar Modelo
+                </ButtonComponent>
+            </div>
 
             <SelectCustom
                 label="Remetente"
