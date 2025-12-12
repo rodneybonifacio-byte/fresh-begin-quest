@@ -432,34 +432,47 @@ export const ShipmentTrackingMap = ({
       const status = emissao.status || 'PRE_POSTADO';
       
       if (showRoutes && emissao.status !== 'PRE_POSTADO' && emissao.status !== 'CANCELADO') {
-        // Draw route line
-        const routeCoords = emissao.routePoints.map(p => [p.lat, p.lng] as [number, number]);
+        // Get the current position (real tracking or estimated)
+        const currentPos = emissao.currentPosition;
         
-        // Dashed line for remaining route
-        const fullRoute = L.polyline(routeCoords, {
-          color: '#94A3B8',
-          weight: 2,
-          opacity: 0.4,
-          dashArray: '5, 10',
-        });
-        routesRef.current?.addLayer(fullRoute);
-        
-        // Solid animated line for completed route
-        const progressCoords = routeCoords.slice(0, Math.floor(routeCoords.length * emissao.progress) + 1);
-        if (progressCoords.length > 1) {
-          const progressRoute = L.polyline(progressCoords, {
+        // Draw route from origin to current position (completed path)
+        const completedRoute = L.polyline(
+          [
+            [emissao.origin.lat, emissao.origin.lng],
+            [currentPos.lat, currentPos.lng]
+          ],
+          {
             color: STATUS_COLORS[status],
             weight: 3,
-            opacity: 0.8,
+            opacity: 0.9,
             className: 'animated-route',
-          });
-          routesRef.current?.addLayer(progressRoute);
-        }
+          }
+        );
+        routesRef.current?.addLayer(completedRoute);
         
-        // Origin marker
+        // Draw dashed line from current position to destination (remaining path)
+        const remainingRoute = L.polyline(
+          [
+            [currentPos.lat, currentPos.lng],
+            [emissao.destination.lat, emissao.destination.lng]
+          ],
+          {
+            color: '#94A3B8',
+            weight: 2,
+            opacity: 0.5,
+            dashArray: '8, 12',
+          }
+        );
+        routesRef.current?.addLayer(remainingRoute);
+        
+        // Origin marker (remetente address)
         const originMarker = L.marker([emissao.origin.lat, emissao.origin.lng], {
           icon: createOriginIcon(),
         });
+        originMarker.bindTooltip(
+          `<strong>Origem</strong><br/>${emissao.remetente?.nome || 'Remetente'}<br/><small>${emissao.remetente?.endereco?.localidade || ''} - ${emissao.remetente?.endereco?.uf || ''}</small>`,
+          { direction: 'top', className: 'origin-tooltip' }
+        );
         markersRef.current?.addLayer(originMarker);
       }
       
@@ -638,11 +651,22 @@ export const ShipmentTrackingMap = ({
       });
       markersRef.current?.addLayer(destMarker);
 
-      // Add animated package marker for in-transit
-      if (emissao.status === 'EM_TRANSITO' && isAnimating) {
+      // Add animated package marker at CURRENT REAL POSITION (for in-transit statuses)
+      const inTransitStatuses = ['EM_TRANSITO', 'POSTADO', 'COLETADO', 'SAIU_PARA_ENTREGA'];
+      if (inTransitStatuses.includes(status) && isAnimating) {
         const packageMarker = L.marker(
           [emissao.currentPosition.lat, emissao.currentPosition.lng],
           { icon: createPackageIcon(status) }
+        );
+        
+        // Show real tracking indicator in tooltip
+        const trackingInfo = emissao.realTrackingLocation 
+          ? `📍 ${emissao.realTrackingLocation.cidadeUf}` 
+          : '🔄 Posição estimada';
+        
+        packageMarker.bindTooltip(
+          `<strong>${emissao.codigoObjeto}</strong><br/>${trackingInfo}`,
+          { direction: 'top', permanent: false }
         );
         packageMarker.bindPopup(popupContent, { maxWidth: 300 });
         animatedMarkersRef.current?.addLayer(packageMarker);
