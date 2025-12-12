@@ -180,6 +180,28 @@ const RltEnvios = () => {
         }
     };
 
+    const handleEnviarNotificacoesRetirada = async () => {
+        try {
+            setIsLoading(true);
+            const { data, error } = await supabase.functions.invoke('cron-verificar-aguardando-retirada', {
+                body: { manual: true }
+            });
+            
+            if (error) {
+                toast.error('Erro ao enviar notificações de retirada');
+                console.error('Erro:', error);
+                return;
+            }
+            
+            toast.success(`Notificações enviadas: ${data?.notificados || 0} | Falhas: ${data?.falhas || 0}`);
+        } catch (error) {
+            console.error('Erro ao disparar notificações:', error);
+            toast.error('Erro ao enviar notificações de retirada');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const handleExportToExcel = async () => {
         try {
             setIsLoading(true);
@@ -284,6 +306,14 @@ const RltEnvios = () => {
                         onClick: handleEnviarAvisosAtraso,
                         icon: <Bell size={22} />,
                         bgColor: 'bg-orange-600',
+                    }
+                ] : []),
+                ...(tab === 'AGUARDANDO_RETIRADA' ? [
+                    {
+                        label: 'Notificar Clientes',
+                        onClick: handleEnviarNotificacoesRetirada,
+                        icon: <Bell size={22} />,
+                        bgColor: 'bg-purple-600',
                     }
                 ] : []),
                 {
