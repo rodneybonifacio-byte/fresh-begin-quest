@@ -1,3 +1,4 @@
+// Login Page Component
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { LogoApp } from "../../../components/logo";
