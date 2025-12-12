@@ -433,8 +433,63 @@ export const ShipmentTrackingMap = ({
         { icon: createDestinationIcon(status) }
       );
 
+      // Build origin address string
+      const origemEndereco = emissao.remetente?.endereco;
+      const origemLogradouro = origemEndereco?.logradouro || '';
+      const origemNumero = origemEndereco?.numero || '';
+      const origemBairro = origemEndereco?.bairro || '';
+      const origemCidade = origemEndereco?.localidade || '';
+      const origemUf = origemEndereco?.uf || '';
+      const origemCep = origemEndereco?.cep || '';
+      const origemCompleto = [
+        origemLogradouro && origemNumero ? `${origemLogradouro}, ${origemNumero}` : origemLogradouro,
+        origemBairro,
+        origemCidade && origemUf ? `${origemCidade} - ${origemUf}` : origemCidade || origemUf,
+        origemCep
+      ].filter(Boolean).join('<br/>') || 'Endereço não disponível';
+      
+      // Build destination address string
+      const destEndereco = emissao.destinatario?.endereco;
+      const destLogradouro = destEndereco?.logradouro || '';
+      const destNumero = destEndereco?.numero || '';
+      const destBairro = destEndereco?.bairro || '';
+      const destCidade = destEndereco?.localidade || '';
+      const destUf = destEndereco?.uf || '';
+      const destCep = destEndereco?.cep || '';
+      const destCompleto = [
+        destLogradouro && destNumero ? `${destLogradouro}, ${destNumero}` : destLogradouro,
+        destBairro,
+        destCidade && destUf ? `${destCidade} - ${destUf}` : destCidade || destUf,
+        destCep
+      ].filter(Boolean).join('<br/>') || 'Endereço não disponível';
+      
+      // Estimated current location based on status
+      const getLocalizacaoAtual = () => {
+        switch (status) {
+          case 'PRE_POSTADO':
+            return { texto: 'Aguardando postagem', local: origemCidade && origemUf ? `${origemCidade} - ${origemUf}` : 'Na origem' };
+          case 'POSTADO':
+            return { texto: 'Postado', local: origemCidade && origemUf ? `${origemCidade} - ${origemUf}` : 'Na origem' };
+          case 'COLETADO':
+            return { texto: 'Em coleta', local: origemCidade && origemUf ? `${origemCidade} - ${origemUf}` : 'Na origem' };
+          case 'EM_TRANSITO':
+            return { texto: 'Em trânsito', local: 'A caminho do destino' };
+          case 'SAIU_PARA_ENTREGA':
+            return { texto: 'Saiu para entrega', local: destCidade && destUf ? `${destCidade} - ${destUf}` : 'Próximo ao destino' };
+          case 'AGUARDANDO_RETIRADA':
+            return { texto: 'Aguardando retirada', local: destCidade && destUf ? `Agência em ${destCidade} - ${destUf}` : 'Na agência' };
+          case 'ENTREGUE':
+            return { texto: 'Entregue', local: destCidade && destUf ? `${destCidade} - ${destUf}` : 'No destino' };
+          case 'CANCELADO':
+            return { texto: 'Cancelado', local: '-' };
+          default:
+            return { texto: 'Desconhecido', local: '-' };
+        }
+      };
+      const locAtual = getLocalizacaoAtual();
+
       const popupContent = `
-        <div style="font-family: system-ui; min-width: 220px;">
+        <div style="font-family: system-ui; min-width: 260px;">
           <div style="
             background: linear-gradient(135deg, ${STATUS_COLORS[status]} 0%, ${STATUS_COLORS[status]}dd 100%);
             color: white;
@@ -453,6 +508,7 @@ export const ShipmentTrackingMap = ({
             </div>
           </div>
           <div style="padding: 0 4px;">
+            <!-- Origem -->
             <div style="margin-bottom: 10px;">
               <div style="font-size: 11px; color: #64748B; margin-bottom: 3px; display: flex; align-items: center; gap: 4px;">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2">
@@ -461,10 +517,32 @@ export const ShipmentTrackingMap = ({
                 </svg>
                 Origem
               </div>
-              <div style="font-size: 13px; color: #1E293B; font-weight: 500;">
-                ${emissao.remetente?.endereco?.localidade || 'N/A'} - ${emissao.remetente?.endereco?.uf || ''}
+              <div style="font-size: 12px; color: #1E293B; font-weight: 500;">
+                ${emissao.remetente?.nome || emissao.remetenteNome || 'Remetente'}
+              </div>
+              <div style="font-size: 11px; color: #475569; line-height: 1.4;">
+                ${origemCompleto}
               </div>
             </div>
+            
+            <!-- Localização Atual -->
+            <div style="margin-bottom: 10px; background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%); padding: 10px; border-radius: 8px; border-left: 3px solid #F59E0B;">
+              <div style="font-size: 11px; color: #92400E; margin-bottom: 3px; display: flex; align-items: center; gap: 4px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2">
+                  <circle cx="12" cy="10" r="3"/>
+                  <path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 7 8 11.7z"/>
+                </svg>
+                Localização Atual
+              </div>
+              <div style="font-size: 12px; color: #78350F; font-weight: 600;">
+                ${locAtual.texto}
+              </div>
+              <div style="font-size: 11px; color: #92400E;">
+                ${locAtual.local}
+              </div>
+            </div>
+            
+            <!-- Destino -->
             <div style="margin-bottom: 10px;">
               <div style="font-size: 11px; color: #64748B; margin-bottom: 3px; display: flex; align-items: center; gap: 4px;">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#F97316" stroke-width="2">
@@ -473,13 +551,15 @@ export const ShipmentTrackingMap = ({
                 </svg>
                 Destino
               </div>
-              <div style="font-size: 13px; font-weight: 500; color: #1E293B;">
-                ${emissao.destinatario?.nome || 'N/A'}
+              <div style="font-size: 12px; color: #1E293B; font-weight: 500;">
+                ${emissao.destinatario?.nome || 'Destinatário'}
               </div>
-              <div style="font-size: 12px; color: #475569;">
-                ${emissao.destinatario?.endereco?.localidade || ''} - ${emissao.destinatario?.endereco?.uf || ''}
+              <div style="font-size: 11px; color: #475569; line-height: 1.4;">
+                ${destCompleto}
               </div>
             </div>
+            
+            <!-- Footer -->
             <div style="
               display: flex;
               justify-content: space-between;
