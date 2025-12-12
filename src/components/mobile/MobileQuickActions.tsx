@@ -23,7 +23,7 @@ export const MobileQuickActions = () => {
     {
       icon: Calculator,
       label: "Simular Frete",
-      route: "/app/cotacao",
+      route: "/app/simulador",
       color: "text-blue-600",
       bgColor: "bg-blue-50 dark:bg-blue-950/30"
     },
