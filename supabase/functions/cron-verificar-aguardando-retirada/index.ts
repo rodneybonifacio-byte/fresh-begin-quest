@@ -159,12 +159,21 @@ serve(async (req: Request) => {
         const destinatario = envio.destinatario || {};
         const enderecoDestinatario = destinatario.endereco || {};
 
+        // Formatar telefone com código do Brasil (55)
+        let celular = destinatario.celular || envio.destinatarioCelular || '';
+        // Remover caracteres não numéricos
+        celular = celular.replace(/\D/g, '');
+        // Adicionar prefixo 55 se não tiver
+        if (celular && !celular.startsWith('55')) {
+          celular = '55' + celular;
+        }
+
         // Preparar payload para o webhook DataCrazy
         const webhookPayload = {
           destinatario_nome: destinatario.nome || envio.destinatarioNome || '',
           codigo_objeto: envio.codigoObjeto || '',
           remetente_nome: envio.remetenteNome || envio.cliente?.nome || '',
-          destinatario_celular: destinatario.celular || envio.destinatarioCelular || '',
+          destinatario_celular: celular,
           // Endereço do destinatário
           destinatario_cep: enderecoDestinatario.cep || '',
           destinatario_logradouro: enderecoDestinatario.logradouro || '',
