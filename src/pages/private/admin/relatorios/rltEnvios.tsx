@@ -1,4 +1,4 @@
-import { DollarSign, Filter, PackageCheck, Printer, ReceiptText, ShoppingCart, Users, Wallet, Download, Bell, RefreshCw } from 'lucide-react';
+import { DollarSign, Filter, PackageCheck, Printer, ReceiptText, ShoppingCart, Users, Wallet, Download, Bell, RefreshCw, Map as MapIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { LoadSpinner } from '../../../../components/loading';
@@ -28,6 +28,7 @@ import { fetchEmissoesEmAtraso, type EmissaoEmAtraso } from '../../../../service
 import { differenceInDays, parseISO, format } from 'date-fns';
 import { supabase } from '../../../../integrations/supabase/client';
 import { toast } from 'sonner';
+import { ShipmentTrackingMap } from '../../../../components/maps/ShipmentTrackingMap';
 
 const RltEnvios = () => {
     const config = useGlobalConfig();
@@ -44,6 +45,7 @@ const RltEnvios = () => {
     const [isModalViewPDF, setIsModalViewPDF] = useState(false);
     const [etiqueta, setEtiqueta] = useState<{ nome: string; dados: string }>();
     const [isModalUpdatePrecos, setIsModalUpdatePrecos] = useState<{ isOpen: boolean; emissao: IEmissao }>({ isOpen: false, emissao: {} as IEmissao });
+    const [showMap, setShowMap] = useState(true);
 
     const [searchParams] = useSearchParams();
     const filtros = Object.fromEntries(searchParams.entries());
@@ -53,6 +55,22 @@ const RltEnvios = () => {
         const response = await service.dashboard(filtros, 'dashboard/admin');
         return response ?? {}; // <- evita retorno undefined
     });
+
+    // Buscar todos os dados para o mapa (sem paginação)
+    const { data: allEmissoesForMap } = useFetchQuery<IResponse<IEmissao[]>>(
+        ['emissoes-map', 'admin', filtros],
+        async () => {
+            const params: Record<string, string | number> = {
+                limit: 500,
+                offset: 0,
+            };
+            const dataIni = searchParams.get('dataIni') || undefined;
+            const dataFim = searchParams.get('dataFim') || undefined;
+            if (dataIni) params.dataIni = dataIni;
+            if (dataFim) params.dataFim = dataFim;
+            return await service.getAll(params, 'admin');
+        }
+    );
 
     const {
         data: emissoes,
@@ -441,6 +459,35 @@ const RltEnvios = () => {
                     </div>
                 </div>
             </>
+
+            {/* Mapa de Rastreamento Admin */}
+            <div className="mb-6">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-slate-800 dark:text-white flex items-center gap-2">
+                        <MapIcon className="h-5 w-5 text-primary" />
+                        Mapa de Rastreamento
+                    </h3>
+                    <button
+                        onClick={() => setShowMap(!showMap)}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                            showMap 
+                                ? 'bg-primary text-white' 
+                                : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                        }`}
+                    >
+                        {showMap ? 'Ocultar Mapa' : 'Mostrar Mapa'}
+                    </button>
+                </div>
+                {showMap && allEmissoesForMap?.data && allEmissoesForMap.data.length > 0 && (
+                    <ShipmentTrackingMap 
+                        emissoes={allEmissoesForMap.data} 
+                        enableAutoRefresh={true}
+                        refreshIntervalMs={5 * 60 * 1000}
+                        isAdmin={true}
+                    />
+                )}
+            </div>
+
             <ResponsiveTabMenu tab={tab} setTab={setTab}>
                 {!isLoading && !isError && emissoes && emissoes.data.length > 0 && (
                     <>

@@ -1,12 +1,18 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { MapPin, Package, Truck, CheckCircle, Clock, Navigation, Layers, Play, Pause } from 'lucide-react';
+import { MapPin, Package, Truck, CheckCircle, Clock, Navigation, Layers, Play, Pause, RefreshCw } from 'lucide-react';
 import type { IEmissao } from '../../types/IEmissao';
 import { motion } from 'framer-motion';
+import { useMapTrackingData } from '../../hooks/useMapTrackingData';
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface ShipmentTrackingMapProps {
   emissoes: IEmissao[];
+  enableAutoRefresh?: boolean;
+  refreshIntervalMs?: number;
+  isAdmin?: boolean;
 }
 
 // Brazilian state capitals coordinates
@@ -160,7 +166,12 @@ const getProgressByStatus = (status: string): number => {
   }
 };
 
-export const ShipmentTrackingMap = ({ emissoes }: ShipmentTrackingMapProps) => {
+export const ShipmentTrackingMap = ({ 
+  emissoes, 
+  enableAutoRefresh = false,
+  refreshIntervalMs = 5 * 60 * 1000, // 5 minutes
+  isAdmin = false
+}: ShipmentTrackingMapProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const markersRef = useRef<L.LayerGroup | null>(null);
@@ -172,9 +183,23 @@ export const ShipmentTrackingMap = ({ emissoes }: ShipmentTrackingMapProps) => {
   const [isAnimating, setIsAnimating] = useState(true);
   const animationFrameRef = useRef<number | null>(null);
 
+  // Use auto-refresh hook
+  const { 
+    emissoes: trackedEmissoes, 
+    isRefreshing, 
+    lastUpdated,
+    refresh 
+  } = useMapTrackingData(emissoes, {
+    enabled: enableAutoRefresh,
+    refreshInterval: refreshIntervalMs,
+  });
+
+  // Use tracked emissoes if auto-refresh is enabled, otherwise use props
+  const dataEmissoes = enableAutoRefresh ? trackedEmissoes : emissoes;
+
   // Process emissions with origin and destination coordinates
   const processedEmissoes = useMemo(() => {
-    return emissoes.map(emissao => {
+    return dataEmissoes.map(emissao => {
       // Origin from remetente
       const remetenteUf = emissao.remetente?.endereco?.uf || 'SP';
       const remetenteCidade = emissao.remetente?.endereco?.localidade;
@@ -212,7 +237,7 @@ export const ShipmentTrackingMap = ({ emissoes }: ShipmentTrackingMapProps) => {
         routePoints
       };
     });
-  }, [emissoes]);
+  }, [dataEmissoes]);
 
   // Statistics by state
   const statsByState = useMemo(() => {
@@ -569,8 +594,36 @@ export const ShipmentTrackingMap = ({ emissoes }: ShipmentTrackingMapProps) => {
               <Layers className="h-4 w-4" />
               {mapStyle === 'light' ? 'Escuro' : 'Claro'}
             </button>
+            {enableAutoRefresh && (
+              <button
+                onClick={refresh}
+                disabled={isRefreshing}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all text-sm ${
+                  isRefreshing 
+                    ? 'bg-blue-500/20 text-blue-400 cursor-wait' 
+                    : 'bg-slate-700/50 hover:bg-slate-700 text-white'
+                }`}
+                title={lastUpdated ? `Última atualização: ${formatDistanceToNow(lastUpdated, { locale: ptBR, addSuffix: true })}` : 'Atualizar dados'}
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </button>
+            )}
           </div>
         </div>
+
+        {/* Admin badge & last updated */}
+        {isAdmin && (
+          <div className="flex items-center justify-between mt-3 px-1">
+            <span className="text-xs text-slate-500 bg-slate-700/50 px-2 py-1 rounded">
+              Admin View - Todos os clientes
+            </span>
+            {lastUpdated && enableAutoRefresh && (
+              <span className="text-xs text-slate-500">
+                Atualizado {formatDistanceToNow(lastUpdated, { locale: ptBR, addSuffix: true })}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Filter Pills */}
         <div className="flex flex-wrap gap-2 mt-4">
