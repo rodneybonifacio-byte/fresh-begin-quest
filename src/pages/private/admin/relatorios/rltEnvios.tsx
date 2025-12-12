@@ -56,20 +56,46 @@ const RltEnvios = () => {
         return response ?? {}; // <- evita retorno undefined
     });
 
-    // Buscar todos os dados para o mapa (sem paginação)
-    const { data: allEmissoesForMap } = useFetchQuery<IResponse<IEmissao[]>>(
-        ['emissoes-map', 'admin', filtros],
+    // Buscar todos os dados para o mapa (sem paginação) - busca em lotes para pegar tudo
+    const { data: allEmissoesForMap } = useFetchQuery<IEmissao[]>(
+        ['emissoes-map-all', 'admin', filtros],
         async () => {
-            const params: Record<string, string | number> = {
-                limit: 500,
-                offset: 0,
-            };
+            const allEmissoes: IEmissao[] = [];
+            const batchSize = 100;
+            let offset = 0;
+            let hasMore = true;
+            
             const dataIni = searchParams.get('dataIni') || undefined;
             const dataFim = searchParams.get('dataFim') || undefined;
-            if (dataIni) params.dataIni = dataIni;
-            if (dataFim) params.dataFim = dataFim;
-            return await service.getAll(params, 'admin');
-        }
+            
+            while (hasMore) {
+                const params: Record<string, string | number> = {
+                    limit: batchSize,
+                    offset: offset,
+                };
+                if (dataIni) params.dataIni = dataIni;
+                if (dataFim) params.dataFim = dataFim;
+                
+                const response = await service.getAll(params, 'admin');
+                const batch = response?.data || [];
+                allEmissoes.push(...batch);
+                
+                // Se retornou menos que o batch, não há mais dados
+                if (batch.length < batchSize) {
+                    hasMore = false;
+                } else {
+                    offset += batchSize;
+                }
+                
+                // Limite de segurança: máximo 5000 registros para não travar
+                if (allEmissoes.length >= 5000) {
+                    hasMore = false;
+                }
+            }
+            
+            return allEmissoes;
+        },
+        { staleTime: 5 * 60 * 1000 } // Cache por 5 minutos
     );
 
     const {
@@ -478,9 +504,9 @@ const RltEnvios = () => {
                         {showMap ? 'Ocultar Mapa' : 'Mostrar Mapa'}
                     </button>
                 </div>
-                {showMap && allEmissoesForMap?.data && allEmissoesForMap.data.length > 0 && (
+                {showMap && allEmissoesForMap && allEmissoesForMap.length > 0 && (
                     <ShipmentTrackingMap 
-                        emissoes={allEmissoesForMap.data} 
+                        emissoes={allEmissoesForMap} 
                         enableAutoRefresh={true}
                         refreshIntervalMs={5 * 60 * 1000}
                         isAdmin={true}
