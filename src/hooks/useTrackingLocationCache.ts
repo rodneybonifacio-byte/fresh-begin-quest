@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '../integrations/supabase/client';
 
 interface TrackingLocation {
@@ -12,6 +12,7 @@ interface CacheEntry {
   location: TrackingLocation | null;
   timestamp: number;
   codigoObjeto: string;
+  isLoading?: boolean;
 }
 
 interface TrackingCache {
@@ -19,30 +20,37 @@ interface TrackingCache {
 }
 
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour cache
-const BATCH_SIZE = 10; // Process 10 at a time to avoid overloading API
-const BATCH_DELAY_MS = 500; // 500ms between batches
 
-export const useTrackingLocationCache = (codigosObjeto: string[]) => {
+// Hook otimizado para rastreio sob demanda
+export const useTrackingLocationCache = (_codigosObjeto: string[] = []) => {
   const [cache, setCache] = useState<TrackingCache>({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
-  const fetchingRef = useRef(false);
-  const mountedRef = useRef(true);
+  const [loadingCodigos, setLoadingCodigos] = useState<Set<string>>(new Set());
+  const fetchingRef = useRef<Set<string>>(new Set());
 
-  // Filter only EM_TRANSITO codes that need fetching
-  const getCodigosToFetch = useCallback((codigos: string[]): string[] => {
+  // Buscar rastreio de um único pacote
+  const fetchSingleTracking = useCallback(async (codigoObjeto: string): Promise<TrackingLocation | null> => {
+    if (!codigoObjeto) return null;
+    
+    // Check cache first
+    const cached = cache[codigoObjeto];
     const now = Date.now();
-    return codigos.filter(codigo => {
-      if (!codigo) return false;
-      const cached = cache[codigo];
-      if (!cached) return true;
-      // Re-fetch if cache expired (1 hour)
-      return now - cached.timestamp > CACHE_TTL_MS;
-    });
-  }, [cache]);
+    if (cached && !cached.isLoading && (now - cached.timestamp < CACHE_TTL_MS)) {
+      console.log(`[TrackingCache] Using cached location for ${codigoObjeto}`);
+      return cached.location;
+    }
 
-  const fetchSingleTracking = async (codigoObjeto: string): Promise<TrackingLocation | null> => {
+    // Prevent duplicate fetches
+    if (fetchingRef.current.has(codigoObjeto)) {
+      console.log(`[TrackingCache] Already fetching ${codigoObjeto}`);
+      return null;
+    }
+
     try {
+      fetchingRef.current.add(codigoObjeto);
+      setLoadingCodigos(prev => new Set(prev).add(codigoObjeto));
+      
+      console.log(`[TrackingCache] Fetching on-demand: ${codigoObjeto}`);
+      
       const { data, error } = await supabase.functions.invoke('testar-rastreio', {
         body: { codigo: codigoObjeto }
       });
@@ -52,9 +60,11 @@ export const useTrackingLocationCache = (codigosObjeto: string[]) => {
         return null;
       }
 
+      let location: TrackingLocation | null = null;
+      
       if (data?.success && data?.analise?.ultimoEvento) {
         const evento = data.analise.ultimoEvento;
-        return {
+        location = {
           cidadeUf: evento.unidade?.cidadeUf || 'Localização indisponível',
           descricao: evento.descricao || '',
           dataCompleta: evento.dataCompleta || '',
@@ -62,109 +72,53 @@ export const useTrackingLocationCache = (codigosObjeto: string[]) => {
         };
       }
 
-      return null;
+      // Update cache
+      setCache(prev => ({
+        ...prev,
+        [codigoObjeto]: {
+          location,
+          timestamp: Date.now(),
+          codigoObjeto,
+          isLoading: false
+        }
+      }));
+
+      return location;
     } catch (err) {
       console.error(`[TrackingCache] Exception fetching ${codigoObjeto}:`, err);
       return null;
-    }
-  };
-
-  const fetchBatchTracking = useCallback(async (codigos: string[]) => {
-    if (fetchingRef.current || codigos.length === 0) return;
-    
-    fetchingRef.current = true;
-    setIsLoading(true);
-
-    console.log(`[TrackingCache] Fetching ${codigos.length} tracking codes...`);
-
-    const newCacheEntries: TrackingCache = {};
-    const now = Date.now();
-
-    // Process in batches
-    for (let i = 0; i < codigos.length; i += BATCH_SIZE) {
-      if (!mountedRef.current) break;
-
-      const batch = codigos.slice(i, i + BATCH_SIZE);
-      console.log(`[TrackingCache] Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(codigos.length / BATCH_SIZE)}`);
-
-      // Fetch all in current batch in parallel
-      const results = await Promise.allSettled(
-        batch.map(codigo => fetchSingleTracking(codigo))
-      );
-
-      results.forEach((result, idx) => {
-        const codigo = batch[idx];
-        if (result.status === 'fulfilled') {
-          newCacheEntries[codigo] = {
-            location: result.value,
-            timestamp: now,
-            codigoObjeto: codigo
-          };
-        } else {
-          newCacheEntries[codigo] = {
-            location: null,
-            timestamp: now,
-            codigoObjeto: codigo
-          };
-        }
+    } finally {
+      fetchingRef.current.delete(codigoObjeto);
+      setLoadingCodigos(prev => {
+        const next = new Set(prev);
+        next.delete(codigoObjeto);
+        return next;
       });
-
-      // Small delay between batches
-      if (i + BATCH_SIZE < codigos.length) {
-        await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
-      }
     }
+  }, [cache]);
 
-    if (mountedRef.current) {
-      setCache(prev => ({ ...prev, ...newCacheEntries }));
-      setLastFetchTime(new Date());
-    }
-
-    setIsLoading(false);
-    fetchingRef.current = false;
-
-    console.log(`[TrackingCache] Completed. Cached ${Object.keys(newCacheEntries).length} locations.`);
-  }, []);
-
-  // Effect to fetch missing/expired cache entries
-  useEffect(() => {
-    const codigosToFetch = getCodigosToFetch(codigosObjeto);
-    
-    if (codigosToFetch.length > 0 && !fetchingRef.current) {
-      // Only fetch first batch immediately, rest on demand or interval
-      const limitedBatch = codigosToFetch.slice(0, BATCH_SIZE * 3); // Max 30 at once
-      fetchBatchTracking(limitedBatch);
-    }
-  }, [codigosObjeto, getCodigosToFetch, fetchBatchTracking]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
-
-  // Get location for a specific codigo
+  // Get location for a specific codigo (from cache only)
   const getLocation = useCallback((codigoObjeto: string): TrackingLocation | null => {
     return cache[codigoObjeto]?.location || null;
   }, [cache]);
 
-  // Manual refresh
-  const refresh = useCallback(() => {
-    const codigosToFetch = codigosObjeto.filter(c => c);
-    if (codigosToFetch.length > 0) {
-      // Clear cache and refetch
-      setCache({});
-      fetchBatchTracking(codigosToFetch.slice(0, BATCH_SIZE * 3));
-    }
-  }, [codigosObjeto, fetchBatchTracking]);
+  // Check if a codigo is currently loading
+  const isLoadingCodigo = useCallback((codigoObjeto: string): boolean => {
+    return loadingCodigos.has(codigoObjeto);
+  }, [loadingCodigos]);
+
+  // Clear cache
+  const clearCache = useCallback(() => {
+    setCache({});
+  }, []);
 
   return {
     cache,
-    isLoading,
-    lastFetchTime,
+    isLoading: loadingCodigos.size > 0,
+    loadingCodigos,
     getLocation,
-    refresh
+    fetchSingleTracking,
+    isLoadingCodigo,
+    refresh: clearCache
   };
 };
