@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_integracoes_access: {
+        Row: {
+          accessed_at: string | null
+          action: string
+          cliente_id: string
+          id: string
+          integracao_id: string
+          ip_address: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          accessed_at?: string | null
+          action: string
+          cliente_id: string
+          id?: string
+          integracao_id: string
+          ip_address?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          accessed_at?: string | null
+          action?: string
+          cliente_id?: string
+          id?: string
+          integracao_id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       cadastros_origem: {
         Row: {
           cliente_id: string
@@ -778,7 +808,45 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      integracoes_safe: {
+        Row: {
+          ativo: boolean | null
+          atualizado_em: string | null
+          cliente_id: string | null
+          credenciais_masked: Json | null
+          criado_em: string | null
+          id: string | null
+          plataforma: string | null
+          remetente_id: string | null
+          store_id: string | null
+          webhook_url: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          atualizado_em?: string | null
+          cliente_id?: string | null
+          credenciais_masked?: never
+          criado_em?: string | null
+          id?: string | null
+          plataforma?: string | null
+          remetente_id?: string | null
+          store_id?: string | null
+          webhook_url?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          atualizado_em?: string | null
+          cliente_id?: string | null
+          credenciais_masked?: never
+          criado_em?: string | null
+          id?: string | null
+          plataforma?: string | null
+          remetente_id?: string | null
+          store_id?: string | null
+          webhook_url?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       atualizar_status_recarga: {
@@ -859,6 +927,10 @@ export type Database = {
         Returns: boolean
       }
       get_cliente_id_from_jwt: { Args: never; Returns: string }
+      get_integracao_credenciais: {
+        Args: { p_integracao_id: string }
+        Returns: Json
+      }
       get_parceiro_id_from_jwt: { Args: never; Returns: string }
       incrementar_contador_cadastro: { Args: never; Returns: number }
       is_admin_from_jwt: { Args: never; Returns: boolean }
@@ -866,9 +938,14 @@ export type Database = {
         Args: { p_codigo_objeto?: string; p_emissao_id: string }
         Returns: boolean
       }
+      mask_sensitive_credenciais: { Args: { creds: Json }; Returns: Json }
       registrar_recarga: {
         Args: { p_cliente_id: string; p_descricao?: string; p_valor: number }
         Returns: string
+      }
+      update_integracao_credenciais: {
+        Args: { p_credenciais: Json; p_integracao_id: string }
+        Returns: boolean
       }
       verificar_e_cobrar_etiqueta: {
         Args: {
