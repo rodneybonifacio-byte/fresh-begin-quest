@@ -7,6 +7,48 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// 🔒 Função para validar se o usuário é admin
+async function validateAdminAccess(req: Request): Promise<{ isAdmin: boolean; error?: string }> {
+  const authHeader = req.headers.get('authorization');
+  
+  if (!authHeader) {
+    return { isAdmin: false, error: 'Token de autorização não fornecido' };
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  
+  try {
+    const payloadBase64 = token.split('.')[1];
+    const payload = JSON.parse(atob(payloadBase64));
+    
+    console.log('🔐 Validando acesso admin...');
+    
+    const isAdmin = payload.role === 'admin' || 
+                    payload.role === 'ADMIN' ||
+                    payload.isAdmin === true || 
+                    payload.user_metadata?.role === 'admin' ||
+                    payload.app_metadata?.role === 'admin';
+    
+    if (isAdmin) {
+      console.log('✅ Usuário é admin (via JWT claims)');
+      return { isAdmin: true };
+    }
+    
+    const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
+    if (payload.email === adminEmail) {
+      console.log('✅ Usuário é admin (via email)');
+      return { isAdmin: true };
+    }
+    
+    console.log('❌ Usuário não tem permissão de admin');
+    return { isAdmin: false, error: 'Acesso negado: permissão de administrador necessária' };
+    
+  } catch (error) {
+    console.error('❌ Erro ao validar token:', error);
+    return { isAdmin: false, error: 'Token inválido' };
+  }
+}
+
 async function getAdminToken(): Promise<string> {
   const baseUrl = Deno.env.get('BASE_API_URL');
   const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
@@ -38,36 +80,6 @@ async function getAdminToken(): Promise<string> {
   return loginData.data?.token || loginData.token;
 }
 
-async function getClientToken(clienteEmail: string): Promise<string | null> {
-  const baseUrl = Deno.env.get('BASE_API_URL');
-  
-  // Tentar fazer login com a senha padrão de clientes novos
-  const defaultPasswords = ['Hub@2025!', '123456', 'senha123'];
-  
-  for (const senha of defaultPasswords) {
-    try {
-      const loginResponse = await fetch(`${baseUrl}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: clienteEmail,
-          senha: senha,
-        }),
-      });
-
-      if (loginResponse.ok) {
-        const loginData = await loginResponse.json();
-        console.log('✅ Token do cliente obtido com sucesso');
-        return loginData.data?.token || loginData.token;
-      }
-    } catch (e) {
-      // Continuar tentando
-    }
-  }
-  
-  return null;
-}
-
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -75,6 +87,17 @@ serve(async (req) => {
   }
 
   try {
+    // 🔒 Validar acesso admin ANTES de qualquer operação
+    const { isAdmin, error: authError } = await validateAdminAccess(req);
+    
+    if (!isAdmin) {
+      console.error('🚫 Acesso negado:', authError);
+      return new Response(
+        JSON.stringify({ success: false, error: authError || 'Acesso negado' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const baseUrl = Deno.env.get('BASE_API_URL');
     if (!baseUrl) {
       throw new Error('BASE_API_URL não configurada');

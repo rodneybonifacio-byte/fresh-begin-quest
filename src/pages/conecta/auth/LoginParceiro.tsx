@@ -19,49 +19,34 @@ export const LoginParceiro = () => {
     setLoading(true);
 
     try {
-      // Buscar parceiro pelo email e verificar senha
-      const { data: parceiro, error } = await supabase
-        .from('parceiros')
-        .select('*')
-        .eq('email', formData.email.toLowerCase())
-        .maybeSingle();
+      // 🔒 Login via edge function segura (server-side)
+      const { data, error } = await supabase.functions.invoke('parceiro-auth', {
+        body: {
+          action: 'login',
+          email: formData.email,
+          senha: formData.senha
+        }
+      });
 
-      if (error) throw error;
-
-      if (!parceiro) {
-        toast.error('Email ou senha incorretos');
+      if (error) {
+        console.error('Erro ao fazer login:', error);
+        toast.error('Erro ao conectar ao servidor');
         setLoading(false);
         return;
       }
 
-      // Verificar senha (em produção, usar bcrypt no backend)
-      if (parceiro.senha_hash !== formData.senha) {
-        toast.error('Email ou senha incorretos');
+      if (!data.success) {
+        toast.error(data.error || 'Email ou senha incorretos');
         setLoading(false);
         return;
       }
 
-      if (parceiro.status === 'pendente') {
-        toast.warning('Sua conta ainda está pendente de aprovação');
-        setLoading(false);
-        return;
-      }
-
-      if (parceiro.status === 'suspenso' || parceiro.status === 'cancelado') {
-        toast.error('Sua conta está suspensa ou cancelada');
-        setLoading(false);
-        return;
-      }
-
-      // Salvar dados do parceiro no localStorage
-      localStorage.setItem('parceiro_token', parceiro.id);
-      localStorage.setItem('parceiro_data', JSON.stringify({
-        id: parceiro.id,
-        nome: parceiro.nome,
-        email: parceiro.email,
-        codigo_parceiro: parceiro.codigo_parceiro
-      }));
-
+      // Salvar dados do parceiro
+      localStorage.removeItem('parceiro_token');
+      localStorage.removeItem('parceiro_data');
+      localStorage.setItem('parceiro_token', data.token);
+      localStorage.setItem('parceiro_data', JSON.stringify(data.parceiro));
+      
       toast.success('Login realizado com sucesso!');
       navigate('/conecta/dashboard');
     } catch (error: any) {
