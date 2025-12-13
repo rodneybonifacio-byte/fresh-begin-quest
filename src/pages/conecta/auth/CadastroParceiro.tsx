@@ -130,15 +130,6 @@ export const CadastroParceiro = () => {
     aceitouTermos: false
   });
 
-  const generateSlug = (nome: string): string => {
-    return nome
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .substring(0, 20);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,48 +147,31 @@ export const CadastroParceiro = () => {
     setLoading(true);
 
     try {
-      const codigoParceiro = `BRHUB-${generateSlug(formData.nome).toUpperCase()}`;
-      const linkIndicacao = `${window.location.origin}/cadastro-cliente?ref=${codigoParceiro.toLowerCase()}`;
+      // Chamar edge function para registrar parceiro
+      const { data, error } = await supabase.functions.invoke('registrar-parceiro', {
+        body: {
+          nome: formData.nome,
+          email: formData.email,
+          cpf_cnpj: formData.cpfCnpj,
+          telefone: formData.telefone,
+          senha: formData.senha,
+          chave_pix: formData.chavePix || null
+        }
+      });
 
-      // Verificar se email já existe
-      const { data: existente } = await supabase
-        .from('parceiros')
-        .select('id')
-        .eq('email', formData.email.toLowerCase())
-        .maybeSingle();
+      if (error) throw error;
 
-      if (existente) {
-        toast.error('Este email já está cadastrado');
+      if (!data.success) {
+        toast.error(data.error || 'Erro ao cadastrar');
         setLoading(false);
         return;
       }
-
-      // Criar parceiro
-      const { error } = await supabase
-        .from('parceiros')
-        .insert({
-          nome: formData.nome,
-          email: formData.email.toLowerCase(),
-          cpf_cnpj: formData.cpfCnpj.replace(/\D/g, ''),
-          telefone: formData.telefone.replace(/\D/g, ''),
-          senha_hash: formData.senha, // Em produção, usar hash
-          codigo_parceiro: codigoParceiro,
-          link_indicacao: linkIndicacao,
-          chave_pix: formData.chavePix || null,
-          status: 'aprovado' // Auto-aprovar por enquanto
-        });
-
-      if (error) throw error;
 
       setSuccess(true);
       toast.success('Cadastro realizado com sucesso!');
     } catch (error: any) {
       console.error('Erro no cadastro:', error);
-      if (error.code === '23505') {
-        toast.error('Este email ou código já está em uso');
-      } else {
-        toast.error('Erro ao cadastrar. Tente novamente.');
-      }
+      toast.error('Erro ao cadastrar. Tente novamente.');
     } finally {
       setLoading(false);
     }

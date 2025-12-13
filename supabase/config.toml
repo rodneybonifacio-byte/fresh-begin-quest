@@ -125,3 +125,6 @@ verify_jwt = false
 
 [functions.migrar-senhas-parceiros]
 verify_jwt = false
+
+[functions.registrar-parceiro]
+verify_jwt = false
