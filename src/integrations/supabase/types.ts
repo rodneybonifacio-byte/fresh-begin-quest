@@ -396,6 +396,7 @@ export type Database = {
           atualizado_em: string
           cliente_id: string
           credenciais: Json
+          credenciais_encrypted: string | null
           criado_em: string
           id: string
           plataforma: string
@@ -408,6 +409,7 @@ export type Database = {
           atualizado_em?: string
           cliente_id: string
           credenciais: Json
+          credenciais_encrypted?: string | null
           criado_em?: string
           id?: string
           plataforma: string
@@ -420,6 +422,7 @@ export type Database = {
           atualizado_em?: string
           cliente_id?: string
           credenciais?: Json
+          credenciais_encrypted?: string | null
           criado_em?: string
           id?: string
           plataforma?: string
@@ -888,8 +891,14 @@ export type Database = {
         Args: { p_cliente_id: string; p_emissao_id: string; p_valor: number }
         Returns: boolean
       }
+      decrypt_credentials: { Args: { encrypted_data: string }; Returns: Json }
+      encrypt_credentials: { Args: { credentials: Json }; Returns: string }
       get_cliente_id_from_jwt: { Args: never; Returns: string }
       get_integracao_credenciais: {
+        Args: { p_integracao_id: string }
+        Returns: Json
+      }
+      get_integracao_credenciais_segura: {
         Args: { p_integracao_id: string }
         Returns: Json
       }
@@ -906,6 +915,10 @@ export type Database = {
         Returns: string
       }
       update_integracao_credenciais: {
+        Args: { p_credenciais: Json; p_integracao_id: string }
+        Returns: boolean
+      }
+      update_integracao_credenciais_segura: {
         Args: { p_credenciais: Json; p_integracao_id: string }
         Returns: boolean
       }
