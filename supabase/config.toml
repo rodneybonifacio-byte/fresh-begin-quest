@@ -122,3 +122,6 @@ verify_jwt = false
 
 [functions.processar-pagamento-manual]
 verify_jwt = false
+
+[functions.migrar-senhas-parceiros]
+verify_jwt = false
