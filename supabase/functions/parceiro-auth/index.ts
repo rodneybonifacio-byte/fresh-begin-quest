@@ -9,10 +9,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Salt fixo para hash de senhas - deve ser o mesmo usado na migração SQL
+const PASSWORD_SALT = 'BRHUB_SALT_2024';
+
 // Hash de senha usando SHA-256 (alternativa a bcrypt no Deno)
 async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
-  const data = encoder.encode(password + Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.slice(0, 16)); // salt
+  const data = encoder.encode(password + PASSWORD_SALT);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   return encode(new Uint8Array(hashBuffer));
 }

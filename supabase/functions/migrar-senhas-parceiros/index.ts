@@ -9,10 +9,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Salt fixo para hash de senhas - deve ser o mesmo do parceiro-auth
+const PASSWORD_SALT = 'BRHUB_SALT_2024';
+
 // Hash de senha usando SHA-256 (mesmo algoritmo do parceiro-auth)
-async function hashPassword(password: string, salt: string): Promise<string> {
+async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
-  const data = encoder.encode(password + salt);
+  const data = encoder.encode(password + PASSWORD_SALT);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   return encode(new Uint8Array(hashBuffer));
 }
@@ -86,10 +89,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Salt para hash (primeiros 16 chars do service key)
-    const salt = supabaseServiceKey.slice(0, 16);
-
-    console.log('🔐 Iniciando migração de senhas para hash SHA-256...');
+    console.log('🔐 Iniciando migração de senhas para hash SHA-256 com salt fixo...');
 
     // Buscar todos os parceiros
     const { data: parceiros, error: fetchError } = await supabase
@@ -124,7 +124,7 @@ serve(async (req) => {
         }
 
         // Fazer hash da senha plaintext
-        const hashedPassword = await hashPassword(parceiro.senha_hash, salt);
+        const hashedPassword = await hashPassword(parceiro.senha_hash);
 
         // Atualizar no banco
         const { error: updateError } = await supabase
