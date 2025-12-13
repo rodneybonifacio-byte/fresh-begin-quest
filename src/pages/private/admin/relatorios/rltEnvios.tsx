@@ -250,10 +250,11 @@ const RltEnvios = () => {
         try {
             setIsLoading(true);
             
-            // Buscar filtros
+            // Buscar filtros - status vazio significa exportar TODOS os status
             const dataIni = searchParams.get('dataIni') || undefined;
             const dataFim = searchParams.get('dataFim') || undefined;
-            const status = searchParams.get('status') || tab;
+            const statusParam = searchParams.get('status');
+            const status = statusParam && statusParam.length > 0 ? statusParam : undefined;
             const clienteId = searchParams.get('clienteId') || undefined;
             const remetenteId = searchParams.get('remetenteId') || undefined;
             const transportadora = searchParams.get('transportadora') || undefined;
