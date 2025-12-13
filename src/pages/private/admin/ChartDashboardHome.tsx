@@ -1,6 +1,7 @@
 import { ApexOptions } from 'apexcharts';
 import ReactApexChart from "react-apexcharts";
 import { IFaturaDashboardResumoCliente } from "../../../types/fatura/IFatauraDashboard";
+import { TrendingUp } from 'lucide-react';
 
 interface Props {
     comparativoClientes: IFaturaDashboardResumoCliente[];
@@ -39,27 +40,31 @@ export const ChartDashboardHome = ({ comparativoClientes }: Props) => {
             toolbar: { show: false },
             zoom: { enabled: false },
             background: 'transparent',
+            fontFamily: 'inherit',
         },
-        colors: ['#3b82f6', '#10b981', '#ea580c', '#8b5cf6'], // Azul, Verde, Laranja escuro, Roxo (Lucro)
+        colors: ['#10b981', '#3b82f6', '#f97316', '#8b5cf6'],
         dataLabels: {
             enabled: false,
         },
         stroke: {
             curve: 'smooth',
-            width: 2,
+            width: 3,
         },
         markers: {
-            size: 4,
-            strokeWidth: 2,
+            size: 0,
+            strokeWidth: 0,
             hover: {
-                size: 6,
+                size: 8,
+                sizeOffset: 3,
             },
         },
         xaxis: {
             categories: truncadas,
+            axisBorder: { show: false },
+            axisTicks: { show: false },
             labels: {
                 style: {
-                    colors: isDark ? "#e5e7eb" : "#6c757d",
+                    colors: isDark ? "#94a3b8" : "#64748b",
                     fontSize: "12px",
                     fontWeight: 500,
                 },
@@ -68,9 +73,9 @@ export const ChartDashboardHome = ({ comparativoClientes }: Props) => {
         yaxis: {
             labels: {
                 formatter: val =>
-                    "R$ " + val.toLocaleString("pt-BR", { minimumFractionDigits: 2 }),
+                    "R$ " + val.toLocaleString("pt-BR", { minimumFractionDigits: 0 }),
                 style: {
-                    colors: isDark ? "#e5e7eb" : "#6c757d",
+                    colors: isDark ? "#94a3b8" : "#64748b",
                     fontSize: "12px",
                     fontWeight: 400,
                 },
@@ -81,7 +86,7 @@ export const ChartDashboardHome = ({ comparativoClientes }: Props) => {
             intersect: false,
             theme: isDark ? 'dark' : 'light',
             style: {
-                fontSize: '14px',
+                fontSize: '13px',
             },
             y: {
                 formatter: val =>
@@ -89,27 +94,62 @@ export const ChartDashboardHome = ({ comparativoClientes }: Props) => {
             },
         },
         fill: {
-            type: 'solid',
-            opacity: 0.3,
+            type: 'gradient',
+            gradient: {
+                shadeIntensity: 1,
+                opacityFrom: 0.4,
+                opacityTo: 0.05,
+                stops: [0, 90, 100]
+            }
         },
         legend: {
             position: 'top',
-            horizontalAlign: 'center',
-            fontSize: '14px',
-            fontWeight: 500,
+            horizontalAlign: 'left',
+            fontSize: '13px',
+            fontWeight: 600,
+            markers: {
+                size: 10,
+                shape: 'circle',
+                offsetX: -4,
+            },
+            itemMargin: {
+                horizontal: 16,
+            },
             labels: {
-                colors: isDark ? '#e5e7eb' : '#374151',
+                colors: isDark ? '#e2e8f0' : '#1e293b',
             },
         },
         grid: {
-            borderColor: isDark ? '#374151' : '#e5e7eb',
+            borderColor: isDark ? '#334155' : '#e2e8f0',
+            strokeDashArray: 4,
+            padding: {
+                top: 0,
+                right: 0,
+                bottom: 0,
+                left: 10,
+            },
         },
     };
 
     return (
-        <div className="p-4 bg-white dark:bg-slate-800 shadow rounded">
-            <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Comparativo entre Clientes</h2>
-            <ReactApexChart options={options} series={series} type="area" height={450} />
+        <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-800/80 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 shadow-xl">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 pb-2">
+                <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg shadow-blue-500/20">
+                        <TrendingUp className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                        <h2 className="text-lg font-bold text-slate-900 dark:text-white">Comparativo entre Clientes</h2>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Análise financeira detalhada</p>
+                    </div>
+                </div>
+            </div>
+            
+            {/* Chart */}
+            <div className="px-4 pb-4">
+                <ReactApexChart options={options} series={series} type="area" height={420} />
+            </div>
         </div>
     );
 };
