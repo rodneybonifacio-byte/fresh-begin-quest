@@ -1,5 +1,19 @@
+// @ts-nocheck
+/// <reference lib="deno.ns" />
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
+
+// Salt fixo - DEVE SER IGUAL ao parceiro-auth
+const PASSWORD_SALT = 'BRHUB_SALT_2024';
+
+// Hash de senha usando SHA-256 - MESMO MÉTODO que parceiro-auth
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password + PASSWORD_SALT);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return encode(new Uint8Array(hashBuffer));
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -83,12 +97,8 @@ serve(async (req) => {
       codigoParceiro = `BRHUB-${slugNome}-${randomSuffix}`;
     }
     
-    // Hash da senha (simples para parceiros - SHA256)
-    const encoder = new TextEncoder();
-    const data = encoder.encode(senha + 'brhub_salt_2024');
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const senhaHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    // Hash da senha - usa função idêntica ao parceiro-auth
+    const senhaHash = await hashPassword(senha);
 
     // Link de indicação
     const baseUrl = 'https://www.brhubenvios.com.br';
