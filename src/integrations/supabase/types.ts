@@ -808,45 +808,7 @@ export type Database = {
       }
     }
     Views: {
-      integracoes_safe: {
-        Row: {
-          ativo: boolean | null
-          atualizado_em: string | null
-          cliente_id: string | null
-          credenciais_masked: Json | null
-          criado_em: string | null
-          id: string | null
-          plataforma: string | null
-          remetente_id: string | null
-          store_id: string | null
-          webhook_url: string | null
-        }
-        Insert: {
-          ativo?: boolean | null
-          atualizado_em?: string | null
-          cliente_id?: string | null
-          credenciais_masked?: never
-          criado_em?: string | null
-          id?: string | null
-          plataforma?: string | null
-          remetente_id?: string | null
-          store_id?: string | null
-          webhook_url?: string | null
-        }
-        Update: {
-          ativo?: boolean | null
-          atualizado_em?: string | null
-          cliente_id?: string | null
-          credenciais_masked?: never
-          criado_em?: string | null
-          id?: string | null
-          plataforma?: string | null
-          remetente_id?: string | null
-          store_id?: string | null
-          webhook_url?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       atualizar_status_recarga: {
