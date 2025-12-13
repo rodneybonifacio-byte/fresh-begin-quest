@@ -116,3 +116,9 @@ verify_jwt = false
 
 [functions.testar-rastreio]
 verify_jwt = false
+
+[functions.parceiro-auth]
+verify_jwt = false
+
+[functions.processar-pagamento-manual]
+verify_jwt = false
