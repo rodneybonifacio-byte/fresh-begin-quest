@@ -303,9 +303,13 @@ const RltEnvios = () => {
             
             if (allData.length > 0) {
                 exportEmissoesToExcel(allData, `relatorio-envios-${dataIni || 'todos'}-${dataFim || 'todos'}`);
+                toast.success(`Exportação concluída: ${allData.length} registros`);
+            } else {
+                toast.error('Nenhum dado encontrado para exportar. Verifique os filtros aplicados.');
             }
         } catch (error) {
             console.error('Erro ao exportar:', error);
+            toast.error('Erro ao exportar dados. Tente novamente.');
         } finally {
             setIsLoading(false);
         }
