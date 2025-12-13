@@ -57,7 +57,7 @@ serve(async (req) => {
       );
     }
 
-    // Gerar código do parceiro
+    // Gerar código do parceiro único
     const slugNome = nome
       .toUpperCase()
       .normalize('NFD')
@@ -68,7 +68,20 @@ serve(async (req) => {
       .slice(0, 2)
       .join('-');
     
-    const codigoParceiro = `BRHUB-${slugNome}`;
+    let codigoParceiro = `BRHUB-${slugNome}`;
+    
+    // Verificar se código já existe e adicionar sufixo se necessário
+    const { data: existingCode } = await supabase
+      .from('parceiros')
+      .select('id')
+      .eq('codigo_parceiro', codigoParceiro)
+      .maybeSingle();
+
+    if (existingCode) {
+      // Adicionar sufixo aleatório para tornar único
+      const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+      codigoParceiro = `BRHUB-${slugNome}-${randomSuffix}`;
+    }
     
     // Hash da senha (simples para parceiros - SHA256)
     const encoder = new TextEncoder();
