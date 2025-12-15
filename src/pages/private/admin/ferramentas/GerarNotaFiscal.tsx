@@ -7,18 +7,18 @@ import { BoletoService } from '../../../../services/BoletoService';
 import { ButtonComponent } from '../../../../components/button';
 import { CardComponent } from '../../../../components/card';
 
-// Dados fixos para esta NF específica
+// Dados fixos para esta NF específica - BRHUB
 const dadosEmitente = {
-  razaoSocial: 'BRHUB SOLUCOES EM TECNOLOGIA LTDA',
-  nomeFantasia: 'BRHUB',
-  cnpj: '48.594.567/0001-07',
-  inscricaoEstadual: '123.456.789.123',
-  endereco: 'Rua Maria Marcolina, 748',
+  razaoSocial: 'BR HUB SOLUCOES E TECNOLOGIAS LTDA',
+  nomeFantasia: 'BR HUB',
+  cnpj: '56.691.028/0001-77',
+  inscricaoEstadual: 'ISENTO',
+  endereco: 'Rua Xavantes, 715, Sala 718 Andar 7',
   bairro: 'Brás',
   cidade: 'São Paulo',
   uf: 'SP',
-  cep: '03011-000',
-  telefone: '(11) 2886-5858',
+  cep: '03027-000',
+  telefone: '(11) 1154-4095',
   email: 'contato@brhubenvios.com.br'
 };
 
@@ -220,6 +220,7 @@ export const GerarNotaFiscal = () => {
               <p className="font-bold text-xl">DANFE</p>
               <p className="text-[8px]">Documento Auxiliar da</p>
               <p className="text-[8px]">Nota Fiscal Eletrônica</p>
+              <p className="text-[7px] text-red-600 font-bold mt-1 border border-red-600 px-1">SEM VALOR FISCAL</p>
               <div className="mt-2 flex justify-center gap-2 text-xs">
                 <span>0 - ENTRADA</span>
               </div>
