@@ -1,4 +1,4 @@
-import { getSupabaseWithAuth } from "../integrations/supabase/custom-auth";
+import { supabase } from "../integrations/supabase/client";
 import type { IEmissao } from "../types/IEmissao";
 import { differenceInDays } from "date-fns";
 
@@ -16,11 +16,17 @@ export interface EmissaoEmAtraso {
 }
 
 export async function fetchEmissoesEmAtraso(): Promise<EmissaoEmAtraso[]> {
-  // IMPORTANTE: JWT customizado não é aceito no PostgREST (retorna PGRST301).
-  // Então buscamos via backend function (usa service role) e validamos admin pelo payload do JWT.
-  const supabaseAuth = getSupabaseWithAuth();
-  const { data, error } = await supabaseAuth.functions.invoke("buscar-emissoes-em-atraso", {
-    body: {},
+  // IMPORTANTE: JWT customizado não é aceito no gateway padrão.
+  // Então chamamos uma backend function com verify_jwt=false e enviamos o token no body.
+  const token = localStorage.getItem("token") || localStorage.getItem("accessToken");
+
+  if (!token) {
+    console.warn("Sem token para buscar emissões em atraso");
+    return [];
+  }
+
+  const { data, error } = await supabase.functions.invoke("buscar-emissoes-em-atraso", {
+    body: { token },
   });
 
   if (error) {
