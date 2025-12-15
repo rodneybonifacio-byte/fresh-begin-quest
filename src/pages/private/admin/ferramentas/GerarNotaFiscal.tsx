@@ -285,7 +285,6 @@ export const GerarNotaFiscal = () => {
               <p className="font-bold text-xl">RECIBO</p>
               <p className="text-[8px]">Documento de</p>
               <p className="text-[8px]">Comprovação</p>
-              <p className="text-[7px] text-red-600 font-bold mt-1 border border-red-600 px-1">SEM VALOR FISCAL</p>
               <div className="mt-2 flex justify-center gap-2 text-xs">
                 <span>0 - ENTRADA</span>
               </div>
