@@ -15,7 +15,7 @@ export interface EmissaoEmAtraso {
   diasAtraso?: number;
 }
 
-export async function fetchEmissoesEmAtraso(): Promise<EmissaoEmAtraso[]> {
+export async function fetchEmissoesEmAtraso(options?: { maxDiasAtraso?: number }): Promise<EmissaoEmAtraso[]> {
   // IMPORTANTE: JWT customizado não é aceito no gateway padrão.
   // Então chamamos uma backend function com verify_jwt=false e enviamos o token no body.
   const token = localStorage.getItem("token") || localStorage.getItem("accessToken");
@@ -36,6 +36,7 @@ export async function fetchEmissoesEmAtraso(): Promise<EmissaoEmAtraso[]> {
 
   const rows: EmissaoEmAtraso[] = (data?.emissoes || []) as EmissaoEmAtraso[];
   const hoje = new Date();
+  const maxDiasAtraso = options?.maxDiasAtraso;
 
   const processedData = rows
     .map((item) => {
@@ -49,7 +50,12 @@ export async function fetchEmissoesEmAtraso(): Promise<EmissaoEmAtraso[]> {
       }
       return { ...item, diasAtraso };
     })
-    .filter((item) => (item.diasAtraso ?? 0) > 0)
+    .filter((item) => {
+      const dias = item.diasAtraso ?? 0;
+      if (dias <= 0) return false;
+      if (typeof maxDiasAtraso === "number") return dias < maxDiasAtraso;
+      return true;
+    })
     .sort((a, b) => (b.diasAtraso ?? 0) - (a.diasAtraso ?? 0));
 
   return processedData;

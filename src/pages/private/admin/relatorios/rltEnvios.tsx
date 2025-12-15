@@ -105,7 +105,8 @@ const RltEnvios = () => {
     } = useFetchQuery<IResponse<IEmissao[]>>(['emissoes', filtros, 'admin', page, tab], async () => {
         // Para EM_ATRASO, buscar da tabela do Supabase
         if (tab === 'EM_ATRASO') {
-            const atrasadas = await fetchEmissoesEmAtraso();
+            // Regra solicitada: mostrar apenas atrasos inferiores a 30 dias
+            const atrasadas = await fetchEmissoesEmAtraso({ maxDiasAtraso: 30 });
             const mapped = atrasadas.map((atraso: EmissaoEmAtraso) => ({
                 id: atraso.emissao_id,
                 codigoObjeto: atraso.codigo_objeto,
