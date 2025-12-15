@@ -200,79 +200,128 @@ serve(async (req) => {
 
     // 🚀 VERIFICAR SE JÁ EXISTE BOLETO COM MESMO seuNumero
     console.log('🔍 Verificando se já existe boleto com seuNumero:', seuNumero);
-    const searchUrl = `https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas?seuNumero=${seuNumero}&situacao=A_RECEBER`;
     
-    const searchResponse = await fetch(searchUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      client: httpClient,
-    } as any);
-
-    console.log('📡 Resposta busca boleto existente - Status:', searchResponse.status);
-
-    if (searchResponse.ok) {
-      const searchResult = await searchResponse.json();
-      console.log('📋 Resultado busca:', JSON.stringify(searchResult).substring(0, 500));
+    // Tentar buscar boleto existente - tratar erros 400 como "não encontrado"
+    let boletoExistente = null;
+    
+    try {
+      // Primeiro: buscar diretamente pelo seuNumero
+      const searchUrl = `https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas?seuNumero=${seuNumero}&situacao=A_RECEBER`;
       
-      // Verificar se há boletos na resposta (estrutura pode ser { cobrancas: [...] } ou array direto)
-      const cobrancas = searchResult.cobrancas || searchResult || [];
-      
-      if (Array.isArray(cobrancas) && cobrancas.length > 0) {
-        // Boleto já existe - retornar ele ao invés de criar novo
-        const boletoExistente = cobrancas[0];
-        const boletoId = boletoExistente.codigoSolicitacao || boletoExistente.nossoNumero;
+      const searchResponse = await fetch(searchUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        client: httpClient,
+      } as any);
+
+      console.log('📡 Resposta busca boleto existente - Status:', searchResponse.status);
+
+      if (searchResponse.ok) {
+        const searchResult = await searchResponse.json();
+        console.log('📋 Resultado busca:', JSON.stringify(searchResult).substring(0, 500));
         
-        console.log('✅ Boleto existente encontrado! ID:', boletoId);
-        console.log('📋 Dados boleto existente:', JSON.stringify(boletoExistente).substring(0, 500));
+        const cobrancas = searchResult.cobrancas || searchResult || [];
         
-        // Buscar PDF do boleto existente
-        console.log('📄 Baixando PDF do boleto existente...');
-        const pdfUrl = `https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas/${boletoId}/pdf`;
+        if (Array.isArray(cobrancas) && cobrancas.length > 0) {
+          boletoExistente = cobrancas[0];
+        }
+      } else {
+        console.log('⚠️ Busca por seuNumero retornou erro, tentando busca por período...');
         
-        const pdfResponse = await fetch(pdfUrl, {
+        // Fallback: buscar por período recente (últimos 7 dias)
+        const hoje = new Date();
+        const seteDiasAtras = new Date(hoje);
+        seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
+        
+        const dataInicial = seteDiasAtras.toISOString().split('T')[0];
+        const dataFinal = hoje.toISOString().split('T')[0];
+        
+        const fallbackUrl = `https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas?dataInicial=${dataInicial}&dataFinal=${dataFinal}&situacao=A_RECEBER`;
+        
+        const fallbackResponse = await fetch(fallbackUrl, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${accessToken}`,
-            'Accept': 'application/json',
+            'Content-Type': 'application/json',
           },
           client: httpClient,
         } as any);
-        
-        let pdfBase64 = null;
-        if (pdfResponse.ok) {
-          const pdfData = await pdfResponse.json();
-          pdfBase64 = pdfData.pdf || pdfData.arquivo || (typeof pdfData === 'string' ? pdfData : null);
-          console.log('✅ PDF do boleto existente recuperado');
-        } else {
-          console.warn('⚠️ Não foi possível obter PDF do boleto existente');
-        }
-        
-        const resultado = {
-          nossoNumero: boletoId,
-          seuNumero: boletoExistente.seuNumero || seuNumero,
-          codigoBarras: boletoExistente.codigoBarras,
-          linhaDigitavel: boletoExistente.linhaDigitavel,
-          pdf: pdfBase64,
-          dataVencimento: boletoExistente.dataVencimento,
-          valor: boletoExistente.valorNominal || body.valorCobrado,
-          status: 'EXISTENTE',
-          from_existing: true,
-        };
-        
-        console.log('🔒 Fechando cliente HTTP...');
-        httpClient.close();
-        
-        return new Response(
-          JSON.stringify(resultado),
-          {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200,
+
+        console.log('📡 Resposta busca por período - Status:', fallbackResponse.status);
+
+        if (fallbackResponse.ok) {
+          const fallbackResult = await fallbackResponse.json();
+          const cobrancasFallback = fallbackResult.cobrancas || fallbackResult || [];
+          
+          if (Array.isArray(cobrancasFallback)) {
+            // Procurar boleto com mesmo seuNumero na lista
+            boletoExistente = cobrancasFallback.find((c: any) => c.seuNumero === seuNumero);
+            
+            if (boletoExistente) {
+              console.log('✅ Boleto encontrado via busca por período');
+            }
           }
-        );
+        }
       }
+    } catch (searchError) {
+      console.warn('⚠️ Erro na busca por boleto existente:', searchError);
+      // Continuar para tentar criar o boleto
+    }
+
+    // Se encontrou boleto existente, retornar ele
+    if (boletoExistente) {
+      const boletoId = boletoExistente.codigoSolicitacao || boletoExistente.nossoNumero;
+      
+      console.log('✅ Boleto existente encontrado! ID:', boletoId);
+      console.log('📋 Dados boleto existente:', JSON.stringify(boletoExistente).substring(0, 500));
+      
+      // Buscar PDF do boleto existente
+      console.log('📄 Baixando PDF do boleto existente...');
+      const pdfUrl = `https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas/${boletoId}/pdf`;
+      
+      const pdfResponse = await fetch(pdfUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/json',
+        },
+        client: httpClient,
+      } as any);
+      
+      let pdfBase64 = null;
+      if (pdfResponse.ok) {
+        const pdfData = await pdfResponse.json();
+        pdfBase64 = pdfData.pdf || pdfData.arquivo || (typeof pdfData === 'string' ? pdfData : null);
+        console.log('✅ PDF do boleto existente recuperado');
+      } else {
+        console.warn('⚠️ Não foi possível obter PDF do boleto existente');
+      }
+      
+      const resultado = {
+        nossoNumero: boletoId,
+        seuNumero: boletoExistente.seuNumero || seuNumero,
+        codigoBarras: boletoExistente.codigoBarras,
+        linhaDigitavel: boletoExistente.linhaDigitavel,
+        pdf: pdfBase64,
+        dataVencimento: boletoExistente.dataVencimento,
+        valor: boletoExistente.valorNominal || body.valorCobrado,
+        status: 'EXISTENTE',
+        from_existing: true,
+      };
+      
+      console.log('🔒 Fechando cliente HTTP...');
+      httpClient.close();
+      
+      return new Response(
+        JSON.stringify(resultado),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
     }
     
     console.log('📝 Nenhum boleto existente encontrado, criando novo...');
