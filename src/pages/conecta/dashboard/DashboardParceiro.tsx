@@ -47,12 +47,24 @@ export const DashboardParceiro = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'clientes' | 'comissoes' | 'config'>('overview');
 
   useEffect(() => {
-    const parceiroId = localStorage.getItem('parceiro_token');
-    if (!parceiroId) {
+    // Obter dados do parceiro do localStorage (salvo no login)
+    const parceiroDataStr = localStorage.getItem('parceiro_data');
+    if (!parceiroDataStr) {
       navigate('/conecta/login');
       return;
     }
-    loadData(parceiroId);
+    
+    try {
+      const parceiroData = JSON.parse(parceiroDataStr);
+      if (!parceiroData?.id) {
+        navigate('/conecta/login');
+        return;
+      }
+      loadData(parceiroData.id);
+    } catch (e) {
+      console.error('Erro ao parsear dados do parceiro:', e);
+      navigate('/conecta/login');
+    }
   }, [navigate]);
 
   const loadData = async (parceiroId: string) => {
