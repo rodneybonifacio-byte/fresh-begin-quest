@@ -8,8 +8,10 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
  * Cria um cliente Supabase com JWT customizado
  */
 export function getSupabaseWithAuth(): SupabaseClient<Database> {
-  const token = localStorage.getItem('token');
-  
+  // O app usa JWT customizado; em alguns fluxos ele é salvo como `token` e em outros como `accessToken`.
+  // Se não enviarmos esse JWT, as policies/funções no backend enxergam role=anon e negam acesso.
+  const token = localStorage.getItem('token') || localStorage.getItem('accessToken');
+
   return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     auth: {
       storage: localStorage,
@@ -17,9 +19,11 @@ export function getSupabaseWithAuth(): SupabaseClient<Database> {
       autoRefreshToken: false,
     },
     global: {
-      headers: token ? {
-        'Authorization': `Bearer ${token}`
-      } : {}
-    }
+      headers: token
+        ? {
+            Authorization: `Bearer ${token}`,
+          }
+        : {},
+    },
   });
 }
