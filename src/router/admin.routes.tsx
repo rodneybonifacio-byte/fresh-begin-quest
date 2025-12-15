@@ -153,6 +153,10 @@ export const adminRoutesConfig: ProtectedRouteItem[] = [
         path: 'ferramentas/gerenciar-clientes',
         component: () => import('../pages/private/admin/ferramentas/GerenciarClientes'),
     },
+    {
+        path: 'gerar-nota-fiscal',
+        component: () => import('../pages/private/admin/ferramentas/GerarNotaFiscal'),
+    },
 ];
 
 export const AdminRoutes = generateProtectedRoutes(adminRoutesConfig);
