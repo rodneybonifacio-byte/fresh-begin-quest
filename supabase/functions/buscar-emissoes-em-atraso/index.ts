@@ -20,14 +20,30 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization") || "";
-    if (!authHeader.startsWith("Bearer ")) {
+
+    // Aceita token via header (Bearer) OU via body (para JWT customizado)
+    let token: string | null = null;
+
+    if (authHeader.startsWith("Bearer ")) {
+      token = authHeader.replace("Bearer ", "").trim();
+    }
+
+    if (!token) {
+      try {
+        const body = await req.json().catch(() => ({}));
+        token = body?.token ? String(body.token) : null;
+      } catch {
+        token = null;
+      }
+    }
+
+    if (!token) {
       return new Response(JSON.stringify({ error: "Autenticação necessária" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const token = authHeader.replace("Bearer ", "");
     const payload = decodeJwtPayload(token);
     const role = String(payload?.role || "").toUpperCase();
 

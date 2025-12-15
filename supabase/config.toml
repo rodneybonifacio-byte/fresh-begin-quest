@@ -128,3 +128,6 @@ verify_jwt = false
 
 [functions.registrar-parceiro]
 verify_jwt = false
+
+[functions.buscar-emissoes-em-atraso]
+verify_jwt = false
