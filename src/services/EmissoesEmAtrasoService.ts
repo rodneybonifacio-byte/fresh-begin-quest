@@ -16,36 +16,34 @@ export interface EmissaoEmAtraso {
 }
 
 export async function fetchEmissoesEmAtraso(): Promise<EmissaoEmAtraso[]> {
+  // IMPORTANTE: JWT customizado não é aceito no PostgREST (retorna PGRST301).
+  // Então buscamos via backend function (usa service role) e validamos admin pelo payload do JWT.
   const supabaseAuth = getSupabaseWithAuth();
-
-  const { data, error } = await supabaseAuth.from("emissoes_em_atraso").select("*");
+  const { data, error } = await supabaseAuth.functions.invoke("buscar-emissoes-em-atraso", {
+    body: {},
+  });
 
   if (error) {
     console.error("Erro ao buscar emissões em atraso:", error);
     return [];
   }
 
+  const rows: EmissaoEmAtraso[] = (data?.emissoes || []) as EmissaoEmAtraso[];
   const hoje = new Date();
 
-  // Calcular dias de atraso e ordenar do mais atrasado para menos
-  const processedData = (data || [])
+  const processedData = rows
     .map((item) => {
       let diasAtraso = 0;
       if (item.data_previsao_entrega) {
-        try {
-          // Postgres pode retornar "YYYY-MM-DD HH:mm:ss+00" (com espaço). Normalizar para ISO.
-          const normalized = String(item.data_previsao_entrega).replace(' ', 'T');
-          const dataPrevisao = new Date(normalized);
-          if (!Number.isNaN(dataPrevisao.getTime())) {
-            diasAtraso = differenceInDays(hoje, dataPrevisao);
-          }
-        } catch {
-          diasAtraso = 0;
+        const normalized = String(item.data_previsao_entrega).replace(" ", "T");
+        const dataPrevisao = new Date(normalized);
+        if (!Number.isNaN(dataPrevisao.getTime())) {
+          diasAtraso = differenceInDays(hoje, dataPrevisao);
         }
       }
       return { ...item, diasAtraso };
     })
-    .filter((item) => item.diasAtraso > 0) // apenas atrasadas
+    .filter((item) => (item.diasAtraso ?? 0) > 0)
     .sort((a, b) => (b.diasAtraso ?? 0) - (a.diasAtraso ?? 0));
 
   return processedData;
@@ -53,7 +51,7 @@ export async function fetchEmissoesEmAtraso(): Promise<EmissaoEmAtraso[]> {
 
 export async function getEmissoesEmAtrasoIds(): Promise<string[]> {
   const emissoes = await fetchEmissoesEmAtraso();
-  return emissoes.map(e => e.emissao_id);
+  return emissoes.map((e) => e.emissao_id);
 }
 
 export function isEmissaoAtrasada(emissaoId: string, atrasadasIds: string[]): boolean {
@@ -65,10 +63,13 @@ export function mapEmissaoEmAtrasoToPartialEmissao(atraso: EmissaoEmAtraso): Par
   return {
     id: atraso.emissao_id,
     codigoObjeto: atraso.codigo_objeto,
-    status: 'EM_ATRASO',
+    status: "EM_ATRASO",
     remetenteNome: atraso.remetente_nome || undefined,
-    destinatario: atraso.destinatario_nome ? {
-      nome: atraso.destinatario_nome,
-    } as any : undefined,
+    destinatario: atraso.destinatario_nome
+      ? ({
+          nome: atraso.destinatario_nome,
+        } as any)
+      : undefined,
   };
 }
+
