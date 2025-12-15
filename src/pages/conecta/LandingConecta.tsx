@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   ArrowRight, 
@@ -18,6 +19,49 @@ import { useNavigate } from 'react-router-dom';
 
 export const LandingConecta = () => {
   const navigate = useNavigate();
+
+  // SEO Meta Tags para Conecta+
+  useEffect(() => {
+    // Title
+    document.title = 'BRHUB Conecta+ | Programa de Parceria - Ganhe Comissão Vitalícia';
+    
+    // Meta Description
+    const metaDescription = document.querySelector('meta[name="description"]');
+    if (metaDescription) {
+      metaDescription.setAttribute('content', 'Seja parceiro BRHUB Conecta+ e ganhe 20% de comissão vitalícia em cada frete dos seus indicados. Cadastro gratuito, pagamento via PIX todo dia 10.');
+    }
+    
+    // Meta Keywords
+    let metaKeywords = document.querySelector('meta[name="keywords"]');
+    if (!metaKeywords) {
+      metaKeywords = document.createElement('meta');
+      metaKeywords.setAttribute('name', 'keywords');
+      document.head.appendChild(metaKeywords);
+    }
+    metaKeywords.setAttribute('content', 'programa de parceria, afiliados frete, comissão envios, ganhar dinheiro indicando, parceiro logística, BRHUB Conecta+, renda extra, comissão vitalícia');
+    
+    // Open Graph
+    const ogTitle = document.querySelector('meta[property="og:title"]');
+    if (ogTitle) ogTitle.setAttribute('content', 'BRHUB Conecta+ | Programa de Parceria');
+    
+    const ogDescription = document.querySelector('meta[property="og:description"]');
+    if (ogDescription) ogDescription.setAttribute('content', 'Transforme suas indicações em renda recorrente. Ganhe 20% de comissão vitalícia em cada frete emitido pelos seus indicados.');
+    
+    // Twitter Card
+    const twitterTitle = document.querySelector('meta[name="twitter:title"]');
+    if (twitterTitle) twitterTitle.setAttribute('content', 'BRHUB Conecta+ | Programa de Parceria');
+    
+    const twitterDescription = document.querySelector('meta[name="twitter:description"]');
+    if (twitterDescription) twitterDescription.setAttribute('content', 'Transforme suas indicações em renda recorrente. Ganhe 20% de comissão vitalícia.');
+
+    // Cleanup: restaurar meta tags originais ao sair
+    return () => {
+      document.title = 'BRHUB - ENVIOS';
+      if (metaDescription) {
+        metaDescription.setAttribute('content', 'BRHUB Envios - Plataforma de gestão de fretes e etiquetas');
+      }
+    };
+  }, []);
 
   const fadeInUp = {
     hidden: { opacity: 0, y: 30 },
