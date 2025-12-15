@@ -47,47 +47,42 @@ export const DashboardParceiro = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'clientes' | 'comissoes' | 'config'>('overview');
 
   useEffect(() => {
-    // Obter dados do parceiro do localStorage (salvo no login)
-    const parceiroDataStr = localStorage.getItem('parceiro_data');
-    if (!parceiroDataStr) {
+    // Obter token do parceiro do localStorage
+    const parceiroToken = localStorage.getItem('parceiro_token');
+    if (!parceiroToken) {
       navigate('/conecta/login');
       return;
     }
-    
-    try {
-      const parceiroData = JSON.parse(parceiroDataStr);
-      if (!parceiroData?.id) {
-        navigate('/conecta/login');
-        return;
-      }
-      loadData(parceiroData.id);
-    } catch (e) {
-      console.error('Erro ao parsear dados do parceiro:', e);
-      navigate('/conecta/login');
-    }
+    loadData(parceiroToken);
   }, [navigate]);
 
-  const loadData = async (parceiroId: string) => {
+  const loadData = async (token: string) => {
     try {
-      // Carregar dados do parceiro
-      const { data: parceiroData, error: parceiroError } = await supabase
-        .from('parceiros')
-        .select('*')
-        .eq('id', parceiroId)
-        .single();
+      // Usar edge function para buscar dados (contorna RLS)
+      const { data, error } = await supabase.functions.invoke('parceiro-dashboard', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
 
-      if (parceiroError) throw parceiroError;
-      setParceiro(parceiroData);
+      if (error) {
+        console.error('Erro ao invocar função:', error);
+        throw error;
+      }
 
-      // Carregar clientes indicados
-      const { data: clientesData, error: clientesError } = await supabase
-        .from('clientes_indicados')
-        .select('*')
-        .eq('parceiro_id', parceiroId)
-        .order('data_associacao', { ascending: false });
+      if (!data.success) {
+        if (data.error === 'Token expirado' || data.error === 'Token inválido') {
+          localStorage.removeItem('parceiro_token');
+          localStorage.removeItem('parceiro_data');
+          toast.error('Sessão expirada. Faça login novamente.');
+          navigate('/conecta/login');
+          return;
+        }
+        throw new Error(data.error);
+      }
 
-      if (clientesError) throw clientesError;
-      setClientes(clientesData || []);
+      setParceiro(data.parceiro);
+      setClientes(data.clientes || []);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
       toast.error('Erro ao carregar dados');

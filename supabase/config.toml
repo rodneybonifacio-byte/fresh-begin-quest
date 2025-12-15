@@ -131,3 +131,6 @@ verify_jwt = false
 
 [functions.buscar-emissoes-em-atraso]
 verify_jwt = false
+
+[functions.parceiro-dashboard]
+verify_jwt = false
