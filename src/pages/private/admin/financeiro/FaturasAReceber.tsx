@@ -297,7 +297,7 @@ const FinanceiroFaturasAReceber = () => {
             
             toast.success('Fechamento realizado com sucesso!');
             
-            // Salvar dados do fechamento no localStorage e no estado
+            // Salvar dados do fechamento no estado (NÃO salvar PDFs no localStorage - causa "quota exceeded")
             const fechamentoData = {
                 faturaPdf: result.fatura_pdf,
                 boletoPdf: result.boleto_pdf,
@@ -306,7 +306,7 @@ const FinanceiroFaturasAReceber = () => {
                 boletoInfo: result.boleto_info,
                 timestamp: new Date().toISOString()
             };
-            localStorage.setItem(`fechamento_${faturaId}`, JSON.stringify(fechamentoData));
+            // PDFs são salvos apenas no Supabase para evitar erro de quota do localStorage
             
             // SALVAR NO SUPABASE para persistir entre sessões
             try {
@@ -385,15 +385,29 @@ const FinanceiroFaturasAReceber = () => {
         }
     };
 
-    // Função síncrona para verificação rápida na UI (usa estado em memória)
-    const verificarFechamentoExistente = (faturaId: string) => {
-        // Primeiro verificar no estado em memória
-        if (fechamentosMap[faturaId]) {
-            return fechamentosMap[faturaId];
+    // Limpar localStorage antigo de fechamentos para liberar quota (PDFs agora vêm do Supabase)
+    useEffect(() => {
+        try {
+            const keysToRemove: string[] = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('fechamento_')) {
+                    keysToRemove.push(key);
+                }
+            }
+            keysToRemove.forEach(key => localStorage.removeItem(key));
+            if (keysToRemove.length > 0) {
+                console.log(`🧹 Limpeza de localStorage: ${keysToRemove.length} fechamentos removidos`);
+            }
+        } catch (e) {
+            console.warn('Erro ao limpar localStorage:', e);
         }
-        // Fallback para localStorage
-        const localFechamento = localStorage.getItem(`fechamento_${faturaId}`);
-        return localFechamento ? JSON.parse(localFechamento) : null;
+    }, []);
+
+    // Função síncrona para verificação rápida na UI (usa apenas estado em memória)
+    const verificarFechamentoExistente = (faturaId: string) => {
+        // Verificar apenas no estado em memória (não usar localStorage)
+        return fechamentosMap[faturaId] || null;
     };
 
     // Estado para controlar carregamento de fechamentos (automático)
@@ -449,8 +463,7 @@ const FinanceiroFaturasAReceber = () => {
                     // Para subfaturas, usar o subfatura_id como chave
                     const keyId = f.subfatura_id || f.fatura_id;
                     novoMap[keyId] = fechamentoData;
-                    // Também salvar no localStorage como backup
-                    localStorage.setItem(`fechamento_${keyId}`, JSON.stringify(fechamentoData));
+                    // NÃO salvar PDFs no localStorage - causa "quota exceeded"
                     console.log(`📋 Fechamento mapeado para ID: ${keyId}`);
                 });
                 
@@ -540,9 +553,8 @@ const FinanceiroFaturasAReceber = () => {
                     fechamentoData.boletoInfo = { ...fechamentoData.boletoInfo, nossoNumero: result.nossoNumero };
                 }
                 
-                // Salvar no localStorage e estado
+                // Salvar no estado (NÃO no localStorage - causa "quota exceeded")
                 setFechamentosMap(prev => ({ ...prev, [fatura.id]: fechamentoData }));
-                localStorage.setItem(`fechamento_${fatura.id}`, JSON.stringify(fechamentoData));
                 
                 // Salvar no Supabase também
                 try {
