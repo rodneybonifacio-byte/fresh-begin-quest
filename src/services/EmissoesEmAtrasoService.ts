@@ -1,4 +1,4 @@
-import { supabase } from "../integrations/supabase/client";
+import { getSupabaseWithAuth } from "../integrations/supabase/custom-auth";
 import type { IEmissao } from "../types/IEmissao";
 import { differenceInDays, parseISO } from "date-fns";
 
@@ -16,12 +16,12 @@ export interface EmissaoEmAtraso {
 }
 
 export async function fetchEmissoesEmAtraso(): Promise<EmissaoEmAtraso[]> {
-  const { data, error } = await supabase
-    .from('emissoes_em_atraso')
-    .select('*');
+  const supabaseAuth = getSupabaseWithAuth();
+
+  const { data, error } = await supabaseAuth.from("emissoes_em_atraso").select("*");
 
   if (error) {
-    console.error('Erro ao buscar emissões em atraso:', error);
+    console.error("Erro ao buscar emissões em atraso:", error);
     return [];
   }
 
