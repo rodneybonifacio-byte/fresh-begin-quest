@@ -3,9 +3,9 @@ import { motion } from 'framer-motion';
 import { Download, Printer, ArrowLeft, Barcode, Building2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { BoletoService } from '../../services/BoletoService';
-import { ButtonComponent } from '../../components/button';
-import { CardComponent } from '../../components/card';
+import { BoletoService } from '../../../../services/BoletoService';
+import { ButtonComponent } from '../../../../components/button';
+import { CardComponent } from '../../../../components/card';
 
 // Dados fixos para esta NF específica
 const dadosEmitente = {
