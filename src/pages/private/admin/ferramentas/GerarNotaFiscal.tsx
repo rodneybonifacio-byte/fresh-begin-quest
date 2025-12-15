@@ -6,6 +6,9 @@ import { toast } from 'sonner';
 import { BoletoService } from '../../../../services/BoletoService';
 import { ButtonComponent } from '../../../../components/button';
 import { CardComponent } from '../../../../components/card';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
+import { PDFDocument } from 'pdf-lib';
 
 // Dados fixos para esta NF específica - BRHUB
 const dadosEmitente = {
@@ -125,8 +128,70 @@ export const GerarNotaFiscal = () => {
     }
   };
 
-  const handleImprimir = () => {
-    window.print();
+  const handleImprimir = async () => {
+    if (!boletoGerado?.pdf) {
+      // Se não tem boleto, só imprime a DANFE
+      window.print();
+      return;
+    }
+
+    try {
+      toast.info('Gerando PDF completo...');
+      
+      // 1. Gerar PDF da DANFE usando html2canvas
+      const danfeElement = notaRef.current;
+      if (!danfeElement) {
+        toast.error('Elemento DANFE não encontrado');
+        return;
+      }
+
+      const canvas = await html2canvas(danfeElement, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff'
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const danfePdf = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = 210;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      danfePdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      
+      // 2. Converter DANFE para bytes
+      const danfeBytes = danfePdf.output('arraybuffer');
+      
+      // 3. Carregar boleto PDF
+      const boletoBytes = Uint8Array.from(atob(boletoGerado.pdf), c => c.charCodeAt(0));
+      
+      // 4. Merge PDFs usando pdf-lib
+      const mergedPdf = await PDFDocument.create();
+      
+      const danfeDoc = await PDFDocument.load(danfeBytes);
+      const boletoDoc = await PDFDocument.load(boletoBytes);
+      
+      const danfePages = await mergedPdf.copyPages(danfeDoc, danfeDoc.getPageIndices());
+      const boletoPages = await mergedPdf.copyPages(boletoDoc, boletoDoc.getPageIndices());
+      
+      danfePages.forEach(page => mergedPdf.addPage(page));
+      boletoPages.forEach(page => mergedPdf.addPage(page));
+      
+      // 5. Salvar e baixar
+      const mergedBytes = await mergedPdf.save();
+      const blob = new Blob([new Uint8Array(mergedBytes)], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `NF_${numeroNF}_com_Boleto.pdf`;
+      link.click();
+      
+      URL.revokeObjectURL(url);
+      toast.success('PDF completo baixado!');
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      toast.error('Erro ao gerar PDF. Tentando impressão simples...');
+      window.print();
+    }
   };
 
   return (
@@ -144,7 +209,7 @@ export const GerarNotaFiscal = () => {
           <div className="flex gap-2 flex-wrap">
             <ButtonComponent onClick={handleImprimir} variant="ghost" border="outline">
               <Printer className="w-4 h-4" />
-              Imprimir
+              {boletoGerado ? 'Baixar NF + Boleto' : 'Imprimir'}
             </ButtonComponent>
             <ButtonComponent 
               onClick={handleGerarBoleto} 
@@ -509,7 +574,7 @@ export const GerarNotaFiscal = () => {
         </div>
       </motion.div>
 
-      {/* Boleto gerado */}
+      {/* Boleto gerado - Info (não imprime) */}
       {boletoGerado && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -551,6 +616,17 @@ export const GerarNotaFiscal = () => {
             </div>
           </CardComponent>
         </motion.div>
+      )}
+
+      {/* Boleto PDF para impressão - quebra de página antes */}
+      {boletoGerado?.pdf && (
+        <div className="print:block hidden page-break-before">
+          <iframe
+            src={`data:application/pdf;base64,${boletoGerado.pdf}`}
+            className="w-full h-[297mm] max-w-[210mm] mx-auto"
+            title="Boleto Banco Inter"
+          />
+        </div>
       )}
     </div>
   );
