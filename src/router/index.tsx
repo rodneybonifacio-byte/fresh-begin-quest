@@ -40,6 +40,14 @@ const LoadingFallback = () => (
 );
 
 const RootRedirect = () => {
+    // Detectar subdomínio conecta.brhubenvios.com.br
+    const hostname = window.location.hostname;
+    const isConectaSubdomain = hostname.startsWith('conecta.') || hostname === 'conecta.brhubenvios.com.br';
+    
+    if (isConectaSubdomain) {
+        return <Navigate to="/home" replace />;
+    }
+    
     if (authStore.isLoggedIn()) {
         return <Navigate to={getRedirectPathByRole()} replace />;
     }
