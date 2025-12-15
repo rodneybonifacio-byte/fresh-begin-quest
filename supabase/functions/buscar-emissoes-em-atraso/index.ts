@@ -19,23 +19,17 @@ serve(async (req) => {
   }
 
   try {
+    // IMPORTANTE: chamadas via supabase.functions.invoke SEMPRE incluem Authorization com o JWT "anon".
+    // Para nosso caso (JWT customizado), devemos priorizar o token vindo no body.
+    const body = await req.json().catch(() => ({}));
+    const tokenFromBody = body?.token ? String(body.token).trim() : "";
+
     const authHeader = req.headers.get("Authorization") || "";
+    const tokenFromHeader = authHeader.startsWith("Bearer ")
+      ? authHeader.replace("Bearer ", "").trim()
+      : "";
 
-    // Aceita token via header (Bearer) OU via body (para JWT customizado)
-    let token: string | null = null;
-
-    if (authHeader.startsWith("Bearer ")) {
-      token = authHeader.replace("Bearer ", "").trim();
-    }
-
-    if (!token) {
-      try {
-        const body = await req.json().catch(() => ({}));
-        token = body?.token ? String(body.token) : null;
-      } catch {
-        token = null;
-      }
-    }
+    const token = tokenFromBody || tokenFromHeader || null;
 
     if (!token) {
       return new Response(JSON.stringify({ error: "Autenticação necessária" }), {
