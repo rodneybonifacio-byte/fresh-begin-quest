@@ -415,7 +415,7 @@ export const DashboardParceiro = () => {
             <h3 className="font-semibold mb-4 text-gray-900">Extrato de Comissões</h3>
             <p className="text-gray-500 text-sm">
               As comissões são calculadas automaticamente com base no consumo dos seus clientes indicados.
-              Você recebe 10% do lucro líquido de cada etiqueta emitida.
+              Você recebe 20% do lucro líquido de cada etiqueta emitida.
             </p>
             <div className="mt-6 p-4 rounded-xl bg-orange-50 border border-orange-200">
               <div className="flex items-center gap-3">

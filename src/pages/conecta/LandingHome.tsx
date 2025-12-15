@@ -215,11 +215,11 @@ export const LandingHome = () => {
                 
                 <h3 className="text-2xl font-bold mb-3 text-gray-900">BRHUB Conecta+</h3>
                 <p className="text-gray-600 mb-6">
-                  Programa de parcerias com comissões vitalícias. Indique clientes e ganhe 10% do lucro para sempre.
+                  Programa de parcerias com comissões vitalícias. Indique clientes e ganhe 20% do lucro para sempre.
                 </p>
 
                 <ul className="space-y-3 mb-8">
-                  {['Comissão vitalícia 10%', 'Painel exclusivo', 'Pagamento via PIX', 'Suporte dedicado'].map((item, idx) => (
+                  {['Comissão vitalícia 20%', 'Painel exclusivo', 'Pagamento via PIX', 'Suporte dedicado'].map((item, idx) => (
                     <li key={idx} className="flex items-center gap-3 text-sm text-gray-600">
                       <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
                       {item}

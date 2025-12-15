@@ -43,7 +43,7 @@ export const LandingConecta = () => {
     {
       icon: DollarSign,
       title: 'Ganhe comissão vitalícia',
-      description: 'Cada vez que um cliente indicado emitir uma etiqueta, você recebe 10% do lucro líquido, para sempre.'
+      description: 'Cada vez que um cliente indicado emitir uma etiqueta, você recebe 20% do lucro líquido, para sempre.'
     },
     {
       icon: BarChart3,

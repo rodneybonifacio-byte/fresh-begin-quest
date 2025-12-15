@@ -49,7 +49,7 @@ const TermosModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
 
             <h3 className="font-semibold text-gray-900">3. Comissões</h3>
             <p>
-              O parceiro receberá <strong>10% (dez por cento) do lucro líquido</strong> gerado 
+              O parceiro receberá <strong>20% (vinte por cento) do lucro líquido</strong> gerado 
               por cada cliente indicado, enquanto este permanecer ativo na plataforma. O lucro 
               líquido é calculado como a diferença entre o valor cobrado do cliente e o custo 
               operacional do frete.
@@ -361,7 +361,7 @@ export const CadastroParceiro = () => {
               >
                 Termos do Programa Conecta+
               </button>{' '}
-              e concordo em receber 10% de comissão sobre o lucro líquido dos clientes que eu indicar.
+              e concordo em receber 20% de comissão sobre o lucro líquido dos clientes que eu indicar.
             </label>
           </div>
 
