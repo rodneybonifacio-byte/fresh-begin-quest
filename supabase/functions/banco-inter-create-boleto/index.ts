@@ -396,6 +396,70 @@ serve(async (req) => {
       if (!boletoResponse.ok) {
         const errorText = await boletoResponse.text();
         console.error('❌ Erro ao emitir boleto:', errorText);
+
+        // ✅ Tratamento de duplicidade: Inter retorna 400 com "código de solicitação".
+        // Nesse caso, reutilizamos a cobrança existente ao invés de falhar.
+        try {
+          const parsed = JSON.parse(errorText);
+          const detail: string = parsed?.detail || parsed?.error || '';
+          const match = String(detail).match(/c[oó]digo de solicita[cç][aã]o:\s*([0-9a-fA-F-]{36})/i);
+
+          if (boletoResponse.status === 400 && match?.[1]) {
+            const codigoSolicitacao = match[1];
+            console.log('♻️ Duplicidade detectada. Reutilizando cobrança existente:', codigoSolicitacao);
+
+            // Buscar detalhes da cobrança para obter linha digitável/código de barras
+            const detalheUrl = `https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas/${codigoSolicitacao}`;
+            const detalheResp = await fetch(detalheUrl, {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+              client: httpClient,
+            } as any);
+
+            const detalheData = detalheResp.ok ? await detalheResp.json() : null;
+
+            // Buscar PDF
+            const pdfUrl = `https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas/${codigoSolicitacao}/pdf`;
+            const pdfResp = await fetch(pdfUrl, {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Accept': 'application/json',
+              },
+              client: httpClient,
+            } as any);
+
+            let pdfBase64: string | null = null;
+            if (pdfResp.ok) {
+              const pdfData = await pdfResp.json();
+              pdfBase64 = pdfData.pdf || pdfData.arquivo || (typeof pdfData === 'string' ? pdfData : null);
+            }
+
+            const resultado = {
+              nossoNumero: detalheData?.nossoNumero || codigoSolicitacao,
+              seuNumero: detalheData?.seuNumero || seuNumero,
+              codigoBarras: detalheData?.codigoBarras || null,
+              linhaDigitavel: detalheData?.linhaDigitavel || null,
+              pdf: pdfBase64,
+              dataVencimento: detalheData?.dataVencimento || dataVencimento,
+              valor: detalheData?.valorNominal || body.valorCobrado,
+              status: 'EXISTENTE',
+              from_existing: true,
+              duplicate_recovered: true,
+            };
+
+            return new Response(JSON.stringify(resultado), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 200,
+            });
+          }
+        } catch (_parseErr) {
+          // Ignorar parse/regex e continuar para erro padrão
+        }
+
         throw new Error(`Erro ao emitir boleto: ${boletoResponse.status} - ${errorText}`);
       }
 
