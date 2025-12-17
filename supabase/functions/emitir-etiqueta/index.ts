@@ -507,6 +507,7 @@ serve(async (req) => {
 
     if (!emissaoResponse.ok) {
       console.error('❌ Erro na emissão:', responseText);
+      console.error('📋 Payload enviado:', JSON.stringify(emissaoPayload));
 
       let parsedError: any = null;
       try {
@@ -530,13 +531,31 @@ serve(async (req) => {
       } else if (typeof responseText === 'string' && responseText.trim()) {
         errorMessage = responseText;
       }
+      
+      // Se o erro for genérico, adicionar contexto útil
+      if (errorMessage === 'Erro desconhecido' || errorMessage === 'Erro na emissão de etiqueta') {
+        errorMessage = `Erro ao processar emissão (${errorCode || 'sem código'}). Verifique os dados do remetente, destinatário e dimensões da embalagem. Se o problema persistir, entre em contato com o suporte.`;
+      }
 
       return new Response(
         JSON.stringify({
           error: errorMessage,
           code: errorCode,
           status: emissaoResponse.status,
-          details: parsedError ?? responseText,
+          details: {
+            ...(parsedError || {}),
+            rawResponse: responseText,
+            sentPayload: {
+              remetenteId: emissaoPayload.remetenteId,
+              destinatario: {
+                nome: emissaoPayload.destinatario?.nome,
+                cpfCnpj: emissaoPayload.destinatario?.cpfCnpj ? '***' + emissaoPayload.destinatario.cpfCnpj.slice(-4) : null,
+                cep: emissaoPayload.destinatario?.endereco?.cep,
+              },
+              cotacao: emissaoPayload.cotacao?.nomeServico,
+              logisticaReversa: emissaoPayload.logisticaReversa,
+            }
+          },
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
