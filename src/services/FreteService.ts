@@ -88,13 +88,22 @@ export class FreteService extends BaseService<any> {
 
         if (error) {
             console.error('❌ Erro na edge function emitir-etiqueta:', error);
-            throw new Error(error.message || 'Erro ao emitir etiqueta');
+            // Tentar extrair detalhes do erro se disponível
+            const emissaoError = new Error(error.message || 'Erro ao emitir etiqueta') as any;
+            emissaoError.code = 'EDGE_FUNCTION_ERROR';
+            emissaoError.status = 500;
+            emissaoError.details = error;
+            throw emissaoError;
         }
 
-        // Verificar se a resposta contém erro
+        // Verificar se a resposta contém erro estruturado
         if (data?.error) {
-            console.error('❌ Erro retornado pela API:', data.error);
-            throw new Error(data.error);
+            console.error('❌ Erro retornado pela API:', data);
+            const emissaoError = new Error(data.error) as any;
+            emissaoError.code = data.code;
+            emissaoError.status = data.status;
+            emissaoError.details = data.details;
+            throw emissaoError;
         }
 
         console.log('✅ Etiqueta emitida:', data);

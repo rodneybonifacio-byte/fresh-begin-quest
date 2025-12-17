@@ -15,6 +15,14 @@ import { useAuth } from '../../../../providers/AuthContext';
 import { ModalRecargaPix } from '../../financeiro/recarga/ModalRecargaPix';
 import { RecargaPixService } from '../../../../services/RecargaPixService';
 import { ICreatePixChargeResponse } from '../../../../types/IRecargaPix';
+import { EmissaoErrorAlert } from '../../../../components/EmissaoErrorAlert';
+
+interface EmissaoErrorDetails {
+  error: string;
+  code?: string;
+  status?: number;
+  details?: any;
+}
 
 interface Step4ConfirmacaoProps {
   onBack: () => void;
@@ -26,7 +34,7 @@ interface Step4ConfirmacaoProps {
 }
 
 export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, selectedEmbalagem, clienteSelecionado, isLogisticaReversa = false }: Step4ConfirmacaoProps) => {
-  const { handleSubmit, getValues } = useFormContext();
+  const { handleSubmit, getValues, setError } = useFormContext();
   const { onEmissaoCadastro } = useEmissao();
   const { onEmissaoImprimir } = useImprimirEtiquetaPDF();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -38,6 +46,9 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
   const [pixChargeData, setPixChargeData] = useState<ICreatePixChargeResponse['data']>();
   const [saldoAtual, setSaldoAtual] = useState(0);
   const [emissaoPendente, setEmissaoPendente] = useState<any>(null);
+  
+  // Estado para erro estruturado de emissão
+  const [emissaoError, setEmissaoError] = useState<EmissaoErrorDetails | null>(null);
 
   const formData = getValues();
   const destinatarioData = formData.destinatario;
@@ -286,14 +297,57 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
     } catch (error: any) {
       console.error('❌ Erro completo ao gerar etiqueta:', error);
       console.error('Stack:', error?.stack);
-      toast.error(error?.message || 'Erro ao gerar etiqueta');
+      
+      // Capturar erro estruturado para exibir com detalhes
+      const structuredError: EmissaoErrorDetails = {
+        error: error?.message || 'Erro ao gerar etiqueta',
+        code: error?.code,
+        status: error?.status,
+        details: error?.details,
+      };
+      setEmissaoError(structuredError);
+      
+      // Também exibe toast para feedback imediato
+      toast.error(structuredError.error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // Handler para clique em campo com erro - volta para a etapa correspondente
+  const handleFieldErrorClick = (fieldPath: string) => {
+    setEmissaoError(null); // Limpar erro ao navegar
+    
+    // Marcar erro no campo do formulário
+    setError(fieldPath as any, { 
+      type: 'manual', 
+      message: emissaoError?.error || 'Campo inválido' 
+    });
+    
+    // Navegar para o step correspondente
+    if (fieldPath.startsWith('embalagem.')) {
+      onBack(); // Volta para step 3, depois o usuário pode voltar mais
+      toast.info('Verifique os dados da embalagem no passo anterior');
+    } else if (fieldPath.startsWith('destinatario.')) {
+      onBack();
+      toast.info('Verifique os dados do destinatário');
+    } else if (fieldPath === 'remetenteId') {
+      onBack();
+      toast.info('Verifique o remetente selecionado');
+    }
+  };
+
   return (
     <>
+    {/* Exibir erro estruturado se houver */}
+    {emissaoError && (
+      <EmissaoErrorAlert 
+        error={emissaoError}
+        onDismiss={() => setEmissaoError(null)}
+        onFieldClick={handleFieldErrorClick}
+      />
+    )}
+    
     <FormCard 
       icon={BadgeCheck} 
       title="Confirmação de Envio" 
