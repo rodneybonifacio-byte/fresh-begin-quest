@@ -353,15 +353,61 @@ serve(async (req) => {
 
     // Preparar payload da emissão
     // Remover campos de WhatsApp para evitar erro de configuração incompleta
-    const emissaoPayload = {
+    const emissaoPayload: any = {
       ...requestData.emissaoData,
       clienteId,
     };
+
+    // Helpers de sanitização/validação (server-side)
+    const digitsOnly = (v: any) => String(v ?? '').replace(/\D/g, '');
 
     // Remover campos que podem causar erro
     delete emissaoPayload.userToken;
     delete emissaoPayload.notificarWhatsapp;
     delete emissaoPayload.rastreamentoWhatsapp;
+
+    // Sanitizar dados do destinatário (CPF/CNPJ, celular, CEP)
+    if (emissaoPayload?.destinatario) {
+      emissaoPayload.destinatario.nome = String(emissaoPayload.destinatario.nome ?? '').trim();
+
+      if (emissaoPayload.destinatario.cpfCnpj != null) {
+        emissaoPayload.destinatario.cpfCnpj = digitsOnly(emissaoPayload.destinatario.cpfCnpj);
+      }
+      if (emissaoPayload.destinatario.celular != null) {
+        emissaoPayload.destinatario.celular = digitsOnly(emissaoPayload.destinatario.celular);
+      }
+      if (emissaoPayload.destinatario.endereco?.cep != null) {
+        emissaoPayload.destinatario.endereco.cep = digitsOnly(emissaoPayload.destinatario.endereco.cep);
+      }
+      if (emissaoPayload.destinatario.endereco?.uf != null) {
+        emissaoPayload.destinatario.endereco.uf = String(emissaoPayload.destinatario.endereco.uf).trim().toUpperCase();
+      }
+    }
+
+    // Validação mínima antes de chamar a API externa
+    const destNome = emissaoPayload?.destinatario?.nome;
+    const destCep = emissaoPayload?.destinatario?.endereco?.cep;
+    const destCpf = emissaoPayload?.destinatario?.cpfCnpj;
+
+    if (!destNome) {
+      return new Response(JSON.stringify({ error: 'Destinatário: nome é obrigatório', status: 400 }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      });
+    }
+    if (!destCep || !/^\d{8}$/.test(destCep)) {
+      return new Response(JSON.stringify({ error: 'Destinatário: CEP inválido (use 8 dígitos)', status: 400 }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      });
+    }
+    if (!destCpf || !/^(\d{11}|\d{14})$/.test(destCpf)) {
+      return new Response(JSON.stringify({ error: 'Destinatário: CPF/CNPJ inválido (use 11 ou 14 dígitos)', status: 400 }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      });
+    }
+
     console.log('📦 Payload da emissão:', JSON.stringify(emissaoPayload));
 
     // Obter token admin APENAS para operações administrativas (configurar cliente)
@@ -409,8 +455,9 @@ serve(async (req) => {
         console.log('📋 Remetente encontrado:', remetente.nome);
         
         // Usar celular ou telefone como fallback
-        const celularFinal = remetente.celular || remetente.telefone || '';
-        const telefoneFinal = remetente.telefone || remetente.celular || '';
+        const digitsOnly = (v: any) => String(v ?? '').replace(/\D/g, '');
+        const celularFinal = digitsOnly(remetente.celular || remetente.telefone || '');
+        const telefoneFinal = digitsOnly(remetente.telefone || remetente.celular || '');
         
         // Montar objeto remetente conforme documentação da API
         const remetenteObj = {
