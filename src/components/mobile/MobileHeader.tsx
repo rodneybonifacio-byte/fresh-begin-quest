@@ -57,10 +57,16 @@ export const MobileHeader = observer(() => {
                             <button
                                 type="button"
                                 ref={profileButtonRef}
-                                onClick={(e) => {
+                                aria-haspopup="menu"
+                                aria-expanded={showProfilePopover}
+                                onPointerDown={(e) => {
+                                    e.preventDefault();
                                     e.stopPropagation();
-                                    console.log('🔵 Profile button clicked!');
-                                    setShowProfilePopover(prev => !prev);
+                                    setShowProfilePopover((prev) => !prev);
+                                }}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
                                 }}
                                 className="flex items-center space-x-1 cursor-pointer hover:bg-accent active:bg-accent/80 rounded-full p-3 transition-colors touch-manipulation select-none"
                                 style={{ WebkitTapHighlightColor: 'transparent' }}
@@ -82,15 +88,18 @@ export const MobileHeader = observer(() => {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             className="fixed inset-0 z-[80] touch-manipulation"
-                            onClick={() => setShowProfilePopover(false)}
+                            onPointerDown={(e) => {
+                                e.preventDefault();
+                                setShowProfilePopover(false);
+                            }}
                         />
                         <motion.div
                             initial={{ opacity: 0, y: -10, scale: 0.95 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: -10, scale: 0.95 }}
                             transition={{ duration: 0.15 }}
-                            className="fixed right-4 top-14 bg-card border border-border rounded-xl shadow-xl py-2 min-w-[220px] z-[90]"
-                            onClick={(e) => e.stopPropagation()}
+                            className="fixed right-4 top-14 bg-card border border-border rounded-xl shadow-xl py-2 min-w-[220px] z-[90] touch-manipulation"
+                            onPointerDown={(e) => e.stopPropagation()}
                         >
                             {/* Header do perfil */}
                             <div className="px-4 py-3 border-b border-border">
