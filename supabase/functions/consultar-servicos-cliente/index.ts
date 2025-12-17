@@ -146,6 +146,85 @@ serve(async (req: Request) => {
       console.log('⚠️ Endpoint de configurações não disponível:', configResponse.status);
     }
 
+    // 7. TESTE: Fazer cotação de PAC REVERSO usando token admin
+    console.log('🧪 Testando cotação PAC REVERSO com token admin...');
+    const adminToken = await getAdminToken();
+    
+    // Formato correto da API BRHUB
+    const cotacaoTestePayload = {
+      clienteId: clienteId,
+      cepOrigem: '01310100', // CEP teste SP
+      cepDestino: '20040020', // CEP teste RJ
+      embalagem: {
+        peso: 1000, // gramas
+        altura: 10, // cm
+        largura: 15, // cm
+        comprimento: 20, // cm
+      },
+      valorDeclarado: 50,
+      servicosCodigo: ['03301'], // PAC REVERSO
+    };
+
+    console.log('📦 Payload cotação PAC REVERSO:', JSON.stringify(cotacaoTestePayload));
+
+    const cotacaoResponse = await fetch(`${baseUrl}/frete/cotacao`, {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${adminToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(cotacaoTestePayload),
+    });
+
+    let cotacaoReversa = null;
+    let cotacaoErro = null;
+    if (cotacaoResponse.ok) {
+      const cotacaoJson = await cotacaoResponse.json();
+      cotacaoReversa = cotacaoJson.data || cotacaoJson;
+      console.log('✅ Cotação PAC REVERSO:', JSON.stringify(cotacaoReversa).substring(0, 500));
+    } else {
+      const erroText = await cotacaoResponse.text();
+      cotacaoErro = {
+        status: cotacaoResponse.status,
+        mensagem: erroText,
+      };
+      console.log('❌ Erro na cotação PAC REVERSO:', cotacaoResponse.status, erroText);
+    }
+
+    // 8. Testar cotação com todos os serviços para comparar
+    const cotacaoTodosPayload = {
+      clienteId: clienteId,
+      cepOrigem: '01310100',
+      cepDestino: '20040020',
+      embalagem: {
+        peso: 1000,
+        altura: 10,
+        largura: 15,
+        comprimento: 20,
+      },
+      valorDeclarado: 50,
+    };
+
+    console.log('📦 Payload cotação todos:', JSON.stringify(cotacaoTodosPayload));
+
+    const cotacaoTodosResponse = await fetch(`${baseUrl}/frete/cotacao`, {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${adminToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(cotacaoTodosPayload),
+    });
+
+    let cotacaoTodos = null;
+    if (cotacaoTodosResponse.ok) {
+      const cotacaoTodosJson = await cotacaoTodosResponse.json();
+      cotacaoTodos = cotacaoTodosJson.data || cotacaoTodosJson;
+      console.log('📋 Cotação todos serviços:', JSON.stringify(cotacaoTodos).substring(0, 800));
+    } else {
+      console.log('⚠️ Erro cotação geral:', cotacaoTodosResponse.status);
+    }
+
     // Montar resposta consolidada
     const resultado = {
       clienteId,
@@ -178,8 +257,26 @@ serve(async (req: Request) => {
       } : null,
       servicosReversa: reversaData,
       configuracoes: configData,
+      // TESTE PAC REVERSO
+      testePacReverso: {
+        cotacaoSucesso: cotacaoReversa !== null,
+        cotacao: cotacaoReversa,
+        erro: cotacaoErro,
+      },
+      // Cotação com todos serviços disponíveis
+      servicosDisponiveis: cotacaoTodos ? {
+        quantidade: Array.isArray(cotacaoTodos) ? cotacaoTodos.length : 1,
+        servicos: Array.isArray(cotacaoTodos) 
+          ? cotacaoTodos.map((s: any) => ({
+              codigo: s.codigoServico || s.codigo,
+              nome: s.nomeServico || s.nome || s.servico,
+              valor: s.valor || s.valorFrete,
+              prazo: s.prazo || s.prazoEntrega,
+            }))
+          : cotacaoTodos,
+      } : null,
       // Verificação específica de PAC REVERSO (03301)
-      pacReversoHabilitado: verificarPacReverso(servicosData, transportadorasData, credenciaisData),
+      pacReversoHabilitado: verificarPacReverso(servicosData, transportadorasData, credenciaisData, cotacaoReversa),
     };
 
     return new Response(
@@ -197,7 +294,12 @@ serve(async (req: Request) => {
   }
 });
 
-function verificarPacReverso(servicos: any, transportadoras: any, credenciais: any): { habilitado: boolean; motivo: string } {
+function verificarPacReverso(servicos: any, transportadoras: any, credenciais: any, cotacaoReversa: any): { habilitado: boolean; motivo: string } {
+  // Se a cotação funcionou, está habilitado
+  if (cotacaoReversa) {
+    return { habilitado: true, motivo: 'Cotação PAC REVERSO realizada com sucesso' };
+  }
+
   // Verificar se há credenciais de Correios ativas
   const temCredenciaisAtivas = credenciais && (
     (Array.isArray(credenciais) && credenciais.some((c: any) => c.status === 'ATIVO')) ||
@@ -231,5 +333,5 @@ function verificarPacReverso(servicos: any, transportadoras: any, credenciais: a
     return { habilitado: false, motivo: 'Serviço PAC REVERSO (03301) não encontrado na lista de serviços' };
   }
 
-  return { habilitado: true, motivo: 'Serviço aparentemente habilitado (verificar contrato Correios)' };
+  return { habilitado: false, motivo: 'Cotação falhou - verificar contrato Correios para logística reversa' };
 }
