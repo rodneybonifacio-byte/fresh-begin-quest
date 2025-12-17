@@ -126,6 +126,11 @@ const FormularioEmissao = ({ onCancel }: FormularioProdutoProps) => {
     const [valorDeclarado, setValorDeclarado] = useState<string>('');
     const [valorNotaFiscal, setValorNotaFiscal] = useState<string>('');
 
+    // Estados para logística reversa
+    const [isLogisticaReversa, setIsLogisticaReversa] = useState<boolean>(false);
+    const [dadosOriginaisRemetente, setDadosOriginaisRemetente] = useState<any>(null);
+    const [dadosOriginaisDestinatario, setDadosOriginaisDestinatario] = useState<IDestinatario | null>(null);
+
     const { onGetCotacaoCorreios, cotacoes, setCotacoes, isLoadingCotacao } = useCotacao();
     const { onEmissaoCadastro } = useEmissao();
     const { user: userPayload } = useAuth();
@@ -346,6 +351,107 @@ const FormularioEmissao = ({ onCancel }: FormularioProdutoProps) => {
         }
     };
 
+    // Função para alternar logística reversa e inverter remetente/destinatário
+    const handleToggleLogisticaReversa = (checked: boolean) => {
+        setIsLogisticaReversa(checked);
+        setValue('logisticaReversa', checked ? 'S' : '');
+
+        if (checked) {
+            // Salva dados originais antes de inverter
+            setDadosOriginaisRemetente(clienteSelecionado);
+            setDadosOriginaisDestinatario(destinatarioSelecionado || null);
+
+            // Verifica se tem destinatário preenchido para inverter
+            if (destinatarioSelecionado && clienteSelecionado) {
+                // Cria "novo remetente" a partir do destinatário (quem vai enviar de volta)
+                const novoRemetente = {
+                    id: destinatarioSelecionado.id || '',
+                    nome: destinatarioSelecionado.nome,
+                    cpfCnpj: destinatarioSelecionado.cpfCnpj,
+                    celular: destinatarioSelecionado.celular || '',
+                    telefone: destinatarioSelecionado.celular || '',
+                    email: '',
+                    endereco: destinatarioSelecionado.endereco,
+                };
+
+                // Cria "novo destinatário" a partir do remetente original (quem vai receber de volta)
+                const novoDestinatario: IDestinatario = {
+                    id: clienteSelecionado.id || '',
+                    nome: clienteSelecionado.nome,
+                    cpfCnpj: clienteSelecionado.cpfCnpj || '',
+                    celular: clienteSelecionado.celular || '',
+                    endereco: clienteSelecionado.endereco,
+                };
+
+                // Atualiza os estados
+                setClienteSelecionado(novoRemetente);
+                setValue('nomeRemetente', novoRemetente.nome);
+                setValue('remetenteId', novoRemetente.id);
+
+                // Atualiza destinatário no formulário
+                setDestinatarioSelecionado(novoDestinatario);
+                setValue('destinatario.nome', novoDestinatario.nome);
+                setValue('destinatario.cpfCnpj', formatCpfCnpj(novoDestinatario.cpfCnpj));
+                setValue('destinatario.celular', formatTelefone(novoDestinatario.celular || ''));
+                if (novoDestinatario.endereco) {
+                    setValue('destinatario.endereco.cep', formatCep(novoDestinatario.endereco.cep || ''));
+                    setValue('destinatario.endereco.logradouro', novoDestinatario.endereco.logradouro || '');
+                    setValue('destinatario.endereco.numero', novoDestinatario.endereco.numero || '');
+                    setValue('destinatario.endereco.complemento', novoDestinatario.endereco.complemento || '');
+                    setValue('destinatario.endereco.bairro', novoDestinatario.endereco.bairro || '');
+                    setValue('destinatario.endereco.localidade', novoDestinatario.endereco.localidade || '');
+                    setValue('destinatario.endereco.uf', novoDestinatario.endereco.uf || '');
+                }
+
+                toast.success('Dados invertidos! O destinatário agora é o remetente e vice-versa.', { duration: 4000 });
+            } else {
+                toast.warning('Preencha o destinatário antes de ativar logística reversa para inverter automaticamente.', { duration: 4000 });
+            }
+        } else {
+            // Restaura dados originais
+            if (dadosOriginaisRemetente) {
+                setClienteSelecionado(dadosOriginaisRemetente);
+                setValue('nomeRemetente', dadosOriginaisRemetente.nome);
+                setValue('remetenteId', dadosOriginaisRemetente.id);
+            }
+
+            if (dadosOriginaisDestinatario) {
+                setDestinatarioSelecionado(dadosOriginaisDestinatario);
+                setValue('destinatario.nome', dadosOriginaisDestinatario.nome);
+                setValue('destinatario.cpfCnpj', formatCpfCnpj(dadosOriginaisDestinatario.cpfCnpj));
+                setValue('destinatario.celular', formatTelefone(dadosOriginaisDestinatario.celular || ''));
+                if (dadosOriginaisDestinatario.endereco) {
+                    setValue('destinatario.endereco.cep', formatCep(dadosOriginaisDestinatario.endereco.cep || ''));
+                    setValue('destinatario.endereco.logradouro', dadosOriginaisDestinatario.endereco.logradouro || '');
+                    setValue('destinatario.endereco.numero', dadosOriginaisDestinatario.endereco.numero || '');
+                    setValue('destinatario.endereco.complemento', dadosOriginaisDestinatario.endereco.complemento || '');
+                    setValue('destinatario.endereco.bairro', dadosOriginaisDestinatario.endereco.bairro || '');
+                    setValue('destinatario.endereco.localidade', dadosOriginaisDestinatario.endereco.localidade || '');
+                    setValue('destinatario.endereco.uf', dadosOriginaisDestinatario.endereco.uf || '');
+                }
+            } else {
+                // Limpa destinatário se não tinha originalmente
+                setDestinatarioSelecionado(null);
+                setValue('destinatario.nome', '');
+                setValue('destinatario.cpfCnpj', '');
+                setValue('destinatario.celular', '');
+                setValue('destinatario.endereco.cep', '');
+                setValue('destinatario.endereco.logradouro', '');
+                setValue('destinatario.endereco.numero', '');
+                setValue('destinatario.endereco.complemento', '');
+                setValue('destinatario.endereco.bairro', '');
+                setValue('destinatario.endereco.localidade', '');
+                setValue('destinatario.endereco.uf', '');
+            }
+
+            toast.info('Dados restaurados para o original.', { duration: 3000 });
+        }
+
+        // Limpa cotações ao inverter
+        setCotacoes(undefined);
+        setCotacaoSelecionado(undefined);
+    };
+
     const logisticaReversa = watch('logisticaReversa') ? 'S' : 'N';
     return (
         <Content titulo={` ${produtoId ? 'Editar' : 'Cadastro de'} Etiqueta`}>
@@ -531,11 +637,24 @@ const FormularioEmissao = ({ onCancel }: FormularioProdutoProps) => {
                     <div>
                         <div className="flex flex-col gap-2">
                             <label className="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" {...register('logisticaReversa')} className="h-5 w-5 accent-purple-600 cursor-pointer" />
-                                Logistica Reversa
+                                <input 
+                                    type="checkbox" 
+                                    checked={isLogisticaReversa}
+                                    onChange={(e) => handleToggleLogisticaReversa(e.target.checked)}
+                                    className="h-5 w-5 accent-purple-600 cursor-pointer" 
+                                />
+                                <span className={isLogisticaReversa ? 'text-purple-600 font-semibold' : ''}>
+                                    Logística Reversa
+                                </span>
+                                {isLogisticaReversa && (
+                                    <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                                        Dados invertidos
+                                    </span>
+                                )}
                             </label>
                             <p className="text-xs text-slate-400">
-                                Somente para devoluções. Prazo de expiração: <span className="font-semibold text-black">10 dias</span> após a solicitação.
+                                Ao ativar, remetente e destinatário serão <span className="font-semibold">invertidos automaticamente</span>. 
+                                Prazo de expiração: <span className="font-semibold text-black dark:text-white">10 dias</span>.
                             </p>
                         </div>
                     </div>
