@@ -11,7 +11,7 @@ import { ProfileAvatar } from '../ProfileAvatar';
 export const MobileHeader = observer(() => {
     const { theme, toggleTheme } = useTheme();
     const [showProfilePopover, setShowProfilePopover] = useState(false);
-    const profileButtonRef = useRef<HTMLDivElement>(null);
+    const profileButtonRef = useRef<HTMLButtonElement>(null);
     const navigate = useNavigate();
 
     const userData = authStore.getUser();
@@ -56,7 +56,7 @@ export const MobileHeader = observer(() => {
                         <div className="relative">
                             <button
                                 type="button"
-                                ref={profileButtonRef as any}
+                                ref={profileButtonRef}
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     setShowProfilePopover(!showProfilePopover);

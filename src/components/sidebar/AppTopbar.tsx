@@ -17,7 +17,7 @@ const AppTopbar = observer(({
     toggleTheme
   } = useTheme();
   const [showProfilePopover, setShowProfilePopover] = useState(false);
-  const profileButtonRef = useRef<HTMLDivElement>(null);
+  const profileButtonRef = useRef<HTMLButtonElement>(null);
   const navigate = useNavigate();
 
   // Dados do usuário logado - obtidos do store de autenticação
@@ -68,39 +68,34 @@ const AppTopbar = observer(({
 
           {/* Botão de perfil */}
           <div className="relative">
-            <div 
-              ref={profileButtonRef} 
-              onClick={() => setShowProfilePopover(!showProfilePopover)} 
-              onTouchEnd={(e) => {
-                e.preventDefault();
+            <button
+              type="button"
+              ref={profileButtonRef}
+              onClick={(e) => {
+                e.stopPropagation();
                 setShowProfilePopover(!showProfilePopover);
               }}
-              className="flex items-center space-x-2 cursor-pointer hover:bg-accent rounded-lg p-2 transition-colors"
+              className="flex items-center space-x-2 cursor-pointer hover:bg-accent active:bg-accent/80 rounded-lg p-2 transition-colors touch-manipulation"
             >
               <ProfileAvatar name={userInfo.name} size="sm" />
               <ChevronDown className="w-4 h-4 text-muted-foreground" />
-            </div>
+            </button>
           </div>
 
           {/* Overlay para fechar popover quando clicar fora - ANTES do popover */}
           {showProfilePopover && (
             <div 
-              className="fixed inset-0 z-[60]" 
+              className="fixed inset-0 z-[60] touch-manipulation" 
               onClick={() => setShowProfilePopover(false)}
-              onTouchEnd={(e) => {
-                e.preventDefault();
-                setShowProfilePopover(false);
-              }}
             />
           )}
 
           {/* Popover de perfil - z-index maior que overlay */}
           {showProfilePopover && createPortal(
             <div 
-              className="fixed bg-white dark:bg-slate-800 border border-border rounded-lg shadow-xl py-2 min-w-[220px] z-[70]" 
+              className="fixed bg-white dark:bg-slate-800 border border-border rounded-lg shadow-xl py-2 min-w-[220px] z-[70] touch-manipulation" 
               style={{ top: '60px', right: '20px' }}
               onClick={(e) => e.stopPropagation()}
-              onTouchEnd={(e) => e.stopPropagation()}
             >
               {/* Header do perfil */}
               <div className="px-4 py-3 border-b border-border">
@@ -127,12 +122,8 @@ const AppTopbar = observer(({
               <div className="py-2">
                 <Link 
                   to="/app/profile" 
-                  className="flex items-center space-x-3 px-4 py-2 hover:bg-accent active:bg-accent/80 transition-colors text-popover-foreground" 
+                  className="flex items-center space-x-3 px-4 py-2 hover:bg-accent active:bg-accent/80 transition-colors text-popover-foreground touch-manipulation" 
                   onClick={() => setShowProfilePopover(false)}
-                  onTouchEnd={(e) => {
-                    e.stopPropagation();
-                    setShowProfilePopover(false);
-                  }}
                 >
                   <User className="w-4 h-4" />
                   <span className="text-sm">Meu Perfil</span>
@@ -143,13 +134,9 @@ const AppTopbar = observer(({
               {isAdmin && (
                 <div className="py-2 border-t border-border">
                   <button 
-                    className="w-full flex items-center space-x-3 px-4 py-2 hover:bg-accent active:bg-accent/80 transition-colors text-purple-600 dark:text-purple-400"
+                    type="button"
+                    className="w-full flex items-center space-x-3 px-4 py-2 hover:bg-accent active:bg-accent/80 transition-colors text-purple-600 dark:text-purple-400 touch-manipulation"
                     onClick={() => {
-                      setShowProfilePopover(false);
-                      navigate('/admin');
-                    }}
-                    onTouchEnd={(e) => {
-                      e.stopPropagation();
                       setShowProfilePopover(false);
                       navigate('/admin');
                     }}
@@ -163,12 +150,9 @@ const AppTopbar = observer(({
               {/* Footer do perfil */}
               <div className="border-t border-border pt-2">
                 <button 
-                  className="w-full flex items-center space-x-3 px-4 py-2 hover:bg-accent active:bg-accent/80 transition-colors text-destructive" 
+                  type="button"
+                  className="w-full flex items-center space-x-3 px-4 py-2 hover:bg-accent active:bg-accent/80 transition-colors text-destructive touch-manipulation" 
                   onClick={handleLogout}
-                  onTouchEnd={(e) => {
-                    e.stopPropagation();
-                    handleLogout();
-                  }}
                 >
                   <LogOut className="w-4 h-4" />
                   <span className="text-sm">Sair</span>
