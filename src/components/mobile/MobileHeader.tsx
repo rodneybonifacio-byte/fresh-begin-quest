@@ -31,7 +31,7 @@ export const MobileHeader = observer(() => {
 
     return (
         <>
-            <header className="sticky top-0 z-40 bg-background border-b border-border lg:hidden">
+            <header className="sticky top-0 z-50 bg-background border-b border-border lg:hidden">
                 <div className="flex items-center justify-between px-4 h-14">
                     {/* Left side - Logo */}
                     <Link to="/app" className="flex items-center">
@@ -53,15 +53,17 @@ export const MobileHeader = observer(() => {
                         </button>
 
                         {/* Profile */}
-                        <div className="relative">
+                        <div className="relative z-10">
                             <button
                                 type="button"
                                 ref={profileButtonRef}
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    setShowProfilePopover(!showProfilePopover);
+                                    console.log('🔵 Profile button clicked!');
+                                    setShowProfilePopover(prev => !prev);
                                 }}
-                                className="flex items-center space-x-1 cursor-pointer hover:bg-accent active:bg-accent/80 rounded-full p-2 transition-colors touch-manipulation"
+                                className="flex items-center space-x-1 cursor-pointer hover:bg-accent active:bg-accent/80 rounded-full p-3 transition-colors touch-manipulation select-none"
+                                style={{ WebkitTapHighlightColor: 'transparent' }}
                             >
                                 <ProfileAvatar name={userInfo.name} size="sm" />
                                 <ChevronDown className="w-3 h-3 text-muted-foreground" />
@@ -79,7 +81,7 @@ export const MobileHeader = observer(() => {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="fixed inset-0 z-[60] touch-manipulation"
+                            className="fixed inset-0 z-[80] touch-manipulation"
                             onClick={() => setShowProfilePopover(false)}
                         />
                         <motion.div
@@ -87,7 +89,7 @@ export const MobileHeader = observer(() => {
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: -10, scale: 0.95 }}
                             transition={{ duration: 0.15 }}
-                            className="fixed right-4 top-14 bg-card border border-border rounded-xl shadow-xl py-2 min-w-[220px] z-[70]"
+                            className="fixed right-4 top-14 bg-card border border-border rounded-xl shadow-xl py-2 min-w-[220px] z-[90]"
                             onClick={(e) => e.stopPropagation()}
                         >
                             {/* Header do perfil */}
