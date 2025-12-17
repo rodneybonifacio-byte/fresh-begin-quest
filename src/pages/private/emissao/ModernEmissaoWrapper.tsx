@@ -300,6 +300,7 @@ export const ModernEmissaoWrapper = () => {
                     clienteSelecionado={clienteSelecionado}
                     cotacaoSelecionado={cotacaoSelecionado}
                     setCotacaoSelecionado={setCotacaoSelecionado}
+                    isLogisticaReversa={isLogisticaReversa}
                 />
             )}
                     {currentStep === 3 && (

@@ -12,13 +12,15 @@ interface Step3FreteProps {
   clienteSelecionado: any;
   cotacaoSelecionado?: ICotacaoMinimaResponse;
   setCotacaoSelecionado: (c: ICotacaoMinimaResponse | undefined) => void;
+  isLogisticaReversa?: boolean;
 }
 export const Step3Frete = ({
   onNext,
   onBack,
   clienteSelecionado,
   cotacaoSelecionado,
-  setCotacaoSelecionado
+  setCotacaoSelecionado,
+  isLogisticaReversa = false
 }: Step3FreteProps) => {
   const {
     setValue,
@@ -61,11 +63,11 @@ export const Step3Frete = ({
         embalagem,
         remetente: clienteSelecionado
       });
-      await onGetCotacaoCorreios(clienteSelecionado.endereco?.cep || clienteSelecionado.cep, destinatarioData.endereco.cep, embalagem as any, '0', 'N', clienteSelecionado);
-      console.log('✅ Cotação finalizada');
+      await onGetCotacaoCorreios(clienteSelecionado.endereco?.cep || clienteSelecionado.cep, destinatarioData.endereco.cep, embalagem as any, '0', isLogisticaReversa ? 'S' : 'N', clienteSelecionado);
+      console.log('✅ Cotação finalizada com logisticaReversa:', isLogisticaReversa ? 'S' : 'N');
     };
     calcularFrete();
-  }, [clienteSelecionado, getValues]);
+  }, [clienteSelecionado, getValues, isLogisticaReversa]);
 
   // Log quando as cotações mudam
   useEffect(() => {
