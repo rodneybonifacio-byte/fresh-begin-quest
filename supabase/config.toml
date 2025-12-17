@@ -134,3 +134,6 @@ verify_jwt = false
 
 [functions.parceiro-dashboard]
 verify_jwt = false
+
+[functions.consultar-servicos-cliente]
+verify_jwt = false
