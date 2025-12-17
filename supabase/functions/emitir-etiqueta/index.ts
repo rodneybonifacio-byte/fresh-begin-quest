@@ -361,11 +361,94 @@ serve(async (req) => {
     // Helpers de sanitização/validação (server-side)
     const digitsOnly = (v: any) => String(v ?? '').replace(/\D/g, '');
 
+    // Detectar logística reversa (workaround: usar PAC/SEDEX normais com endereços invertidos)
+    const isLogisticaReversa = String(emissaoPayload.logisticaReversa ?? '') === 'S';
+
     // Remover campos que podem causar erro
     delete emissaoPayload.userToken;
     delete emissaoPayload.notificarWhatsapp;
     delete emissaoPayload.rastreamentoWhatsapp;
-    // WORKAROUND: Remover logisticaReversa - usamos PAC/SEDEX normais com endereços invertidos
+
+    if (isLogisticaReversa) {
+      console.log('🔁 Logística reversa ativa - invertendo remetente/destinatário (PAC/SEDEX normal)');
+
+      const originalDestinatario = emissaoPayload.destinatario;
+      const originalRemetenteId = emissaoPayload.remetenteId;
+
+      if (!originalDestinatario?.endereco) {
+        return new Response(JSON.stringify({ error: 'Logística reversa: destinatário incompleto para inversão', status: 400 }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        });
+      }
+      if (!originalRemetenteId) {
+        return new Response(JSON.stringify({ error: 'Logística reversa: remetenteId é obrigatório para inversão', status: 400 }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        });
+      }
+
+      // Buscar dados do remetente (loja) no banco para virar o DESTINATÁRIO
+      const supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      );
+
+      const { data: remetenteDb, error: remetenteErr } = await supabaseClient
+        .from('remetentes')
+        .select('*')
+        .eq('id', originalRemetenteId)
+        .single();
+
+      if (remetenteErr || !remetenteDb) {
+        console.error('❌ Logística reversa: não foi possível buscar remetente no banco:', remetenteErr);
+        return new Response(JSON.stringify({ error: 'Logística reversa: remetente não encontrado para inversão', status: 400 }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        });
+      }
+
+      // Novo DESTINATÁRIO = remetente original (loja)
+      const destinatarioInvertido = {
+        nome: String(remetenteDb.nome ?? '').trim(),
+        cpfCnpj: digitsOnly(remetenteDb.cpf_cnpj),
+        celular: digitsOnly(remetenteDb.celular || remetenteDb.telefone || ''),
+        endereco: {
+          cep: digitsOnly(remetenteDb.cep),
+          logradouro: String(remetenteDb.logradouro ?? '').trim(),
+          numero: String(remetenteDb.numero ?? '').trim(),
+          complemento: String(remetenteDb.complemento ?? '').trim(),
+          bairro: String(remetenteDb.bairro ?? '').trim(),
+          localidade: String(remetenteDb.localidade ?? '').trim(),
+          uf: String(remetenteDb.uf ?? '').trim().toUpperCase(),
+        },
+      };
+
+      // Novo REMETENTE = destinatário original (cliente final)
+      const remetenteInvertido = {
+        nome: String(originalDestinatario.nome ?? '').trim(),
+        cpfCnpj: digitsOnly(originalDestinatario.cpfCnpj),
+        documentoEstrangeiro: '',
+        celular: digitsOnly(originalDestinatario.celular || ''),
+        telefone: digitsOnly(originalDestinatario.celular || ''),
+        email: '',
+        endereco: {
+          cep: digitsOnly(originalDestinatario.endereco?.cep),
+          logradouro: String(originalDestinatario.endereco?.logradouro ?? '').trim(),
+          numero: String(originalDestinatario.endereco?.numero ?? '').trim(),
+          complemento: String(originalDestinatario.endereco?.complemento ?? '').trim(),
+          bairro: String(originalDestinatario.endereco?.bairro ?? '').trim(),
+          localidade: String(originalDestinatario.endereco?.localidade ?? '').trim(),
+          uf: String(originalDestinatario.endereco?.uf ?? '').trim().toUpperCase(),
+        },
+      };
+
+      emissaoPayload.destinatario = destinatarioInvertido;
+      emissaoPayload.remetente = remetenteInvertido;
+      delete emissaoPayload.remetenteId;
+    }
+
+    // Não enviar logisticaReversa para API - usamos PAC/SEDEX normais
     delete emissaoPayload.logisticaReversa;
 
     // Sanitizar dados do destinatário (CPF/CNPJ, celular, CEP)
