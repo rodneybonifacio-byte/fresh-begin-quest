@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Package, MapPin, Truck, CheckCircle2, Printer, RefreshCw } from "lucide-react";
+import { Package, MapPin, Truck, CheckCircle2, Printer } from "lucide-react";
 import { FormProvider, useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -155,16 +155,6 @@ export const ModernEmissaoWrapper = () => {
         navigate('/app/emissao');
     };
 
-    const handleToggleLogisticaReversa = () => {
-        const next = !isLogisticaReversa;
-        setIsLogisticaReversa(next);
-
-        // Se já passou (ou está) na etapa de frete, voltamos para recalcular com a nova opção
-        if (currentStep >= 2) {
-            resetCotacoes();
-            if (currentStep > 2) setCurrentStep(2);
-        }
-    };
 
     return (
         <FormProvider {...methods}>
@@ -180,32 +170,6 @@ export const ModernEmissaoWrapper = () => {
                                 Etapa {currentStep + 1} de {steps.length}
                             </span>
                         </div>
-
-                        {currentStep < 4 && (
-                            <div className="mb-4 flex justify-end">
-                                <button
-                                    type="button"
-                                    onClick={handleToggleLogisticaReversa}
-                                    aria-pressed={isLogisticaReversa}
-                                    className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${
-                                        isLogisticaReversa
-                                            ? 'bg-primary/10 border-primary/30 text-primary'
-                                            : 'bg-muted/40 border-border text-muted-foreground hover:text-foreground'
-                                    }`}
-                                >
-                                    <RefreshCw className={`h-4 w-4 ${isLogisticaReversa ? 'text-primary' : 'text-muted-foreground'}`} />
-                                    <span className="whitespace-nowrap">Logística Reversa</span>
-                                    <span
-                                        className={`ml-1 rounded-lg px-2 py-0.5 text-[11px] ${
-                                            isLogisticaReversa ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
-                                        }`}
-                                    >
-                                        {isLogisticaReversa ? 'ON' : 'OFF'}
-                                    </span>
-                                </button>
-                            </div>
-                        )}
-                        
                         {/* Mobile Progress Bar */}
                         <div className="relative h-2 bg-muted rounded-full overflow-hidden">
                             <div 
@@ -233,31 +197,6 @@ export const ModernEmissaoWrapper = () => {
 
                     {/* Desktop: Full Stepper */}
                     <div className="hidden lg:block">
-                        <div className="flex items-center justify-between max-w-4xl mx-auto mb-6">
-                            <h1 className="text-2xl font-bold text-foreground">Nova Etiqueta</h1>
-                            {currentStep < 4 && (
-                                <button
-                                    type="button"
-                                    onClick={handleToggleLogisticaReversa}
-                                    aria-pressed={isLogisticaReversa}
-                                    className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-colors ${
-                                        isLogisticaReversa
-                                            ? 'bg-primary/10 border-primary/30 text-primary'
-                                            : 'bg-muted/40 border-border text-muted-foreground hover:text-foreground'
-                                    }`}
-                                >
-                                    <RefreshCw className={`h-4 w-4 ${isLogisticaReversa ? 'text-primary' : 'text-muted-foreground'}`} />
-                                    <span>Logística Reversa</span>
-                                    <span
-                                        className={`ml-1 rounded-lg px-2 py-0.5 text-xs ${
-                                            isLogisticaReversa ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
-                                        }`}
-                                    >
-                                        {isLogisticaReversa ? 'ON' : 'OFF'}
-                                    </span>
-                                </button>
-                            )}
-                        </div>
                         <div className="flex items-center justify-between max-w-4xl mx-auto">
                             {steps.map((step, index) => {
                                 const StepIcon = step.icon;
