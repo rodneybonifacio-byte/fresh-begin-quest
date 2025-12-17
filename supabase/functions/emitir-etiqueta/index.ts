@@ -220,9 +220,15 @@ async function applyClientTransportadoraConfig(clienteId: string, adminToken: st
 // Função para desabilitar WhatsApp do cliente (SEMPRE executa para garantir)
 async function disableClientWhatsApp(clienteId: string, adminToken: string): Promise<boolean> {
   const baseUrl = Deno.env.get('BASE_API_URL');
-  
+
+  const toBoolean = (v: any): boolean => {
+    if (typeof v === 'boolean') return v;
+    if (typeof v === 'string') return v.toLowerCase() === 'true';
+    return Boolean(v);
+  };
+
   console.log('📱 Verificando e desabilitando WhatsApp para cliente:', clienteId);
-  
+
   try {
     // Buscar dados atuais do cliente
     const getResponse = await fetch(`${baseUrl}/clientes/${clienteId}`, {
@@ -232,74 +238,77 @@ async function disableClientWhatsApp(clienteId: string, adminToken: string): Pro
         'Content-Type': 'application/json',
       },
     });
-    
+
     if (!getResponse.ok) {
       console.log('⚠️ Não foi possível buscar dados do cliente para desabilitar WhatsApp');
       return false;
     }
-    
-    const clienteData = await getResponse.json();
-    const cliente = clienteData.data || clienteData;
-    
-    console.log('📋 Config atual WhatsApp:', JSON.stringify(cliente.configuracoes));
-    
-    // SEMPRE desabilitar WhatsApp para evitar erros de configuração
-    console.log('📱 Desabilitando WhatsApp para garantir emissão...');
-    
-    // Criar configurações corrigidas
+
+    const clienteResponse = await getResponse.json();
+    const clienteAtual = clienteResponse.data || clienteResponse;
+
+    const cfg = clienteAtual.configuracoes || {};
+    console.log('📋 Config atual WhatsApp:', JSON.stringify(cfg));
+
+    // Forçar desativação de WhatsApp para evitar erros de emissão
     const configuracoesCorrigidas = {
-      ...(cliente.configuracoes || {}),
+      periodo_faturamento: cfg.periodo_faturamento || 'SEMANAL',
+      horario_coleta: cfg.horario_coleta || '08:00',
+      link_whatsapp: String(cfg.link_whatsapp || ''),
+      incluir_valor_declarado_na_nota: toBoolean(cfg.incluir_valor_declarado_na_nota),
+      aplicar_valor_declarado: toBoolean(cfg.aplicar_valor_declarado),
       rastreio_via_whatsapp: false,
       fatura_via_whatsapp: false,
-      incluir_valor_declarado_na_nota: Boolean(cliente.configuracoes?.incluir_valor_declarado_na_nota === 'true' || cliente.configuracoes?.incluir_valor_declarado_na_nota === true),
-      valor_disparo_evento_rastreio_whatsapp: String(cliente.configuracoes?.valor_disparo_evento_rastreio_whatsapp || '0'),
-      eventos_rastreio_whatsapp: [],
+      valor_disparo_evento_rastreio_whatsapp: String(cfg.valor_disparo_evento_rastreio_whatsapp || '0'),
+      eventos_rastreio_habilitados_via_whatsapp: [],
     };
-    
-    // Corrigir tipos nas configurações de transportadora
-    const transportadoraCorrigidas = (cliente.transportadoraConfiguracoes || []).map((t: any) => ({
+
+    // Corrigir tipos nas configurações de transportadora (se existirem)
+    const transportadoraCorrigidas = (clienteAtual.transportadoraConfiguracoes || []).map((t: any) => ({
       ...t,
-      valorAcrescimo: typeof t.valorAcrescimo === 'string' ? parseFloat(t.valorAcrescimo) || 0 : (t.valorAcrescimo || 0),
-      sobrepreco: typeof t.sobrepreco === 'string' ? parseFloat(t.sobrepreco) || 0 : (t.sobrepreco || 0),
+      valorAcrescimo:
+        typeof t.valorAcrescimo === 'string' ? parseFloat(t.valorAcrescimo) || 0 : (t.valorAcrescimo ?? 0),
+      sobrepreco:
+        typeof t.sobrepreco === 'string' ? parseFloat(t.sobrepreco) || 0 : (t.sobrepreco ?? 0),
     }));
-    
-    // Criar payload limpo sem campos problemáticos
-    const updatePayload = {
-      id: cliente.id,
-      nome: cliente.nome,
-      razaoSocial: cliente.razaoSocial,
-      cpfCnpj: cliente.cpfCnpj,
-      email: cliente.email,
-      telefone: cliente.telefone,
-      celular: cliente.celular,
-      endereco: cliente.endereco,
+
+    // Montar payload completo com campos obrigatórios (nomeEmpresa/nomeResponsavel/role)
+    const clienteAtualizado = {
+      nomeEmpresa: clienteAtual.nomeEmpresa,
+      nomeResponsavel: clienteAtual.nomeResponsavel,
+      cpfCnpj: clienteAtual.cpfCnpj,
+      email: clienteAtual.email,
+      telefone: clienteAtual.telefone || '',
+      celular: clienteAtual.celular,
+      role: clienteAtual.role || 'CLIENTE',
+      endereco: clienteAtual.endereco,
+      status: clienteAtual.status || 'ATIVO',
       configuracoes: configuracoesCorrigidas,
       transportadoraConfiguracoes: transportadoraCorrigidas,
     };
-    
+
     console.log('📤 Enviando update para desabilitar WhatsApp...');
-    
+
     const putResponse = await fetch(`${baseUrl}/clientes/${clienteId}`, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${adminToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(updatePayload),
+      body: JSON.stringify(clienteAtualizado),
     });
-    
+
     const responseText = await putResponse.text();
     console.log('📥 Resposta do PUT WhatsApp:', putResponse.status, responseText.substring(0, 200));
-    
-    if (putResponse.ok) {
-      console.log('✅ WhatsApp desabilitado com sucesso!');
-      // Pequeno delay para a API processar
-      await new Promise(resolve => setTimeout(resolve, 300));
-      return true;
-    } else {
+
+    if (!putResponse.ok) {
       console.log('⚠️ Falha ao desabilitar WhatsApp:', responseText);
       return false;
     }
+
+    console.log('✅ WhatsApp desabilitado com sucesso!');
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    return true;
   } catch (error) {
     console.error('❌ Erro ao desabilitar WhatsApp:', error);
     return false;
@@ -451,25 +460,36 @@ serve(async (req) => {
 
     if (!emissaoResponse.ok) {
       console.error('❌ Erro na emissão:', responseText);
-      
-      let errorMessage = 'Erro na emissão de etiqueta';
+
+      let parsedError: any = null;
       try {
-        const errorData = JSON.parse(responseText);
-        if (errorData.message) {
-          errorMessage = errorData.message;
-        } else if (errorData.error) {
-          errorMessage = typeof errorData.error === 'string' 
-            ? errorData.error 
-            : JSON.stringify(errorData.error);
-        }
-      } catch (e) {
-        errorMessage = responseText || errorMessage;
+        parsedError = JSON.parse(responseText);
+      } catch {
+        // ignore
       }
-      
+
+      const errorCode = typeof parsedError?.code === 'string' ? parsedError.code : undefined;
+
+      let errorMessage = 'Erro na emissão de etiqueta';
+      if (typeof parsedError?.message === 'string' && parsedError.message.trim()) {
+        errorMessage = parsedError.message;
+      } else if (typeof parsedError?.error === 'string' && parsedError.error.trim()) {
+        errorMessage = parsedError.error;
+      } else if (Array.isArray(parsedError?.error)) {
+        errorMessage = parsedError.error
+          .map((e: any) => e?.message || JSON.stringify(e))
+          .filter(Boolean)
+          .join(' | ');
+      } else if (typeof responseText === 'string' && responseText.trim()) {
+        errorMessage = responseText;
+      }
+
       return new Response(
         JSON.stringify({
           error: errorMessage,
+          code: errorCode,
           status: emissaoResponse.status,
+          details: parsedError ?? responseText,
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
