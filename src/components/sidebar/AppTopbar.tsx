@@ -71,9 +71,16 @@ const AppTopbar = observer(({
             <button
               type="button"
               ref={profileButtonRef}
-              onClick={(e) => {
+              aria-haspopup="menu"
+              aria-expanded={showProfilePopover}
+              onPointerDown={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
-                setShowProfilePopover(!showProfilePopover);
+                setShowProfilePopover((prev) => !prev);
+              }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
               }}
               className="flex items-center space-x-2 cursor-pointer hover:bg-accent active:bg-accent/80 rounded-lg p-2 transition-colors touch-manipulation"
             >
@@ -86,7 +93,10 @@ const AppTopbar = observer(({
           {showProfilePopover && (
             <div 
               className="fixed inset-0 z-[60] touch-manipulation" 
-              onClick={() => setShowProfilePopover(false)}
+              onPointerDown={(e) => {
+                e.preventDefault();
+                setShowProfilePopover(false);
+              }}
             />
           )}
 
