@@ -55,6 +55,7 @@ export const ModernEmissaoWrapper = () => {
     const [cotacaoSelecionado, setCotacaoSelecionado] = useState<ICotacaoMinimaResponse | undefined>();
     const [emissaoGerada, setEmissaoGerada] = useState<IEmissao | null>(null);
     const [pdfData, setPdfData] = useState<{ nome: string; dados: string; linkEtiqueta?: string } | null>(null);
+    const [isLogisticaReversa, setIsLogisticaReversa] = useState(false);
     
     // Função para resetar cotações quando voltar
     const resetCotacoes = () => {
@@ -275,6 +276,8 @@ export const ModernEmissaoWrapper = () => {
                             setSelectedEmbalagem={setSelectedEmbalagem}
                             clienteSelecionado={clienteSelecionado}
                             setClienteSelecionado={setClienteSelecionado}
+                            isLogisticaReversa={isLogisticaReversa}
+                            setIsLogisticaReversa={setIsLogisticaReversa}
                         />
                     )}
                     {currentStep === 1 && (
@@ -306,6 +309,7 @@ export const ModernEmissaoWrapper = () => {
                             cotacaoSelecionado={cotacaoSelecionado}
                             selectedEmbalagem={selectedEmbalagem}
                             clienteSelecionado={clienteSelecionado}
+                            isLogisticaReversa={isLogisticaReversa}
                         />
                     )}
                     {currentStep === 4 && emissaoGerada && pdfData && (
