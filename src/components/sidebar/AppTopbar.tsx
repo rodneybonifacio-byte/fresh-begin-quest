@@ -71,84 +71,112 @@ const AppTopbar = observer(({
             <div 
               ref={profileButtonRef} 
               onClick={() => setShowProfilePopover(!showProfilePopover)} 
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                setShowProfilePopover(!showProfilePopover);
+              }}
               className="flex items-center space-x-2 cursor-pointer hover:bg-accent rounded-lg p-2 transition-colors"
             >
               <ProfileAvatar name={userInfo.name} size="sm" />
               <ChevronDown className="w-4 h-4 text-muted-foreground" />
             </div>
-
-            {/* Popover de perfil */}
-            {showProfilePopover && createPortal(
-              <div 
-                className="fixed bg-white dark:bg-slate-800 border border-border rounded-lg shadow-xl py-2 min-w-[220px] z-[70]" 
-                style={{ top: '60px', right: '20px' }}
-              >
-                {/* Header do perfil */}
-                <div className="px-4 py-3 border-b border-border">
-                  <div className="flex items-center space-x-3">
-                    <div className="relative">
-                      <ProfileAvatar name={userInfo.name} size="md" />
-                      {isAdmin && (
-                        <div className="absolute -top-0.5 -left-0.5 w-3 h-3 bg-purple-500 border-2 border-popover rounded-full" title="Administrador" />
-                      )}
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-popover-foreground">
-                        {userInfo.name}
-                        {isAdmin && <span className="ml-1 text-xs text-purple-500 font-normal">(Admin)</span>}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {userInfo.email}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Menu do perfil */}
-                <div className="py-2">
-                  <Link 
-                    to="/app/profile" 
-                    className="flex items-center space-x-3 px-4 py-2 hover:bg-accent transition-colors text-popover-foreground" 
-                    onClick={() => setShowProfilePopover(false)}
-                  >
-                    <User className="w-4 h-4" />
-                    <span className="text-sm">Meu Perfil</span>
-                  </Link>
-                </div>
-
-                {/* Opção de Admin */}
-                {isAdmin && (
-                  <div className="py-2 border-t border-border">
-                    <button 
-                      className="w-full flex items-center space-x-3 px-4 py-2 hover:bg-accent transition-colors text-purple-600 dark:text-purple-400"
-                      onClick={() => {
-                        setShowProfilePopover(false);
-                        navigate('/admin');
-                      }}
-                    >
-                      <Shield className="w-4 h-4" />
-                      <span className="text-sm">Painel Admin</span>
-                    </button>
-                  </div>
-                )}
-
-                {/* Footer do perfil */}
-                <div className="border-t border-border pt-2">
-                  <button 
-                    className="w-full flex items-center space-x-3 px-4 py-2 hover:bg-accent transition-colors text-destructive" 
-                    onClick={handleLogout}
-                  >
-                    <LogOut className="w-4 h-4" />
-                    <span className="text-sm">Sair</span>
-                  </button>
-                </div>
-              </div>, 
-              document.body
-            )}
           </div>
 
-          {/* Overlay para fechar popover quando clicar fora */}
-          {showProfilePopover && <div className="fixed inset-0 z-[60]" onClick={() => setShowProfilePopover(false)} />}
+          {/* Overlay para fechar popover quando clicar fora - ANTES do popover */}
+          {showProfilePopover && (
+            <div 
+              className="fixed inset-0 z-[60]" 
+              onClick={() => setShowProfilePopover(false)}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                setShowProfilePopover(false);
+              }}
+            />
+          )}
+
+          {/* Popover de perfil - z-index maior que overlay */}
+          {showProfilePopover && createPortal(
+            <div 
+              className="fixed bg-white dark:bg-slate-800 border border-border rounded-lg shadow-xl py-2 min-w-[220px] z-[70]" 
+              style={{ top: '60px', right: '20px' }}
+              onClick={(e) => e.stopPropagation()}
+              onTouchEnd={(e) => e.stopPropagation()}
+            >
+              {/* Header do perfil */}
+              <div className="px-4 py-3 border-b border-border">
+                <div className="flex items-center space-x-3">
+                  <div className="relative">
+                    <ProfileAvatar name={userInfo.name} size="md" />
+                    {isAdmin && (
+                      <div className="absolute -top-0.5 -left-0.5 w-3 h-3 bg-purple-500 border-2 border-popover rounded-full" title="Administrador" />
+                    )}
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-popover-foreground">
+                      {userInfo.name}
+                      {isAdmin && <span className="ml-1 text-xs text-purple-500 font-normal">(Admin)</span>}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {userInfo.email}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Menu do perfil */}
+              <div className="py-2">
+                <Link 
+                  to="/app/profile" 
+                  className="flex items-center space-x-3 px-4 py-2 hover:bg-accent active:bg-accent/80 transition-colors text-popover-foreground" 
+                  onClick={() => setShowProfilePopover(false)}
+                  onTouchEnd={(e) => {
+                    e.stopPropagation();
+                    setShowProfilePopover(false);
+                  }}
+                >
+                  <User className="w-4 h-4" />
+                  <span className="text-sm">Meu Perfil</span>
+                </Link>
+              </div>
+
+              {/* Opção de Admin */}
+              {isAdmin && (
+                <div className="py-2 border-t border-border">
+                  <button 
+                    className="w-full flex items-center space-x-3 px-4 py-2 hover:bg-accent active:bg-accent/80 transition-colors text-purple-600 dark:text-purple-400"
+                    onClick={() => {
+                      setShowProfilePopover(false);
+                      navigate('/admin');
+                    }}
+                    onTouchEnd={(e) => {
+                      e.stopPropagation();
+                      setShowProfilePopover(false);
+                      navigate('/admin');
+                    }}
+                  >
+                    <Shield className="w-4 h-4" />
+                    <span className="text-sm">Painel Admin</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Footer do perfil */}
+              <div className="border-t border-border pt-2">
+                <button 
+                  className="w-full flex items-center space-x-3 px-4 py-2 hover:bg-accent active:bg-accent/80 transition-colors text-destructive" 
+                  onClick={handleLogout}
+                  onTouchEnd={(e) => {
+                    e.stopPropagation();
+                    handleLogout();
+                  }}
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span className="text-sm">Sair</span>
+                </button>
+              </div>
+            </div>, 
+            document.body
+          )}
         </div>
       </div>
     </header>
