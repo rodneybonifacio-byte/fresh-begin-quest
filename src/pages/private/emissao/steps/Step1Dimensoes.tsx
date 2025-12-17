@@ -98,37 +98,43 @@ export const Step1Dimensoes = ({
 
         {/* Toggle Logística Reversa */}
         {setIsLogisticaReversa && (
-          <div 
+          <button
+            type="button"
+            aria-pressed={isLogisticaReversa}
             onClick={() => setIsLogisticaReversa(!isLogisticaReversa)}
             className={`
-              flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all
-              ${isLogisticaReversa 
-                ? 'bg-purple-50 dark:bg-purple-950/30 border-purple-300 dark:border-purple-700' 
-                : 'bg-muted/30 border-border hover:border-purple-200 dark:hover:border-purple-800'
+              flex w-full items-center gap-3 p-4 rounded-xl border-2 transition-colors
+              ${isLogisticaReversa
+                ? 'bg-primary/10 border-primary/30'
+                : 'bg-muted/30 border-border hover:border-primary/20'
               }
             `}
           >
-            <div className={`p-2 rounded-lg ${isLogisticaReversa ? 'bg-purple-100 dark:bg-purple-900' : 'bg-muted'}`}>
-              <RefreshCw className={`h-5 w-5 ${isLogisticaReversa ? 'text-purple-600' : 'text-muted-foreground'}`} />
+            <div className={`p-2 rounded-lg ${isLogisticaReversa ? 'bg-primary/10' : 'bg-muted'}`}>
+              <RefreshCw className={`h-5 w-5 ${isLogisticaReversa ? 'text-primary' : 'text-muted-foreground'}`} />
             </div>
-            <div className="flex-1">
-              <p className={`font-semibold ${isLogisticaReversa ? 'text-purple-700 dark:text-purple-300' : 'text-foreground'}`}>
+            <div className="flex-1 text-left">
+              <p className={`font-semibold ${isLogisticaReversa ? 'text-primary' : 'text-foreground'}`}>
                 Logística Reversa
               </p>
               <p className="text-xs text-muted-foreground">
                 Remetente e destinatário serão invertidos automaticamente
               </p>
             </div>
-            <div className={`
-              w-12 h-6 rounded-full transition-all relative
-              ${isLogisticaReversa ? 'bg-purple-500' : 'bg-muted'}
-            `}>
-              <div className={`
-                absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all
-                ${isLogisticaReversa ? 'left-7' : 'left-1'}
-              `} />
+            <div
+              className={`
+                w-12 h-6 rounded-full transition-all relative
+                ${isLogisticaReversa ? 'bg-primary' : 'bg-muted'}
+              `}
+            >
+              <div
+                className={`
+                  absolute top-1 w-4 h-4 rounded-full bg-background shadow transition-all
+                  ${isLogisticaReversa ? 'left-7' : 'left-1'}
+                `}
+              />
             </div>
-          </div>
+          </button>
         )}
 
         <div className="space-y-3">
