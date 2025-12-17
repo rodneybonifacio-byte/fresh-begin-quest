@@ -54,18 +54,18 @@ export const MobileHeader = observer(() => {
 
                         {/* Profile */}
                         <div className="relative">
-                            <div
-                                ref={profileButtonRef}
-                                onClick={() => setShowProfilePopover(!showProfilePopover)}
-                                onTouchEnd={(e) => {
-                                    e.preventDefault();
+                            <button
+                                type="button"
+                                ref={profileButtonRef as any}
+                                onClick={(e) => {
+                                    e.stopPropagation();
                                     setShowProfilePopover(!showProfilePopover);
                                 }}
-                                className="flex items-center space-x-1 cursor-pointer hover:bg-accent rounded-full p-1 transition-colors"
+                                className="flex items-center space-x-1 cursor-pointer hover:bg-accent active:bg-accent/80 rounded-full p-2 transition-colors touch-manipulation"
                             >
                                 <ProfileAvatar name={userInfo.name} size="sm" />
                                 <ChevronDown className="w-3 h-3 text-muted-foreground" />
-                            </div>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -79,12 +79,8 @@ export const MobileHeader = observer(() => {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="fixed inset-0 z-[60]"
+                            className="fixed inset-0 z-[60] touch-manipulation"
                             onClick={() => setShowProfilePopover(false)}
-                            onTouchEnd={(e) => {
-                                e.preventDefault();
-                                setShowProfilePopover(false);
-                            }}
                         />
                         <motion.div
                             initial={{ opacity: 0, y: -10, scale: 0.95 }}
@@ -93,7 +89,6 @@ export const MobileHeader = observer(() => {
                             transition={{ duration: 0.15 }}
                             className="fixed right-4 top-14 bg-card border border-border rounded-xl shadow-xl py-2 min-w-[220px] z-[70]"
                             onClick={(e) => e.stopPropagation()}
-                            onTouchEnd={(e) => e.stopPropagation()}
                         >
                             {/* Header do perfil */}
                             <div className="px-4 py-3 border-b border-border">
@@ -124,12 +119,8 @@ export const MobileHeader = observer(() => {
                             <div className="py-2">
                                 <Link
                                     to="/app/profile"
-                                    className="flex items-center space-x-3 px-4 py-2.5 hover:bg-accent active:bg-accent/80 transition-colors text-card-foreground"
+                                    className="flex items-center space-x-3 px-4 py-2.5 hover:bg-accent active:bg-accent/80 transition-colors text-card-foreground touch-manipulation"
                                     onClick={() => setShowProfilePopover(false)}
-                                    onTouchEnd={(e) => {
-                                        e.stopPropagation();
-                                        setShowProfilePopover(false);
-                                    }}
                                 >
                                     <User className="w-4 h-4" />
                                     <span className="text-sm">Meu Perfil</span>
@@ -140,13 +131,9 @@ export const MobileHeader = observer(() => {
                             {isAdmin && (
                                 <div className="py-2 border-t border-border">
                                     <button
-                                        className="w-full flex items-center space-x-3 px-4 py-2.5 hover:bg-accent active:bg-accent/80 transition-colors text-purple-600 dark:text-purple-400"
+                                        type="button"
+                                        className="w-full flex items-center space-x-3 px-4 py-2.5 hover:bg-accent active:bg-accent/80 transition-colors text-purple-600 dark:text-purple-400 touch-manipulation"
                                         onClick={() => {
-                                            setShowProfilePopover(false);
-                                            navigate('/admin');
-                                        }}
-                                        onTouchEnd={(e) => {
-                                            e.stopPropagation();
                                             setShowProfilePopover(false);
                                             navigate('/admin');
                                         }}
@@ -160,12 +147,9 @@ export const MobileHeader = observer(() => {
                             {/* Logout */}
                             <div className="border-t border-border pt-2">
                                 <button
-                                    className="w-full flex items-center space-x-3 px-4 py-2.5 hover:bg-accent active:bg-accent/80 transition-colors text-destructive"
+                                    type="button"
+                                    className="w-full flex items-center space-x-3 px-4 py-2.5 hover:bg-accent active:bg-accent/80 transition-colors text-destructive touch-manipulation"
                                     onClick={handleLogout}
-                                    onTouchEnd={(e) => {
-                                        e.stopPropagation();
-                                        handleLogout();
-                                    }}
                                 >
                                     <LogOut className="w-4 h-4" />
                                     <span className="text-sm">Sair</span>
