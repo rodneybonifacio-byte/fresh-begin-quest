@@ -72,17 +72,22 @@ export default function GerenciarCreditos() {
             operacao: 'adicionar' | 'remover';
             descricao: string;
         }) => {
+            const userToken = localStorage.getItem('token');
+            if (!userToken) {
+                throw new Error('Sessão expirada. Faça login novamente.');
+            }
+
             if (operacao === 'adicionar') {
-                // Adicionar saldo na API BRHUB
                 const { data, error } = await supabase.functions.invoke('adicionar-saldo-manual', {
+                    headers: { 'x-brhub-authorization': `Bearer ${userToken}` },
                     body: { clienteId, valor, descricao: descricao || 'Crédito adicionado pelo administrador' }
                 });
                 
                 if (error) throw error;
                 return data;
             } else {
-                // Remover saldo via edge function com service role
                 const { data, error } = await supabase.functions.invoke('remover-saldo-manual', {
+                    headers: { 'x-brhub-authorization': `Bearer ${userToken}` },
                     body: { clienteId, valor, descricao: descricao || 'Crédito removido pelo administrador' }
                 });
                 

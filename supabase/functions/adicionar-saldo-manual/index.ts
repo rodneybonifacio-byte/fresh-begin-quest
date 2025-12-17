@@ -4,12 +4,13 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-brhub-authorization',
 }
 
 // 🔒 Função para validar se o usuário é admin
 async function validateAdminAccess(req: Request): Promise<{ isAdmin: boolean; error?: string }> {
-  const authHeader = req.headers.get('authorization');
+  const brhubAuthHeader = req.headers.get('x-brhub-authorization');
+  const authHeader = brhubAuthHeader || req.headers.get('authorization');
   
   if (!authHeader) {
     return { isAdmin: false, error: 'Token de autorização não fornecido' };
