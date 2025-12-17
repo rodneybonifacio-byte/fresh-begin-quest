@@ -365,6 +365,8 @@ serve(async (req) => {
     delete emissaoPayload.userToken;
     delete emissaoPayload.notificarWhatsapp;
     delete emissaoPayload.rastreamentoWhatsapp;
+    // WORKAROUND: Remover logisticaReversa - usamos PAC/SEDEX normais com endereços invertidos
+    delete emissaoPayload.logisticaReversa;
 
     // Sanitizar dados do destinatário (CPF/CNPJ, celular, CEP)
     if (emissaoPayload?.destinatario) {
