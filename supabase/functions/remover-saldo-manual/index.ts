@@ -21,26 +21,43 @@ async function validateAdminAccess(req: Request): Promise<{ isAdmin: boolean; er
     const payloadBase64 = token.split('.')[1];
     const payload = JSON.parse(atob(payloadBase64));
     
-    console.log('🔐 Validando acesso admin...');
+    console.log('🔐 Validando acesso admin...', { role: payload.role, email: payload.email, permissoes: payload.permissoes });
     
-    const isAdmin = payload.role === 'admin' || 
-                    payload.role === 'ADMIN' ||
-                    payload.isAdmin === true || 
-                    payload.user_metadata?.role === 'admin' ||
-                    payload.app_metadata?.role === 'admin';
+    // Check role field
+    const isAdminRole = payload.role === 'admin' || 
+                        payload.role === 'ADMIN' ||
+                        payload.isAdmin === true || 
+                        payload.user_metadata?.role === 'admin' ||
+                        payload.app_metadata?.role === 'admin';
     
-    if (isAdmin) {
-      console.log('✅ Usuário é admin (via JWT claims)');
+    if (isAdminRole) {
+      console.log('✅ Usuário é admin (via JWT role)');
       return { isAdmin: true };
     }
     
+    // Check permissoes array for admin permissions
+    const permissoes = payload.permissoes || [];
+    const hasAdminPermission = permissoes.some((p: string) => 
+      p === 'ADMIN' || 
+      p === 'admin' || 
+      p.toLowerCase().includes('admin') ||
+      p === 'GERENCIAR_CREDITOS' ||
+      p === 'FINANCEIRO'
+    );
+    
+    if (hasAdminPermission) {
+      console.log('✅ Usuário é admin (via permissoes array)');
+      return { isAdmin: true };
+    }
+    
+    // Check admin email
     const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
     if (payload.email === adminEmail) {
       console.log('✅ Usuário é admin (via email)');
       return { isAdmin: true };
     }
     
-    console.log('❌ Usuário não tem permissão de admin');
+    console.log('❌ Usuário não tem permissão de admin. Role:', payload.role, 'Permissoes:', permissoes);
     return { isAdmin: false, error: 'Acesso negado: permissão de administrador necessária' };
     
   } catch (error) {
