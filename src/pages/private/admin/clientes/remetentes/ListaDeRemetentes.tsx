@@ -1,4 +1,4 @@
-import { Plus, ReceiptText, Settings } from 'lucide-react';
+import { Plus, ReceiptText, Settings, Pencil } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { DataTable } from '../../../../../components/DataTable';
@@ -13,6 +13,7 @@ import type { IRemetente } from '../../../../../types/IRemetente';
 import { formatDate } from '../../../../../utils/date-utils';
 import { formatCpfCnpj } from '../../../../../utils/lib.formats';
 import { Content } from '../../../Content';
+import { ModalEditarRemetente } from '../../../remetente/ModalEditarRemetente';
 
 const ListaDeRemetentes = () => {
     const { layout } = useLayout();
@@ -21,6 +22,8 @@ const ListaDeRemetentes = () => {
     const perPage = config.pagination.perPage;
     const [data, setData] = useState<IRemetente[]>([]);
     const [page, setPage] = useState<number>(1);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [selectedRemetente, setSelectedRemetente] = useState<IRemetente | null>(null);
     // pegar o parametro do clienteId da URL
     const { clienteId } = useParams<{ clienteId: string }>();
 
@@ -82,6 +85,15 @@ const ListaDeRemetentes = () => {
                                 actionTitle={(row) => row.nome}
                                 actions={[
                                     {
+                                        label: 'Editar',
+                                        icon: <Pencil size={16} />,
+                                        onClick: (row) => {
+                                            setSelectedRemetente(row);
+                                            setIsEditModalOpen(true);
+                                        },
+                                        show: true,
+                                    },
+                                    {
                                         label: 'Detalhamento',
                                         icon: <ReceiptText size={16} />,
                                         to: (_row) => `#`,
@@ -101,6 +113,15 @@ const ListaDeRemetentes = () => {
                         </div>
                     </div>
                 )}
+
+                <ModalEditarRemetente
+                    isOpen={isEditModalOpen}
+                    onCancel={() => {
+                        setIsEditModalOpen(false);
+                        setSelectedRemetente(null);
+                    }}
+                    remetente={selectedRemetente}
+                />
             </>
         </Content>
     );
