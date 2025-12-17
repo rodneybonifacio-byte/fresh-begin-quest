@@ -1,4 +1,4 @@
-import { Box } from 'lucide-react';
+import { Box, RefreshCw } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
 import { useState, useEffect } from 'react';
 import { FormCard } from '../../../../components/FormCard';
@@ -6,17 +6,22 @@ import { InputField } from '../../../../components/InputField';
 import { ButtonComponent } from '../../../../components/button';
 import type { IEmbalagem } from '../../../../types/IEmbalagem';
 import { SelecionarRemetente } from '../../../../components/SelecionarRemetente';
+
 interface Step1DimensoesProps {
   onNext: () => void;
   selectedEmbalagem?: IEmbalagem;
   setSelectedEmbalagem: (embalagem: IEmbalagem | undefined) => void;
   clienteSelecionado: any;
   setClienteSelecionado: (cliente: any) => void;
+  isLogisticaReversa?: boolean;
+  setIsLogisticaReversa?: (value: boolean) => void;
 }
 export const Step1Dimensoes = ({
   onNext,
   clienteSelecionado,
-  setClienteSelecionado
+  setClienteSelecionado,
+  isLogisticaReversa = false,
+  setIsLogisticaReversa
 }: Step1DimensoesProps) => {
   const {
     setValue,
@@ -90,6 +95,41 @@ export const Step1Dimensoes = ({
           setPeso(value);
         }} />
         </div>
+
+        {/* Toggle Logística Reversa */}
+        {setIsLogisticaReversa && (
+          <div 
+            onClick={() => setIsLogisticaReversa(!isLogisticaReversa)}
+            className={`
+              flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all
+              ${isLogisticaReversa 
+                ? 'bg-purple-50 dark:bg-purple-950/30 border-purple-300 dark:border-purple-700' 
+                : 'bg-muted/30 border-border hover:border-purple-200 dark:hover:border-purple-800'
+              }
+            `}
+          >
+            <div className={`p-2 rounded-lg ${isLogisticaReversa ? 'bg-purple-100 dark:bg-purple-900' : 'bg-muted'}`}>
+              <RefreshCw className={`h-5 w-5 ${isLogisticaReversa ? 'text-purple-600' : 'text-muted-foreground'}`} />
+            </div>
+            <div className="flex-1">
+              <p className={`font-semibold ${isLogisticaReversa ? 'text-purple-700 dark:text-purple-300' : 'text-foreground'}`}>
+                Logística Reversa
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Remetente e destinatário serão invertidos automaticamente
+              </p>
+            </div>
+            <div className={`
+              w-12 h-6 rounded-full transition-all relative
+              ${isLogisticaReversa ? 'bg-purple-500' : 'bg-muted'}
+            `}>
+              <div className={`
+                absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all
+                ${isLogisticaReversa ? 'left-7' : 'left-1'}
+              `} />
+            </div>
+          </div>
+        )}
 
         <div className="space-y-3">
           {/* Status da validação */}

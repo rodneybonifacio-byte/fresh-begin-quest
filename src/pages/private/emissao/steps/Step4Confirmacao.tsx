@@ -22,9 +22,10 @@ interface Step4ConfirmacaoProps {
   cotacaoSelecionado: any;
   selectedEmbalagem: any;
   clienteSelecionado: any;
+  isLogisticaReversa?: boolean;
 }
 
-export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, selectedEmbalagem, clienteSelecionado }: Step4ConfirmacaoProps) => {
+export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, selectedEmbalagem, clienteSelecionado, isLogisticaReversa = false }: Step4ConfirmacaoProps) => {
   const { handleSubmit, getValues } = useFormContext();
   const { onEmissaoCadastro } = useEmissao();
   const { onEmissaoImprimir } = useImprimirEtiquetaPDF();
@@ -139,7 +140,7 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
         cienteObjetoNaoProibido: true,
         embalagem: embalagem,
         cotacao: cotacaoSelecionado,
-        logisticaReversa: 'N',
+        logisticaReversa: isLogisticaReversa ? 'S' : 'N',
         valorDeclarado: Number(formatNumberString('0')),
         valorNotaFiscal: Number(formatNumberString('0')),
         itensDeclaracaoConteudo: [],
