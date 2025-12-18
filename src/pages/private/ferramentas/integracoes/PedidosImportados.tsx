@@ -11,7 +11,7 @@ import { ModalProgressoGeracaoMassa } from '../../../../components/ModalProgress
 
 import { toastError, toastSuccess } from '../../../../utils/toastNotify';
 import { formatDateTime } from '../../../../utils/date-utils';
-import { RefreshCcw, Package, CheckCircle, Clock, AlertCircle, Truck, Zap } from 'lucide-react';
+import { RefreshCcw, Package, CheckCircle, Clock, AlertCircle, Truck, Zap, RotateCcw } from 'lucide-react';
 import { IntegracaoService } from '../../../../services/IntegracaoService';
 
 interface PedidoImportado {
@@ -245,13 +245,32 @@ const PedidosImportados = () => {
 
     const pendentes = pedidos?.filter((p) => p.status === 'pendente') || [];
     const processados = pedidos?.filter((p) => p.status === 'processado') || [];
+    const comErro = pedidos?.filter((p) => p.status === 'erro') || [];
+
+    const handleReprocessarFalhados = () => {
+        if (comErro.length === 0) {
+            toastError('Nenhum pedido com erro para reprocessar');
+            return;
+        }
+        processarEmMassa(comErro.map((p) => p.id), comErro);
+    };
 
     return (
         <Content
             titulo="Envios - Pedidos Importados"
-            subTitulo={`${pendentes.length} pendente(s) · ${processados.length} processado(s)`}
+            subTitulo={`${pendentes.length} pendente(s) · ${processados.length} processado(s)${comErro.length > 0 ? ` · ${comErro.length} erro(s)` : ''}`}
             isButton
             button={[
+                ...(comErro.length > 0
+                    ? [
+                          {
+                              label: `Reprocessar Falhados (${comErro.length})`,
+                              onClick: handleReprocessarFalhados,
+                              bgColor: 'bg-red-600 hover:bg-red-700',
+                              icon: <RotateCcw className="w-4 h-4" />,
+                          },
+                      ]
+                    : []),
                 ...(pendentes.length > 0
                     ? [
                           {
