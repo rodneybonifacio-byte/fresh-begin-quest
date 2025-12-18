@@ -602,6 +602,123 @@ export type Database = {
         }
         Relationships: []
       }
+      pedidos_importados: {
+        Row: {
+          atualizado_em: string
+          cliente_id: string
+          codigo_rastreio: string | null
+          criado_em: string
+          dados_originais: Json | null
+          destinatario_bairro: string | null
+          destinatario_cep: string
+          destinatario_cidade: string | null
+          destinatario_complemento: string | null
+          destinatario_cpf_cnpj: string | null
+          destinatario_email: string | null
+          destinatario_estado: string | null
+          destinatario_logradouro: string | null
+          destinatario_nome: string
+          destinatario_numero: string | null
+          destinatario_telefone: string | null
+          emissao_id: string | null
+          erro_processamento: string | null
+          externo_id: string
+          id: string
+          integracao_id: string | null
+          itens: Json | null
+          numero_pedido: string
+          peso_total: number | null
+          plataforma: string
+          processado_em: string | null
+          remetente_id: string | null
+          servico_frete: string | null
+          status: string
+          valor_frete: number | null
+          valor_total: number | null
+        }
+        Insert: {
+          atualizado_em?: string
+          cliente_id: string
+          codigo_rastreio?: string | null
+          criado_em?: string
+          dados_originais?: Json | null
+          destinatario_bairro?: string | null
+          destinatario_cep: string
+          destinatario_cidade?: string | null
+          destinatario_complemento?: string | null
+          destinatario_cpf_cnpj?: string | null
+          destinatario_email?: string | null
+          destinatario_estado?: string | null
+          destinatario_logradouro?: string | null
+          destinatario_nome: string
+          destinatario_numero?: string | null
+          destinatario_telefone?: string | null
+          emissao_id?: string | null
+          erro_processamento?: string | null
+          externo_id: string
+          id?: string
+          integracao_id?: string | null
+          itens?: Json | null
+          numero_pedido: string
+          peso_total?: number | null
+          plataforma?: string
+          processado_em?: string | null
+          remetente_id?: string | null
+          servico_frete?: string | null
+          status?: string
+          valor_frete?: number | null
+          valor_total?: number | null
+        }
+        Update: {
+          atualizado_em?: string
+          cliente_id?: string
+          codigo_rastreio?: string | null
+          criado_em?: string
+          dados_originais?: Json | null
+          destinatario_bairro?: string | null
+          destinatario_cep?: string
+          destinatario_cidade?: string | null
+          destinatario_complemento?: string | null
+          destinatario_cpf_cnpj?: string | null
+          destinatario_email?: string | null
+          destinatario_estado?: string | null
+          destinatario_logradouro?: string | null
+          destinatario_nome?: string
+          destinatario_numero?: string | null
+          destinatario_telefone?: string | null
+          emissao_id?: string | null
+          erro_processamento?: string | null
+          externo_id?: string
+          id?: string
+          integracao_id?: string | null
+          itens?: Json | null
+          numero_pedido?: string
+          peso_total?: number | null
+          plataforma?: string
+          processado_em?: string | null
+          remetente_id?: string | null
+          servico_frete?: string | null
+          status?: string
+          valor_frete?: number | null
+          valor_total?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedidos_importados_integracao_id_fkey"
+            columns: ["integracao_id"]
+            isOneToOne: false
+            referencedRelation: "integracoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_importados_remetente_id_fkey"
+            columns: ["remetente_id"]
+            isOneToOne: false
+            referencedRelation: "remetentes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recargas_pix: {
         Row: {
           cliente_id: string

@@ -1,0 +1,272 @@
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Package, RefreshCcw, CheckCircle, AlertCircle, Clock, Truck } from 'lucide-react';
+import { Content } from '../../Content';
+import { LoadSpinner } from '../../../../components/loading';
+import { TableCustom } from '../../../../components/table';
+import { NotFoundData } from '../../../../components/NotFoundData';
+import CustomCheckbox from '../../../../components/CheckboxCustom';
+import { IntegracaoService } from '../../../../services/IntegracaoService';
+import { toastError, toastSuccess } from '../../../../utils/toastNotify';
+import { formatDateTime } from '../../../../utils/date-utils';
+import { useLoadingSpinner } from '../../../../providers/LoadingSpinnerContext';
+
+interface PedidoImportado {
+    id: string;
+    externo_id: string;
+    numero_pedido: string;
+    plataforma: string;
+    status: string;
+    destinatario_nome: string;
+    destinatario_cidade: string;
+    destinatario_estado: string;
+    destinatario_cep: string;
+    valor_total: number;
+    peso_total: number;
+    codigo_rastreio: string | null;
+    servico_frete: string | null;
+    valor_frete: number | null;
+    criado_em: string;
+    processado_em: string | null;
+    remetentes?: {
+        nome: string;
+    };
+}
+
+const StatusBadge = ({ status }: { status: string }) => {
+    const statusConfig: Record<string, { icon: React.ReactNode; className: string; label: string }> = {
+        pendente: {
+            icon: <Clock className="w-3 h-3" />,
+            className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+            label: 'Pendente',
+        },
+        processado: {
+            icon: <CheckCircle className="w-3 h-3" />,
+            className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+            label: 'Processado',
+        },
+        erro: {
+            icon: <AlertCircle className="w-3 h-3" />,
+            className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+            label: 'Erro',
+        },
+    };
+
+    const config = statusConfig[status] || statusConfig.pendente;
+
+    return (
+        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${config.className}`}>
+            {config.icon}
+            {config.label}
+        </span>
+    );
+};
+
+const PedidosShopify = () => {
+    const { setIsLoading } = useLoadingSpinner();
+    const queryClient = useQueryClient();
+    const service = new IntegracaoService();
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+    // Buscar pedidos importados
+    const { data: pedidos, isLoading, isError } = useQuery({
+        queryKey: ['pedidos-importados-shopify'],
+        queryFn: async () => {
+            const response = await service.getPedidosImportados();
+            return response.data.filter((p: PedidoImportado) => p.plataforma === 'shopify');
+        },
+    });
+
+    // Mutation para processar pedidos selecionados
+    const processarMutation = useMutation({
+        mutationFn: async (ids: string[]) => {
+            setIsLoading(true);
+            const results = [];
+            for (const id of ids) {
+                try {
+                    const result = await service.processarPedidoShopify(id);
+                    results.push({ id, success: true, data: result });
+                } catch (error) {
+                    results.push({ id, success: false, error });
+                }
+            }
+            return results;
+        },
+        onSuccess: (results) => {
+            setIsLoading(false);
+            const successCount = results.filter((r) => r.success).length;
+            const errorCount = results.filter((r) => !r.success).length;
+
+            if (successCount > 0) {
+                toastSuccess(`${successCount} etiqueta(s) gerada(s) com sucesso!`);
+            }
+            if (errorCount > 0) {
+                toastError(`${errorCount} pedido(s) com erro`);
+            }
+
+            setSelectedIds([]);
+            queryClient.invalidateQueries({ queryKey: ['pedidos-importados-shopify'] });
+        },
+        onError: () => {
+            setIsLoading(false);
+            toastError('Erro ao processar pedidos');
+        },
+    });
+
+    // Mutation para importar novos pedidos
+    const importarMutation = useMutation({
+        mutationFn: async () => {
+            setIsLoading(true);
+            // Buscar a integração ativa
+            const integracoesResponse = await service.getAll();
+            const shopifyIntegracao = integracoesResponse.data.find((i) => i.plataforma === 'shopify');
+
+            if (!shopifyIntegracao) {
+                throw new Error('Configure a integração Shopify primeiro');
+            }
+
+            if (!shopifyIntegracao.remetenteId || !shopifyIntegracao.id) {
+                throw new Error('Selecione um remetente na integração Shopify');
+            }
+
+            return service.importarPedidosShopify(shopifyIntegracao.id, shopifyIntegracao.remetenteId);
+        },
+        onSuccess: (response) => {
+            setIsLoading(false);
+            toastSuccess(response?.message || 'Pedidos importados!');
+            queryClient.invalidateQueries({ queryKey: ['pedidos-importados-shopify'] });
+        },
+        onError: (error: Error) => {
+            setIsLoading(false);
+            toastError(error.message || 'Erro ao importar pedidos');
+        },
+    });
+
+    const handleCheckboxChange = (id: string, selected: boolean) => {
+        setSelectedIds((prev) => (selected ? [...prev, id] : prev.filter((item) => item !== id)));
+    };
+
+    const handleProcessarSelecionados = () => {
+        if (selectedIds.length === 0) {
+            toastError('Selecione pelo menos um pedido');
+            return;
+        }
+        processarMutation.mutate(selectedIds);
+    };
+
+    const pendentes = pedidos?.filter((p: PedidoImportado) => p.status === 'pendente') || [];
+    const processados = pedidos?.filter((p: PedidoImportado) => p.status === 'processado') || [];
+
+    return (
+        <Content
+            titulo="Pedidos Shopify"
+            subTitulo={`${pendentes.length} pendente(s) · ${processados.length} processado(s)`}
+            isButton
+            button={[
+                ...(selectedIds.length > 0
+                    ? [
+                          {
+                              label: `Gerar Etiquetas (${selectedIds.length})`,
+                              onClick: handleProcessarSelecionados,
+                              bgColor: 'bg-green-600 hover:bg-green-700',
+                              icon: <Truck className="w-4 h-4" />,
+                          },
+                      ]
+                    : []),
+                {
+                    label: importarMutation.isPending ? 'Importando...' : 'Importar Pedidos',
+                    onClick: () => importarMutation.mutate(),
+                    bgColor: 'bg-primary',
+                    icon: <RefreshCcw className={`w-4 h-4 ${importarMutation.isPending ? 'animate-spin' : ''}`} />,
+                },
+            ]}
+        >
+            {isLoading && <LoadSpinner mensagem="Carregando pedidos..." />}
+
+            {!isLoading && !isError && pedidos && pedidos.length > 0 && (
+                <div className="rounded-lg">
+                    <TableCustom
+                        thead={['', 'Pedido', 'Destinatário', 'Local', 'Valor', 'Status', 'Rastreio', 'Data']}
+                    >
+                        {pedidos.map((pedido: PedidoImportado) => (
+                            <tr
+                                key={pedido.id}
+                                className={`hover:bg-accent/50 cursor-pointer transition-colors ${
+                                    selectedIds.includes(pedido.id) ? 'bg-primary/5' : ''
+                                }`}
+                            >
+                                <td className="px-4 py-3">
+                                    {pedido.status === 'pendente' && (
+                                        <CustomCheckbox
+                                            checked={selectedIds.includes(pedido.id)}
+                                            item={{ value: pedido.id, label: '' }}
+                                            onSelected={(item, selected) => handleCheckboxChange(item.value, selected)}
+                                        />
+                                    )}
+                                </td>
+                                <td className="px-4 py-3">
+                                    <div className="flex items-center gap-2">
+                                        <Package className="w-4 h-4 text-muted-foreground" />
+                                        <span className="font-medium">{pedido.numero_pedido}</span>
+                                    </div>
+                                </td>
+                                <td className="px-4 py-3">
+                                    <span className="font-medium">{pedido.destinatario_nome}</span>
+                                </td>
+                                <td className="px-4 py-3">
+                                    <span className="text-sm text-muted-foreground">
+                                        {pedido.destinatario_cidade}/{pedido.destinatario_estado}
+                                    </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                    <span className="font-medium">
+                                        R$ {Number(pedido.valor_total || 0).toFixed(2)}
+                                    </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                    <StatusBadge status={pedido.status} />
+                                </td>
+                                <td className="px-4 py-3">
+                                    {pedido.codigo_rastreio ? (
+                                        <span className="font-mono text-xs bg-muted px-2 py-1 rounded">
+                                            {pedido.codigo_rastreio}
+                                        </span>
+                                    ) : (
+                                        <span className="text-muted-foreground text-sm">-</span>
+                                    )}
+                                </td>
+                                <td className="px-4 py-3">
+                                    <span className="text-sm text-muted-foreground">
+                                        {formatDateTime(pedido.criado_em)}
+                                    </span>
+                                </td>
+                            </tr>
+                        ))}
+                    </TableCustom>
+                </div>
+            )}
+
+            {!isLoading && !isError && (!pedidos || pedidos.length === 0) && (
+                <div className="text-center py-12">
+                    <Package className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-foreground mb-2">Nenhum pedido importado</h3>
+                    <p className="text-muted-foreground mb-4">
+                        Clique em "Importar Pedidos" para buscar pedidos da sua loja Shopify
+                    </p>
+                    <button
+                        onClick={() => importarMutation.mutate()}
+                        disabled={importarMutation.isPending}
+                        className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors inline-flex items-center gap-2"
+                    >
+                        <RefreshCcw className={`w-4 h-4 ${importarMutation.isPending ? 'animate-spin' : ''}`} />
+                        Importar Pedidos
+                    </button>
+                </div>
+            )}
+
+            {isError && <NotFoundData />}
+        </Content>
+    );
+};
+
+export default PedidosShopify;

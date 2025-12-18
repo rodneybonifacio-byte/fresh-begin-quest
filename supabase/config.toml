@@ -137,3 +137,9 @@ verify_jwt = false
 
 [functions.consultar-servicos-cliente]
 verify_jwt = false
+
+[functions.shopify-importar-pedidos]
+verify_jwt = false
+
+[functions.shopify-processar-pedido]
+verify_jwt = false
