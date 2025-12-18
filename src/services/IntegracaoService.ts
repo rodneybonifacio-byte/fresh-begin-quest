@@ -52,8 +52,6 @@ export class IntegracaoService {
                     Authorization: `Bearer ${token}`,
                 },
             },
-            // Garante que chamadas internas usem o token correto
-            accessToken: async () => token,
         });
 
         return this.supabaseAuthClient;
