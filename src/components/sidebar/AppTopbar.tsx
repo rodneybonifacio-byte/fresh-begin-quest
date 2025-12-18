@@ -18,7 +18,6 @@ const AppTopbar = observer(({
   } = useTheme();
   const [showProfilePopover, setShowProfilePopover] = useState(false);
   const profileButtonRef = useRef<HTMLButtonElement>(null);
-  const suppressClickRef = useRef(false);
   const navigate = useNavigate();
 
   // Dados do usuário logado - obtidos do store de autenticação
@@ -38,19 +37,6 @@ const AppTopbar = observer(({
       console.log('[AppTopbar] toggleProfilePopover ->', next);
       return next;
     });
-  };
-
-  const handleProfileTouchEnd: React.TouchEventHandler<HTMLButtonElement> = (e) => {
-    suppressClickRef.current = true;
-    toggleProfilePopover(e);
-    window.setTimeout(() => {
-      suppressClickRef.current = false;
-    }, 450);
-  };
-
-  const handleProfileClick: React.MouseEventHandler<HTMLButtonElement> = (e) => {
-    if (suppressClickRef.current) return;
-    toggleProfilePopover(e);
   };
 
   useEffect(() => {
@@ -101,8 +87,7 @@ const AppTopbar = observer(({
               ref={profileButtonRef}
               aria-haspopup="menu"
               aria-expanded={showProfilePopover}
-              onTouchEnd={handleProfileTouchEnd}
-              onClick={handleProfileClick}
+              onClick={toggleProfilePopover}
               className="flex items-center space-x-2 cursor-pointer hover:bg-accent active:bg-accent/80 rounded-lg p-2 transition-colors touch-manipulation"
             >
               <ProfileAvatar name={userInfo.name} size="sm" />

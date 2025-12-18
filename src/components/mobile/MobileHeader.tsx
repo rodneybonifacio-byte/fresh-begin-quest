@@ -1,6 +1,5 @@
 import { Sun, Moon, ChevronDown, User, LogOut, Shield } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { observer } from 'mobx-react-lite';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -12,7 +11,6 @@ export const MobileHeader = observer(() => {
     const { theme, toggleTheme } = useTheme();
     const [showProfilePopover, setShowProfilePopover] = useState(false);
     const profileButtonRef = useRef<HTMLButtonElement>(null);
-    const suppressClickRef = useRef(false);
     const navigate = useNavigate();
 
     const userData = authStore.getUser();
@@ -31,20 +29,6 @@ export const MobileHeader = observer(() => {
             console.log('[MobileHeader] toggleProfilePopover ->', next);
             return next;
         });
-    };
-
-    const handleProfileTouchEnd: React.TouchEventHandler<HTMLButtonElement> = (e) => {
-        // Importante: abrir no TouchEnd evita o "abre e fecha" (o overlay pode capturar o clique após o TouchStart)
-        suppressClickRef.current = true;
-        toggleProfilePopover(e);
-        window.setTimeout(() => {
-            suppressClickRef.current = false;
-        }, 450);
-    };
-
-    const handleProfileClick: React.MouseEventHandler<HTMLButtonElement> = (e) => {
-        if (suppressClickRef.current) return;
-        toggleProfilePopover(e);
     };
 
     useEffect(() => {
@@ -88,8 +72,7 @@ export const MobileHeader = observer(() => {
                                 ref={profileButtonRef}
                                 aria-haspopup="menu"
                                 aria-expanded={showProfilePopover}
-                                onTouchEnd={handleProfileTouchEnd}
-                                onClick={handleProfileClick}
+                                onClick={toggleProfilePopover}
                                 className="flex items-center space-x-1 cursor-pointer hover:bg-accent active:bg-accent/80 rounded-full p-3 transition-colors touch-manipulation select-none"
                                 style={{ WebkitTapHighlightColor: 'transparent' }}
                             >
@@ -103,7 +86,7 @@ export const MobileHeader = observer(() => {
 
             {/* Profile Popover */}
             <AnimatePresence>
-                {showProfilePopover && createPortal(
+                {showProfilePopover && (
                     <>
                         <motion.div
                             initial={{ opacity: 0 }}
@@ -191,8 +174,7 @@ export const MobileHeader = observer(() => {
                                 </button>
                             </div>
                         </motion.div>
-                    </>,
-                    document.body
+                    </>
                 )}
             </AnimatePresence>
         </>
