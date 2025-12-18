@@ -43,6 +43,14 @@ export const appRoutesConfig: ProtectedRouteItem[] = [
         component: () => import("../pages/private/ferramentas/integracoes/PedidosImportados")
     },
     {
+        path: "integracoes/shopify",
+        component: () => import("../pages/private/ferramentas/integracoes/ShopifyIntegracao")
+    },
+    {
+        path: "integracoes/shopify/pedidos",
+        component: () => import("../pages/private/ferramentas/integracoes/PedidosShopify")
+    },
+    {
         path: "ferramentas/imprimir-etiquetas",
         component: () => import("../pages/private/ferramentas/FImprimirMultiplasEtiqueta")
     },
