@@ -44,6 +44,36 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_remetentes_access: {
+        Row: {
+          accessed_at: string | null
+          action: string
+          cliente_id: string
+          id: string
+          ip_address: string | null
+          remetente_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          accessed_at?: string | null
+          action: string
+          cliente_id: string
+          id?: string
+          ip_address?: string | null
+          remetente_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          accessed_at?: string | null
+          action?: string
+          cliente_id?: string
+          id?: string
+          ip_address?: string | null
+          remetente_id?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       cadastros_origem: {
         Row: {
           cliente_id: string
@@ -717,6 +747,13 @@ export type Database = {
             referencedRelation: "remetentes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "pedidos_importados_remetente_id_fkey"
+            columns: ["remetente_id"]
+            isOneToOne: false
+            referencedRelation: "remetentes_masked"
+            referencedColumns: ["id"]
+          },
         ]
       }
       recargas_pix: {
@@ -773,6 +810,7 @@ export type Database = {
           cliente_id: string
           complemento: string | null
           cpf_cnpj: string
+          cpf_cnpj_encrypted: string | null
           criado_em: string | null
           documento_estrangeiro: string | null
           email: string | null
@@ -793,6 +831,7 @@ export type Database = {
           cliente_id: string
           complemento?: string | null
           cpf_cnpj: string
+          cpf_cnpj_encrypted?: string | null
           criado_em?: string | null
           documento_estrangeiro?: string | null
           email?: string | null
@@ -813,6 +852,7 @@ export type Database = {
           cliente_id?: string
           complemento?: string | null
           cpf_cnpj?: string
+          cpf_cnpj_encrypted?: string | null
           criado_em?: string | null
           documento_estrangeiro?: string | null
           email?: string | null
@@ -928,7 +968,69 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      remetentes_masked: {
+        Row: {
+          atualizado_em: string | null
+          bairro: string | null
+          celular: string | null
+          cep: string | null
+          cliente_id: string | null
+          complemento: string | null
+          cpf_cnpj_masked: string | null
+          criado_em: string | null
+          email: string | null
+          id: string | null
+          localidade: string | null
+          logradouro: string | null
+          nome: string | null
+          numero: string | null
+          sincronizado_em: string | null
+          telefone: string | null
+          tem_cpf_encrypted: boolean | null
+          uf: string | null
+        }
+        Insert: {
+          atualizado_em?: string | null
+          bairro?: string | null
+          celular?: string | null
+          cep?: string | null
+          cliente_id?: string | null
+          complemento?: string | null
+          cpf_cnpj_masked?: never
+          criado_em?: string | null
+          email?: string | null
+          id?: string | null
+          localidade?: string | null
+          logradouro?: string | null
+          nome?: string | null
+          numero?: string | null
+          sincronizado_em?: string | null
+          telefone?: string | null
+          tem_cpf_encrypted?: never
+          uf?: string | null
+        }
+        Update: {
+          atualizado_em?: string | null
+          bairro?: string | null
+          celular?: string | null
+          cep?: string | null
+          cliente_id?: string | null
+          complemento?: string | null
+          cpf_cnpj_masked?: never
+          criado_em?: string | null
+          email?: string | null
+          id?: string | null
+          localidade?: string | null
+          logradouro?: string | null
+          nome?: string | null
+          numero?: string | null
+          sincronizado_em?: string | null
+          telefone?: string | null
+          tem_cpf_encrypted?: never
+          uf?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       atualizar_status_recarga: {
@@ -1020,12 +1122,17 @@ export type Database = {
         Returns: Json
       }
       get_parceiro_id_from_jwt: { Args: never; Returns: string }
+      get_remetente_cpf_cnpj_seguro: {
+        Args: { p_remetente_id: string }
+        Returns: string
+      }
       incrementar_contador_cadastro: { Args: never; Returns: number }
       is_admin_from_jwt: { Args: never; Returns: boolean }
       liberar_credito_bloqueado: {
         Args: { p_codigo_objeto?: string; p_emissao_id: string }
         Returns: boolean
       }
+      mask_cpf_cnpj: { Args: { cpf_cnpj: string }; Returns: string }
       mask_sensitive_credenciais: { Args: { creds: Json }; Returns: Json }
       registrar_recarga: {
         Args: { p_cliente_id: string; p_descricao?: string; p_valor: number }
