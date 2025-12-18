@@ -123,67 +123,8 @@ serve(async (req: Request) => {
 
     console.log('📍 [SHOPIFY-PROC] Destinatário preparado:', JSON.stringify(destinatario));
 
-    // Criar destinatário no sistema (endpoint correto: clientes/destinatarios)
-    const destinatarioResponse = await fetch(`${baseApiUrl}/clientes/destinatarios`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${userToken}`,
-      },
-      body: JSON.stringify(destinatario),
-    });
-
-    let destinatarioId: string;
-    const destinatarioResponseText = await destinatarioResponse.text();
-    console.log('📍 [SHOPIFY-PROC] Resposta destinatário:', destinatarioResponse.status, destinatarioResponseText);
-
-    if (destinatarioResponse.ok) {
-      const destinatarioData = JSON.parse(destinatarioResponseText);
-      destinatarioId = destinatarioData.data?.id;
-      if (!destinatarioId) {
-        console.error('❌ [SHOPIFY-PROC] ID não encontrado na resposta:', destinatarioResponseText);
-        throw new Error('ID do destinatário não retornado pela API');
-      }
-      console.log('✅ [SHOPIFY-PROC] Destinatário criado:', destinatarioId);
-    } else {
-      console.log('⚠️ [SHOPIFY-PROC] Falha ao criar, tentando buscar existente...');
-      
-      // Se falhar, tentar buscar destinatário existente pelo CEP
-      const searchResponse = await fetch(
-        `${baseApiUrl}/clientes/destinatarios?cep=${destinatario.cep}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${userToken}`,
-          },
-        }
-      );
-      
-      const searchText = await searchResponse.text();
-      console.log('📍 [SHOPIFY-PROC] Busca destinatário:', searchResponse.status, searchText);
-      
-      if (searchResponse.ok) {
-        const searchData = JSON.parse(searchText);
-        const encontrados = searchData.data || [];
-        
-        // Buscar por nome similar
-        const encontrado = encontrados.find((d: any) => 
-          d.nome?.toLowerCase().includes(destinatario.nome.toLowerCase().split(' ')[0])
-        );
-        
-        if (encontrado) {
-          destinatarioId = encontrado.id;
-          console.log('✅ [SHOPIFY-PROC] Destinatário encontrado:', destinatarioId);
-        } else if (encontrados.length > 0) {
-          destinatarioId = encontrados[0].id;
-          console.log('✅ [SHOPIFY-PROC] Usando primeiro destinatário do CEP:', destinatarioId);
-        } else {
-          console.error('❌ [SHOPIFY-PROC] Nenhum destinatário encontrado no CEP');
-          throw new Error(`Não foi possível criar destinatário: ${destinatarioResponseText}`);
-        }
-      } else {
-        throw new Error(`Erro ao buscar/criar destinatário: ${destinatarioResponseText}`);
-      }
-    }
+    // Não depender de cadastro prévio do destinatário (evita pegar destinatários antigos/incompletos).
+    // A emissão será criada com o objeto completo (cadastrarDestinatario = true).
 
     // Valores padrão para dimensões (Shopify não fornece)
     const altura = 10;
@@ -265,8 +206,8 @@ serve(async (req: Request) => {
     }));
 
     // Preparar objeto destinatario completo para emissão
+    // Importante: não enviar `id` aqui, para não amarrar a emissão a um destinatário antigo/incompleto.
     const destinatarioEmissao = {
-      id: destinatarioId,
       nome: pedido.destinatario_nome || 'Destinatário',
       cpfCnpj,
       telefone: celular,
@@ -274,12 +215,12 @@ serve(async (req: Request) => {
       email: pedido.destinatario_email || '',
       endereco: {
         cep: cepDestino,
-        logradouro: logradouro,
+        logradouro: logradouro || 'Endereço não informado',
         numero: numero || 'S/N',
         complemento: pedido.destinatario_complemento || '',
         bairro: pedido.destinatario_bairro || 'Centro',
-        localidade: pedido.destinatario_cidade || '',
-        uf: pedido.destinatario_estado || '',
+        localidade: pedido.destinatario_cidade || 'São Paulo',
+        uf: pedido.destinatario_estado || 'SP',
       },
     };
 
@@ -299,7 +240,7 @@ serve(async (req: Request) => {
     const emissaoPayload = {
       remetenteId: pedido.remetente_id,
       cienteObjetoNaoProibido: true,
-      cadastrarDestinatario: false,
+      cadastrarDestinatario: true,
       logisticaReversa: 'N',
       cotacao: freteEscolhido,
       embalagem: embalagemEmissao,
