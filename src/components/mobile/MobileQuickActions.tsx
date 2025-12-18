@@ -1,4 +1,4 @@
-import { Package, Truck, Calculator, Wallet, FileText, MapPin } from "lucide-react";
+import { Package, Truck, Calculator, Wallet, FileText, MapPin, Link, ShoppingBag } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface QuickAction {
@@ -21,6 +21,13 @@ export const MobileQuickActions = () => {
       bgColor: "bg-primary/10"
     },
     {
+      icon: ShoppingBag,
+      label: "Pedidos Importados",
+      route: "/app/integracoes-pedidos",
+      color: "text-orange-600",
+      bgColor: "bg-orange-50 dark:bg-orange-950/30"
+    },
+    {
       icon: Calculator,
       label: "Simular Frete",
       route: "/app/simulador",
@@ -33,6 +40,13 @@ export const MobileQuickActions = () => {
       route: "/app/emissao",
       color: "text-purple-600",
       bgColor: "bg-purple-50 dark:bg-purple-950/30"
+    },
+    {
+      icon: Link,
+      label: "Integrações",
+      route: "/app/integracoes",
+      color: "text-cyan-600",
+      bgColor: "bg-cyan-50 dark:bg-cyan-950/30"
     },
     {
       icon: Wallet,
