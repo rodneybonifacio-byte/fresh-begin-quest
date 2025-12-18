@@ -1,13 +1,13 @@
 // Componente: Integracoes.tsx
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { FormularioDinamico, type FormSchema } from "./FormularioDinamico";
 import { Content } from "../../Content";
 import { SwitchToggle } from "../../../../components/SwitchToggle";
 import { ModalCustom } from "../../../../components/modal";
 import { IntegracaoService, type IIntegracao } from "../../../../services/IntegracaoService";
 import { toast } from "sonner";
-import { Check, Link2, Copy, Trash2 } from "lucide-react";
+import { Check, Link2, Copy, Trash2, ExternalLink } from "lucide-react";
 const plataformasDisponiveis: FormSchema[] = [
     {
         image: "/shopify.png",
@@ -158,7 +158,25 @@ const Integracoes = () => {
                             )}
 
                             <div className="flex gap-2">
-                                {isConectado ? (
+                                {schema.plataforma === 'shopify' ? (
+                                    <>
+                                        <Link
+                                            to="/app/ferramentas/integracoes/novo/shopify"
+                                            className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 py-3 px-4 rounded-lg font-medium transition text-center"
+                                        >
+                                            {isConectado ? 'Configurar' : 'Conectar Agora'}
+                                        </Link>
+                                        {isConectado && (
+                                            <Link
+                                                to="/app/integracoes/shopify/pedidos"
+                                                className="flex items-center gap-2 bg-secondary text-secondary-foreground hover:bg-secondary/90 py-3 px-4 rounded-lg font-medium transition"
+                                            >
+                                                <ExternalLink className="w-4 h-4" />
+                                                Pedidos
+                                            </Link>
+                                        )}
+                                    </>
+                                ) : isConectado ? (
                                     <>
                                         <button
                                             onClick={() => handleConectar(schema)}
