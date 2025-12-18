@@ -1,5 +1,6 @@
 import type { IResponse } from "../types/IResponse";
-import { supabase } from "../integrations/supabase/client";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "../integrations/supabase/types";
 import authStore from "../authentica/authentication.store";
 
 export interface IIntegracaoNuvemshop {
@@ -22,23 +23,50 @@ export interface IIntegracao {
 }
 
 export class IntegracaoService {
-    
+    private supabaseAuthClient: SupabaseClient<Database> | null = null;
+    private supabaseAuthToken: string | null = null;
+
     private getSupabaseWithAuth() {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem("token");
         if (!token) {
-            throw new Error('Token de autenticação não encontrado');
+            throw new Error("Token de autenticação não encontrado");
         }
-        
-        return supabase;
+
+        // Evita recriar o client em toda chamada
+        if (this.supabaseAuthClient && this.supabaseAuthToken === token) {
+            return this.supabaseAuthClient;
+        }
+
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+        const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+
+        this.supabaseAuthToken = token;
+        this.supabaseAuthClient = createClient<Database>(supabaseUrl, supabaseKey, {
+            auth: {
+                persistSession: false,
+                autoRefreshToken: false,
+                detectSessionInUrl: false,
+            },
+            global: {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            },
+            // Garante que chamadas internas usem o token correto
+            accessToken: async () => token,
+        });
+
+        return this.supabaseAuthClient;
     }
 
     private getClienteId(): string {
-        const user = authStore.getUser();
+        const user: any = authStore.getUser();
         if (!user) {
-            throw new Error('Dados do usuário não encontrados');
+            throw new Error("Dados do usuário não encontrados");
         }
-        // O token JWT contém 'sub' como clienteId ou 'id'
-        return user.sub || user.id;
+
+        // Mantém compatibilidade com diferentes formatos de JWT
+        return user.clienteId || user.sub || user.id;
     }
 
     public async importaPedidos(_params?: Record<string, string | number>, _subPath?: string): Promise<IResponse<any>> {
