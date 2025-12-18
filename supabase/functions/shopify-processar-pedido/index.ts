@@ -160,18 +160,33 @@ serve(async (req: Request) => {
     const largura = 15;
     const comprimento = 20;
 
-    // Fazer cotação de frete
+    // Obter CEP do remetente
+    const remetente = pedido.remetentes;
+    if (!remetente || !remetente.cep) {
+      console.error('❌ [SHOPIFY-PROC] Remetente não encontrado ou sem CEP');
+      throw new Error('Remetente não configurado ou sem CEP');
+    }
+
+    const cepOrigem = remetente.cep.replace(/\D/g, '');
+    const cepDestino = pedido.destinatario_cep?.replace(/\D/g, '') || '';
+
+    if (!cepDestino) {
+      throw new Error('CEP do destinatário não informado');
+    }
+
+    // Fazer cotação de frete com CEPs
     const cotacaoPayload = {
-      remetenteId: pedido.remetente_id,
-      destinatarioId,
+      cepOrigem,
+      cepDestino,
       embalagem: {
-        altura,
-        largura,
-        comprimento,
-        peso: pedido.peso_total || 0.3,
-        formatoObjeto: 'CAIXA_PACOTE',
+        altura: String(altura),
+        largura: String(largura),
+        comprimento: String(comprimento),
+        peso: String(Math.round((pedido.peso_total || 0.3) * 1000)), // peso em gramas
+        diametro: '0',
       },
       valorDeclarado: pedido.valor_total || 0,
+      logisticaReversa: 'N',
     };
 
     console.log('💰 [SHOPIFY-PROC] Cotando frete:', cotacaoPayload);
