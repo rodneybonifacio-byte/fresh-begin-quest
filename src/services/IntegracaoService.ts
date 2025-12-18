@@ -61,13 +61,19 @@ export class IntegracaoService {
     }
 
     private mapIntegracao(raw: any): IIntegracao {
+        // Nunca expor credenciais descriptografadas no client
+        // Apenas mostrar status de criptografia
+        const credenciaisSafe = raw.credenciais?.encrypted 
+            ? { encrypted: true } 
+            : { configured: !!raw.credenciais };
+        
         return {
             id: raw.id,
             clienteId: raw.cliente_id,
             plataforma: raw.plataforma,
             storeId: raw.store_id,
             remetenteId: raw.remetente_id,
-            credenciais: raw.credenciais,
+            credenciais: credenciaisSafe,
             ativo: raw.ativo,
             webhookUrl: raw.webhook_url,
             criadoEm: raw.criado_em,

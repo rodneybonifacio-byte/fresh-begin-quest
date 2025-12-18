@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { ModalCustom } from "../../../components/modal";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
+import DOMPurify from "dompurify";
 
 interface ModalViewDeclaracaoConteudoProps {
     isOpen: boolean;
@@ -22,7 +23,13 @@ export const ModalViewDeclaracaoConteudo: React.FC<ModalViewDeclaracaoConteudoPr
                 container.style.position = "absolute";
                 container.style.left = "-9999px";
                 container.style.width = "190mm"; // Dimensão A4
-                container.innerHTML = htmlContent;
+                // Sanitizar HTML para prevenir XSS
+                container.innerHTML = DOMPurify.sanitize(htmlContent, {
+                    ALLOWED_TAGS: ['div', 'span', 'p', 'br', 'table', 'tr', 'td', 'th', 'thead', 'tbody', 'strong', 'b', 'i', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'img', 'hr'],
+                    ALLOWED_ATTR: ['style', 'class', 'src', 'alt', 'width', 'height', 'colspan', 'rowspan'],
+                    FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input'],
+                    FORBID_ATTR: ['onerror', 'onclick', 'onload', 'onmouseover']
+                });
                 document.body.appendChild(container);
 
                 // Gerar imagem do HTML
