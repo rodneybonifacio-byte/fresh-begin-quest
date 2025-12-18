@@ -1,5 +1,6 @@
 import type { IResponse } from "../types/IResponse";
 import { supabase } from "../integrations/supabase/client";
+import authStore from "../authentica/authentication.store";
 
 export interface IIntegracaoNuvemshop {
     userId: string;
@@ -32,12 +33,12 @@ export class IntegracaoService {
     }
 
     private getClienteId(): string {
-        const userDataStr = localStorage.getItem('userData');
-        if (!userDataStr) {
+        const user = authStore.getUser();
+        if (!user) {
             throw new Error('Dados do usuário não encontrados');
         }
-        const userData = JSON.parse(userDataStr);
-        return userData.clienteId || userData.id;
+        // O token JWT contém 'sub' como clienteId ou 'id'
+        return user.sub || user.id;
     }
 
     public async importaPedidos(_params?: Record<string, string | number>, _subPath?: string): Promise<IResponse<any>> {
