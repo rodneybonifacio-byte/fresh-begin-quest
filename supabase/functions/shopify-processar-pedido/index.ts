@@ -57,22 +57,41 @@ serve(async (req: Request) => {
 
     console.log('✅ [SHOPIFY-PROC] Pedido encontrado:', pedido.numero_pedido);
 
-    // Preparar dados do destinatário
+    // Extrair número do logradouro se não estiver separado
+    let logradouro = pedido.destinatario_logradouro || '';
+    let numero = pedido.destinatario_numero || '';
+    
+    // Se o número está vazio, tentar extrair do logradouro
+    if (!numero && logradouro) {
+      const match = logradouro.match(/,\s*(\d+)/);
+      if (match) {
+        numero = match[1];
+        logradouro = logradouro.replace(/,\s*\d+.*$/, '').trim();
+      }
+    }
+
+    // Formatar telefone (remover +55 e manter só dígitos)
+    let celular = pedido.destinatario_telefone?.replace(/\D/g, '') || '';
+    if (celular.startsWith('55') && celular.length > 11) {
+      celular = celular.substring(2);
+    }
+
+    // Preparar dados do destinatário com valores padrão seguros
     const destinatario = {
-      nome: pedido.destinatario_nome,
+      nome: pedido.destinatario_nome || 'Destinatário',
       cpfCnpj: pedido.destinatario_cpf_cnpj || '',
-      celular: pedido.destinatario_telefone?.replace(/\D/g, '') || '',
+      celular: celular,
       email: pedido.destinatario_email || '',
-      logradouro: pedido.destinatario_logradouro,
-      numero: pedido.destinatario_numero || 'S/N',
+      logradouro: logradouro || 'Endereço não informado',
+      numero: numero || 'S/N',
       complemento: pedido.destinatario_complemento || '',
       bairro: pedido.destinatario_bairro || 'Centro',
-      localidade: pedido.destinatario_cidade,
-      uf: pedido.destinatario_estado,
+      localidade: pedido.destinatario_cidade || 'São Paulo',
+      uf: pedido.destinatario_estado || 'SP',
       cep: pedido.destinatario_cep?.replace(/\D/g, '') || '',
     };
 
-    console.log('📍 [SHOPIFY-PROC] Destinatário:', destinatario);
+    console.log('📍 [SHOPIFY-PROC] Destinatário preparado:', JSON.stringify(destinatario));
 
     // Criar destinatário no sistema
     const destinatarioResponse = await fetch(`${baseApiUrl}/destinatarios`, {
@@ -85,14 +104,23 @@ serve(async (req: Request) => {
     });
 
     let destinatarioId: string;
+    const destinatarioResponseText = await destinatarioResponse.text();
+    console.log('📍 [SHOPIFY-PROC] Resposta destinatário:', destinatarioResponse.status, destinatarioResponseText);
+
     if (destinatarioResponse.ok) {
-      const destinatarioData = await destinatarioResponse.json();
-      destinatarioId = destinatarioData.data.id;
+      const destinatarioData = JSON.parse(destinatarioResponseText);
+      destinatarioId = destinatarioData.data?.id;
+      if (!destinatarioId) {
+        console.error('❌ [SHOPIFY-PROC] ID não encontrado na resposta:', destinatarioResponseText);
+        throw new Error('ID do destinatário não retornado pela API');
+      }
       console.log('✅ [SHOPIFY-PROC] Destinatário criado:', destinatarioId);
     } else {
-      // Se falhar, tentar buscar destinatário existente pelo nome/CEP
+      console.log('⚠️ [SHOPIFY-PROC] Falha ao criar, tentando buscar existente...');
+      
+      // Se falhar, tentar buscar destinatário existente pelo CEP
       const searchResponse = await fetch(
-        `${baseApiUrl}/destinatarios?nome=${encodeURIComponent(destinatario.nome)}&cep=${destinatario.cep}`,
+        `${baseApiUrl}/destinatarios?cep=${destinatario.cep}`,
         {
           headers: {
             'Authorization': `Bearer ${userToken}`,
@@ -100,18 +128,30 @@ serve(async (req: Request) => {
         }
       );
       
+      const searchText = await searchResponse.text();
+      console.log('📍 [SHOPIFY-PROC] Busca destinatário:', searchResponse.status, searchText);
+      
       if (searchResponse.ok) {
-        const searchData = await searchResponse.json();
-        if (searchData.data && searchData.data.length > 0) {
-          destinatarioId = searchData.data[0].id;
+        const searchData = JSON.parse(searchText);
+        const encontrados = searchData.data || [];
+        
+        // Buscar por nome similar
+        const encontrado = encontrados.find((d: any) => 
+          d.nome?.toLowerCase().includes(destinatario.nome.toLowerCase().split(' ')[0])
+        );
+        
+        if (encontrado) {
+          destinatarioId = encontrado.id;
           console.log('✅ [SHOPIFY-PROC] Destinatário encontrado:', destinatarioId);
+        } else if (encontrados.length > 0) {
+          destinatarioId = encontrados[0].id;
+          console.log('✅ [SHOPIFY-PROC] Usando primeiro destinatário do CEP:', destinatarioId);
         } else {
-          const errorText = await destinatarioResponse.text();
-          console.error('❌ [SHOPIFY-PROC] Erro ao criar destinatário:', errorText);
-          throw new Error('Não foi possível criar ou encontrar destinatário');
+          console.error('❌ [SHOPIFY-PROC] Nenhum destinatário encontrado no CEP');
+          throw new Error(`Não foi possível criar destinatário: ${destinatarioResponseText}`);
         }
       } else {
-        throw new Error('Não foi possível criar ou encontrar destinatário');
+        throw new Error(`Erro ao buscar/criar destinatário: ${destinatarioResponseText}`);
       }
     }
 
