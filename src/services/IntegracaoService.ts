@@ -154,32 +154,13 @@ export class IntegracaoService {
         }
     }
 
-    public async getPedidosImportados(): Promise<IResponse<any[]>> {
+    public async getPedidosImportados(plataforma?: string, status?: string): Promise<IResponse<any[]>> {
         try {
-            const token = this.getToken();
-            const clienteId = this.getClienteId();
-            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-            const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+            const result = await this.invokeFunction("list-pedidos", { plataforma, status });
 
-            const response = await fetch(
-                `${supabaseUrl}/rest/v1/pedidos_importados?cliente_id=eq.${clienteId}&select=*,remetentes(*)&order=criado_em.desc`,
-                {
-                    headers: {
-                        apikey: supabaseKey,
-                        Authorization: `Bearer ${token}`,
-                    },
-                }
-            );
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || "Erro ao buscar pedidos");
-            }
-
-            const pedidos = await response.json();
             return {
-                message: "Pedidos carregados com sucesso",
-                data: pedidos || [],
+                message: result.message || "Pedidos carregados",
+                data: result.data || [],
             };
         } catch (error) {
             console.error("Erro ao buscar pedidos importados:", error);

@@ -160,6 +160,34 @@ serve(async (req) => {
         break;
       }
 
+      case "list-pedidos": {
+        const { plataforma, status } = body;
+
+        let query = supabase
+          .from("pedidos_importados")
+          .select("*, remetentes(*)")
+          .eq("cliente_id", clienteId)
+          .order("criado_em", { ascending: false });
+
+        if (plataforma) {
+          query = query.eq("plataforma", plataforma);
+        }
+        if (status) {
+          query = query.eq("status", status);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+          console.error("Erro ao listar pedidos:", error);
+          throw error;
+        }
+
+        console.log("Pedidos encontrados:", data?.length || 0);
+        result = { message: "Pedidos carregados", data: data || [] };
+        break;
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: "Ação não reconhecida" }),

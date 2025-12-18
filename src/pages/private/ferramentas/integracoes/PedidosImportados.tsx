@@ -1,154 +1,269 @@
-import { useEffect, useState } from 'react';
-import { EmissaoService } from '../../../../services/EmissaoService';
-import { useFetchQuery } from '../../../../hooks/useFetchQuery';
-import type { IEmissao } from '../../../../types/IEmissao';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Content } from '../../Content';
 import { LoadSpinner } from '../../../../components/loading';
 import { TableCustom } from '../../../../components/table';
 import { NotFoundData } from '../../../../components/NotFoundData';
 import CustomCheckbox from '../../../../components/CheckboxCustom';
-import { StatusBadgeEmissao } from '../../../../components/StatusBadgeEmissao';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLoadingSpinner } from '../../../../providers/LoadingSpinnerContext';
-import { EnderecoDetalhado } from '../../../../components/EnderecoDetalhado';
+
 import { toastError, toastSuccess } from '../../../../utils/toastNotify';
 import { formatDateTime } from '../../../../utils/date-utils';
-import { RefreshCcw } from 'lucide-react';
+import { RefreshCcw, Package, CheckCircle, Clock, AlertCircle, Truck } from 'lucide-react';
 import { IntegracaoService } from '../../../../services/IntegracaoService';
+
+interface PedidoImportado {
+    id: string;
+    externo_id: string;
+    numero_pedido: string;
+    plataforma: string;
+    status: string;
+    destinatario_nome: string;
+    destinatario_logradouro: string;
+    destinatario_numero: string;
+    destinatario_complemento: string;
+    destinatario_bairro: string;
+    destinatario_cidade: string;
+    destinatario_estado: string;
+    destinatario_cep: string;
+    valor_total: number;
+    peso_total: number;
+    codigo_rastreio: string | null;
+    servico_frete: string | null;
+    criado_em: string;
+    remetentes?: {
+        nome: string;
+    };
+}
+
+const StatusBadge = ({ status }: { status: string }) => {
+    const statusConfig: Record<string, { icon: React.ReactNode; className: string; label: string }> = {
+        pendente: {
+            icon: <Clock className="w-3 h-3" />,
+            className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+            label: 'Pendente',
+        },
+        processado: {
+            icon: <CheckCircle className="w-3 h-3" />,
+            className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+            label: 'Processado',
+        },
+        erro: {
+            icon: <AlertCircle className="w-3 h-3" />,
+            className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+            label: 'Erro',
+        },
+    };
+
+    const config = statusConfig[status] || statusConfig.pendente;
+
+    return (
+        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${config.className}`}>
+            {config.icon}
+            {config.label}
+        </span>
+    );
+};
 
 const PedidosImportados = () => {
     const { setIsLoading } = useLoadingSpinner();
-    const clientQuery = useQueryClient();
-    const service = new EmissaoService();
-    const serviceIntegracao = new IntegracaoService();
-
-    const {
-        data: emissoes,
-        isLoading,
-        isError,
-    } = useFetchQuery<IEmissao[]>(['pedidos-importados', 'processar-pedidos'], async () => (await service.getAll({ pedidosImportado: 'sim' })).data);
-
+    const queryClient = useQueryClient();
+    const service = new IntegracaoService();
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-    const mutation = useMutation({
-        mutationFn: async (ids: string[]) => {
-            setIsLoading(true);
-            return service.processarPedidosImportados(ids);
-        },
-
-        onSuccess: () => {
-            setIsLoading(false);
-            toastSuccess('Etiquetas geradas com sucesso!');
-        },
-        onError: (error) => {
-            setIsLoading(false);
-            toastError('Erro ao processar etiquetas!');
-            console.log(error);
+    // Buscar pedidos importados via backend function
+    const { data: pedidos, isLoading, isError } = useQuery({
+        queryKey: ['pedidos-importados'],
+        queryFn: async () => {
+            const response = await service.getPedidosImportados();
+            return response.data as PedidoImportado[];
         },
     });
 
-    const handleProcessarSelecionados = async () => {
-        if (selectedIds.length === 0) {
-            toastError('Selecione pelo menos uma etiqueta para processar!');
-            return;
-        }
-        try {
-            await mutation.mutateAsync(selectedIds);
-            clientQuery.invalidateQueries({ queryKey: ['pedidos-importados', 'processar-pedidos'] });
-        } catch (error) {
-            console.log(error);
-        }
-        setSelectedIds([]);
-    };
-
-    const handleImportarPedido = async () => {
-        if (selectedIds.length > 0) {
-            toastError('Desmarque os pedidos antes de importar novos!');
-            return;
-        }
-        try {
+    // Mutation para processar pedidos selecionados (gerar etiquetas)
+    const processarMutation = useMutation({
+        mutationFn: async (ids: string[]) => {
             setIsLoading(true);
-            const response = await serviceIntegracao.importaPedidos(undefined, 'importa-pedidos-marketplace');
-            toastSuccess('Pedidos importados com sucesso!');
-
-            clientQuery.invalidateQueries({ queryKey: ['pedidos-importados', 'processar-pedidos'] });
-            return response;
-        } finally {
+            const results = [];
+            for (const id of ids) {
+                try {
+                    const result = await service.processarPedidoShopify(id);
+                    results.push({ id, success: true, data: result });
+                } catch (error) {
+                    results.push({ id, success: false, error });
+                }
+            }
+            return results;
+        },
+        onSuccess: (results) => {
             setIsLoading(false);
+            const successCount = results.filter((r) => r.success).length;
+            const errorCount = results.filter((r) => !r.success).length;
+
+            if (successCount > 0) {
+                toastSuccess(`${successCount} etiqueta(s) gerada(s) com sucesso!`);
+            }
+            if (errorCount > 0) {
+                toastError(`${errorCount} pedido(s) com erro`);
+            }
+
             setSelectedIds([]);
-        }
-    };
+            queryClient.invalidateQueries({ queryKey: ['pedidos-importados'] });
+        },
+        onError: () => {
+            setIsLoading(false);
+            toastError('Erro ao processar pedidos');
+        },
+    });
 
-    const [emissoesOriginais, setEmissoesOriginais] = useState<IEmissao[]>([]);
+    // Mutation para importar novos pedidos
+    const importarMutation = useMutation({
+        mutationFn: async () => {
+            setIsLoading(true);
+            const integracoesResponse = await service.getAll();
+            const shopifyIntegracao = integracoesResponse.data.find((i) => i.plataforma === 'shopify');
 
-    useEffect(() => {
-        if (emissoes) setEmissoesOriginais(emissoes);
-    }, [emissoes]);
+            if (!shopifyIntegracao) {
+                throw new Error('Configure a integração Shopify primeiro');
+            }
 
-    // Lógica para seleção de múltiplos itens
+            if (!shopifyIntegracao.remetenteId || !shopifyIntegracao.id) {
+                throw new Error('Selecione um remetente na integração Shopify');
+            }
+
+            return service.importarPedidosShopify(shopifyIntegracao.id, shopifyIntegracao.remetenteId);
+        },
+        onSuccess: (response) => {
+            setIsLoading(false);
+            toastSuccess(response?.message || 'Pedidos importados!');
+            queryClient.invalidateQueries({ queryKey: ['pedidos-importados'] });
+        },
+        onError: (error: Error) => {
+            setIsLoading(false);
+            toastError(error.message || 'Erro ao importar pedidos');
+        },
+    });
+
     const handleCheckboxChange = (id: string, selected: boolean) => {
         setSelectedIds((prev) => (selected ? [...prev, id] : prev.filter((item) => item !== id)));
     };
 
+    const handleProcessarSelecionados = () => {
+        if (selectedIds.length === 0) {
+            toastError('Selecione pelo menos um pedido');
+            return;
+        }
+        processarMutation.mutate(selectedIds);
+    };
+
+    const pendentes = pedidos?.filter((p) => p.status === 'pendente') || [];
+    const processados = pedidos?.filter((p) => p.status === 'processado') || [];
+
     return (
         <Content
             titulo="Envios - Pedidos Importados"
-            subTitulo="Processar pedidos importados"
+            subTitulo={`${pendentes.length} pendente(s) · ${processados.length} processado(s)`}
             isButton
             button={[
-                // Exibe o botão "Processar" somente se houver itens selecionados
                 ...(selectedIds.length > 0
                     ? [
                           {
-                              label: `Processar (${selectedIds.length})`,
+                              label: `Gerar Etiquetas (${selectedIds.length})`,
                               onClick: handleProcessarSelecionados,
-                              isShow: selectedIds.length > 0 ? false : true,
+                              bgColor: 'bg-green-600 hover:bg-green-700',
+                              icon: <Truck className="w-4 h-4" />,
                           },
                       ]
                     : []),
                 {
-                    label: 'Importar Pedidos',
-                    onClick: handleImportarPedido,
+                    label: importarMutation.isPending ? 'Importando...' : 'Importar Pedidos',
+                    onClick: () => importarMutation.mutate(),
                     bgColor: 'bg-primary',
-                    icon: <RefreshCcw className="w-4 h-4" />,
+                    icon: <RefreshCcw className={`w-4 h-4 ${importarMutation.isPending ? 'animate-spin' : ''}`} />,
                 },
             ]}
-            data={emissoes}
         >
-            {isLoading ? <LoadSpinner mensagem="Carregando..." /> : null}
-            {!isLoading && !isError && emissoes && emissoes.length > 0 && (
-                <div className="rounded-lg flex flex-col gap-2">
-                    <div className="md:lg:xl:block">
-                        <TableCustom thead={['', 'PEDIDO', 'PLATAFORMA', 'Destinatario', 'SERVIÇO', 'Status', 'Criado em']}>
-                            {emissoesOriginais &&
-                                emissoesOriginais.map((emissao: IEmissao) => (
-                                    <tr key={emissao.id} className={`hover:bg-gray-50 cursor-pointer`}>
-                                        <td className="px-4 py-3">
-                                            <CustomCheckbox
-                                                checked={selectedIds.includes(emissao.id?.toString() || '')}
-                                                item={{ value: emissao.id?.toString() || '', label: '' }}
-                                                onSelected={(item, selected) => handleCheckboxChange(item.value, selected)}
-                                            />
-                                        </td>
-                                        <td className="px-4 py-3">{emissao.externoId}</td>
-                                        <td className="px-4 py-3">{emissao.origem}</td>
-                                        <td className="px-4 py-3 flex-col flex">
-                                            <span className="font-medium"> {emissao.destinatario?.nome}</span>
-                                            <span className="font-medium text-xs text-slate-400">
-                                                <EnderecoDetalhado endereco={emissao.destinatario?.endereco} />
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3">{emissao.servico || '---'}</td>
-                                        <StatusBadgeEmissao
-                                            status={emissao.status}
-                                            mensagensErrorPostagem={emissao.mensagensErrorPostagem}
-                                            handleOnViewErroPostagem={() => console.log('emissao.mensagensErrorPostagem')}
+            {isLoading && <LoadSpinner mensagem="Carregando pedidos..." />}
+
+            {!isLoading && !isError && pedidos && pedidos.length > 0 && (
+                <div className="rounded-lg">
+                    <TableCustom thead={['', 'Pedido', 'Plataforma', 'Destinatário', 'Cidade/UF', 'Valor', 'Status', 'Rastreio', 'Data']}>
+                        {pedidos.map((pedido) => (
+                            <tr
+                                key={pedido.id}
+                                className={`hover:bg-accent/50 cursor-pointer transition-colors ${
+                                    selectedIds.includes(pedido.id) ? 'bg-primary/5' : ''
+                                }`}
+                            >
+                                <td className="px-4 py-3">
+                                    {pedido.status === 'pendente' && (
+                                        <CustomCheckbox
+                                            checked={selectedIds.includes(pedido.id)}
+                                            item={{ value: pedido.id, label: '' }}
+                                            onSelected={(item, selected) => handleCheckboxChange(item.value, selected)}
                                         />
-                                        <td className="px-4 py-3">{formatDateTime(emissao?.criadoEm || '') || emissao.criadoEm}</td>
-                                    </tr>
-                                ))}
-                        </TableCustom>
-                    </div>
+                                    )}
+                                </td>
+                                <td className="px-4 py-3">
+                                    <div className="flex items-center gap-2">
+                                        <Package className="w-4 h-4 text-muted-foreground" />
+                                        <span className="font-medium">{pedido.numero_pedido}</span>
+                                    </div>
+                                </td>
+                                <td className="px-4 py-3">
+                                    <span className="text-sm capitalize">{pedido.plataforma}</span>
+                                </td>
+                                <td className="px-4 py-3">
+                                    <div className="flex flex-col">
+                                        <span className="font-medium">{pedido.destinatario_nome}</span>
+                                        <span className="text-xs text-muted-foreground">
+                                            {pedido.destinatario_logradouro}
+                                            {pedido.destinatario_numero ? `, ${pedido.destinatario_numero}` : ''}
+                                        </span>
+                                    </div>
+                                </td>
+                                <td className="px-4 py-3">
+                                    <span className="text-sm text-muted-foreground">
+                                        {pedido.destinatario_cidade}/{pedido.destinatario_estado}
+                                    </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                    <span className="font-medium">R$ {Number(pedido.valor_total || 0).toFixed(2)}</span>
+                                </td>
+                                <td className="px-4 py-3">
+                                    <StatusBadge status={pedido.status} />
+                                </td>
+                                <td className="px-4 py-3">
+                                    {pedido.codigo_rastreio ? (
+                                        <span className="font-mono text-xs bg-muted px-2 py-1 rounded">{pedido.codigo_rastreio}</span>
+                                    ) : (
+                                        <span className="text-muted-foreground text-sm">-</span>
+                                    )}
+                                </td>
+                                <td className="px-4 py-3">
+                                    <span className="text-sm text-muted-foreground">{formatDateTime(pedido.criado_em)}</span>
+                                </td>
+                            </tr>
+                        ))}
+                    </TableCustom>
+                </div>
+            )}
+
+            {!isLoading && !isError && (!pedidos || pedidos.length === 0) && (
+                <div className="text-center py-12">
+                    <Package className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-foreground mb-2">Nenhum pedido importado</h3>
+                    <p className="text-muted-foreground mb-4">
+                        Clique em "Importar Pedidos" para buscar pedidos da sua loja
+                    </p>
+                    <button
+                        onClick={() => importarMutation.mutate()}
+                        disabled={importarMutation.isPending}
+                        className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors inline-flex items-center gap-2"
+                    >
+                        <RefreshCcw className={`w-4 h-4 ${importarMutation.isPending ? 'animate-spin' : ''}`} />
+                        Importar Pedidos
+                    </button>
                 </div>
             )}
 
