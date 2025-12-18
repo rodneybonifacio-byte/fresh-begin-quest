@@ -170,11 +170,12 @@ serve(async (req: Request) => {
         let valorTotal = parseFloat(order.total_price);
 
         order.line_items.forEach((item) => {
-          pesoTotal += (item.grams / 1000) * item.quantity; // Converter gramas para kg
+          // Se o produto não tem peso cadastrado, considera 300g (0.3kg) por unidade
+          const pesoItem = item.grams > 0 ? item.grams : 300;
+          pesoTotal += (pesoItem / 1000) * item.quantity; // Converter gramas para kg
         });
 
-        // Valores padrão
-        if (pesoTotal === 0) pesoTotal = 0.3;
+        console.log(`📦 [SHOPIFY] Pedido #${order.name} - Peso calculado: ${pesoTotal}kg (${order.line_items.length} itens)`);
 
         // Preparar dados do destinatário
         const shipping = order.shipping_address;
