@@ -2,6 +2,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 // @ts-ignore
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+// @ts-ignore
+import { isValid as isValidCPF } from 'https://esm.sh/@fnando/cpf@1.0.2';
+// @ts-ignore
+import { isValid as isValidCNPJ } from 'https://esm.sh/@fnando/cnpj@2.0.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -76,10 +80,36 @@ serve(async (req: Request) => {
       celular = celular.substring(2);
     }
 
+    const toDigits = (value: unknown) => String(value ?? '').replace(/\D/g, '');
+
+    const pickCpfCnpj = (value: unknown): string | null => {
+      const digits = toDigits(value);
+      if (!digits) return null;
+      if (digits.length === 11 && isValidCPF(digits)) return digits;
+      if (digits.length === 14 && isValidCNPJ(digits)) return digits;
+      return null;
+    };
+
+    const cpfCnpj =
+      pickCpfCnpj(pedido.destinatario_cpf_cnpj) ||
+      pickCpfCnpj(pedido.dados_originais?.shipping_address?.company) ||
+      pickCpfCnpj(pedido.dados_originais?.billing_address?.company) ||
+      pickCpfCnpj(pedido.dados_originais?.customer?.default_address?.company) ||
+      '';
+
+    if (!cpfCnpj) {
+      console.error('❌ [SHOPIFY-PROC] CPF/CNPJ do destinatário ausente ou inválido', {
+        destinatario_cpf_cnpj: pedido.destinatario_cpf_cnpj,
+        shipping_company: pedido.dados_originais?.shipping_address?.company,
+        billing_company: pedido.dados_originais?.billing_address?.company,
+      });
+      throw new Error('CPF/CNPJ do destinatário é obrigatório para emitir a etiqueta');
+    }
+
     // Preparar dados do destinatário com valores padrão seguros
     const destinatario = {
       nome: pedido.destinatario_nome || 'Destinatário',
-      cpfCnpj: pedido.destinatario_cpf_cnpj || '',
+      cpfCnpj,
       celular: celular,
       email: pedido.destinatario_email || '',
       logradouro: logradouro || 'Endereço não informado',
@@ -238,9 +268,9 @@ serve(async (req: Request) => {
     const destinatarioEmissao = {
       id: destinatarioId,
       nome: pedido.destinatario_nome || 'Destinatário',
-      cpfCnpj: pedido.destinatario_cpf_cnpj || '',
-      telefone: pedido.destinatario_telefone?.replace(/\D/g, '') || '',
-      celular: pedido.destinatario_telefone?.replace(/\D/g, '') || '',
+      cpfCnpj,
+      telefone: celular,
+      celular: celular,
       email: pedido.destinatario_email || '',
       endereco: {
         cep: cepDestino,
