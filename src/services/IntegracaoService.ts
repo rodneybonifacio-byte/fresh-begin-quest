@@ -120,43 +120,49 @@ export class IntegracaoService {
     }
 
     public async processarPedidoShopify(pedidoId: string): Promise<IResponse<any>> {
-        try {
-            const clienteId = this.getClienteId();
-            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const clienteId = this.getClienteId();
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 
-            // O token correto para a API externa é o mesmo usado pelo CustomHttpClient
-            const userToken = localStorage.getItem("token");
-            if (!userToken) {
-                throw new Error("Token do usuário não encontrado para gerar etiqueta");
-            }
-
-            const response = await fetch(`${supabaseUrl}/functions/v1/shopify-processar-pedido`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-                },
-                body: JSON.stringify({
-                    pedidoId,
-                    clienteId,
-                    userToken,
-                }),
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || "Erro ao processar pedido");
-            }
-
-            const data = await response.json();
-            return {
-                message: "Etiqueta gerada com sucesso!",
-                data,
-            };
-        } catch (error) {
-            console.error("Erro ao processar pedido Shopify:", error);
-            throw error;
+        // O token correto para a API externa é o mesmo usado pelo CustomHttpClient
+        const userToken = localStorage.getItem("token");
+        if (!userToken) {
+            throw new Error("Token do usuário não encontrado para gerar etiqueta");
         }
+
+        const response = await fetch(`${supabaseUrl}/functions/v1/shopify-processar-pedido`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({
+                pedidoId,
+                clienteId,
+                userToken,
+            }),
+        });
+
+        const data = await response.json();
+
+        // Se saldo insuficiente (status 402), retorna os dados do PIX
+        if (response.status === 402 && data.saldoInsuficiente) {
+            return {
+                message: data.message || "Saldo insuficiente",
+                data: {
+                    ...data,
+                    saldoInsuficiente: true,
+                },
+            };
+        }
+
+        if (!response.ok) {
+            throw new Error(data.error || "Erro ao processar pedido");
+        }
+
+        return {
+            message: "Etiqueta gerada com sucesso!",
+            data,
+        };
     }
 
     public async getPedidosImportados(plataforma?: string, status?: string): Promise<IResponse<any[]>> {

@@ -123,9 +123,6 @@ serve(async (req: Request) => {
 
     console.log('📍 [SHOPIFY-PROC] Destinatário preparado:', JSON.stringify(destinatario));
 
-    // Não depender de cadastro prévio do destinatário (evita pegar destinatários antigos/incompletos).
-    // A emissão será criada com o objeto completo (cadastrarDestinatario = true).
-
     // Valores padrão para dimensões (Shopify não fornece)
     const altura = 10;
     const largura = 15;
@@ -195,8 +192,104 @@ serve(async (req: Request) => {
       return currentPreco < prevPreco ? current : prev;
     });
 
-    console.log('🚚 [SHOPIFY-PROC] Frete escolhido:', freteEscolhido.nomeServico, '- R$', freteEscolhido.preco);
+    const valorFrete = typeof freteEscolhido.preco === 'string' 
+      ? parseFloat(freteEscolhido.preco.replace(',', '.')) 
+      : freteEscolhido.preco;
 
+    console.log('🚚 [SHOPIFY-PROC] Frete escolhido:', freteEscolhido.nomeServico, '- R$', valorFrete);
+
+    // ========================================
+    // VERIFICAR SALDO DISPONÍVEL DO CLIENTE
+    // ========================================
+    console.log('💳 [SHOPIFY-PROC] Verificando saldo do cliente:', clienteId);
+
+    const { data: saldoDisponivel, error: saldoError } = await supabase.rpc('calcular_saldo_disponivel', {
+      p_cliente_id: clienteId
+    });
+
+    if (saldoError) {
+      console.error('❌ [SHOPIFY-PROC] Erro ao calcular saldo:', saldoError);
+      throw new Error('Erro ao verificar saldo do cliente');
+    }
+
+    const saldo = Number(saldoDisponivel) || 0;
+    console.log('💰 [SHOPIFY-PROC] Saldo disponível:', saldo, '| Valor frete:', valorFrete);
+
+    // SE SALDO INSUFICIENTE, GERAR PIX E RETORNAR
+    if (saldo < valorFrete) {
+      console.log('⚠️ [SHOPIFY-PROC] Saldo insuficiente! Gerando cobrança PIX...');
+
+      // Gerar cobrança PIX via Banco Inter
+      const { data: pixData, error: pixError } = await supabase.functions.invoke('banco-inter-create-charge', {
+        body: { 
+          valor: valorFrete,
+          expiracao: 3600 // 1 hora
+        },
+        headers: {
+          'Authorization': `Bearer ${userToken}`
+        }
+      });
+
+      if (pixError || !pixData?.success) {
+        console.error('❌ [SHOPIFY-PROC] Erro ao gerar PIX:', pixError || pixData?.error);
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Saldo insuficiente e não foi possível gerar cobrança PIX',
+            saldoAtual: saldo,
+            valorNecessario: valorFrete,
+            saldoInsuficiente: true
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 402 }
+        );
+      }
+
+      console.log('✅ [SHOPIFY-PROC] PIX gerado com sucesso. Aguardando pagamento...');
+
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          saldoInsuficiente: true,
+          saldoAtual: saldo,
+          valorNecessario: valorFrete,
+          pix: {
+            txid: pixData.data?.txid,
+            pixCopiaECola: pixData.data?.pixCopiaECola,
+            qrCodeUrl: pixData.data?.qrCodeUrl,
+            valor: valorFrete,
+            expiracao: pixData.data?.expiracao
+          },
+          message: `Saldo insuficiente. Realize o pagamento de R$ ${valorFrete.toFixed(2)} via PIX para continuar.`
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 402 }
+      );
+    }
+
+    // ========================================
+    // BLOQUEAR CRÉDITO ANTES DE EMITIR
+    // ========================================
+    console.log('🔒 [SHOPIFY-PROC] Bloqueando crédito para emissão...');
+
+    // Criar ID temporário para bloqueio (será atualizado após emissão)
+    const tempEmissaoId = crypto.randomUUID();
+
+    const { data: transacaoId, error: bloqueioError } = await supabase.rpc('bloquear_credito_etiqueta', {
+      p_cliente_id: clienteId,
+      p_emissao_id: tempEmissaoId,
+      p_valor: valorFrete,
+      p_codigo_objeto: pedido.numero_pedido
+    });
+
+    if (bloqueioError) {
+      console.error('❌ [SHOPIFY-PROC] Erro ao bloquear crédito:', bloqueioError);
+      throw new Error(bloqueioError.message || 'Erro ao bloquear crédito');
+    }
+
+    console.log('✅ [SHOPIFY-PROC] Crédito bloqueado. Transação:', transacaoId);
+
+    // ========================================
+    // EMITIR ETIQUETA
+    // ========================================
     // Preparar itens para declaração de conteúdo
     const itens = pedido.itens || [];
     const itensDeclaracao = itens.map((item: any) => ({
@@ -206,7 +299,6 @@ serve(async (req: Request) => {
     }));
 
     // Preparar objeto destinatario completo para emissão
-    // Importante: não enviar `id` aqui, para não amarrar a emissão a um destinatário antigo/incompleto.
     const destinatarioEmissao = {
       nome: pedido.destinatario_nome || 'Destinatário',
       cpfCnpj,
@@ -269,12 +361,31 @@ serve(async (req: Request) => {
     if (!emissaoResponse.ok) {
       const errorText = await emissaoResponse.text();
       console.error('❌ [SHOPIFY-PROC] Erro ao criar emissão:', errorText);
+      
+      // Liberar crédito bloqueado em caso de erro
+      console.log('🔓 [SHOPIFY-PROC] Liberando crédito bloqueado devido a erro na emissão...');
+      await supabase.rpc('liberar_credito_bloqueado', {
+        p_emissao_id: tempEmissaoId,
+        p_codigo_objeto: pedido.numero_pedido
+      });
+      
       throw new Error('Erro ao criar emissão de etiqueta');
     }
 
     const emissaoData = await emissaoResponse.json();
     console.log('✅ [SHOPIFY-PROC] Etiqueta criada com sucesso!');
     console.log('🏷️  [SHOPIFY-PROC] Código objeto:', emissaoData.data?.codigoObjeto);
+
+    // Atualizar a transação de bloqueio com o ID real da emissão
+    if (emissaoData.data?.id) {
+      await supabase
+        .from('transacoes_credito')
+        .update({ 
+          emissao_id: emissaoData.data.id,
+          descricao: `Crédito bloqueado - Etiqueta ${emissaoData.data.codigoObjeto || pedido.numero_pedido}`
+        })
+        .eq('emissao_id', tempEmissaoId);
+    }
 
     // Atualizar status do pedido importado
     const { error: updateError } = await supabase
@@ -284,9 +395,7 @@ serve(async (req: Request) => {
         emissao_id: emissaoData.data?.id,
         codigo_rastreio: emissaoData.data?.codigoObjeto,
         servico_frete: freteEscolhido.nomeServico,
-        valor_frete: typeof freteEscolhido.preco === 'string' 
-          ? parseFloat(freteEscolhido.preco.replace(',', '.')) 
-          : freteEscolhido.preco,
+        valor_frete: valorFrete,
         processado_em: new Date().toISOString(),
       })
       .eq('id', pedidoId);
@@ -301,7 +410,8 @@ serve(async (req: Request) => {
         emissao: emissaoData.data,
         codigoObjeto: emissaoData.data?.codigoObjeto,
         servico: freteEscolhido.nomeServico,
-        valor: freteEscolhido.preco,
+        valor: valorFrete,
+        creditoBloqueado: true
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );

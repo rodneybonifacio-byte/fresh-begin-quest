@@ -8,8 +8,11 @@ import CustomCheckbox from '../../../../components/CheckboxCustom';
 import { useLoadingSpinner } from '../../../../providers/LoadingSpinnerContext';
 import { PaginacaoCustom } from '../../../../components/PaginacaoCustom';
 import { ModalProgressoGeracaoMassa } from '../../../../components/ModalProgressoGeracaoMassa';
+import { ModalRecargaPix } from '../../financeiro/recarga/ModalRecargaPix';
+import { useAuth } from '../../../../providers/AuthContext';
 
-import { toastError, toastSuccess } from '../../../../utils/toastNotify';
+
+import { toastError, toastSuccess, toastWarning } from '../../../../utils/toastNotify';
 import { formatDateTime } from '../../../../utils/date-utils';
 import { RefreshCcw, Package, CheckCircle, Clock, AlertCircle, Truck, Zap, RotateCcw, FileCheck, FileX } from 'lucide-react';
 import { IntegracaoService } from '../../../../services/IntegracaoService';
@@ -166,12 +169,19 @@ const ITEMS_PER_PAGE = 10;
 const PedidosImportados = () => {
     const { setIsLoading } = useLoadingSpinner();
     const queryClient = useQueryClient();
+    const { user } = useAuth();
     const service = new IntegracaoService();
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [importando, setImportando] = useState(false);
     const [cancelando, setCancelando] = useState(false);
     const canceladoRef = useRef(false);
+
+    // Estados para modal PIX
+    const [showPixModal, setShowPixModal] = useState(false);
+    const [pixChargeData, setPixChargeData] = useState<any>(null);
+    const [saldoAtual, setSaldoAtual] = useState(0);
+    const [pedidoPendentePix, setPedidoPendentePix] = useState<string | null>(null);
 
     const [progresso, setProgresso] = useState<ProgressoState>({
         isOpen: false,
@@ -237,7 +247,30 @@ const PedidosImportados = () => {
             }));
 
             try {
-                await service.processarPedidoShopify(id);
+                const response = await service.processarPedidoShopify(id);
+                
+                // Verificar se retornou saldo insuficiente com PIX
+                if (response.data?.saldoInsuficiente && response.data?.pix) {
+                    console.log('⚠️ Saldo insuficiente - mostrando modal PIX');
+                    
+                    // Fechar o modal de progresso
+                    setProgresso((prev) => ({ ...prev, isOpen: false }));
+                    
+                    // Configurar modal de PIX
+                    setSaldoAtual(response.data.saldoAtual || 0);
+                    setPixChargeData({
+                        pix_copia_cola: response.data.pix.pixCopiaECola,
+                        qr_code_url: response.data.pix.qrCodeUrl,
+                        valor: response.data.pix.valor,
+                        txid: response.data.pix.txid,
+                    });
+                    setPedidoPendentePix(id);
+                    setShowPixModal(true);
+                    
+                    toastWarning(`Saldo insuficiente. Realize o pagamento de R$ ${response.data.valorNecessario?.toFixed(2)} via PIX.`);
+                    return; // Parar o processamento em massa
+                }
+                
                 sucessos++;
             } catch {
                 erros++;
@@ -564,6 +597,32 @@ const PedidosImportados = () => {
                 pedidoAtual={progresso.pedidoAtual}
                 onCancelar={handleCancelar}
                 cancelando={cancelando}
+            />
+
+            {/* Modal PIX para saldo insuficiente */}
+            <ModalRecargaPix
+                isOpen={showPixModal}
+                onClose={() => {
+                    setShowPixModal(false);
+                    setPedidoPendentePix(null);
+                }}
+                chargeData={pixChargeData}
+                saldoInicial={saldoAtual}
+                clienteId={user?.clienteId || ''}
+                onPaymentConfirmed={async () => {
+                    // Após pagamento confirmado, tentar processar o pedido novamente
+                    if (pedidoPendentePix) {
+                        try {
+                            await service.processarPedidoShopify(pedidoPendentePix);
+                            toastSuccess('Etiqueta gerada com sucesso!');
+                            queryClient.invalidateQueries({ queryKey: ['pedidos-importados'] });
+                        } catch (error: any) {
+                            toastError(error.message || 'Erro ao gerar etiqueta');
+                        }
+                    }
+                    setShowPixModal(false);
+                    setPedidoPendentePix(null);
+                }}
             />
         </Content>
     );
