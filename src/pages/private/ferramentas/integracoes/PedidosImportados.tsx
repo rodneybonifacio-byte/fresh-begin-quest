@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useRef, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Content } from '../../Content';
 import { LoadSpinner } from '../../../../components/loading';
 import { TableCustom } from '../../../../components/table';
@@ -7,6 +7,7 @@ import { NotFoundData } from '../../../../components/NotFoundData';
 import CustomCheckbox from '../../../../components/CheckboxCustom';
 import { useLoadingSpinner } from '../../../../providers/LoadingSpinnerContext';
 import { PaginacaoCustom } from '../../../../components/PaginacaoCustom';
+import { ModalProgressoGeracaoMassa } from '../../../../components/ModalProgressoGeracaoMassa';
 
 import { toastError, toastSuccess } from '../../../../utils/toastNotify';
 import { formatDateTime } from '../../../../utils/date-utils';
@@ -35,6 +36,15 @@ interface PedidoImportado {
     remetentes?: {
         nome: string;
     };
+}
+
+interface ProgressoState {
+    isOpen: boolean;
+    total: number;
+    processados: number;
+    sucessos: number;
+    erros: number;
+    pedidoAtual?: string;
 }
 
 const StatusBadge = ({ status }: { status: string }) => {
@@ -74,6 +84,17 @@ const PedidosImportados = () => {
     const service = new IntegracaoService();
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
+    const [importando, setImportando] = useState(false);
+    const [cancelando, setCancelando] = useState(false);
+    const canceladoRef = useRef(false);
+
+    const [progresso, setProgresso] = useState<ProgressoState>({
+        isOpen: false,
+        total: 0,
+        processados: 0,
+        sucessos: 0,
+        erros: 0,
+    });
 
     // Buscar pedidos importados via backend function
     const { data: pedidos, isLoading, isError } = useQuery({
@@ -101,46 +122,100 @@ const PedidosImportados = () => {
         nextPage: currentPage < totalPages ? currentPage + 1 : null,
     };
 
-    // Mutation para processar pedidos selecionados (gerar etiquetas)
-    const processarMutation = useMutation({
-        mutationFn: async (ids: string[]) => {
+    // Processar pedidos em massa com progresso
+    const processarEmMassa = useCallback(async (ids: string[], pedidosData: PedidoImportado[]) => {
+        canceladoRef.current = false;
+        setCancelando(false);
+
+        setProgresso({
+            isOpen: true,
+            total: ids.length,
+            processados: 0,
+            sucessos: 0,
+            erros: 0,
+        });
+
+        let sucessos = 0;
+        let erros = 0;
+
+        for (let i = 0; i < ids.length; i++) {
+            if (canceladoRef.current) {
+                break;
+            }
+
+            const id = ids[i];
+            const pedido = pedidosData.find((p) => p.id === id);
+
+            setProgresso((prev) => ({
+                ...prev,
+                pedidoAtual: pedido?.numero_pedido || id,
+            }));
+
+            try {
+                await service.processarPedidoShopify(id);
+                sucessos++;
+            } catch {
+                erros++;
+            }
+
+            setProgresso((prev) => ({
+                ...prev,
+                processados: i + 1,
+                sucessos,
+                erros,
+            }));
+        }
+
+        // Finalizado
+        setProgresso((prev) => ({
+            ...prev,
+            pedidoAtual: undefined,
+        }));
+
+        if (sucessos > 0) {
+            toastSuccess(`${sucessos} etiqueta(s) gerada(s) com sucesso!`);
+        }
+        if (erros > 0) {
+            toastError(`${erros} pedido(s) com erro`);
+        }
+
+        setSelectedIds([]);
+        queryClient.invalidateQueries({ queryKey: ['pedidos-importados'] });
+    }, [queryClient, service]);
+
+    const handleCancelar = useCallback(() => {
+        if (progresso.processados >= progresso.total) {
+            // Finalizado, apenas fechar
+            setProgresso((prev) => ({ ...prev, isOpen: false }));
+        } else {
+            // Cancelar processamento
+            setCancelando(true);
+            canceladoRef.current = true;
+        }
+    }, [progresso.processados, progresso.total]);
+
+    const handleProcessarSelecionados = () => {
+        if (selectedIds.length === 0) {
+            toastError('Selecione pelo menos um pedido');
+            return;
+        }
+        processarEmMassa(selectedIds, pedidos || []);
+    };
+
+    const handleGerarEmMassa = () => {
+        const pendentesData = pedidos?.filter((p) => p.status === 'pendente') || [];
+        if (pendentesData.length === 0) {
+            toastError('Nenhum pedido pendente para gerar etiqueta');
+            return;
+        }
+        processarEmMassa(pendentesData.map((p) => p.id), pendentesData);
+    };
+
+    const handleImportarPedidos = async () => {
+        try {
+            setImportando(true);
             setIsLoading(true);
-            const results = [];
-            for (const id of ids) {
-                try {
-                    const result = await service.processarPedidoShopify(id);
-                    results.push({ id, success: true, data: result });
-                } catch (error) {
-                    results.push({ id, success: false, error });
-                }
-            }
-            return results;
-        },
-        onSuccess: (results) => {
-            setIsLoading(false);
-            const successCount = results.filter((r) => r.success).length;
-            const errorCount = results.filter((r) => !r.success).length;
 
-            if (successCount > 0) {
-                toastSuccess(`${successCount} etiqueta(s) gerada(s) com sucesso!`);
-            }
-            if (errorCount > 0) {
-                toastError(`${errorCount} pedido(s) com erro`);
-            }
-
-            setSelectedIds([]);
-            queryClient.invalidateQueries({ queryKey: ['pedidos-importados'] });
-        },
-        onError: () => {
-            setIsLoading(false);
-            toastError('Erro ao processar pedidos');
-        },
-    });
-
-    // Mutation para importar novos pedidos
-    const importarMutation = useMutation({
-        mutationFn: async () => {
-            setIsLoading(true);
             const integracoesResponse = await service.getAll();
             const shopifyIntegracao = integracoesResponse.data.find((i) => i.plataforma === 'shopify');
 
@@ -152,39 +227,20 @@ const PedidosImportados = () => {
                 throw new Error('Selecione um remetente na integração Shopify');
             }
 
-            return service.importarPedidosShopify(shopifyIntegracao.id, shopifyIntegracao.remetenteId);
-        },
-        onSuccess: (response) => {
-            setIsLoading(false);
+            const response = await service.importarPedidosShopify(shopifyIntegracao.id, shopifyIntegracao.remetenteId);
             setCurrentPage(1);
             toastSuccess(response?.message || 'Pedidos importados!');
             queryClient.invalidateQueries({ queryKey: ['pedidos-importados'] });
-        },
-        onError: (error: Error) => {
-            setIsLoading(false);
+        } catch (error: any) {
             toastError(error.message || 'Erro ao importar pedidos');
-        },
-    });
+        } finally {
+            setImportando(false);
+            setIsLoading(false);
+        }
+    };
 
     const handleCheckboxChange = (id: string, selected: boolean) => {
         setSelectedIds((prev) => (selected ? [...prev, id] : prev.filter((item) => item !== id)));
-    };
-
-    const handleProcessarSelecionados = () => {
-        if (selectedIds.length === 0) {
-            toastError('Selecione pelo menos um pedido');
-            return;
-        }
-        processarMutation.mutate(selectedIds);
-    };
-
-    const handleGerarEmMassa = () => {
-        const pendentesIds = pedidos?.filter((p) => p.status === 'pendente').map((p) => p.id) || [];
-        if (pendentesIds.length === 0) {
-            toastError('Nenhum pedido pendente para gerar etiqueta');
-            return;
-        }
-        processarMutation.mutate(pendentesIds);
     };
 
     const pendentes = pedidos?.filter((p) => p.status === 'pendente') || [];
@@ -217,10 +273,10 @@ const PedidosImportados = () => {
                       ]
                     : []),
                 {
-                    label: importarMutation.isPending ? 'Importando...' : 'Importar Pedidos',
-                    onClick: () => importarMutation.mutate(),
+                    label: importando ? 'Importando...' : 'Importar Pedidos',
+                    onClick: handleImportarPedidos,
                     bgColor: 'bg-primary',
-                    icon: <RefreshCcw className={`w-4 h-4 ${importarMutation.isPending ? 'animate-spin' : ''}`} />,
+                    icon: <RefreshCcw className={`w-4 h-4 ${importando ? 'animate-spin' : ''}`} />,
                 },
             ]}
         >
@@ -300,17 +356,28 @@ const PedidosImportados = () => {
                         Clique em "Importar Pedidos" para buscar pedidos da sua loja
                     </p>
                     <button
-                        onClick={() => importarMutation.mutate()}
-                        disabled={importarMutation.isPending}
+                        onClick={handleImportarPedidos}
+                        disabled={importando}
                         className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors inline-flex items-center gap-2"
                     >
-                        <RefreshCcw className={`w-4 h-4 ${importarMutation.isPending ? 'animate-spin' : ''}`} />
+                        <RefreshCcw className={`w-4 h-4 ${importando ? 'animate-spin' : ''}`} />
                         Importar Pedidos
                     </button>
                 </div>
             )}
 
             {isError && <NotFoundData />}
+
+            <ModalProgressoGeracaoMassa
+                isOpen={progresso.isOpen}
+                total={progresso.total}
+                processados={progresso.processados}
+                sucessos={progresso.sucessos}
+                erros={progresso.erros}
+                pedidoAtual={progresso.pedidoAtual}
+                onCancelar={handleCancelar}
+                cancelando={cancelando}
+            />
         </Content>
     );
 };
