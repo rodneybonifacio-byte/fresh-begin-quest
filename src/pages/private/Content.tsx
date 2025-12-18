@@ -100,47 +100,71 @@ export const Content = ({ children, titulo, subTitulo, isButton, button, data, i
                             })}
                         </div>
 
-                        {/* Dropdown em telas pequenas */}
-                        {visibleButtons.length > 0 && (
-                            <div className="md:hidden relative" ref={dropdownRef}>
-                                <button
-                                    className="min-w-[44px] min-h-[44px] border border-slate-300 dark:border-slate-600 py-2 px-3 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
-                                    onClick={() => setDropdownOpen(!dropdownOpen)}
-                                    aria-label="Menu de ações"
-                                >
-                                    <MoreVertical size={20} />
-                                </button>
+                        {/* Botões em telas pequenas - mostra último botão (principal) e dropdown para os demais */}
+                        <div className="md:hidden flex flex-row gap-2 items-center">
+                            {/* Dropdown para botões secundários */}
+                            {visibleButtons.length > 1 && (
+                                <div className="relative" ref={dropdownRef}>
+                                    <button
+                                        className="min-w-[44px] min-h-[44px] border border-slate-300 dark:border-slate-600 py-2 px-3 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+                                        onClick={() => setDropdownOpen(!dropdownOpen)}
+                                        aria-label="Menu de ações"
+                                    >
+                                        <MoreVertical size={20} />
+                                    </button>
 
-                                {dropdownOpen && (
-                                    <div className="absolute right-0 top-12 z-50 bg-white dark:bg-slate-800 shadow-lg border border-gray-100 dark:border-slate-700 rounded-lg overflow-hidden min-w-[200px]">
-                                        {visibleButtons.map((btn, index) =>
-                                            btn.link ? (
-                                                <Link
-                                                    key={index}
-                                                    to={btn.link}
-                                                    className="w-full text-left px-4 py-3 min-h-[44px] text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center gap-3 transition-colors"
-                                                >
-                                                    {btn.icon}
-                                                    <span className="flex-1">{btn.label}</span>
-                                                </Link>
-                                            ) : (
-                                                <button
-                                                    key={index}
-                                                    onClick={() => {
-                                                        btn.onClick?.();
-                                                        setDropdownOpen(false);
-                                                    }}
-                                                    className="w-full text-left px-4 py-3 min-h-[44px] text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center gap-3 transition-colors"
-                                                >
-                                                    {btn.icon}
-                                                    <span className="flex-1">{btn.label}</span>
-                                                </button>
-                                            )
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                                    {dropdownOpen && (
+                                        <div className="absolute right-0 top-12 z-50 bg-white dark:bg-slate-800 shadow-lg border border-gray-100 dark:border-slate-700 rounded-lg overflow-hidden min-w-[200px]">
+                                            {visibleButtons.slice(0, -1).map((btn, index) =>
+                                                btn.link ? (
+                                                    <Link
+                                                        key={index}
+                                                        to={btn.link}
+                                                        className="w-full text-left px-4 py-3 min-h-[44px] text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center gap-3 transition-colors"
+                                                    >
+                                                        {btn.icon}
+                                                        <span className="flex-1">{btn.label}</span>
+                                                    </Link>
+                                                ) : (
+                                                    <button
+                                                        key={index}
+                                                        onClick={() => {
+                                                            btn.onClick?.();
+                                                            setDropdownOpen(false);
+                                                        }}
+                                                        className="w-full text-left px-4 py-3 min-h-[44px] text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center gap-3 transition-colors"
+                                                    >
+                                                        {btn.icon}
+                                                        <span className="flex-1">{btn.label}</span>
+                                                    </button>
+                                                )
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Botão principal (último da lista) sempre visível no mobile */}
+                            {visibleButtons.length > 0 && (() => {
+                                const mainBtn = visibleButtons[visibleButtons.length - 1];
+                                const classes = clsx(
+                                    'min-h-[44px] py-2.5 px-4 flex gap-2 text-white text-sm font-medium rounded-lg justify-center items-center transition whitespace-nowrap',
+                                    mainBtn.bgColor || 'bg-secondary hover:bg-secondary/80 dark:bg-secondary-dark dark:hover:bg-secondary-dark/80'
+                                );
+                                
+                                return mainBtn.link ? (
+                                    <Link to={mainBtn.link} className={classes}>
+                                        {mainBtn.icon}
+                                        <span>{mainBtn.label}</span>
+                                    </Link>
+                                ) : (
+                                    <button onClick={mainBtn.onClick} className={classes}>
+                                        {mainBtn.icon}
+                                        <span>{mainBtn.label}</span>
+                                    </button>
+                                );
+                            })()}
+                        </div>
                     </div>
                 </div>
             </div>
