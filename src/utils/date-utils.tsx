@@ -175,8 +175,11 @@ export const formatDateTime = (input: string | null | undefined, formatStr = 'dd
     let date: Date;
 
     if (input.includes('T')) {
-        // Remove o 'Z' ou outro sufixo de fuso
-        const cleanInput = input.replace(/Z$/, '').replace(/\.\d+/, '');
+        // Remove timezone offset (Z, +00:00, -03:00, etc.) e milissegundos
+        const cleanInput = input
+            .replace(/Z$/, '')
+            .replace(/[+-]\d{2}:\d{2}$/, '')
+            .replace(/\.\d+/, '');
         const [datePart, timePart = '00:00:00'] = cleanInput.split('T');
         const [year, month, day] = datePart.split('-').map(Number);
         const [hour, minute, second = '0'] = timePart.split(':').map(Number);
@@ -189,7 +192,8 @@ export const formatDateTime = (input: string | null | undefined, formatStr = 'dd
     }
 
     if (isNaN(date.getTime())) {
-        throw new Error(`Data inválida: ${input}`);
+        console.warn(`Data inválida recebida: ${input}`);
+        return input; // Retorna o input original em vez de lançar erro
     }
 
     return format(date, formatStr);
