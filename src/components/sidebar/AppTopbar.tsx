@@ -18,6 +18,7 @@ const AppTopbar = observer(({
   } = useTheme();
   const [showProfilePopover, setShowProfilePopover] = useState(false);
   const profileButtonRef = useRef<HTMLButtonElement>(null);
+  const suppressClickRef = useRef(false);
   const navigate = useNavigate();
 
   // Dados do usuário logado - obtidos do store de autenticação
@@ -27,6 +28,25 @@ const AppTopbar = observer(({
   const userInfo = {
     name: userData?.name || 'Usuário',
     email: userData?.email || 'usuario@exemplo.com',
+  };
+
+  const toggleProfilePopover = (e?: React.SyntheticEvent) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    setShowProfilePopover((prev) => !prev);
+  };
+
+  const handleProfileTouchStart: React.TouchEventHandler<HTMLButtonElement> = (e) => {
+    suppressClickRef.current = true;
+    toggleProfilePopover(e);
+    window.setTimeout(() => {
+      suppressClickRef.current = false;
+    }, 450);
+  };
+
+  const handleProfileClick: React.MouseEventHandler<HTMLButtonElement> = (e) => {
+    if (suppressClickRef.current) return;
+    toggleProfilePopover(e);
   };
 
   const handleLogout = () => {
@@ -73,15 +93,8 @@ const AppTopbar = observer(({
               ref={profileButtonRef}
               aria-haspopup="menu"
               aria-expanded={showProfilePopover}
-              onPointerDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setShowProfilePopover((prev) => !prev);
-              }}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-              }}
+              onTouchStart={handleProfileTouchStart}
+              onClick={handleProfileClick}
               className="flex items-center space-x-2 cursor-pointer hover:bg-accent active:bg-accent/80 rounded-lg p-2 transition-colors touch-manipulation"
             >
               <ProfileAvatar name={userInfo.name} size="sm" />
@@ -91,19 +104,18 @@ const AppTopbar = observer(({
 
           {/* Overlay para fechar popover quando clicar fora - ANTES do popover */}
           {showProfilePopover && (
-            <div 
-              className="fixed inset-0 z-[60] touch-manipulation" 
-              onPointerDown={(e) => {
-                e.preventDefault();
-                setShowProfilePopover(false);
-              }}
+            <div
+              className="fixed inset-0 z-[60] touch-manipulation"
+              role="presentation"
+              aria-hidden="true"
+              onClick={() => setShowProfilePopover(false)}
             />
           )}
 
           {/* Popover de perfil - z-index maior que overlay */}
           {showProfilePopover && createPortal(
             <div 
-              className="fixed bg-white dark:bg-slate-800 border border-border rounded-lg shadow-xl py-2 min-w-[220px] z-[70] touch-manipulation" 
+              className="fixed bg-white dark:bg-slate-800 border border-border rounded-lg shadow-xl py-2 min-w-[220px] z-[70] touch-manipulation"
               style={{ top: '60px', right: '20px' }}
               onClick={(e) => e.stopPropagation()}
             >
