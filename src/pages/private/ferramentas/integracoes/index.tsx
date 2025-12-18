@@ -1,5 +1,6 @@
 // Componente: Integracoes.tsx
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { FormularioDinamico, type FormSchema } from "./FormularioDinamico";
 import { Content } from "../../Content";
 import { SwitchToggle } from "../../../../components/SwitchToggle";
@@ -7,7 +8,6 @@ import { ModalCustom } from "../../../../components/modal";
 import { IntegracaoService, type IIntegracao } from "../../../../services/IntegracaoService";
 import { toast } from "sonner";
 import { Check, Link2, Copy, Trash2 } from "lucide-react";
-
 const plataformasDisponiveis: FormSchema[] = [
     {
         image: "/shopify.png",
@@ -33,6 +33,7 @@ const plataformasDisponiveis: FormSchema[] = [
 ];
 
 const Integracoes = () => {
+    const navigate = useNavigate();
     const [showModal, setShowModal] = useState(false);
     const [plataformaSelecionada, setPlataformaSelecionada] = useState<FormSchema | null>(null);
     const [integracoes, setIntegracoes] = useState<IIntegracao[]>([]);
@@ -57,6 +58,11 @@ const Integracoes = () => {
     }, []);
 
     const handleConectar = (plataforma: FormSchema) => {
+        // Para Shopify, navegar para a página dedicada
+        if (plataforma.plataforma === 'shopify') {
+            navigate('/app/ferramentas/integracoes/novo/shopify');
+            return;
+        }
         setPlataformaSelecionada(plataforma);
         setShowModal(true);
     };
