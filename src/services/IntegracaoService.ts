@@ -49,6 +49,102 @@ export class IntegracaoService {
         };
     }
 
+    public async importarPedidosShopify(integracaoId: string, remetenteId: string): Promise<IResponse<any>> {
+        try {
+            const clienteId = this.getClienteId();
+            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+
+            const response = await fetch(`${supabaseUrl}/functions/v1/shopify-importar-pedidos`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+                },
+                body: JSON.stringify({
+                    integracaoId,
+                    clienteId,
+                    remetenteId,
+                    status: 'unfulfilled',
+                    limit: 50,
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Erro ao importar pedidos');
+            }
+
+            const data = await response.json();
+            return {
+                message: `Importação concluída: ${data.importados} pedidos importados`,
+                data,
+            };
+        } catch (error) {
+            console.error('Erro ao importar pedidos Shopify:', error);
+            throw error;
+        }
+    }
+
+    public async processarPedidoShopify(pedidoId: string): Promise<IResponse<any>> {
+        try {
+            const clienteId = this.getClienteId();
+            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+            const userToken = localStorage.getItem('accessToken');
+
+            const response = await fetch(`${supabaseUrl}/functions/v1/shopify-processar-pedido`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+                },
+                body: JSON.stringify({
+                    pedidoId,
+                    clienteId,
+                    userToken,
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Erro ao processar pedido');
+            }
+
+            const data = await response.json();
+            return {
+                message: 'Etiqueta gerada com sucesso!',
+                data,
+            };
+        } catch (error) {
+            console.error('Erro ao processar pedido Shopify:', error);
+            throw error;
+        }
+    }
+
+    public async getPedidosImportados(): Promise<IResponse<any[]>> {
+        try {
+            const supabaseAuth = this.getSupabaseWithAuth();
+            const clienteId = this.getClienteId();
+
+            const { data: pedidos, error } = await supabaseAuth
+                .from('pedidos_importados')
+                .select('*, remetentes(*)')
+                .eq('cliente_id', clienteId)
+                .order('criado_em', { ascending: false });
+
+            if (error) {
+                throw new Error(error.message);
+            }
+
+            return {
+                message: 'Pedidos carregados com sucesso',
+                data: pedidos || [],
+            };
+        } catch (error) {
+            console.error('Erro ao buscar pedidos importados:', error);
+            throw error;
+        }
+    }
+
     public async create(data: {
         credenciais: IIntegracaoNuvemshop | Record<string, any>; 
         plataforma: string;
