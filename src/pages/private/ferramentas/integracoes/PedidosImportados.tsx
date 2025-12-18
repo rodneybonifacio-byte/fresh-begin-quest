@@ -340,16 +340,77 @@ const PedidosImportados = () => {
         processarEmMassa(comErro.map((p) => p.id), comErro);
     };
 
+    // Card mobile para cada pedido
+    const PedidoCard = ({ pedido }: { pedido: PedidoImportado }) => {
+        const documento = extrairDocumento(pedido);
+        
+        return (
+            <div className={`bg-card border rounded-xl p-4 space-y-3 ${
+                selectedIds.includes(pedido.id) ? 'border-primary bg-primary/5' : 'border-border'
+            }`}>
+                {/* Header: Checkbox + Pedido + Status */}
+                <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        {pedido.status === 'pendente' && (
+                            <CustomCheckbox
+                                checked={selectedIds.includes(pedido.id)}
+                                item={{ value: pedido.id, label: '' }}
+                                onSelected={(item, selected) => handleCheckboxChange(item.value, selected)}
+                            />
+                        )}
+                        <div className="flex items-center gap-2">
+                            <Package className="w-4 h-4 text-muted-foreground" />
+                            <span className="font-semibold">#{pedido.numero_pedido}</span>
+                        </div>
+                    </div>
+                    <StatusBadge status={pedido.status} />
+                </div>
+
+                {/* Destinatário */}
+                <div className="space-y-1">
+                    <span className="font-medium text-sm">{pedido.destinatario_nome}</span>
+                    <p className="text-xs text-muted-foreground">
+                        {pedido.destinatario_logradouro}
+                        {pedido.destinatario_numero ? `, ${pedido.destinatario_numero}` : ''} - {pedido.destinatario_bairro}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                        {pedido.destinatario_cidade}/{pedido.destinatario_estado} - CEP: {pedido.destinatario_cep}
+                    </p>
+                </div>
+
+                {/* CPF/CNPJ + Doc Status */}
+                <div className="flex items-center justify-between gap-2 py-2 border-t border-border">
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">CPF/CNPJ:</span>
+                        <span className="font-mono text-xs">{formatarDocumento(documento)}</span>
+                    </div>
+                    <DocumentoBadge documento={documento} />
+                </div>
+
+                {/* Footer: Valor + Rastreio + Data */}
+                <div className="flex items-center justify-between text-sm pt-2 border-t border-border">
+                    <div className="flex items-center gap-4">
+                        <span className="font-semibold text-primary">R$ {Number(pedido.valor_total || 0).toFixed(2)}</span>
+                        {pedido.codigo_rastreio && (
+                            <span className="font-mono text-xs bg-muted px-2 py-1 rounded">{pedido.codigo_rastreio}</span>
+                        )}
+                    </div>
+                    <span className="text-xs text-muted-foreground">{formatDateTime(pedido.criado_em)}</span>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <Content
-            titulo="Envios - Pedidos Importados"
+            titulo="Pedidos Importados"
             subTitulo={`${pendentes.length} pendente(s) · ${processados.length} processado(s)${comErro.length > 0 ? ` · ${comErro.length} erro(s)` : ''}`}
             isButton
             button={[
                 ...(comErro.length > 0
                     ? [
                           {
-                              label: `Reprocessar Falhados (${comErro.length})`,
+                              label: window.innerWidth < 640 ? `Reprocessar (${comErro.length})` : `Reprocessar Falhados (${comErro.length})`,
                               onClick: handleReprocessarFalhados,
                               bgColor: 'bg-red-600 hover:bg-red-700',
                               icon: <RotateCcw className="w-4 h-4" />,
@@ -359,7 +420,7 @@ const PedidosImportados = () => {
                 ...(pendentes.length > 0
                     ? [
                           {
-                              label: `Gerar Todos (${pendentes.length})`,
+                              label: window.innerWidth < 640 ? `Gerar (${pendentes.length})` : `Gerar Todos (${pendentes.length})`,
                               onClick: handleGerarEmMassa,
                               bgColor: 'bg-amber-600 hover:bg-amber-700',
                               icon: <Zap className="w-4 h-4" />,
@@ -369,7 +430,7 @@ const PedidosImportados = () => {
                 ...(selectedIds.length > 0
                     ? [
                           {
-                              label: `Gerar Etiquetas (${selectedIds.length})`,
+                              label: window.innerWidth < 640 ? `Etiquetas (${selectedIds.length})` : `Gerar Etiquetas (${selectedIds.length})`,
                               onClick: handleProcessarSelecionados,
                               bgColor: 'bg-green-600 hover:bg-green-700',
                               icon: <Truck className="w-4 h-4" />,
@@ -377,7 +438,7 @@ const PedidosImportados = () => {
                       ]
                     : []),
                 {
-                    label: importando ? 'Importando...' : 'Importar Pedidos',
+                    label: importando ? 'Importando...' : (window.innerWidth < 640 ? 'Importar' : 'Importar Pedidos'),
                     onClick: handleImportarPedidos,
                     bgColor: 'bg-primary',
                     icon: <RefreshCcw className={`w-4 h-4 ${importando ? 'animate-spin' : ''}`} />,
@@ -388,93 +449,103 @@ const PedidosImportados = () => {
 
             {!isLoading && !isError && pedidos && pedidos.length > 0 && (
                 <div className="rounded-lg">
-                    <TableCustom thead={['', 'Pedido', 'Plataforma', 'Destinatário', 'CPF/CNPJ (company)', 'Doc.', 'Cidade/UF', 'Valor', 'Status', 'Rastreio', 'Data']}>
-                        {paginatedPedidos.map((pedido) => {
-                            const documento = extrairDocumento(pedido);
-                            
-                            return (
-                                <tr
-                                    key={pedido.id}
-                                    className={`hover:bg-accent/50 cursor-pointer transition-colors ${
-                                        selectedIds.includes(pedido.id) ? 'bg-primary/5' : ''
-                                    }`}
-                                >
-                                    <td className="px-4 py-3">
-                                        {pedido.status === 'pendente' && (
-                                            <CustomCheckbox
-                                                checked={selectedIds.includes(pedido.id)}
-                                                item={{ value: pedido.id, label: '' }}
-                                                onSelected={(item, selected) => handleCheckboxChange(item.value, selected)}
-                                            />
-                                        )}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <div className="flex items-center gap-2">
-                                            <Package className="w-4 h-4 text-muted-foreground" />
-                                            <span className="font-medium">{pedido.numero_pedido}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <span className="text-sm capitalize">{pedido.plataforma}</span>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <div className="flex flex-col">
-                                            <span className="font-medium">{pedido.destinatario_nome}</span>
-                                            <span className="text-xs text-muted-foreground">
-                                                {pedido.destinatario_logradouro}
-                                                {pedido.destinatario_numero ? `, ${pedido.destinatario_numero}` : ''}
+                    {/* Desktop: Table view */}
+                    <div className="hidden md:block">
+                        <TableCustom thead={['', 'Pedido', 'Plataforma', 'Destinatário', 'CPF/CNPJ (company)', 'Doc.', 'Cidade/UF', 'Valor', 'Status', 'Rastreio', 'Data']}>
+                            {paginatedPedidos.map((pedido) => {
+                                const documento = extrairDocumento(pedido);
+                                
+                                return (
+                                    <tr
+                                        key={pedido.id}
+                                        className={`hover:bg-accent/50 cursor-pointer transition-colors ${
+                                            selectedIds.includes(pedido.id) ? 'bg-primary/5' : ''
+                                        }`}
+                                    >
+                                        <td className="px-4 py-3">
+                                            {pedido.status === 'pendente' && (
+                                                <CustomCheckbox
+                                                    checked={selectedIds.includes(pedido.id)}
+                                                    item={{ value: pedido.id, label: '' }}
+                                                    onSelected={(item, selected) => handleCheckboxChange(item.value, selected)}
+                                                />
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <div className="flex items-center gap-2">
+                                                <Package className="w-4 h-4 text-muted-foreground" />
+                                                <span className="font-medium">{pedido.numero_pedido}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <span className="text-sm capitalize">{pedido.plataforma}</span>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <div className="flex flex-col">
+                                                <span className="font-medium">{pedido.destinatario_nome}</span>
+                                                <span className="text-xs text-muted-foreground">
+                                                    {pedido.destinatario_logradouro}
+                                                    {pedido.destinatario_numero ? `, ${pedido.destinatario_numero}` : ''}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <span className="font-mono text-xs">
+                                                {formatarDocumento(documento)}
                                             </span>
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <span className="font-mono text-xs">
-                                            {formatarDocumento(documento)}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <DocumentoBadge documento={documento} />
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <span className="text-sm text-muted-foreground">
-                                            {pedido.destinatario_cidade}/{pedido.destinatario_estado}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <span className="font-medium">R$ {Number(pedido.valor_total || 0).toFixed(2)}</span>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <StatusBadge status={pedido.status} />
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        {pedido.codigo_rastreio ? (
-                                            <span className="font-mono text-xs bg-muted px-2 py-1 rounded">{pedido.codigo_rastreio}</span>
-                                        ) : (
-                                            <span className="text-muted-foreground text-sm">-</span>
-                                        )}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <span className="text-sm text-muted-foreground">{formatDateTime(pedido.criado_em)}</span>
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </TableCustom>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <DocumentoBadge documento={documento} />
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <span className="text-sm text-muted-foreground">
+                                                {pedido.destinatario_cidade}/{pedido.destinatario_estado}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <span className="font-medium">R$ {Number(pedido.valor_total || 0).toFixed(2)}</span>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <StatusBadge status={pedido.status} />
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            {pedido.codigo_rastreio ? (
+                                                <span className="font-mono text-xs bg-muted px-2 py-1 rounded">{pedido.codigo_rastreio}</span>
+                                            ) : (
+                                                <span className="text-muted-foreground text-sm">-</span>
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <span className="text-sm text-muted-foreground">{formatDateTime(pedido.criado_em)}</span>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </TableCustom>
+                    </div>
+
+                    {/* Mobile: Card view */}
+                    <div className="md:hidden space-y-3">
+                        {paginatedPedidos.map((pedido) => (
+                            <PedidoCard key={pedido.id} pedido={pedido} />
+                        ))}
+                    </div>
 
                     <PaginacaoCustom meta={paginationMeta} onPageChange={setCurrentPage} />
                 </div>
             )}
 
             {!isLoading && !isError && (!pedidos || pedidos.length === 0) && (
-                <div className="text-center py-12">
-                    <Package className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-foreground mb-2">Nenhum pedido importado</h3>
-                    <p className="text-muted-foreground mb-4">
-                        Clique em "Importar Pedidos" para buscar pedidos da sua loja
+                <div className="text-center py-8 md:py-12 px-4">
+                    <Package className="w-12 h-12 md:w-16 md:h-16 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-base md:text-lg font-medium text-foreground mb-2">Nenhum pedido importado</h3>
+                    <p className="text-sm md:text-base text-muted-foreground mb-4">
+                        Clique em "Importar" para buscar pedidos da sua loja
                     </p>
                     <button
                         onClick={handleImportarPedidos}
                         disabled={importando}
-                        className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors inline-flex items-center gap-2"
+                        className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors inline-flex items-center gap-2 text-sm md:text-base"
                     >
                         <RefreshCcw className={`w-4 h-4 ${importando ? 'animate-spin' : ''}`} />
                         Importar Pedidos
