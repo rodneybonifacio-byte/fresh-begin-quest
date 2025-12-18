@@ -6,10 +6,11 @@ import { TableCustom } from '../../../../components/table';
 import { NotFoundData } from '../../../../components/NotFoundData';
 import CustomCheckbox from '../../../../components/CheckboxCustom';
 import { useLoadingSpinner } from '../../../../providers/LoadingSpinnerContext';
+import { PaginacaoCustom } from '../../../../components/PaginacaoCustom';
 
 import { toastError, toastSuccess } from '../../../../utils/toastNotify';
 import { formatDateTime } from '../../../../utils/date-utils';
-import { RefreshCcw, Package, CheckCircle, Clock, AlertCircle, Truck } from 'lucide-react';
+import { RefreshCcw, Package, CheckCircle, Clock, AlertCircle, Truck, Zap } from 'lucide-react';
 import { IntegracaoService } from '../../../../services/IntegracaoService';
 
 interface PedidoImportado {
@@ -65,11 +66,14 @@ const StatusBadge = ({ status }: { status: string }) => {
     );
 };
 
+const ITEMS_PER_PAGE = 10;
+
 const PedidosImportados = () => {
     const { setIsLoading } = useLoadingSpinner();
     const queryClient = useQueryClient();
     const service = new IntegracaoService();
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [currentPage, setCurrentPage] = useState(1);
 
     // Buscar pedidos importados via backend function
     const { data: pedidos, isLoading, isError } = useQuery({
@@ -79,6 +83,23 @@ const PedidosImportados = () => {
             return response.data as PedidoImportado[];
         },
     });
+
+    // Paginação
+    const totalRecords = pedidos?.length || 0;
+    const totalPages = Math.ceil(totalRecords / ITEMS_PER_PAGE);
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const paginatedPedidos = pedidos?.slice(startIndex, endIndex) || [];
+    const recordsOnPage = paginatedPedidos.length;
+
+    const paginationMeta = {
+        currentPage,
+        totalPages,
+        totalRecords,
+        recordsOnPage,
+        prevPage: currentPage > 1 ? currentPage - 1 : null,
+        nextPage: currentPage < totalPages ? currentPage + 1 : null,
+    };
 
     // Mutation para processar pedidos selecionados (gerar etiquetas)
     const processarMutation = useMutation({
@@ -135,6 +156,7 @@ const PedidosImportados = () => {
         },
         onSuccess: (response) => {
             setIsLoading(false);
+            setCurrentPage(1);
             toastSuccess(response?.message || 'Pedidos importados!');
             queryClient.invalidateQueries({ queryKey: ['pedidos-importados'] });
         },
@@ -156,6 +178,15 @@ const PedidosImportados = () => {
         processarMutation.mutate(selectedIds);
     };
 
+    const handleGerarEmMassa = () => {
+        const pendentesIds = pedidos?.filter((p) => p.status === 'pendente').map((p) => p.id) || [];
+        if (pendentesIds.length === 0) {
+            toastError('Nenhum pedido pendente para gerar etiqueta');
+            return;
+        }
+        processarMutation.mutate(pendentesIds);
+    };
+
     const pendentes = pedidos?.filter((p) => p.status === 'pendente') || [];
     const processados = pedidos?.filter((p) => p.status === 'processado') || [];
 
@@ -165,6 +196,16 @@ const PedidosImportados = () => {
             subTitulo={`${pendentes.length} pendente(s) · ${processados.length} processado(s)`}
             isButton
             button={[
+                ...(pendentes.length > 0
+                    ? [
+                          {
+                              label: `Gerar Todos (${pendentes.length})`,
+                              onClick: handleGerarEmMassa,
+                              bgColor: 'bg-amber-600 hover:bg-amber-700',
+                              icon: <Zap className="w-4 h-4" />,
+                          },
+                      ]
+                    : []),
                 ...(selectedIds.length > 0
                     ? [
                           {
@@ -188,7 +229,7 @@ const PedidosImportados = () => {
             {!isLoading && !isError && pedidos && pedidos.length > 0 && (
                 <div className="rounded-lg">
                     <TableCustom thead={['', 'Pedido', 'Plataforma', 'Destinatário', 'Cidade/UF', 'Valor', 'Status', 'Rastreio', 'Data']}>
-                        {pedidos.map((pedido) => (
+                        {paginatedPedidos.map((pedido) => (
                             <tr
                                 key={pedido.id}
                                 className={`hover:bg-accent/50 cursor-pointer transition-colors ${
@@ -246,6 +287,8 @@ const PedidosImportados = () => {
                             </tr>
                         ))}
                     </TableCustom>
+
+                    <PaginacaoCustom meta={paginationMeta} onPageChange={setCurrentPage} />
                 </div>
             )}
 
