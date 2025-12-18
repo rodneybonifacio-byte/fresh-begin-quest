@@ -143,3 +143,6 @@ verify_jwt = false
 
 [functions.shopify-processar-pedido]
 verify_jwt = false
+
+[functions.gerenciar-integracoes]
+verify_jwt = false
