@@ -54,6 +54,7 @@ interface ImportarPedidosRequest {
   remetenteId: string;
   status?: string; // unfulfilled, fulfilled, partial, any
   limit?: number;
+  orderNumbers?: string[]; // Lista de números de pedido específicos para importar
 }
 
 serve(async (req: Request) => {
@@ -63,10 +64,10 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { integracaoId, clienteId, remetenteId, status = 'unfulfilled', limit = 50 }: ImportarPedidosRequest = await req.json();
+    const { integracaoId, clienteId, remetenteId, status = 'any', limit = 250, orderNumbers }: ImportarPedidosRequest = await req.json();
     
     console.log('🛒 [SHOPIFY] Iniciando importação de pedidos...');
-    console.log('📋 [SHOPIFY] Parâmetros:', { integracaoId, clienteId, remetenteId, status, limit });
+    console.log('📋 [SHOPIFY] Parâmetros:', { integracaoId, clienteId, remetenteId, status, limit, orderNumbers });
 
     // Inicializa Supabase
     // @ts-ignore
@@ -100,7 +101,12 @@ serve(async (req: Request) => {
     }
 
     // Buscar pedidos no Shopify
-    const shopifyUrl = `https://${shopDomain}/admin/api/2024-01/orders.json?status=any&fulfillment_status=${status}&limit=${limit}`;
+    let shopifyUrl = `https://${shopDomain}/admin/api/2024-01/orders.json?status=any&limit=${limit}`;
+    
+    // Se status específico foi passado e não é 'any'
+    if (status && status !== 'any') {
+      shopifyUrl += `&fulfillment_status=${status}`;
+    }
     
     console.log('🔄 [SHOPIFY] Buscando pedidos:', shopifyUrl);
 
@@ -119,9 +125,19 @@ serve(async (req: Request) => {
     }
 
     const shopifyData = await shopifyResponse.json();
-    const orders: ShopifyOrder[] = shopifyData.orders || [];
+    let orders: ShopifyOrder[] = shopifyData.orders || [];
 
-    console.log(`✅ [SHOPIFY] ${orders.length} pedidos encontrados`);
+    console.log(`✅ [SHOPIFY] ${orders.length} pedidos encontrados no Shopify`);
+
+    // Se foram passados números de pedido específicos, filtrar apenas esses
+    if (orderNumbers && orderNumbers.length > 0) {
+      const orderNumbersSet = new Set(orderNumbers.map(n => n.toString().replace('#', '')));
+      orders = orders.filter(order => {
+        const orderNum = order.name.replace('#', '');
+        return orderNumbersSet.has(orderNum) || orderNumbersSet.has(order.order_number.toString());
+      });
+      console.log(`🔍 [SHOPIFY] Filtrados ${orders.length} pedidos específicos dos ${orderNumbers.length} solicitados`);
+    }
 
     // Processar cada pedido
     const resultados = [];
