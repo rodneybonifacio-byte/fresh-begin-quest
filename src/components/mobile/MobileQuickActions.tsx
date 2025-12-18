@@ -44,7 +44,7 @@ export const MobileQuickActions = () => {
     {
       icon: Link,
       label: "Integrações",
-      route: "/app/integracoes",
+      route: "/app/ferramentas/integracoes",
       color: "text-cyan-600",
       bgColor: "bg-cyan-50 dark:bg-cyan-950/30"
     },
