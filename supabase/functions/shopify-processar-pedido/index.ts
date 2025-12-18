@@ -93,8 +93,8 @@ serve(async (req: Request) => {
 
     console.log('📍 [SHOPIFY-PROC] Destinatário preparado:', JSON.stringify(destinatario));
 
-    // Criar destinatário no sistema
-    const destinatarioResponse = await fetch(`${baseApiUrl}/destinatarios`, {
+    // Criar destinatário no sistema (endpoint correto: clientes/destinatarios)
+    const destinatarioResponse = await fetch(`${baseApiUrl}/clientes/destinatarios`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -120,7 +120,7 @@ serve(async (req: Request) => {
       
       // Se falhar, tentar buscar destinatário existente pelo CEP
       const searchResponse = await fetch(
-        `${baseApiUrl}/destinatarios?cep=${destinatario.cep}`,
+        `${baseApiUrl}/clientes/destinatarios?cep=${destinatario.cep}`,
         {
           headers: {
             'Authorization': `Bearer ${userToken}`,
