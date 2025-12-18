@@ -1,5 +1,5 @@
 import { Menu, Search, ChevronDown, Sun, Moon, User, LogOut, Shield } from 'lucide-react';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { observer } from 'mobx-react-lite';
@@ -33,10 +33,14 @@ const AppTopbar = observer(({
   const toggleProfilePopover = (e?: React.SyntheticEvent) => {
     e?.preventDefault?.();
     e?.stopPropagation?.();
-    setShowProfilePopover((prev) => !prev);
+    setShowProfilePopover((prev) => {
+      const next = !prev;
+      console.log('[AppTopbar] toggleProfilePopover ->', next);
+      return next;
+    });
   };
 
-  const handleProfileTouchStart: React.TouchEventHandler<HTMLButtonElement> = (e) => {
+  const handleProfileTouchEnd: React.TouchEventHandler<HTMLButtonElement> = (e) => {
     suppressClickRef.current = true;
     toggleProfilePopover(e);
     window.setTimeout(() => {
@@ -48,6 +52,10 @@ const AppTopbar = observer(({
     if (suppressClickRef.current) return;
     toggleProfilePopover(e);
   };
+
+  useEffect(() => {
+    console.log('[AppTopbar] showProfilePopover =', showProfilePopover);
+  }, [showProfilePopover]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -93,7 +101,7 @@ const AppTopbar = observer(({
               ref={profileButtonRef}
               aria-haspopup="menu"
               aria-expanded={showProfilePopover}
-              onTouchStart={handleProfileTouchStart}
+              onTouchEnd={handleProfileTouchEnd}
               onClick={handleProfileClick}
               className="flex items-center space-x-2 cursor-pointer hover:bg-accent active:bg-accent/80 rounded-lg p-2 transition-colors touch-manipulation"
             >
@@ -108,7 +116,10 @@ const AppTopbar = observer(({
               className="fixed inset-0 z-[60] touch-manipulation"
               role="presentation"
               aria-hidden="true"
-              onClick={() => setShowProfilePopover(false)}
+              onClick={() => {
+                console.log('[AppTopbar] overlay close');
+                setShowProfilePopover(false);
+              }}
             />
           )}
 

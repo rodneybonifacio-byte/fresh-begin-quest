@@ -1,5 +1,5 @@
 import { Sun, Moon, ChevronDown, User, LogOut, Shield } from 'lucide-react';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { observer } from 'mobx-react-lite';
@@ -26,10 +26,15 @@ export const MobileHeader = observer(() => {
     const toggleProfilePopover = (e?: React.SyntheticEvent) => {
         e?.preventDefault?.();
         e?.stopPropagation?.();
-        setShowProfilePopover((prev) => !prev);
+        setShowProfilePopover((prev) => {
+            const next = !prev;
+            console.log('[MobileHeader] toggleProfilePopover ->', next);
+            return next;
+        });
     };
 
-    const handleProfileTouchStart: React.TouchEventHandler<HTMLButtonElement> = (e) => {
+    const handleProfileTouchEnd: React.TouchEventHandler<HTMLButtonElement> = (e) => {
+        // Importante: abrir no TouchEnd evita o "abre e fecha" (o overlay pode capturar o clique após o TouchStart)
         suppressClickRef.current = true;
         toggleProfilePopover(e);
         window.setTimeout(() => {
@@ -41,6 +46,10 @@ export const MobileHeader = observer(() => {
         if (suppressClickRef.current) return;
         toggleProfilePopover(e);
     };
+
+    useEffect(() => {
+        console.log('[MobileHeader] showProfilePopover =', showProfilePopover);
+    }, [showProfilePopover]);
 
     const handleLogout = () => {
         localStorage.removeItem('token');
@@ -79,7 +88,7 @@ export const MobileHeader = observer(() => {
                                 ref={profileButtonRef}
                                 aria-haspopup="menu"
                                 aria-expanded={showProfilePopover}
-                                onTouchStart={handleProfileTouchStart}
+                                onTouchEnd={handleProfileTouchEnd}
                                 onClick={handleProfileClick}
                                 className="flex items-center space-x-1 cursor-pointer hover:bg-accent active:bg-accent/80 rounded-full p-3 transition-colors touch-manipulation select-none"
                                 style={{ WebkitTapHighlightColor: 'transparent' }}
@@ -103,7 +112,10 @@ export const MobileHeader = observer(() => {
                             className="fixed inset-0 z-[150] touch-manipulation"
                             role="presentation"
                             aria-hidden="true"
-                            onClick={() => setShowProfilePopover(false)}
+                            onClick={() => {
+                                console.log('[MobileHeader] overlay close');
+                                setShowProfilePopover(false);
+                            }}
                         />
                         <motion.div
                             initial={{ opacity: 0, y: -10, scale: 0.95 }}
