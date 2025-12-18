@@ -12,6 +12,7 @@ export const MobileHeader = observer(() => {
     const { theme, toggleTheme } = useTheme();
     const [showProfilePopover, setShowProfilePopover] = useState(false);
     const profileButtonRef = useRef<HTMLButtonElement>(null);
+    const suppressClickRef = useRef(false);
     const navigate = useNavigate();
 
     const userData = authStore.getUser();
@@ -20,6 +21,25 @@ export const MobileHeader = observer(() => {
     const userInfo = {
         name: userData?.name || 'Usuário',
         email: userData?.email || 'usuario@exemplo.com',
+    };
+
+    const toggleProfilePopover = (e?: React.SyntheticEvent) => {
+        e?.preventDefault?.();
+        e?.stopPropagation?.();
+        setShowProfilePopover((prev) => !prev);
+    };
+
+    const handleProfileTouchStart: React.TouchEventHandler<HTMLButtonElement> = (e) => {
+        suppressClickRef.current = true;
+        toggleProfilePopover(e);
+        window.setTimeout(() => {
+            suppressClickRef.current = false;
+        }, 450);
+    };
+
+    const handleProfileClick: React.MouseEventHandler<HTMLButtonElement> = (e) => {
+        if (suppressClickRef.current) return;
+        toggleProfilePopover(e);
     };
 
     const handleLogout = () => {
@@ -31,7 +51,7 @@ export const MobileHeader = observer(() => {
 
     return (
         <>
-            <header className="sticky top-0 z-50 bg-background border-b border-border lg:hidden">
+            <header className="sticky top-0 z-[100] isolate bg-background border-b border-border lg:hidden pointer-events-auto">
                 <div className="flex items-center justify-between px-4 h-14">
                     {/* Left side - Logo */}
                     <Link to="/app" className="flex items-center">
@@ -53,21 +73,14 @@ export const MobileHeader = observer(() => {
                         </button>
 
                         {/* Profile */}
-                        <div className="relative z-10">
+                        <div className="relative z-[110] pointer-events-auto">
                             <button
                                 type="button"
                                 ref={profileButtonRef}
                                 aria-haspopup="menu"
                                 aria-expanded={showProfilePopover}
-                                onPointerDown={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    setShowProfilePopover((prev) => !prev);
-                                }}
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                }}
+                                onTouchStart={handleProfileTouchStart}
+                                onClick={handleProfileClick}
                                 className="flex items-center space-x-1 cursor-pointer hover:bg-accent active:bg-accent/80 rounded-full p-3 transition-colors touch-manipulation select-none"
                                 style={{ WebkitTapHighlightColor: 'transparent' }}
                             >
@@ -87,19 +100,18 @@ export const MobileHeader = observer(() => {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="fixed inset-0 z-[80] touch-manipulation"
-                            onPointerDown={(e) => {
-                                e.preventDefault();
-                                setShowProfilePopover(false);
-                            }}
+                            className="fixed inset-0 z-[150] touch-manipulation"
+                            role="presentation"
+                            aria-hidden="true"
+                            onClick={() => setShowProfilePopover(false)}
                         />
                         <motion.div
                             initial={{ opacity: 0, y: -10, scale: 0.95 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: -10, scale: 0.95 }}
                             transition={{ duration: 0.15 }}
-                            className="fixed right-4 top-14 bg-card border border-border rounded-xl shadow-xl py-2 min-w-[220px] z-[90] touch-manipulation"
-                            onPointerDown={(e) => e.stopPropagation()}
+                            className="fixed right-4 top-16 bg-card border border-border rounded-xl shadow-xl py-2 min-w-[220px] z-[200] touch-manipulation"
+                            onClick={(e) => e.stopPropagation()}
                         >
                             {/* Header do perfil */}
                             <div className="px-4 py-3 border-b border-border">
