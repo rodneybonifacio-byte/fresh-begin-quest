@@ -234,16 +234,48 @@ serve(async (req: Request) => {
       valor: String(item.preco || 0),
     }));
 
-    // Criar emissão de etiqueta
+    // Preparar objeto destinatario completo para emissão
+    const destinatarioEmissao = {
+      id: destinatarioId,
+      nome: pedido.destinatario_nome || 'Destinatário',
+      cpfCnpj: pedido.destinatario_cpf_cnpj || '',
+      telefone: pedido.destinatario_telefone?.replace(/\D/g, '') || '',
+      celular: pedido.destinatario_telefone?.replace(/\D/g, '') || '',
+      email: pedido.destinatario_email || '',
+      endereco: {
+        cep: cepDestino,
+        logradouro: logradouro,
+        numero: numero || 'S/N',
+        complemento: pedido.destinatario_complemento || '',
+        bairro: pedido.destinatario_bairro || 'Centro',
+        localidade: pedido.destinatario_cidade || '',
+        uf: pedido.destinatario_estado || '',
+      },
+    };
+
+    // Preparar objeto embalagem para emissão
+    const embalagemEmissao = {
+      id: '',
+      descricao: 'Pacote Shopify',
+      altura,
+      largura,
+      comprimento,
+      peso: Math.round((pedido.peso_total || 0.3) * 1000), // peso em gramas
+      diametro: 0,
+      formatoObjeto: 'CAIXA_PACOTE',
+    };
+
+    // Criar emissão de etiqueta (endpoint: POST /emissoes)
     const emissaoPayload = {
       remetenteId: pedido.remetente_id,
-      destinatarioId,
-      externoId: pedido.externo_id,
-      numeroNotaFiscal: pedido.numero_pedido,
       cienteObjetoNaoProibido: true,
+      cadastrarDestinatario: false,
+      logisticaReversa: 'N',
       cotacao: freteEscolhido,
+      embalagem: embalagemEmissao,
+      destinatario: destinatarioEmissao,
       valorDeclarado: pedido.valor_total || 0,
-      valorNotaFiscal: pedido.valor_total || 0,
+      numeroNotaFiscal: pedido.numero_pedido?.replace('#', '') || '',
       observacao: `Pedido Shopify ${pedido.numero_pedido}`,
       itensDeclaracaoConteudo: itensDeclaracao.length > 0 ? itensDeclaracao : [{
         conteudo: 'Mercadoria',
@@ -252,9 +284,9 @@ serve(async (req: Request) => {
       }],
     };
 
-    console.log('📦 [SHOPIFY-PROC] Criando emissão de etiqueta...');
+    console.log('📦 [SHOPIFY-PROC] Criando emissão de etiqueta...', JSON.stringify(emissaoPayload));
 
-    const emissaoResponse = await fetch(`${baseApiUrl}/frete/emitir-etiqueta`, {
+    const emissaoResponse = await fetch(`${baseApiUrl}/emissoes`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
