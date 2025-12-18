@@ -23,7 +23,7 @@ export interface IIntegracao {
 export class IntegracaoService {
     
     private getSupabaseWithAuth() {
-        const token = localStorage.getItem('accessToken');
+        const token = localStorage.getItem('token');
         if (!token) {
             throw new Error('Token de autenticação não encontrado');
         }
