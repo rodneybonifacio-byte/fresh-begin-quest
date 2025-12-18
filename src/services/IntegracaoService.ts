@@ -123,7 +123,12 @@ export class IntegracaoService {
         try {
             const clienteId = this.getClienteId();
             const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-            const userToken = localStorage.getItem("accessToken");
+
+            // O token correto para a API externa é o mesmo usado pelo CustomHttpClient
+            const userToken = localStorage.getItem("token");
+            if (!userToken) {
+                throw new Error("Token do usuário não encontrado para gerar etiqueta");
+            }
 
             const response = await fetch(`${supabaseUrl}/functions/v1/shopify-processar-pedido`, {
                 method: "POST",
