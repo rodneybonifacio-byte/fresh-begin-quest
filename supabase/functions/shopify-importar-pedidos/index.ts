@@ -91,14 +91,34 @@ serve(async (req: Request) => {
 
     console.log('✅ [SHOPIFY] Integração encontrada:', integracao.plataforma);
 
-    // Extrair credenciais
-    const credenciais = integracao.credenciais as { accessToken: string; shopDomain: string };
+    // Extrair credenciais descriptografadas usando a função RPC
+    let credenciais: { accessToken: string; shopDomain: string } | null = null;
+    
+    // Verificar se há credenciais criptografadas
+    if (integracao.credenciais_encrypted) {
+      const { data: decryptedCreds, error: decryptError } = await supabase
+        .rpc('decrypt_credentials', { encrypted_data: integracao.credenciais_encrypted });
+      
+      if (decryptError) {
+        console.error('❌ [SHOPIFY] Erro ao descriptografar credenciais:', decryptError);
+        throw new Error('Erro ao descriptografar credenciais da integração');
+      }
+      
+      credenciais = decryptedCreds as { accessToken: string; shopDomain: string };
+    } else if (integracao.credenciais && integracao.credenciais.accessToken) {
+      // Fallback para credenciais legadas não criptografadas
+      credenciais = integracao.credenciais as { accessToken: string; shopDomain: string };
+    }
+
     const accessToken = credenciais?.accessToken;
     const shopDomain = credenciais?.shopDomain;
 
     if (!accessToken || !shopDomain) {
+      console.error('❌ [SHOPIFY] Credenciais ausentes. Has encrypted:', !!integracao.credenciais_encrypted);
       throw new Error('Credenciais inválidas na integração');
     }
+    
+    console.log('✅ [SHOPIFY] Credenciais obtidas para loja:', shopDomain);
 
     // Buscar pedidos no Shopify
     let shopifyUrl = `https://${shopDomain}/admin/api/2024-01/orders.json?status=any&limit=${limit}`;

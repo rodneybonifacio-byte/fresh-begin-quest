@@ -93,12 +93,41 @@ serve(async (req: Request) => {
       );
     }
 
+    // Obter credenciais descriptografadas
+    let accessToken: string | null = null;
+    
+    if (integracaoConfig.credenciais_encrypted) {
+      const { data: decryptedCreds, error: decryptError } = await supabase
+        .rpc('decrypt_credentials', { encrypted_data: integracaoConfig.credenciais_encrypted });
+      
+      if (decryptError) {
+        console.error('❌ [NUVEMSHOP] Erro ao descriptografar credenciais:', decryptError);
+        return new Response(
+          JSON.stringify({ error: 'Erro ao descriptografar credenciais' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+        );
+      }
+      
+      accessToken = (decryptedCreds as { accessToken: string })?.accessToken;
+    } else if (integracaoConfig.credenciais?.accessToken) {
+      // Fallback para credenciais legadas
+      accessToken = integracaoConfig.credenciais.accessToken;
+    }
+
+    if (!accessToken) {
+      console.error('❌ [NUVEMSHOP] Credenciais inválidas para store_id:', webhookData.store_id);
+      return new Response(
+        JSON.stringify({ error: 'Credenciais inválidas' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      );
+    }
+
     // Buscar dados completos do pedido na API da Nuvemshop
     const orderResponse = await fetch(
       `https://api.tiendanube.com/v1/${webhookData.store_id}/orders/${webhookData.id}`,
       {
         headers: {
-          'Authentication': `bearer ${integracaoConfig.credenciais.accessToken}`,
+          'Authentication': `bearer ${accessToken}`,
           'User-Agent': 'BRHUB Envios (contato@brhub.com.br)',
           'Content-Type': 'application/json',
         },
