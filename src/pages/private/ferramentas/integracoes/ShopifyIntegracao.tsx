@@ -70,12 +70,14 @@ const ShopifyIntegracao = () => {
             if (integracoes && integracoes.length > 0) {
                 const shopify = integracoes[0];
                 setIntegracaoExistente(shopify);
-                const creds = shopify.credenciais as { accessToken: string; shopDomain: string };
+
+                // As credenciais ficam criptografadas no backend, então não voltam para o client.
+                // O domínio da loja é salvo em storeId (não sensível) para exibição.
                 methods.reset({
-                    accessToken: creds?.accessToken || '',
-                    shopDomain: creds?.shopDomain || '',
+                    accessToken: '',
+                    shopDomain: shopify.storeId || '',
                 });
-                
+
                 // Buscar dados completos do remetente
                 if (shopify.remetenteId) {
                     try {
@@ -92,10 +94,15 @@ const ShopifyIntegracao = () => {
                                 localidade: response.data.endereco?.localidade,
                                 uf: response.data.endereco?.uf,
                             });
+                        } else {
+                            setSelectedRemetente({
+                                id: shopify.remetenteId,
+                                nome: `Remetente (${shopify.remetenteId.slice(0, 8)}...)`,
+                            });
                         }
                     } catch (error) {
                         console.error('Erro ao buscar remetente:', error);
-                        setSelectedRemetente({ id: shopify.remetenteId, nome: 'Remetente não encontrado' });
+                        setSelectedRemetente({ id: shopify.remetenteId, nome: `Remetente (${shopify.remetenteId.slice(0, 8)}...)` });
                     }
                 }
             }
@@ -190,9 +197,10 @@ const ShopifyIntegracao = () => {
                                     <ShoppingBag className="w-4 h-4 text-green-600 dark:text-green-400" />
                                     <span className="text-green-700 dark:text-green-300 font-medium">Loja:</span>
                                     <span className="text-green-800 dark:text-green-200">
-                                        {(integracaoExistente.credenciais as { shopDomain?: string })?.shopDomain || 'Não informada'}
+                                        {integracaoExistente.storeId || methods.getValues('shopDomain') || 'Não informada'}
                                     </span>
                                 </div>
+
                                 <div className="flex items-center gap-2 text-sm">
                                     <Link2 className="w-4 h-4 text-green-600 dark:text-green-400" />
                                     <span className="text-green-700 dark:text-green-300 font-medium">Remetente:</span>
