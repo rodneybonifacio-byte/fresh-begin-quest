@@ -741,6 +741,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "pedidos_importados_integracao_id_fkey"
+            columns: ["integracao_id"]
+            isOneToOne: false
+            referencedRelation: "integracoes_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "pedidos_importados_remetente_id_fkey"
             columns: ["remetente_id"]
             isOneToOne: false
@@ -968,6 +975,45 @@ export type Database = {
       }
     }
     Views: {
+      integracoes_safe: {
+        Row: {
+          ativo: boolean | null
+          atualizado_em: string | null
+          cliente_id: string | null
+          credenciais_status: Json | null
+          criado_em: string | null
+          id: string | null
+          plataforma: string | null
+          remetente_id: string | null
+          store_id: string | null
+          webhook_url: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          atualizado_em?: string | null
+          cliente_id?: string | null
+          credenciais_status?: never
+          criado_em?: string | null
+          id?: string | null
+          plataforma?: string | null
+          remetente_id?: string | null
+          store_id?: string | null
+          webhook_url?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          atualizado_em?: string | null
+          cliente_id?: string | null
+          credenciais_status?: never
+          criado_em?: string | null
+          id?: string | null
+          plataforma?: string | null
+          remetente_id?: string | null
+          store_id?: string | null
+          webhook_url?: string | null
+        }
+        Relationships: []
+      }
       remetentes_masked: {
         Row: {
           atualizado_em: string | null
@@ -1120,6 +1166,27 @@ export type Database = {
       get_integracao_credenciais_segura: {
         Args: { p_integracao_id: string }
         Returns: Json
+      }
+      get_integracoes_cliente: {
+        Args: never
+        Returns: {
+          ativo: boolean | null
+          atualizado_em: string | null
+          cliente_id: string | null
+          credenciais_status: Json | null
+          criado_em: string | null
+          id: string | null
+          plataforma: string | null
+          remetente_id: string | null
+          store_id: string | null
+          webhook_url: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "integracoes_safe"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_parceiro_id_from_jwt: { Args: never; Returns: string }
       get_remetente_cpf_cnpj_seguro: {
