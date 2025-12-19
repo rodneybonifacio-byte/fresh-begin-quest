@@ -13,6 +13,8 @@ const statusEnvioColors: Record<string, string> = {
     AGUARDANDO_RETIRADA: "bg-orange-100 text-orange-800",
     EM_ATRASO: "bg-red-200 text-red-900",
     ENTREGUE: "bg-green-100 text-green-800",
+    DEVOLVIDO: "bg-slate-200 text-slate-800",
+    EXTRAVIADO: "bg-fuchsia-100 text-fuchsia-800",
     EXPIRADO: "bg-gray-300 text-gray-700",
     CANCELADO: "bg-red-100 text-red-800",
 };

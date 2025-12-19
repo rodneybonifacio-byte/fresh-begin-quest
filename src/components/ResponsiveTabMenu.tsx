@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, Package, Send, Truck, Clock, MapPin, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import { ChevronDown, Package, Send, Truck, Clock, MapPin, AlertTriangle, CheckCircle, XCircle, RotateCcw, HelpCircle } from "lucide-react";
 
 type TabItemType = {
     value: string;
@@ -23,6 +23,8 @@ const items: TabItemType[] = [
     { value: "AGUARDANDO_RETIRADA", label: "Aguard. Retirada", icon: MapPin, color: "orange" },
     { value: "EM_ATRASO", label: "Em Atraso", icon: AlertTriangle, color: "red" },
     { value: "ENTREGUE", label: "Entregue", icon: CheckCircle, color: "emerald" },
+    { value: "DEVOLVIDO", label: "Devolvido", icon: RotateCcw, color: "slate" },
+    { value: "EXTRAVIADO", label: "Extraviado", icon: HelpCircle, color: "fuchsia" },
     { value: "CANCELADO", label: "Cancelado", icon: XCircle, color: "rose" },
 ];
 
@@ -35,6 +37,8 @@ const colorClasses: Record<string, { bg: string; text: string; activeBg: string;
     orange: { bg: "bg-orange-50 dark:bg-orange-900/20", text: "text-orange-600 dark:text-orange-400", activeBg: "bg-orange-600", activeText: "text-white", ring: "ring-orange-600/20" },
     red: { bg: "bg-red-50 dark:bg-red-900/20", text: "text-red-600 dark:text-red-400", activeBg: "bg-red-600", activeText: "text-white", ring: "ring-red-600/20" },
     emerald: { bg: "bg-emerald-50 dark:bg-emerald-900/20", text: "text-emerald-600 dark:text-emerald-400", activeBg: "bg-emerald-600", activeText: "text-white", ring: "ring-emerald-600/20" },
+    slate: { bg: "bg-slate-50 dark:bg-slate-900/20", text: "text-slate-600 dark:text-slate-400", activeBg: "bg-slate-600", activeText: "text-white", ring: "ring-slate-600/20" },
+    fuchsia: { bg: "bg-fuchsia-50 dark:bg-fuchsia-900/20", text: "text-fuchsia-600 dark:text-fuchsia-400", activeBg: "bg-fuchsia-600", activeText: "text-white", ring: "ring-fuchsia-600/20" },
     rose: { bg: "bg-rose-50 dark:bg-rose-900/20", text: "text-rose-600 dark:text-rose-400", activeBg: "bg-rose-600", activeText: "text-white", ring: "ring-rose-600/20" },
 };
 
