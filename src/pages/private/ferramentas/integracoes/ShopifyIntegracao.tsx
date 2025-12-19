@@ -11,6 +11,7 @@ import { IntegracaoService, type IIntegracao } from '../../../../services/Integr
 import { SelecionarRemetente } from '../../../../components/SelecionarRemetente';
 import { toastError, toastSuccess } from '../../../../utils/toastNotify';
 import { formatDateTime } from '../../../../utils/date-utils';
+import { RemetenteService } from '../../../../services/RemetenteService';
 
 const schema = yup.object().shape({
     accessToken: yup.string().required('Access Token é obrigatório'),
@@ -43,6 +44,7 @@ interface Remetente {
 const ShopifyIntegracao = () => {
     const queryClient = useQueryClient();
     const service = new IntegracaoService();
+    const remetenteService = new RemetenteService();
     const [selectedRemetente, setSelectedRemetente] = useState<Remetente | null>(null);
     const [integracaoExistente, setIntegracaoExistente] = useState<IIntegracao | null>(null);
 
@@ -64,18 +66,42 @@ const ShopifyIntegracao = () => {
     });
 
     useEffect(() => {
-        if (integracoes && integracoes.length > 0) {
-            const shopify = integracoes[0];
-            setIntegracaoExistente(shopify);
-            const creds = shopify.credenciais as { accessToken: string; shopDomain: string };
-            methods.reset({
-                accessToken: creds?.accessToken || '',
-                shopDomain: creds?.shopDomain || '',
-            });
-            if (shopify.remetenteId) {
-                setSelectedRemetente({ id: shopify.remetenteId, nome: '' });
+        const loadIntegracao = async () => {
+            if (integracoes && integracoes.length > 0) {
+                const shopify = integracoes[0];
+                setIntegracaoExistente(shopify);
+                const creds = shopify.credenciais as { accessToken: string; shopDomain: string };
+                methods.reset({
+                    accessToken: creds?.accessToken || '',
+                    shopDomain: creds?.shopDomain || '',
+                });
+                
+                // Buscar dados completos do remetente
+                if (shopify.remetenteId) {
+                    try {
+                        const response = await remetenteService.getById(shopify.remetenteId);
+                        if (response?.data) {
+                            setSelectedRemetente({
+                                id: response.data.id,
+                                nome: response.data.nome,
+                                cpfCnpj: response.data.cpfCnpj,
+                                cep: response.data.endereco?.cep,
+                                logradouro: response.data.endereco?.logradouro,
+                                numero: response.data.endereco?.numero,
+                                bairro: response.data.endereco?.bairro,
+                                localidade: response.data.endereco?.localidade,
+                                uf: response.data.endereco?.uf,
+                            });
+                        }
+                    } catch (error) {
+                        console.error('Erro ao buscar remetente:', error);
+                        setSelectedRemetente({ id: shopify.remetenteId, nome: 'Remetente não encontrado' });
+                    }
+                }
             }
-        }
+        };
+        
+        loadIntegracao();
     }, [integracoes, methods]);
 
     // Mutation para criar/atualizar integração
@@ -147,19 +173,37 @@ const ShopifyIntegracao = () => {
         >
             <div className="max-w-2xl mx-auto">
                 {/* Status Card */}
-                <div className={`p-4 rounded-lg mb-6 flex items-center gap-3 ${integracaoExistente ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' : 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800'}`}>
+                <div className={`p-4 rounded-lg mb-6 ${integracaoExistente ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' : 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800'}`}>
                     {integracaoExistente ? (
-                        <>
-                            <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
-                            <div>
-                                <p className="font-medium text-green-800 dark:text-green-200">Integração Ativa</p>
-                                <p className="text-sm text-green-600 dark:text-green-400">
-                                    Configurada em {formatDateTime(integracaoExistente.criadoEm || '')}
-                                </p>
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-3">
+                                <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                                <div>
+                                    <p className="font-medium text-green-800 dark:text-green-200">Integração Ativa</p>
+                                    <p className="text-sm text-green-600 dark:text-green-400">
+                                        Configurada em {formatDateTime(integracaoExistente.criadoEm || '')}
+                                    </p>
+                                </div>
                             </div>
-                        </>
+                            <div className="pt-3 border-t border-green-200 dark:border-green-800 space-y-2">
+                                <div className="flex items-center gap-2 text-sm">
+                                    <ShoppingBag className="w-4 h-4 text-green-600 dark:text-green-400" />
+                                    <span className="text-green-700 dark:text-green-300 font-medium">Loja:</span>
+                                    <span className="text-green-800 dark:text-green-200">
+                                        {(integracaoExistente.credenciais as { shopDomain?: string })?.shopDomain || 'Não informada'}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm">
+                                    <Link2 className="w-4 h-4 text-green-600 dark:text-green-400" />
+                                    <span className="text-green-700 dark:text-green-300 font-medium">Remetente:</span>
+                                    <span className="text-green-800 dark:text-green-200">
+                                        {selectedRemetente?.nome || 'Carregando...'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
                     ) : (
-                        <>
+                        <div className="flex items-center gap-3">
                             <XCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
                             <div>
                                 <p className="font-medium text-yellow-800 dark:text-yellow-200">Integração Não Configurada</p>
@@ -167,7 +211,7 @@ const ShopifyIntegracao = () => {
                                     Configure abaixo para começar a importar pedidos
                                 </p>
                             </div>
-                        </>
+                        </div>
                     )}
                 </div>
 
