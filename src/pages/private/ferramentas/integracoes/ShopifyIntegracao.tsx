@@ -11,7 +11,7 @@ import { IntegracaoService, type IIntegracao } from '../../../../services/Integr
 import { SelecionarRemetente } from '../../../../components/SelecionarRemetente';
 import { toastError, toastSuccess } from '../../../../utils/toastNotify';
 import { formatDateTime } from '../../../../utils/date-utils';
-import { RemetenteService } from '../../../../services/RemetenteService';
+import { RemetenteSupabaseDirectService } from '../../../../services/RemetenteSupabaseDirectService';
 
 const schema = yup.object().shape({
     accessToken: yup.string().required('Access Token é obrigatório'),
@@ -44,7 +44,7 @@ interface Remetente {
 const ShopifyIntegracao = () => {
     const queryClient = useQueryClient();
     const service = new IntegracaoService();
-    const remetenteService = new RemetenteService();
+    const remetenteService = new RemetenteSupabaseDirectService();
     const [selectedRemetente, setSelectedRemetente] = useState<Remetente | null>(null);
     const [integracaoExistente, setIntegracaoExistente] = useState<IIntegracao | null>(null);
 
