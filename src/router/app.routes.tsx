@@ -95,6 +95,10 @@ export const appRoutesConfig: ProtectedRouteItem[] = [
         component: () => import("../pages/private/simulador")
     },
     {
+        path: "simulador/frete",
+        component: () => import("../pages/private/simulador")
+    },
+    {
         path: "pdf-viewer/:encodedData",
         component: () => import("../pages/private/emissao/PDFViewerPage")
     },
