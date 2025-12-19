@@ -67,15 +67,26 @@ serve(async (req) => {
         const { plataforma, credenciais, remetenteId } = body;
         const webhookUrl = `${supabaseUrl}/functions/v1/nuvemshop-webhook`;
 
+        // Criptografar credenciais antes de salvar
+        const { data: encryptedCredenciais, error: encryptError } = await supabase
+          .rpc('encrypt_credentials', { credentials: credenciais });
+        
+        if (encryptError) {
+          console.error("Erro ao criptografar credenciais:", encryptError);
+          throw new Error("Erro ao criptografar credenciais");
+        }
+
         const { data, error } = await supabase
           .from("integracoes")
           .insert({
             cliente_id: clienteId,
             plataforma,
-            credenciais,
+            credenciais: { encrypted: true }, // Indicador de que está criptografado
+            credenciais_encrypted: encryptedCredenciais,
             remetente_id: remetenteId || null,
             ativo: true,
             webhook_url: webhookUrl,
+            store_id: credenciais.shopDomain || credenciais.storeId || null,
           })
           .select()
           .single();
@@ -94,7 +105,22 @@ serve(async (req) => {
         const { id, credenciais, remetenteId, ativo } = body;
 
         const updateData: any = {};
-        if (credenciais !== undefined) updateData.credenciais = credenciais;
+        
+        // Se credenciais foram passadas, criptografar
+        if (credenciais !== undefined) {
+          const { data: encryptedCredenciais, error: encryptError } = await supabase
+            .rpc('encrypt_credentials', { credentials: credenciais });
+          
+          if (encryptError) {
+            console.error("Erro ao criptografar credenciais:", encryptError);
+            throw new Error("Erro ao criptografar credenciais");
+          }
+          
+          updateData.credenciais = { encrypted: true };
+          updateData.credenciais_encrypted = encryptedCredenciais;
+          updateData.store_id = credenciais.shopDomain || credenciais.storeId || null;
+        }
+        
         if (remetenteId !== undefined) updateData.remetente_id = remetenteId;
         if (ativo !== undefined) updateData.ativo = ativo;
 
