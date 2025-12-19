@@ -58,6 +58,58 @@ export class RemetenteSupabaseDirectService {
         }
     }
 
+    async getById(id: string): Promise<IResponse<IRemetente | null>> {
+        try {
+            console.log('📊 Buscando remetente por ID:', id);
+            
+            const apiToken = localStorage.getItem('token');
+            if (!apiToken) {
+                throw new Error('Token não encontrado');
+            }
+
+            const { data, error } = await supabase.functions.invoke('buscar-remetentes-supabase', {
+                body: { apiToken, remetenteId: id },
+            });
+
+            if (error) {
+                console.error('❌ Erro ao buscar remetente:', error);
+                return { data: null };
+            }
+
+            const remetentes = data?.data || [];
+            const r = remetentes.find((rem: any) => rem.id === id);
+            
+            if (!r) {
+                return { data: null };
+            }
+
+            const remetente: IRemetente = {
+                id: r.id,
+                nome: r.nome,
+                cpfCnpj: r.cpf_cnpj,
+                documentoEstrangeiro: r.documento_estrangeiro || '',
+                celular: r.celular || '',
+                telefone: r.telefone || '',
+                email: r.email || '',
+                endereco: {
+                    cep: r.cep || '',
+                    logradouro: r.logradouro || '',
+                    numero: r.numero || '',
+                    complemento: r.complemento || '',
+                    bairro: r.bairro || '',
+                    localidade: r.localidade || '',
+                    uf: r.uf || '',
+                },
+                criadoEm: r.criado_em ? new Date(r.criado_em) : undefined,
+            };
+
+            return { data: remetente };
+        } catch (error) {
+            console.error('❌ Erro ao buscar remetente:', error);
+            return { data: null };
+        }
+    }
+
     async sincronizarComApiBrhub(remetenteId: string): Promise<{ success: boolean; message: string; newId?: string }> {
         try {
             console.log('📤 Sincronizando remetente com API BRHUB:', remetenteId);
