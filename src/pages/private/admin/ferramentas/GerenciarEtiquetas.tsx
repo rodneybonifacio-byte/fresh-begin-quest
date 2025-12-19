@@ -306,6 +306,7 @@ export default function GerenciarEtiquetas() {
       peso: emissao.embalagem?.peso || 0,
       valorDeclarado: emissao.valorDeclarado || 0,
       observacao: emissao.observacao || '',
+      servicoFrete: emissao.servico?.toUpperCase()?.includes('SEDEX') ? 'SEDEX' : 'PAC',
     });
     setShowRegerarModal(true);
   };
@@ -366,7 +367,7 @@ export default function GerenciarEtiquetas() {
           peso: Number(editableEmissao.peso),
           valor_declarado: Number(editableEmissao.valorDeclarado),
           valor_frete: 0,
-          servico_frete: "PAC",
+          servico_frete: editableEmissao.servicoFrete || "PAC",
           observacao: editableEmissao.observacao?.trim() || ''
         }]
       };
@@ -912,14 +913,27 @@ export default function GerenciarEtiquetas() {
               </div>
             </div>
 
-            <div>
-              <label className="text-sm font-medium mb-1 block">Valor Declarado (R$)</label>
-              <input
-                type="number"
-                className="w-full px-3 py-2 border rounded-lg bg-background"
-                value={editableEmissao.valorDeclarado}
-                onChange={(e) => setEditableEmissao({ ...editableEmissao, valorDeclarado: e.target.value })}
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Serviço de Frete</label>
+                <select
+                  className="w-full px-3 py-2 border rounded-lg bg-background"
+                  value={editableEmissao.servicoFrete}
+                  onChange={(e) => setEditableEmissao({ ...editableEmissao, servicoFrete: e.target.value })}
+                >
+                  <option value="PAC">PAC</option>
+                  <option value="SEDEX">SEDEX</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Valor Declarado (R$)</label>
+                <input
+                  type="number"
+                  className="w-full px-3 py-2 border rounded-lg bg-background"
+                  value={editableEmissao.valorDeclarado}
+                  onChange={(e) => setEditableEmissao({ ...editableEmissao, valorDeclarado: e.target.value })}
+                />
+              </div>
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t">
