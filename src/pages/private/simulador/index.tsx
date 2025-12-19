@@ -41,14 +41,7 @@ const schame = yup.object().shape({
 
 type FormDataSchema = yup.InferType<typeof schame>;
 
-const SimuladorFreteForm = () => {
-    const isMobile = !useBreakpoint('md');
-    
-    // Mobile view
-    if (isMobile) {
-        return <MobileSimulador />;
-    }
-    
+const DesktopSimuladorFreteForm = () => {
     const { setIsLoading } = useLoadingSpinner();
     const { user: userPayload } = useAuth();
     const { onBuscaCep, response: enderecoDestino } = useAddress();
@@ -280,6 +273,11 @@ const SimuladorFreteForm = () => {
             />
         </Content>
     );
+};
+
+const SimuladorFreteForm = () => {
+    const isMobile = !useBreakpoint('md');
+    return isMobile ? <MobileSimulador /> : <DesktopSimuladorFreteForm />;
 };
 
 export default SimuladorFreteForm;
