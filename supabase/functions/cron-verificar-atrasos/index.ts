@@ -191,6 +191,88 @@ function isAtrasado(dataPrevisao: Date): boolean {
   return hoje > dataPrevisao
 }
 
+async function limparEmissoesEntregues(supabase: any, token: string): Promise<number> {
+  const baseApiUrl = Deno.env.get('BASE_API_URL')
+  
+  console.log('[CRON-ATRASOS] Verificando emissões já entregues para remoção...')
+  
+  // Buscar todos os registros da tabela emissoes_em_atraso
+  const { data: registrosAtraso, error: fetchError } = await supabase
+    .from('emissoes_em_atraso')
+    .select('id, emissao_id, codigo_objeto')
+  
+  if (fetchError) {
+    console.error('[CRON-ATRASOS] Erro ao buscar registros de atraso:', fetchError.message)
+    return 0
+  }
+  
+  if (!registrosAtraso || registrosAtraso.length === 0) {
+    console.log('[CRON-ATRASOS] Nenhum registro de atraso para verificar')
+    return 0
+  }
+  
+  console.log(`[CRON-ATRASOS] Verificando ${registrosAtraso.length} registros de atraso...`)
+  
+  let removidos = 0
+  const statusFinais = ['ENTREGUE', 'DEVOLVIDO', 'CANCELADO', 'EXTRAVIADO']
+  
+  for (const registro of registrosAtraso) {
+    try {
+      // Buscar status atual da emissão na API externa
+      const response = await fetch(
+        `${baseApiUrl}/emissoes/${registro.emissao_id}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      )
+      
+      if (response.ok) {
+        const emissaoData = await response.json()
+        const statusAtual = emissaoData?.data?.status || emissaoData?.status
+        
+        // Se a emissão tem status final, remover da tabela de atrasos
+        if (statusAtual && statusFinais.includes(statusAtual.toUpperCase())) {
+          console.log(`[CRON-ATRASOS] Removendo ${registro.codigo_objeto} - Status: ${statusAtual}`)
+          
+          const { error: deleteError } = await supabase
+            .from('emissoes_em_atraso')
+            .delete()
+            .eq('id', registro.id)
+          
+          if (!deleteError) {
+            removidos++
+          } else {
+            console.warn(`[CRON-ATRASOS] Erro ao remover ${registro.codigo_objeto}:`, deleteError.message)
+          }
+        }
+      } else if (response.status === 404) {
+        // Emissão não existe mais, remover
+        console.log(`[CRON-ATRASOS] Removendo ${registro.codigo_objeto} - Emissão não encontrada`)
+        
+        const { error: deleteError } = await supabase
+          .from('emissoes_em_atraso')
+          .delete()
+          .eq('id', registro.id)
+        
+        if (!deleteError) {
+          removidos++
+        }
+      }
+      
+      // Delay para evitar rate limiting
+      await new Promise(resolve => setTimeout(resolve, 100))
+    } catch (err) {
+      console.warn(`[CRON-ATRASOS] Erro ao verificar ${registro.codigo_objeto}:`, err)
+    }
+  }
+  
+  console.log(`[CRON-ATRASOS] Total de registros removidos: ${removidos}`)
+  return removidos
+}
+
 serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -209,6 +291,9 @@ serve(async (req: Request) => {
     // Login como admin
     const token = await loginAdmin()
 
+    // PRIMEIRO: Limpar emissões que já foram entregues
+    const totalRemovidas = await limparEmissoesEntregues(supabase, token)
+
     // Buscar emissões em trânsito
     const emissoesEmTransito = await fetchEmissoesEmTransito(token)
 
@@ -219,7 +304,8 @@ serve(async (req: Request) => {
           success: true, 
           message: 'Nenhuma emissão em trânsito para verificar',
           totalVerificadas: 0,
-          totalAtrasadas: 0 
+          totalAtrasadas: 0,
+          totalRemovidas
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
@@ -264,7 +350,7 @@ serve(async (req: Request) => {
     }
 
     const duration = Date.now() - startTime
-    console.log(`[CRON-ATRASOS] Verificação concluída em ${duration}ms. Total verificadas: ${totalVerificadas}, Atrasadas: ${totalAtrasadas}`)
+    console.log(`[CRON-ATRASOS] Verificação concluída em ${duration}ms. Verificadas: ${totalVerificadas}, Atrasadas: ${totalAtrasadas}, Removidas: ${totalRemovidas}`)
 
     return new Response(
       JSON.stringify({
@@ -272,6 +358,7 @@ serve(async (req: Request) => {
         message: 'Verificação de atrasos concluída',
         totalVerificadas,
         totalAtrasadas,
+        totalRemovidas,
         durationMs: duration
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
