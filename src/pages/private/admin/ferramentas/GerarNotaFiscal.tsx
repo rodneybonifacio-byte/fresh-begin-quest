@@ -40,23 +40,33 @@ const dadosDestinatario = {
 const itensNota = [
   {
     codigo: '001',
-    descricao: 'Switch de 24 portas Modelo 3',
-    ncm: '85176294',
+    descricao: 'Rolo 350 metros de rede cabo blindado',
+    ncm: '85444900',
     cfop: '5102',
     unidade: 'UN',
-    quantidade: 3,
-    valorUnitario: 459.00,
-    valorTotal: 1377.00
+    quantidade: 1,
+    valorUnitario: 1650.00,
+    valorTotal: 1650.00
   },
   {
     codigo: '002',
-    descricao: 'Caixa de Cabo de Rede Cat6 305m',
+    descricao: 'Caixa com 70 metros de cabo de rede',
     ncm: '85444900',
     cfop: '5102',
     unidade: 'CX',
-    quantidade: 2,
-    valorUnitario: 1000.00,
-    valorTotal: 2000.00
+    quantidade: 1,
+    valorUnitario: 300.00,
+    valorTotal: 300.00
+  },
+  {
+    codigo: '003',
+    descricao: 'Rack 5u',
+    ncm: '85176294',
+    cfop: '5102',
+    unidade: 'UN',
+    quantidade: 1,
+    valorUnitario: 250.00,
+    valorTotal: 250.00
   }
 ];
 
@@ -71,7 +81,7 @@ export const GerarNotaFiscal = () => {
   const dataAtual = new Date();
   const dataFormatada = dataAtual.toLocaleDateString('pt-BR');
   const horaFormatada = dataAtual.toLocaleTimeString('pt-BR');
-  const numeroNF = `000${Math.floor(Math.random() * 1000)}`;
+  const numeroNF = '0068';
   const serie = '001';
   const chaveAcesso = `3524${dataAtual.getMonth() + 1}${dadosEmitente.cnpj.replace(/\D/g, '')}55${serie}${numeroNF}100000001`;
 
@@ -80,12 +90,8 @@ export const GerarNotaFiscal = () => {
     try {
       const boletoService = new BoletoService();
       
-      // Calcular próximo dia útil
-      const vencimento = new Date();
-      vencimento.setDate(vencimento.getDate() + 7);
-      while (vencimento.getDay() === 0 || vencimento.getDay() === 6) {
-        vencimento.setDate(vencimento.getDate() + 1);
-      }
+      // Vencimento fixo: 06/01/2025
+      const vencimento = new Date(2025, 0, 6); // Janeiro é mês 0
 
       const boleto = await boletoService.emitir({
         faturaId: `NF-${numeroNF}`,
