@@ -247,10 +247,10 @@ export const GerarNotaFiscal = () => {
           <div className="flex justify-between">
             <div className="flex-1">
               <p className="font-bold text-[10px]">Recebemos de {dadosEmitente.razaoSocial}</p>
-              <p className="text-[9px]">os produtos e/ou serviços constantes da Nota Fiscal Eletrônica indicada ao lado.</p>
+              <p className="text-[9px]">os produtos e/ou serviços constantes do Recibo indicado ao lado.</p>
             </div>
             <div className="border-l border-black pl-2 text-right">
-              <p className="font-bold">NF-e</p>
+              <p className="font-bold">RECIBO</p>
               <p>Nº {numeroNF}</p>
               <p>Série {serie}</p>
             </div>
@@ -316,13 +316,13 @@ export const GerarNotaFiscal = () => {
                 </div>
               </div>
               <p className="text-[8px] mt-1 text-center font-mono break-all">
-                CHAVE DE ACESSO
+                CÓDIGO DE VERIFICAÇÃO
               </p>
               <p className="text-[7px] text-center font-mono break-all">
                 {chaveAcesso.replace(/(.{4})/g, '$1 ')}
               </p>
               <p className="text-[7px] mt-1 text-center">
-                Consulte a autenticidade no portal nacional da NF-e
+                Documento sem valor fiscal
               </p>
             </div>
           </div>
@@ -458,7 +458,7 @@ export const GerarNotaFiscal = () => {
               <p>0,00</p>
             </div>
             <div className="flex-1 p-1 text-center">
-              <p className="text-[8px] text-gray-600">VALOR TOTAL DA NOTA</p>
+              <p className="text-[8px] text-gray-600">VALOR TOTAL DO RECIBO</p>
               <p className="font-bold">{valorTotalNota.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
             </div>
           </div>
@@ -561,9 +561,8 @@ export const GerarNotaFiscal = () => {
             <div className="flex-1 border-r border-black p-2 min-h-[60px]">
               <p className="text-[8px] text-gray-600">INFORMAÇÕES COMPLEMENTARES</p>
               <p className="text-[9px]">
-                Doc. emitido por ME ou EPP optante pelo Simples Nacional.<br />
-                Não gera direito a crédito fiscal de IPI.<br />
-                PEDIDO: #{numeroNF} | VENDEDOR: BRHUB ENVIOS
+                Documento sem valor fiscal - apenas para fins de comprovação de pagamento.<br />
+                RECIBO: #{numeroNF} | EMITENTE: BRHUB ENVIOS
               </p>
             </div>
             <div className="w-48 p-2">
