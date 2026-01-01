@@ -288,7 +288,7 @@ export const GerarNotaFiscal = () => {
 
             {/* DANFE */}
             <div className="w-32 border-r border-black p-2 text-center">
-              <p className="font-bold text-xl">SEM VALOR FISCAL</p>
+              <p className="font-bold text-xl">RECIBO</p>
               <p className="text-[8px]">Documento de</p>
               <p className="text-[8px]">Comprovação</p>
               <div className="mt-2 flex justify-center gap-2 text-xs">
