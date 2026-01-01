@@ -250,25 +250,23 @@ export const GerarNotaFiscal = () => {
               <span className="sm:hidden">{gerando ? 'Gerando...' : boletoGerado ? 'Gerado' : 'Gerar Boleto'}</span>
             </ButtonComponent>
             {boletoGerado && (
-              <>
-                <ButtonComponent onClick={handleDownloadPDF} variant="secondary" className="text-xs sm:text-sm">
-                  <Download className="w-4 h-4" />
-                  <span className="hidden sm:inline">Baixar Boleto PDF</span>
-                  <span className="sm:hidden">Boleto</span>
-                </ButtonComponent>
-                <ButtonComponent 
-                  onClick={handleCancelar} 
-                  disabled={cancelando}
-                  variant="ghost"
-                  className="text-xs sm:text-sm text-red-600 hover:text-red-700 hover:bg-red-50 border-red-300"
-                  border="outline"
-                >
-                  <X className="w-4 h-4" />
-                  <span className="hidden sm:inline">{cancelando ? 'Cancelando...' : 'Cancelar Boleto e Recibo'}</span>
-                  <span className="sm:hidden">{cancelando ? 'Cancelando...' : 'Cancelar'}</span>
-                </ButtonComponent>
-              </>
+              <ButtonComponent onClick={handleDownloadPDF} variant="secondary" className="text-xs sm:text-sm">
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">Baixar Boleto PDF</span>
+                <span className="sm:hidden">Boleto</span>
+              </ButtonComponent>
             )}
+            <ButtonComponent 
+              onClick={handleCancelar} 
+              disabled={cancelando || !boletoGerado}
+              variant="ghost"
+              className="text-xs sm:text-sm text-red-600 hover:text-red-700 hover:bg-red-50 border-red-300"
+              border="outline"
+            >
+              <X className="w-4 h-4" />
+              <span className="hidden sm:inline">{cancelando ? 'Cancelando...' : 'Cancelar Boleto e Recibo'}</span>
+              <span className="sm:hidden">{cancelando ? 'Cancelando...' : 'Cancelar'}</span>
+            </ButtonComponent>
           </div>
         </div>
       </div>
