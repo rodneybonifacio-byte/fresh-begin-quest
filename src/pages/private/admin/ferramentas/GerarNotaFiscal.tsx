@@ -234,7 +234,7 @@ export const GerarNotaFiscal = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4 print:p-0 print:bg-white">
+    <div className="min-h-screen bg-gray-100 p-2 sm:p-4 print:p-0 print:bg-white">
       {/* Header com ações */}
       <div className="max-w-[210mm] mx-auto mb-4 print:hidden">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -283,13 +283,15 @@ export const GerarNotaFiscal = () => {
         </div>
       </div>
 
-      {/* DANFE */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-[210mm] mx-auto bg-white shadow-lg print:shadow-none"
-        ref={notaRef}
-      >
+      {/* Container com scroll horizontal no mobile para manter A4 */}
+      <div className="overflow-x-auto print:overflow-visible">
+        {/* DANFE - Sempre no padrão A4 (210mm) */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-[210mm] min-w-[210mm] mx-auto bg-white shadow-lg print:shadow-none"
+          ref={notaRef}
+        >
         {/* Canhoto */}
         <div className="border border-black p-2 text-xs">
           <div className="flex justify-between">
@@ -625,6 +627,7 @@ export const GerarNotaFiscal = () => {
           <span>BRHUB Envios - Sistema de Gestão</span>
         </div>
       </motion.div>
+      </div>
 
       {/* Boleto gerado - Info (não imprime) */}
       {boletoGerado && (
