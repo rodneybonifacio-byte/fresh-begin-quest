@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Download, Printer, ArrowLeft, Barcode, Building2 } from 'lucide-react';
+import { Download, Printer, ArrowLeft, Barcode, Building2, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { BoletoService } from '../../../../services/BoletoService';
@@ -75,6 +75,7 @@ const valorTotalNota = itensNota.reduce((acc, item) => acc + item.valorTotal, 0)
 export const GerarNotaFiscal = () => {
   const navigate = useNavigate();
   const [gerando, setGerando] = useState(false);
+  const [cancelando, setCancelando] = useState(false);
   const [boletoGerado, setBoletoGerado] = useState<any>(null);
   const notaRef = useRef<HTMLDivElement>(null);
 
@@ -120,6 +121,26 @@ export const GerarNotaFiscal = () => {
       toast.error(error.message || 'Erro ao gerar boleto');
     } finally {
       setGerando(false);
+    }
+  };
+
+  const handleCancelar = async () => {
+    if (!boletoGerado?.nossoNumero) {
+      toast.error('Nenhum boleto para cancelar');
+      return;
+    }
+
+    setCancelando(true);
+    try {
+      const boletoService = new BoletoService();
+      await boletoService.cancelar(boletoGerado.nossoNumero, 'OUTROS');
+      setBoletoGerado(null);
+      toast.success('Boleto e recibo cancelados com sucesso!');
+    } catch (error: any) {
+      console.error('Erro ao cancelar:', error);
+      toast.error(error.message || 'Erro ao cancelar boleto');
+    } finally {
+      setCancelando(false);
     }
   };
 
@@ -204,7 +225,7 @@ export const GerarNotaFiscal = () => {
     <div className="min-h-screen bg-gray-100 p-4 print:p-0 print:bg-white">
       {/* Header com ações */}
       <div className="max-w-[210mm] mx-auto mb-4 print:hidden">
-        <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <button 
             onClick={() => navigate(-1)}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
@@ -212,24 +233,41 @@ export const GerarNotaFiscal = () => {
             <ArrowLeft className="w-4 h-4" />
             Voltar
           </button>
-          <div className="flex gap-2 flex-wrap">
-            <ButtonComponent onClick={handleImprimir} variant="ghost" border="outline">
+          <div className="flex gap-2 flex-wrap w-full sm:w-auto justify-end">
+            <ButtonComponent onClick={handleImprimir} variant="ghost" border="outline" className="text-xs sm:text-sm">
               <Printer className="w-4 h-4" />
-              {boletoGerado ? 'Baixar NF + Boleto' : 'Imprimir'}
+              <span className="hidden sm:inline">{boletoGerado ? 'Baixar NF + Boleto' : 'Imprimir'}</span>
+              <span className="sm:hidden">{boletoGerado ? 'Baixar' : 'Imprimir'}</span>
             </ButtonComponent>
             <ButtonComponent 
               onClick={handleGerarBoleto} 
               disabled={gerando || boletoGerado}
               variant="primary"
+              className="text-xs sm:text-sm"
             >
               <Barcode className="w-4 h-4" />
-              {gerando ? 'Gerando...' : boletoGerado ? 'Boleto Gerado' : 'Gerar Boleto Inter'}
+              <span className="hidden sm:inline">{gerando ? 'Gerando...' : boletoGerado ? 'Boleto Gerado' : 'Gerar Boleto Inter'}</span>
+              <span className="sm:hidden">{gerando ? 'Gerando...' : boletoGerado ? 'Gerado' : 'Gerar Boleto'}</span>
             </ButtonComponent>
             {boletoGerado && (
-              <ButtonComponent onClick={handleDownloadPDF} variant="secondary">
-                <Download className="w-4 h-4" />
-                Baixar Boleto PDF
-              </ButtonComponent>
+              <>
+                <ButtonComponent onClick={handleDownloadPDF} variant="secondary" className="text-xs sm:text-sm">
+                  <Download className="w-4 h-4" />
+                  <span className="hidden sm:inline">Baixar Boleto PDF</span>
+                  <span className="sm:hidden">Boleto</span>
+                </ButtonComponent>
+                <ButtonComponent 
+                  onClick={handleCancelar} 
+                  disabled={cancelando}
+                  variant="ghost"
+                  className="text-xs sm:text-sm text-red-600 hover:text-red-700 hover:bg-red-50 border-red-300"
+                  border="outline"
+                >
+                  <X className="w-4 h-4" />
+                  <span className="hidden sm:inline">{cancelando ? 'Cancelando...' : 'Cancelar Boleto e Recibo'}</span>
+                  <span className="sm:hidden">{cancelando ? 'Cancelando...' : 'Cancelar'}</span>
+                </ButtonComponent>
+              </>
             )}
           </div>
         </div>
