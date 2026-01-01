@@ -125,15 +125,27 @@ export const GerarNotaFiscal = () => {
   };
 
   const handleCancelar = async () => {
-    if (!boletoGerado?.nossoNumero) {
-      toast.error('Nenhum boleto para cancelar');
+    let nossoNumeroParaCancelar = boletoGerado?.nossoNumero;
+    
+    // Se não tem boleto em memória, perguntar o nossoNumero
+    if (!nossoNumeroParaCancelar) {
+      nossoNumeroParaCancelar = window.prompt('Digite o Nosso Número do boleto para cancelar:');
+      if (!nossoNumeroParaCancelar || nossoNumeroParaCancelar.trim() === '') {
+        toast.error('Nosso Número é obrigatório para cancelar');
+        return;
+      }
+    }
+
+    // Confirmar cancelamento
+    const confirmar = window.confirm(`Tem certeza que deseja cancelar o boleto ${nossoNumeroParaCancelar}? Esta ação não pode ser desfeita.`);
+    if (!confirmar) {
       return;
     }
 
     setCancelando(true);
     try {
       const boletoService = new BoletoService();
-      await boletoService.cancelar(boletoGerado.nossoNumero, 'OUTROS');
+      await boletoService.cancelar(nossoNumeroParaCancelar.trim(), 'OUTROS');
       setBoletoGerado(null);
       toast.success('Boleto e recibo cancelados com sucesso!');
     } catch (error: any) {
@@ -258,7 +270,7 @@ export const GerarNotaFiscal = () => {
             )}
             <ButtonComponent 
               onClick={handleCancelar} 
-              disabled={cancelando || !boletoGerado}
+              disabled={cancelando}
               variant="ghost"
               className="text-xs sm:text-sm text-red-600 hover:text-red-700 hover:bg-red-50 border-red-300"
               border="outline"
