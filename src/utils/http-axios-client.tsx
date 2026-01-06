@@ -46,59 +46,102 @@ export class CustomHttpClient implements IHttpClient {
         if (axios.isAxiosError(error)) {
             const { response } = error;
 
-            if (response) {
-                const { status, data } = response;
-
-                if (status === 401) {
-                    handleLogout();
-                    throw new Error('Sua sessão expirou. Por favor, faça login novamente.');
-                }
-
-                if (status === 403) {
-                    // Não mostra toast automaticamente para permitir tratamento específico nos componentes
-                    console.warn('⚠️ Acesso negado (403) para:', error.config?.url);
-                    throw new Error('Acesso negado.');
-                }
-
-                if (status === 400) {
-                    const messages: string[] = [];
-
-                    const errPayload = data?.error;
-
-                    // error: [{ message: ... }, { message: ... }]
-                    if (Array.isArray(errPayload)) {
-                        messages.push(...errPayload.map((e) => e?.message).filter((msg): msg is string => typeof msg === 'string'));
-                    }
-
-                    // error: { message: "..." }
-                    else if (typeof errPayload === 'object' && errPayload !== null && 'message' in errPayload) {
-                        const msg = (errPayload as { message?: string }).message;
-                        if (msg) messages.push(msg);
-                    }
-
-                    // error: "mensagem direta"
-                    else if (typeof errPayload === 'string') {
-                        messages.push(errPayload);
-                    }
-
-                    // estrutura: { campo1: [...], campo2: [...] }
-                    if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
-                        const fallbackMessages = Object.values(data)
-                            .flatMap((val) => (Array.isArray(val) ? val : []))
-                            .filter((msg): msg is string => typeof msg === 'string');
-
-                        messages.push(...fallbackMessages);
-                    }
-
-                    const finalMessage = messages.join('\n') || 'Requisição inválida.';
-                    toastError(finalMessage);
-                    throw new Error(finalMessage);
-                }
-
-                if (status === 500) {
-                    throw new Error('Erro interno do servidor.');
-                }
+            // Sem response -> erro de rede / CORS / timeout
+            if (!response) {
+                console.error('🌐 Erro de rede/sem resposta:', {
+                    url: error.config?.url,
+                    method: error.config?.method,
+                    message: error.message,
+                });
+                throw new Error('Falha ao conectar ao servidor. Verifique sua conexão e tente novamente.');
             }
+
+            const { status, data } = response;
+
+            const extractMessage = (payload: any): string => {
+                if (!payload) return '';
+                if (typeof payload === 'string') return payload;
+
+                // { message: "..." }
+                if (typeof payload === 'object' && 'message' in payload && typeof payload.message === 'string') {
+                    return payload.message;
+                }
+
+                // { error: "..." } or { error: { message: "..." } } or { error: [...] }
+                if (typeof payload === 'object' && 'error' in payload) {
+                    const err = (payload as any).error;
+                    if (typeof err === 'string') return err;
+                    if (err && typeof err === 'object' && 'message' in err && typeof err.message === 'string') return err.message;
+                    if (Array.isArray(err)) {
+                        const first = err.find((e) => typeof e?.message === 'string')?.message;
+                        if (first) return first;
+                    }
+                }
+
+                return '';
+            };
+
+            // Log útil para depuração (sem expor tokens)
+            console.error('🧾 Erro HTTP:', {
+                status,
+                url: error.config?.url,
+                method: error.config?.method,
+                data,
+            });
+
+            if (status === 401) {
+                handleLogout();
+                throw new Error('Sua sessão expirou. Por favor, faça login novamente.');
+            }
+
+            if (status === 403) {
+                // Não mostra toast automaticamente para permitir tratamento específico nos componentes
+                console.warn('⚠️ Acesso negado (403) para:', error.config?.url);
+                throw new Error('Acesso negado.');
+            }
+
+            if (status === 400) {
+                const messages: string[] = [];
+
+                const errPayload = (data as any)?.error;
+
+                // error: [{ message: ... }, { message: ... }]
+                if (Array.isArray(errPayload)) {
+                    messages.push(...errPayload.map((e) => e?.message).filter((msg): msg is string => typeof msg === 'string'));
+                }
+
+                // error: { message: "..." }
+                else if (typeof errPayload === 'object' && errPayload !== null && 'message' in errPayload) {
+                    const msg = (errPayload as { message?: string }).message;
+                    if (msg) messages.push(msg);
+                }
+
+                // error: "mensagem direta"
+                else if (typeof errPayload === 'string') {
+                    messages.push(errPayload);
+                }
+
+                // estrutura: { campo1: [...], campo2: [...] }
+                if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
+                    const fallbackMessages = Object.values(data as any)
+                        .flatMap((val) => (Array.isArray(val) ? val : []))
+                        .filter((msg): msg is string => typeof msg === 'string');
+
+                    messages.push(...fallbackMessages);
+                }
+
+                const finalMessage = messages.join('\n') || extractMessage(data) || 'Requisição inválida.';
+                toastError(finalMessage);
+                throw new Error(finalMessage);
+            }
+
+            if (status === 500) {
+                throw new Error('Erro interno do servidor.');
+            }
+
+            // Qualquer outro status (404, 409, 422, etc.)
+            const genericMessage = extractMessage(data) || `Erro na requisição.`;
+            throw new Error(`[${status}] ${genericMessage}`);
         }
 
         throw new Error('Erro inesperado. Por favor, tente novamente mais tarde.');
