@@ -40,26 +40,27 @@ export const ListaClientes = () => {
 
     const handleRemoverCliente = useCallback(async (cliente: ICliente) => {
         const confirmar = window.confirm(
-            `Tem certeza que deseja remover o cliente "${cliente.nomeEmpresa}"?\n\nEsta ação não pode ser desfeita.`
+            `Tem certeza que deseja INATIVAR o cliente "${cliente.nomeEmpresa}"?\n\nO cliente será marcado como INATIVO e não poderá mais acessar o sistema.`
         );
         
         if (!confirmar) return;
 
         setDeletingClienteId(cliente.id);
         try {
-            console.log('Tentando remover cliente:', cliente.id);
-            await service.delete(cliente.id);
-            console.log('Cliente removido com sucesso');
-            toast.success('Cliente removido com sucesso!');
+            console.log('Inativando cliente:', cliente.id);
+            // A API BRHUB não suporta DELETE, então usamos update para inativar
+            await service.update(cliente.id, { ...cliente, status: 'INATIVO' });
+            console.log('Cliente inativado com sucesso');
+            toast.success('Cliente inativado com sucesso!');
             queryClient.invalidateQueries({ queryKey: ['clientes'] });
             queryClient.invalidateQueries({ queryKey: ['dashboard-totais'] });
         } catch (error: any) {
-            console.error('Erro ao remover cliente:', error);
+            console.error('Erro ao inativar cliente:', error);
             console.error('Detalhes do erro:', JSON.stringify(error, null, 2));
             const mensagemErro = error?.response?.data?.message 
                 || error?.response?.data?.error 
                 || error?.message 
-                || 'Erro ao remover cliente. Verifique se não há dados vinculados.';
+                || 'Erro ao inativar cliente.';
             toast.error(mensagemErro);
         } finally {
             setDeletingClienteId(null);
@@ -294,10 +295,10 @@ export const ListaClientes = () => {
                                         show: true,
                                     },
                                     {
-                                        label: 'Remover Cliente',
+                                        label: 'Inativar Cliente',
                                         icon: <Trash2 size={16} />,
                                         onClick: (cliente) => handleRemoverCliente(cliente),
-                                        show: true,
+                                        show: (cliente: ICliente) => cliente.status !== 'INATIVO',
                                         loading: deletingClienteId !== null,
                                         disabled: (cliente: ICliente) => deletingClienteId === cliente.id,
                                     },
