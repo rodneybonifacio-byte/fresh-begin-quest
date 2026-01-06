@@ -47,13 +47,20 @@ export const ListaClientes = () => {
 
         setDeletingClienteId(cliente.id);
         try {
+            console.log('Tentando remover cliente:', cliente.id);
             await service.delete(cliente.id);
+            console.log('Cliente removido com sucesso');
             toast.success('Cliente removido com sucesso!');
             queryClient.invalidateQueries({ queryKey: ['clientes'] });
             queryClient.invalidateQueries({ queryKey: ['dashboard-totais'] });
         } catch (error: any) {
             console.error('Erro ao remover cliente:', error);
-            toast.error(error?.message || 'Erro ao remover cliente. Verifique se não há dados vinculados.');
+            console.error('Detalhes do erro:', JSON.stringify(error, null, 2));
+            const mensagemErro = error?.response?.data?.message 
+                || error?.response?.data?.error 
+                || error?.message 
+                || 'Erro ao remover cliente. Verifique se não há dados vinculados.';
+            toast.error(mensagemErro);
         } finally {
             setDeletingClienteId(null);
         }
