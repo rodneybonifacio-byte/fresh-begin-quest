@@ -1,4 +1,4 @@
-import { CheckCircle2, Filter, LogIn, Plus, PlusCircle, ReceiptText, Trash2, Truck, Users } from 'lucide-react';
+import { CheckCircle2, Filter, LogIn, Plus, PlusCircle, Power, ReceiptText, Trash2, Truck, Users } from 'lucide-react';
 import { useEffect, useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -36,6 +36,7 @@ export const ListaClientes = () => {
 
     const [isModalAddCreditos, setIsModalAddCreditos] = useState<{ isOpen: boolean; cliente: ICliente }>({ isOpen: false, cliente: {} as ICliente });
     const [deletingClienteId, setDeletingClienteId] = useState<string | null>(null);
+    const [reactivatingClienteId, setReactivatingClienteId] = useState<string | null>(null);
     const queryClient = useQueryClient();
 
     const handleRemoverCliente = useCallback(async (cliente: ICliente) => {
@@ -64,6 +65,33 @@ export const ListaClientes = () => {
             toast.error(mensagemErro);
         } finally {
             setDeletingClienteId(null);
+        }
+    }, [service, queryClient]);
+
+    const handleReativarCliente = useCallback(async (cliente: ICliente) => {
+        const confirmar = window.confirm(
+            `Tem certeza que deseja REATIVAR o cliente "${cliente.nomeEmpresa}"?\n\nO cliente poderá acessar o sistema novamente.`
+        );
+        
+        if (!confirmar) return;
+
+        setReactivatingClienteId(cliente.id);
+        try {
+            console.log('Reativando cliente:', cliente.id);
+            await service.update(cliente.id, { ...cliente, status: 'ATIVO' });
+            console.log('Cliente reativado com sucesso');
+            toast.success('Cliente reativado com sucesso!');
+            queryClient.invalidateQueries({ queryKey: ['clientes'] });
+            queryClient.invalidateQueries({ queryKey: ['dashboard-totais'] });
+        } catch (error: any) {
+            console.error('Erro ao reativar cliente:', error);
+            const mensagemErro = error?.response?.data?.message 
+                || error?.response?.data?.error 
+                || error?.message 
+                || 'Erro ao reativar cliente.';
+            toast.error(mensagemErro);
+        } finally {
+            setReactivatingClienteId(null);
         }
     }, [service, queryClient]);
 
@@ -301,6 +329,14 @@ export const ListaClientes = () => {
                                         show: (cliente: ICliente) => cliente.status !== 'INATIVO',
                                         loading: deletingClienteId !== null,
                                         disabled: (cliente: ICliente) => deletingClienteId === cliente.id,
+                                    },
+                                    {
+                                        label: 'Reativar Cliente',
+                                        icon: <Power size={16} />,
+                                        onClick: (cliente) => handleReativarCliente(cliente),
+                                        show: (cliente: ICliente) => cliente.status === 'INATIVO',
+                                        loading: reactivatingClienteId !== null,
+                                        disabled: (cliente: ICliente) => reactivatingClienteId === cliente.id,
                                     },
                                 ]}
                             />
