@@ -1,5 +1,7 @@
-import { CheckCircle2, Filter, LogIn, Plus, PlusCircle, ReceiptText, Truck, Users } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { CheckCircle2, Filter, LogIn, Plus, PlusCircle, ReceiptText, Trash2, Truck, Users } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { useSearchParams } from 'react-router-dom';
 import authStore from '../../../../authentica/authentication.store';
 import { DataTable } from '../../../../components/DataTable';
@@ -33,6 +35,29 @@ export const ListaClientes = () => {
     const [searchParams, setSearchParams] = useSearchParams();
 
     const [isModalAddCreditos, setIsModalAddCreditos] = useState<{ isOpen: boolean; cliente: ICliente }>({ isOpen: false, cliente: {} as ICliente });
+    const [deletingClienteId, setDeletingClienteId] = useState<string | null>(null);
+    const queryClient = useQueryClient();
+
+    const handleRemoverCliente = useCallback(async (cliente: ICliente) => {
+        const confirmar = window.confirm(
+            `Tem certeza que deseja remover o cliente "${cliente.nomeEmpresa}"?\n\nEsta ação não pode ser desfeita.`
+        );
+        
+        if (!confirmar) return;
+
+        setDeletingClienteId(cliente.id);
+        try {
+            await service.delete(cliente.id);
+            toast.success('Cliente removido com sucesso!');
+            queryClient.invalidateQueries({ queryKey: ['clientes'] });
+            queryClient.invalidateQueries({ queryKey: ['dashboard-totais'] });
+        } catch (error: any) {
+            console.error('Erro ao remover cliente:', error);
+            toast.error(error?.message || 'Erro ao remover cliente. Verifique se não há dados vinculados.');
+        } finally {
+            setDeletingClienteId(null);
+        }
+    }, [service, queryClient]);
 
     const { data: dashboard } = useFetchQuery<IClienteDashboard>(['dashboard-totais'], async () => {
         const response = await service.dashboard();
@@ -260,6 +285,14 @@ export const ListaClientes = () => {
                                         icon: <LogIn size={16} />,
                                         onClick: (cliente) => LoginAsClient(cliente),
                                         show: true,
+                                    },
+                                    {
+                                        label: 'Remover Cliente',
+                                        icon: <Trash2 size={16} />,
+                                        onClick: (cliente) => handleRemoverCliente(cliente),
+                                        show: true,
+                                        loading: deletingClienteId !== null,
+                                        disabled: (cliente: ICliente) => deletingClienteId === cliente.id,
                                     },
                                 ]}
                             />
