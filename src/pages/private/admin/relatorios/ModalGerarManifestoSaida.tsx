@@ -1,13 +1,20 @@
 import { useState, useEffect } from 'react';
 import { X, FileText, Download, Loader2, Search, CheckSquare, Square } from 'lucide-react';
 import { toast } from 'sonner';
-import { RemetenteService } from '../../../../services/RemetenteService';
+import { supabase } from '../../../../integrations/supabase/client';
 import { EmissaoService } from '../../../../services/EmissaoService';
 import { ManifestoService } from '../../../../services/ManifestoService';
-import type { IRemetente } from '../../../../types/IRemetente';
 import type { IEmissao } from '../../../../types/IEmissao';
 import { formatDateTime } from '../../../../utils/date-utils';
 import { openPDFInNewTab } from '../../../../utils/pdfUtils';
+
+interface Remetente {
+  id: string;
+  nome: string;
+  cpfCnpj: string;
+  localidade?: string;
+  uf?: string;
+}
 
 interface ModalGerarManifestoSaidaProps {
   isOpen: boolean;
@@ -16,8 +23,8 @@ interface ModalGerarManifestoSaidaProps {
 
 export const ModalGerarManifestoSaida = ({ isOpen, onClose }: ModalGerarManifestoSaidaProps) => {
   const [step, setStep] = useState<1 | 2>(1);
-  const [remetentes, setRemetentes] = useState<IRemetente[]>([]);
-  const [selectedRemetente, setSelectedRemetente] = useState<IRemetente | null>(null);
+  const [remetentes, setRemetentes] = useState<Remetente[]>([]);
+  const [selectedRemetente, setSelectedRemetente] = useState<Remetente | null>(null);
   const [postagens, setPostagens] = useState<IEmissao[]>([]);
   const [selectedPostagens, setSelectedPostagens] = useState<string[]>([]);
   const [loadingRemetentes, setLoadingRemetentes] = useState(false);
@@ -25,11 +32,10 @@ export const ModalGerarManifestoSaida = ({ isOpen, onClose }: ModalGerarManifest
   const [loadingManifesto, setLoadingManifesto] = useState(false);
   const [searchRemetente, setSearchRemetente] = useState('');
 
-  const remetenteService = new RemetenteService();
   const emissaoService = new EmissaoService();
   const manifestoService = new ManifestoService();
 
-  // Buscar remetentes
+  // Buscar remetentes direto do Supabase
   useEffect(() => {
     if (isOpen && step === 1) {
       fetchRemetentes();
@@ -46,8 +52,28 @@ export const ModalGerarManifestoSaida = ({ isOpen, onClose }: ModalGerarManifest
   const fetchRemetentes = async () => {
     try {
       setLoadingRemetentes(true);
-      const response = await remetenteService.getAll({ limit: 500 }, 'admin');
-      setRemetentes(response?.data || []);
+      
+      // Buscar direto da tabela remetentes do Supabase
+      const { data, error } = await supabase
+        .from('remetentes')
+        .select('id, nome, cpf_cnpj, localidade, uf')
+        .order('nome');
+      
+      if (error) {
+        console.error('Erro ao buscar remetentes:', error);
+        toast.error('Erro ao carregar remetentes');
+        return;
+      }
+
+      const mapped: Remetente[] = (data || []).map((r: any) => ({
+        id: r.id,
+        nome: r.nome,
+        cpfCnpj: r.cpf_cnpj,
+        localidade: r.localidade,
+        uf: r.uf
+      }));
+
+      setRemetentes(mapped);
     } catch (error) {
       console.error('Erro ao buscar remetentes:', error);
       toast.error('Erro ao carregar remetentes');
@@ -77,7 +103,7 @@ export const ModalGerarManifestoSaida = ({ isOpen, onClose }: ModalGerarManifest
     }
   };
 
-  const handleSelectRemetente = (remetente: IRemetente) => {
+  const handleSelectRemetente = (remetente: Remetente) => {
     setSelectedRemetente(remetente);
     setStep(2);
   };
@@ -222,7 +248,7 @@ export const ModalGerarManifestoSaida = ({ isOpen, onClose }: ModalGerarManifest
                       >
                         <p className="font-medium text-gray-900 dark:text-white">{remetente.nome}</p>
                         <p className="text-sm text-gray-500 dark:text-slate-400">
-                          {remetente.cpfCnpj} {remetente.endereco?.localidade && `• ${remetente.endereco.localidade}/${remetente.endereco.uf}`}
+                          {remetente.cpfCnpj} {remetente.localidade && `• ${remetente.localidade}/${remetente.uf}`}
                         </p>
                       </button>
                     ))
