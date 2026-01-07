@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, FileText, Download, Loader2, Search, CheckSquare, Square } from 'lucide-react';
 import { toast } from 'sonner';
-import { RemetenteService } from '../../../../services/RemetenteService';
+import { supabase } from '../../../../integrations/supabase/client';
 import { EmissaoService } from '../../../../services/EmissaoService';
 import { ManifestoService } from '../../../../services/ManifestoService';
 import type { IEmissao } from '../../../../types/IEmissao';
@@ -53,16 +53,25 @@ export const ModalGerarManifestoSaida = ({ isOpen, onClose }: ModalGerarManifest
     try {
       setLoadingRemetentes(true);
 
-      const response = await new RemetenteService().getAll({ limit: 1000 });
+      // Para admin, buscar todos os remetentes via edge function que ignora RLS
+      const { data, error } = await supabase.functions.invoke('listar-remetentes-admin');
 
-      const mapped: Remetente[] = (response?.data || []).map((r: any) => ({
+      if (error) {
+        console.error('Erro ao buscar remetentes:', error);
+        toast.error('Erro ao carregar remetentes');
+        return;
+      }
+
+      const remetentesData = data?.data || data || [];
+      const mapped: Remetente[] = remetentesData.map((r: any) => ({
         id: r.id,
         nome: r.nome,
-        cpfCnpj: r.cpfCnpj ?? r.cpf_cnpj ?? '',
-        localidade: r.localidade ?? r.endereco?.localidade,
-        uf: r.uf ?? r.endereco?.uf,
+        cpfCnpj: r.cpf_cnpj || r.cpfCnpj || '',
+        localidade: r.localidade,
+        uf: r.uf,
       }));
 
+      console.log('Remetentes carregados:', mapped.length);
       setRemetentes(mapped);
     } catch (error) {
       console.error('Erro ao buscar remetentes:', error);
