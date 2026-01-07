@@ -23,7 +23,20 @@ serve(async (req: Request) => {
   }
 
   try {
+    // Verificar se há filtro de código objeto específico (reenvio individual)
+    let codigoObjetoFiltro: string | null = null;
+    try {
+      const body = await req.json();
+      codigoObjetoFiltro = body?.codigoObjeto || null;
+      console.log('📋 Body recebido:', JSON.stringify(body));
+    } catch {
+      // Sem body ou não é JSON
+    }
+
     console.log('🔄 Iniciando verificação de envios AGUARDANDO_RETIRADA...');
+    if (codigoObjetoFiltro) {
+      console.log(`🎯 Modo REENVIO para objeto específico: ${codigoObjetoFiltro}`);
+    }
 
     // Inicializar Supabase
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -81,31 +94,49 @@ serve(async (req: Request) => {
     }
     
     // A API retorna { data: [...], meta: {...} }
-    const envios = enviosData?.data || [];
+    let envios = enviosData?.data || [];
+
+    // Se temos um código objeto específico, filtrar apenas ele
+    if (codigoObjetoFiltro) {
+      envios = envios.filter((e: any) => e.codigoObjeto === codigoObjetoFiltro);
+      console.log(`🎯 Filtrado para ${envios.length} envio(s) com código ${codigoObjetoFiltro}`);
+    }
 
     console.log(`📊 Encontrados ${envios.length} envios com status AGUARDANDO_RETIRADA`);
 
     if (envios.length === 0) {
       return new Response(
-        JSON.stringify({ success: true, message: 'Nenhum envio AGUARDANDO_RETIRADA encontrado', notificados: 0 }),
+        JSON.stringify({ 
+          success: true, 
+          message: codigoObjetoFiltro 
+            ? `Objeto ${codigoObjetoFiltro} não encontrado com status AGUARDANDO_RETIRADA` 
+            : 'Nenhum envio AGUARDANDO_RETIRADA encontrado', 
+          notificados: 0 
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Buscar códigos já notificados
-    const codigosObjetos = envios.map((e: any) => e.codigoObjeto).filter(Boolean);
+    // Se é reenvio individual (codigoObjetoFiltro), não verificar se já foi notificado
+    // pois o registro foi deletado antes de chamar esta função
+    let codigosJaNotificados = new Set<string>();
     
-    const { data: jaNotificados } = await supabase
-      .from('notificacoes_aguardando_retirada')
-      .select('codigo_objeto')
-      .in('codigo_objeto', codigosObjetos);
+    if (!codigoObjetoFiltro) {
+      // Buscar códigos já notificados apenas no modo batch (sem filtro)
+      const codigosObjetos = envios.map((e: any) => e.codigoObjeto).filter(Boolean);
+      
+      const { data: jaNotificados } = await supabase
+        .from('notificacoes_aguardando_retirada')
+        .select('codigo_objeto')
+        .in('codigo_objeto', codigosObjetos);
 
-    const codigosJaNotificados = new Set((jaNotificados || []).map((n: any) => n.codigo_objeto));
+      codigosJaNotificados = new Set((jaNotificados || []).map((n: any) => n.codigo_objeto));
+    }
     
-    // Filtrar envios pendentes de notificação
-    const enviosPendentes = envios.filter((e: any) => 
-      e.codigoObjeto && !codigosJaNotificados.has(e.codigoObjeto)
-    );
+    // Filtrar envios pendentes de notificação (ou todos se for reenvio individual)
+    const enviosPendentes = codigoObjetoFiltro 
+      ? envios  // Reenvio: processar todos os filtrados
+      : envios.filter((e: any) => e.codigoObjeto && !codigosJaNotificados.has(e.codigoObjeto));
 
     console.log(`📬 ${enviosPendentes.length} envios pendentes de notificação`);
 
