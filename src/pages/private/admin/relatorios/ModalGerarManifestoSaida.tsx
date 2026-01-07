@@ -12,8 +12,12 @@ interface Remetente {
   id: string;
   nome: string;
   cpfCnpj: string;
+  logradouro?: string;
+  numero?: string;
+  bairro?: string;
   localidade?: string;
   uf?: string;
+  cep?: string;
 }
 
 interface ModalGerarManifestoSaidaProps {
@@ -67,8 +71,12 @@ export const ModalGerarManifestoSaida = ({ isOpen, onClose }: ModalGerarManifest
         id: r.id,
         nome: r.nome,
         cpfCnpj: r.cpf_cnpj || r.cpfCnpj || '',
+        logradouro: r.logradouro,
+        numero: r.numero,
+        bairro: r.bairro,
         localidade: r.localidade,
         uf: r.uf,
+        cep: r.cep,
       }));
 
       console.log('Remetentes carregados:', mapped.length);
@@ -133,12 +141,28 @@ export const ModalGerarManifestoSaida = ({ isOpen, onClose }: ModalGerarManifest
       setLoadingManifesto(true);
       
       // Mapear as emissões selecionadas para o formato esperado pelo serviço
+      // Montar dados completos do remetente para o manifesto
+      const remetenteData = {
+        nome: selectedRemetente?.nome || '',
+        cpfCnpj: selectedRemetente?.cpfCnpj || '',
+        endereco: {
+          logradouro: selectedRemetente?.logradouro || '',
+          numero: selectedRemetente?.numero || '',
+          bairro: selectedRemetente?.bairro || '',
+          localidade: selectedRemetente?.localidade || '',
+          uf: selectedRemetente?.uf || '',
+          cep: selectedRemetente?.cep || ''
+        }
+      };
+
       const emissoesParaManifesto = postagens
         .filter(p => selectedPostagens.includes(p.id!))
         .map(p => ({
           id: p.id,
           codigoObjeto: p.codigoObjeto,
           remetenteNome: selectedRemetente?.nome || p.remetenteNome,
+          remetenteCpfCnpj: selectedRemetente?.cpfCnpj,
+          remetente: remetenteData,
           destinatarioNome: p.destinatario?.nome || '',
           status: p.status,
           criadoEm: p.criadoEm
