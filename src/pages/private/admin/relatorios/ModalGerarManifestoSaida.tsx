@@ -97,38 +97,22 @@ export const ModalGerarManifestoSaida = ({ isOpen, onClose }: ModalGerarManifest
       setLoadingPostagens(true);
       console.log('🔍 Buscando postagens (PRE_POSTADO) e filtrando por remetenteId:', selectedRemetente.id, selectedRemetente.nome);
 
-      // Buscar PRE_POSTADO (status correto para manifesto) e filtrar localmente por remetenteId
+      // Buscar PRE_POSTADO (status correto para manifesto) JÁ filtrando por remetenteId (mesmo padrão do /admin/relatorios/envios)
       const response = await emissaoService.getAll(
         {
           limit: 500,
           offset: 0,
           status: 'PRE_POSTADO',
+          remetenteId: selectedRemetente.id,
         },
         'admin'
       );
 
       const todas = response?.data || [];
 
-      // Algumas rotas retornam campos em snake_case (remetente_id). Vamos normalizar aqui.
-      const getRemetenteIdFromEmissao = (p: any): string | undefined =>
-        p?.remetenteId ??
-        p?.remetente_id ??
-        p?.remetente?.id ??
-        p?.remetente?.remetenteId ??
-        p?.remetente?.remetente_id;
-
-      const filtradas = todas.filter((p: any) => getRemetenteIdFromEmissao(p) === selectedRemetente.id);
-
       console.log('📋 Postagens retornadas (PRE_POSTADO):', todas.length);
-      console.log('📋 Postagens após filtro por remetenteId:', filtradas.length);
-      if (filtradas.length === 0 && todas.length > 0) {
-        const idsEncontrados = Array.from(
-          new Set(todas.map((p: any) => getRemetenteIdFromEmissao(p)).filter(Boolean))
-        ).slice(0, 10);
-        console.log('⚠️ Nenhuma postagem bateu com o remetente selecionado. Exemplo de IDs encontrados:', idsEncontrados);
-      }
 
-      setPostagens(filtradas);
+      setPostagens(todas);
       setSelectedPostagens([]);
     } catch (error) {
       console.error('Erro ao buscar postagens:', error);
