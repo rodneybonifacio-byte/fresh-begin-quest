@@ -146,3 +146,9 @@ verify_jwt = false
 
 [functions.gerenciar-integracoes]
 verify_jwt = false
+
+[functions.listar-remetentes-admin]
+verify_jwt = false
+
+[functions.gerar-manifesto-api]
+verify_jwt = false
