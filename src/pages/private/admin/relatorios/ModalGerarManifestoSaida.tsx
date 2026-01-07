@@ -92,36 +92,31 @@ export const ModalGerarManifestoSaida = ({ isOpen, onClose }: ModalGerarManifest
 
   const fetchPostagens = async () => {
     if (!selectedRemetente) return;
-    
+
     try {
       setLoadingPostagens(true);
-      console.log('🔍 Buscando postagens para remetente:', selectedRemetente.id, selectedRemetente.nome);
-      
-      // Buscar emissões do remetente com status POSTADO (prontas para manifesto)
-      // Usando o CPF/CNPJ como identificador alternativo caso remetenteId não funcione
-      const response = await emissaoService.getAll({
-        limit: 200,
-        remetenteId: selectedRemetente.id,
-        cpfCnpjRemetente: selectedRemetente.cpfCnpj?.replace(/\D/g, ''),
-        status: 'POSTADO'
-      }, 'admin');
-      
-      console.log('📋 Postagens retornadas:', response?.data?.length || 0);
-      
-      // Filtrar client-side pelo remetente caso a API não filtre corretamente
-      let postagens = response?.data || [];
-      if (postagens.length > 0) {
-        const filtradas = postagens.filter(p => 
-          p.remetenteId === selectedRemetente.id || 
-          p.remetente?.id === selectedRemetente.id ||
-          p.remetente?.cpfCnpj?.replace(/\D/g, '') === selectedRemetente.cpfCnpj?.replace(/\D/g, '') ||
-          p.remetenteCpfCnpj?.replace(/\D/g, '') === selectedRemetente.cpfCnpj?.replace(/\D/g, '')
-        );
-        console.log('📋 Postagens após filtro local:', filtradas.length);
-        postagens = filtradas;
-      }
-      
-      setPostagens(postagens);
+      console.log('🔍 Buscando postagens (POSTADO) e filtrando por remetenteId:', selectedRemetente.id, selectedRemetente.nome);
+
+      // A API pode não filtrar corretamente por remetenteId via query.
+      // Então buscamos POSTADO e filtramos localmente usando o ID do remetente.
+      const response = await emissaoService.getAll(
+        {
+          limit: 500,
+          offset: 0,
+          status: 'POSTADO',
+        },
+        'admin'
+      );
+
+      const todas = response?.data || [];
+      const filtradas = todas.filter(
+        (p) => p.remetenteId === selectedRemetente.id || p.remetente?.id === selectedRemetente.id
+      );
+
+      console.log('📋 Postagens retornadas (POSTADO):', todas.length);
+      console.log('📋 Postagens após filtro por remetenteId:', filtradas.length);
+
+      setPostagens(filtradas);
       setSelectedPostagens([]);
     } catch (error) {
       console.error('Erro ao buscar postagens:', error);
