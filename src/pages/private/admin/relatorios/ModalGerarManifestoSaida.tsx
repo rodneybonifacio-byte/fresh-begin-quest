@@ -138,7 +138,7 @@ export const ModalGerarManifestoSaida = ({ isOpen, onClose }: ModalGerarManifest
         .map(p => ({
           id: p.id,
           codigoObjeto: p.codigoObjeto,
-          remetenteNome: p.remetenteNome || selectedRemetente?.nome,
+          remetenteNome: selectedRemetente?.nome || p.remetenteNome,
           destinatarioNome: p.destinatario?.nome || '',
           status: p.status,
           criadoEm: p.criadoEm
