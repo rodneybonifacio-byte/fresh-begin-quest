@@ -1,4 +1,4 @@
-import { DollarSign, Filter, PackageCheck, Printer, ReceiptText, ShoppingCart, Users, Wallet, Download, Bell, RefreshCw, Map as MapIcon } from 'lucide-react';
+import { DollarSign, Filter, PackageCheck, Printer, ReceiptText, ShoppingCart, Users, Wallet, Download, Bell, RefreshCw, Map as MapIcon, RotateCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { LoadSpinner } from '../../../../components/loading';
@@ -242,6 +242,61 @@ const RltEnvios = () => {
         } catch (error) {
             console.error('Erro ao disparar notificações:', error);
             toast.error('Erro ao enviar notificações de retirada');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleReenviarNotificacaoRetirada = async (emissao: IEmissao) => {
+        if (!emissao.codigoObjeto) {
+            toast.error('Código de rastreio não encontrado');
+            return;
+        }
+
+        const confirmar = window.confirm(
+            `Tem certeza que deseja REENVIAR a notificação de retirada para o objeto "${emissao.codigoObjeto}"?\n\nIsso irá remover o registro anterior e enviar uma nova notificação.`
+        );
+        
+        if (!confirmar) return;
+
+        try {
+            setIsLoading(true);
+            
+            // 1. Deletar registro existente na tabela notificacoes_aguardando_retirada
+            const { error: deleteError } = await supabase
+                .from('notificacoes_aguardando_retirada')
+                .delete()
+                .eq('codigo_objeto', emissao.codigoObjeto);
+            
+            if (deleteError) {
+                console.error('Erro ao deletar registro:', deleteError);
+                // Continua mesmo se não existir registro (pode ser que nunca tenha sido notificado)
+            }
+            
+            // 2. Chamar edge function para verificar e enviar notificação
+            const { data, error } = await supabase.functions.invoke('cron-verificar-aguardando-retirada', {
+                body: { 
+                    manual: true,
+                    codigoObjeto: emissao.codigoObjeto // Filtrar apenas este objeto
+                }
+            });
+            
+            if (error) {
+                toast.error('Erro ao reenviar notificação');
+                console.error('Erro:', error);
+                return;
+            }
+            
+            if (data?.notificados > 0) {
+                toast.success('Notificação reenviada com sucesso!');
+            } else if (data?.falhas > 0) {
+                toast.error('Falha ao enviar notificação. Verifique os logs.');
+            } else {
+                toast.warning('Nenhuma notificação enviada. Verifique se o objeto está com status AGUARDANDO_RETIRADA.');
+            }
+        } catch (error) {
+            console.error('Erro ao reenviar notificação:', error);
+            toast.error('Erro ao reenviar notificação');
         } finally {
             setIsLoading(false);
         }
@@ -713,6 +768,12 @@ const RltEnvios = () => {
                                         icon: <DollarSign size={16} />,
                                         onClick: (emissao) => setIsModalUpdatePrecos({ isOpen: true, emissao }),
                                         show: true,
+                                    },
+                                    {
+                                        label: 'Reenviar Notificação',
+                                        icon: <RotateCw size={16} />,
+                                        onClick: (row) => handleReenviarNotificacaoRetirada(row),
+                                        show: tab === 'AGUARDANDO_RETIRADA',
                                     },
                                 ]}
                             />
