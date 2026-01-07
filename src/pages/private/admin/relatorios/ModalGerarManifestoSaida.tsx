@@ -95,13 +95,33 @@ export const ModalGerarManifestoSaida = ({ isOpen, onClose }: ModalGerarManifest
     
     try {
       setLoadingPostagens(true);
+      console.log('🔍 Buscando postagens para remetente:', selectedRemetente.id, selectedRemetente.nome);
+      
       // Buscar emissões do remetente com status POSTADO (prontas para manifesto)
+      // Usando o CPF/CNPJ como identificador alternativo caso remetenteId não funcione
       const response = await emissaoService.getAll({
         limit: 200,
         remetenteId: selectedRemetente.id,
+        cpfCnpjRemetente: selectedRemetente.cpfCnpj?.replace(/\D/g, ''),
         status: 'POSTADO'
       }, 'admin');
-      setPostagens(response?.data || []);
+      
+      console.log('📋 Postagens retornadas:', response?.data?.length || 0);
+      
+      // Filtrar client-side pelo remetente caso a API não filtre corretamente
+      let postagens = response?.data || [];
+      if (postagens.length > 0) {
+        const filtradas = postagens.filter(p => 
+          p.remetenteId === selectedRemetente.id || 
+          p.remetente?.id === selectedRemetente.id ||
+          p.remetente?.cpfCnpj?.replace(/\D/g, '') === selectedRemetente.cpfCnpj?.replace(/\D/g, '') ||
+          p.remetenteCpfCnpj?.replace(/\D/g, '') === selectedRemetente.cpfCnpj?.replace(/\D/g, '')
+        );
+        console.log('📋 Postagens após filtro local:', filtradas.length);
+        postagens = filtradas;
+      }
+      
+      setPostagens(postagens);
       setSelectedPostagens([]);
     } catch (error) {
       console.error('Erro ao buscar postagens:', error);
