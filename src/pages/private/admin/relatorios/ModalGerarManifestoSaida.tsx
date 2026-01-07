@@ -95,15 +95,14 @@ export const ModalGerarManifestoSaida = ({ isOpen, onClose }: ModalGerarManifest
 
     try {
       setLoadingPostagens(true);
-      console.log('🔍 Buscando postagens (POSTADO) e filtrando por remetenteId:', selectedRemetente.id, selectedRemetente.nome);
+      console.log('🔍 Buscando postagens (PRE_POSTADO) e filtrando por remetenteId:', selectedRemetente.id, selectedRemetente.nome);
 
-      // A API pode não filtrar corretamente por remetenteId via query.
-      // Então buscamos POSTADO e filtramos localmente usando o ID do remetente.
+      // Buscar PRE_POSTADO (status correto para manifesto) e filtrar localmente por remetenteId
       const response = await emissaoService.getAll(
         {
           limit: 500,
           offset: 0,
-          status: 'POSTADO',
+          status: 'PRE_POSTADO',
         },
         'admin'
       );
@@ -113,7 +112,7 @@ export const ModalGerarManifestoSaida = ({ isOpen, onClose }: ModalGerarManifest
         (p) => p.remetenteId === selectedRemetente.id || p.remetente?.id === selectedRemetente.id
       );
 
-      console.log('📋 Postagens retornadas (POSTADO):', todas.length);
+      console.log('📋 Postagens retornadas (PRE_POSTADO):', todas.length);
       console.log('📋 Postagens após filtro por remetenteId:', filtradas.length);
 
       setPostagens(filtradas);
@@ -351,10 +350,10 @@ export const ModalGerarManifestoSaida = ({ isOpen, onClose }: ModalGerarManifest
                   <Loader2 className="animate-spin text-orange-500" size={32} />
                 </div>
               ) : postagens.length === 0 ? (
-                <div className="text-center py-12">
+              <div className="text-center py-12">
                   <FileText className="mx-auto text-gray-300 dark:text-slate-600 mb-4" size={48} />
                   <p className="text-gray-500 dark:text-slate-400">
-                    Nenhuma postagem encontrada com status POSTADO para este remetente
+                    Nenhuma postagem encontrada com status PRE_POSTADO para este remetente
                   </p>
                 </div>
               ) : (
