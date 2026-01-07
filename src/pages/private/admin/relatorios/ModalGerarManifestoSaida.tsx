@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, FileText, Download, Loader2, Search, CheckSquare, Square } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '../../../../integrations/supabase/client';
+import { RemetenteService } from '../../../../services/RemetenteService';
 import { EmissaoService } from '../../../../services/EmissaoService';
 import { ManifestoService } from '../../../../services/ManifestoService';
 import type { IEmissao } from '../../../../types/IEmissao';
@@ -52,25 +52,15 @@ export const ModalGerarManifestoSaida = ({ isOpen, onClose }: ModalGerarManifest
   const fetchRemetentes = async () => {
     try {
       setLoadingRemetentes(true);
-      
-      // Buscar direto da tabela remetentes do Supabase
-      const { data, error } = await supabase
-        .from('remetentes')
-        .select('id, nome, cpf_cnpj, localidade, uf')
-        .order('nome');
-      
-      if (error) {
-        console.error('Erro ao buscar remetentes:', error);
-        toast.error('Erro ao carregar remetentes');
-        return;
-      }
 
-      const mapped: Remetente[] = (data || []).map((r: any) => ({
+      const response = await new RemetenteService().getAll({ limit: 1000 });
+
+      const mapped: Remetente[] = (response?.data || []).map((r: any) => ({
         id: r.id,
         nome: r.nome,
-        cpfCnpj: r.cpf_cnpj,
-        localidade: r.localidade,
-        uf: r.uf
+        cpfCnpj: r.cpfCnpj ?? r.cpf_cnpj ?? '',
+        localidade: r.localidade ?? r.endereco?.localidade,
+        uf: r.uf ?? r.endereco?.uf,
       }));
 
       setRemetentes(mapped);
