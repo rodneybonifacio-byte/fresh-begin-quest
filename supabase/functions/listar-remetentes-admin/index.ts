@@ -31,7 +31,7 @@ serve(async (req: Request) => {
 
     const { data, error } = await supabaseAdmin
       .from('remetentes')
-      .select('id, nome, cpf_cnpj, localidade, uf, cliente_id')
+      .select('id, nome, cpf_cnpj, logradouro, numero, bairro, localidade, uf, cep, cliente_id')
       .order('nome');
 
     if (error) {
