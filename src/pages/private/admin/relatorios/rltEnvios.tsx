@@ -29,6 +29,7 @@ import { differenceInDays, parseISO, format } from 'date-fns';
 import { supabase } from '../../../../integrations/supabase/client';
 import { toast } from 'sonner';
 import { ShipmentTrackingMap } from '../../../../components/maps/ShipmentTrackingMap';
+import { ModalGerarManifestoSaida } from './ModalGerarManifestoSaida';
 
 const RltEnvios = () => {
     const config = useGlobalConfig();
@@ -46,6 +47,7 @@ const RltEnvios = () => {
     const [etiqueta, setEtiqueta] = useState<{ nome: string; dados: string }>();
     const [isModalUpdatePrecos, setIsModalUpdatePrecos] = useState<{ isOpen: boolean; emissao: IEmissao }>({ isOpen: false, emissao: {} as IEmissao });
     const [showMap, setShowMap] = useState(true);
+    const [isModalManifesto, setIsModalManifesto] = useState(false);
 
     const [searchParams] = useSearchParams();
     const filtros = Object.fromEntries(searchParams.entries());
@@ -433,6 +435,12 @@ const RltEnvios = () => {
                     }
                 ] : []),
                 {
+                    label: 'Manifesto',
+                    onClick: () => setIsModalManifesto(true),
+                    icon: <ReceiptText size={22} />,
+                    bgColor: 'bg-indigo-600',
+                },
+                {
                     label: 'Exportar XLSX',
                     onClick: handleExportToExcel,
                     icon: <Download size={22} />,
@@ -803,6 +811,10 @@ const RltEnvios = () => {
                 data={isModalUpdatePrecos?.emissao}
                 isOpen={isModalUpdatePrecos?.isOpen}
                 onClose={() => setIsModalUpdatePrecos({ isOpen: false, emissao: {} as IEmissao })}
+            />
+            <ModalGerarManifestoSaida
+                isOpen={isModalManifesto}
+                onClose={() => setIsModalManifesto(false)}
             />
         </Content>
     );
