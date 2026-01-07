@@ -237,8 +237,16 @@ const RltEnvios = () => {
                 console.error('Erro:', error);
                 return;
             }
-            
-            toast.success(`Notificações enviadas: ${data?.notificados || 0} | Falhas: ${data?.falhas || 0}`);
+
+            const notificadosAgora = (data as any)?.notificados_agora ?? (data as any)?.notificados ?? 0;
+            const falhas = Array.isArray((data as any)?.erros) ? (data as any).erros.length : ((data as any)?.falhas ?? 0);
+            const jaNotificados = (data as any)?.ja_notificados ?? 0;
+
+            if (notificadosAgora > 0) {
+                toast.success(`Notificações enviadas: ${notificadosAgora} | Falhas: ${falhas}`);
+            } else {
+                toast.warning(`Nenhuma notificação enviada. Já notificados: ${jaNotificados} | Falhas: ${falhas}`);
+            }
         } catch (error) {
             console.error('Erro ao disparar notificações:', error);
             toast.error('Erro ao enviar notificações de retirada');
@@ -287,9 +295,12 @@ const RltEnvios = () => {
                 return;
             }
             
-            if (data?.notificados > 0) {
+            const notificadosAgora = (data as any)?.notificados_agora ?? (data as any)?.notificados ?? 0;
+            const falhas = Array.isArray((data as any)?.erros) ? (data as any).erros.length : ((data as any)?.falhas ?? 0);
+
+            if (notificadosAgora > 0) {
                 toast.success('Notificação reenviada com sucesso!');
-            } else if (data?.falhas > 0) {
+            } else if (falhas > 0) {
                 toast.error('Falha ao enviar notificação. Verifique os logs.');
             } else {
                 toast.warning('Nenhuma notificação enviada. Verifique se o objeto está com status AGUARDANDO_RETIRADA.');
