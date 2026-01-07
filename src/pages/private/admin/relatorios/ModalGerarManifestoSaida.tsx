@@ -108,12 +108,25 @@ export const ModalGerarManifestoSaida = ({ isOpen, onClose }: ModalGerarManifest
       );
 
       const todas = response?.data || [];
-      const filtradas = todas.filter(
-        (p) => p.remetenteId === selectedRemetente.id || p.remetente?.id === selectedRemetente.id
-      );
+
+      // Algumas rotas retornam campos em snake_case (remetente_id). Vamos normalizar aqui.
+      const getRemetenteIdFromEmissao = (p: any): string | undefined =>
+        p?.remetenteId ??
+        p?.remetente_id ??
+        p?.remetente?.id ??
+        p?.remetente?.remetenteId ??
+        p?.remetente?.remetente_id;
+
+      const filtradas = todas.filter((p: any) => getRemetenteIdFromEmissao(p) === selectedRemetente.id);
 
       console.log('📋 Postagens retornadas (PRE_POSTADO):', todas.length);
       console.log('📋 Postagens após filtro por remetenteId:', filtradas.length);
+      if (filtradas.length === 0 && todas.length > 0) {
+        const idsEncontrados = Array.from(
+          new Set(todas.map((p: any) => getRemetenteIdFromEmissao(p)).filter(Boolean))
+        ).slice(0, 10);
+        console.log('⚠️ Nenhuma postagem bateu com o remetente selecionado. Exemplo de IDs encontrados:', idsEncontrados);
+      }
 
       setPostagens(filtradas);
       setSelectedPostagens([]);
