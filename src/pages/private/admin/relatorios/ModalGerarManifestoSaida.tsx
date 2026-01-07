@@ -7,6 +7,7 @@ import { ManifestoService } from '../../../../services/ManifestoService';
 import type { IEmissao } from '../../../../types/IEmissao';
 import { formatDateTime } from '../../../../utils/date-utils';
 import { openPDFInNewTab } from '../../../../utils/pdfUtils';
+import { patchManifestoPdfHeader } from '../../../../utils/manifestoPdf';
 
 interface Remetente {
   id: string;
@@ -168,11 +169,35 @@ export const ModalGerarManifestoSaida = ({ isOpen, onClose }: ModalGerarManifest
           criadoEm: p.criadoEm
         }));
 
+      const emissoesSelecionadas = postagens.filter(p => selectedPostagens.includes(p.id!));
+
+      const totalObjetos = emissoesSelecionadas.length;
+      const totalSedex = emissoesSelecionadas.filter(p => (p.servico || '').toUpperCase().includes('SEDEX')).length;
+      const totalPac = emissoesSelecionadas.filter(p => (p.servico || '').toUpperCase().includes('PAC')).length;
+
       const response = await manifestoService.enviarManifesto(emissoesParaManifesto as any);
       
       if (response?.dados) {
+        const enderecoLinha = [
+          [selectedRemetente?.logradouro, selectedRemetente?.numero].filter(Boolean).join(', '),
+          selectedRemetente?.bairro,
+          selectedRemetente?.localidade && selectedRemetente?.uf ? `${selectedRemetente.localidade}/${selectedRemetente.uf}` : (selectedRemetente?.localidade || selectedRemetente?.uf),
+          selectedRemetente?.cep ? `CEP ${selectedRemetente.cep}` : ''
+        ].filter(Boolean).join(' - ');
+
+        const pdfCorrigido = await patchManifestoPdfHeader(response.dados, {
+          clienteNome: selectedRemetente?.nome || 'Remetente',
+          clienteCnpj: selectedRemetente?.cpfCnpj || '',
+          enderecoLinha,
+          manifestoId: response.manifestoId,
+          dataHora: formatDateTime(new Date().toISOString()),
+          totalObjetos,
+          totalSedex,
+          totalPac,
+        });
+
         // Abrir PDF do manifesto
-        openPDFInNewTab(response.dados, `manifesto-${selectedRemetente?.nome || 'saida'}.pdf`);
+        openPDFInNewTab(pdfCorrigido, `manifesto-${selectedRemetente?.nome || 'saida'}.pdf`);
         toast.success('Manifesto gerado com sucesso!');
         handleClose();
       } else {
