@@ -110,9 +110,29 @@ export const ModalGerarManifestoSaida = ({ isOpen, onClose }: ModalGerarManifest
 
       const todas = response?.data || [];
 
-      console.log('📋 Postagens retornadas (PRE_POSTADO):', todas.length);
+      // Garantia de filtro: alguns retornos não trazem remetenteId, então filtramos também por CPF/CNPJ.
+      const normalizeDoc = (v?: string | null) => (v || '').replace(/\D/g, '');
+      const selectedCpfCnpj = normalizeDoc(selectedRemetente.cpfCnpj);
 
-      setPostagens(todas);
+      const filtradas = todas.filter((p: any) => {
+        const remetenteId = p?.remetenteId ?? p?.remetente_id ?? p?.remetente?.id;
+        if (remetenteId) return remetenteId === selectedRemetente.id;
+
+        const cpfCnpj = normalizeDoc(
+          p?.remetenteCpfCnpj ??
+            p?.remetente_cpf_cnpj ??
+            p?.remetente?.cpfCnpj ??
+            p?.remetente?.cpf_cnpj
+        );
+        if (cpfCnpj) return cpfCnpj === selectedCpfCnpj;
+
+        return false;
+      });
+
+      console.log('📋 Postagens retornadas (PRE_POSTADO):', todas.length);
+      console.log('📋 Postagens após filtro do remetente:', filtradas.length);
+
+      setPostagens(filtradas);
       setSelectedPostagens([]);
     } catch (error) {
       console.error('Erro ao buscar postagens:', error);
