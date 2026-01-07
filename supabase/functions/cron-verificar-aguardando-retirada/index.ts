@@ -190,14 +190,23 @@ serve(async (req: Request) => {
         const destinatario = envio.destinatario || {};
         const enderecoDestinatario = destinatario.endereco || {};
 
+        // Log completo do envio para debug
+        console.log(`📦 Dados do envio ${envio.codigoObjeto}:`, JSON.stringify(envio).substring(0, 2000));
+
         // Formatar telefone com código do Brasil (55)
-        let celular = destinatario.celular || envio.destinatarioCelular || '';
+        // Tentar múltiplos campos possíveis onde o celular pode estar
+        let celular = destinatario.celular || destinatario.telefone || 
+                      envio.destinatarioCelular || envio.destinatario_celular ||
+                      envio.celular || envio.telefone || '';
+        console.log(`📱 Celular encontrado (raw): "${celular}"`);
+        
         // Remover caracteres não numéricos
         celular = celular.replace(/\D/g, '');
         // Adicionar prefixo 55 se não tiver
         if (celular && !celular.startsWith('55')) {
           celular = '55' + celular;
         }
+        console.log(`📱 Celular formatado: "${celular}"`);
 
         // Preparar payload para o webhook DataCrazy
         const webhookPayload = {
