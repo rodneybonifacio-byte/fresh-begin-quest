@@ -386,6 +386,9 @@ export const ModalGerarManifestoSaida = ({ isOpen, onClose }: ModalGerarManifest
                               {formatDateTime(postagem.criadoEm)}
                             </span>
                           </div>
+                          <p className="text-sm text-orange-600 dark:text-orange-400 font-medium">
+                            Remetente: {postagem.remetenteNome || postagem.remetente?.nome || selectedRemetente?.nome || 'N/A'}
+                          </p>
                           <p className="text-sm text-gray-600 dark:text-slate-300">
                             Destinatário: {postagem.destinatario?.nome || 'N/A'}
                           </p>
