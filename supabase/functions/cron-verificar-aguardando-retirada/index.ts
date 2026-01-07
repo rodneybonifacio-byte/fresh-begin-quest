@@ -193,9 +193,21 @@ serve(async (req: Request) => {
         // Log completo do envio para debug
         console.log(`📦 Dados do envio ${envio.codigoObjeto}:`, JSON.stringify(envio).substring(0, 2000));
 
-        // Formatar telefone com código do Brasil (55)
-        // Tentar múltiplos campos possíveis onde o celular pode estar
-        let celular = destinatario.celular || destinatario.telefone || 
+        // PASSO 1: Verificar se há override de celular cadastrado no Supabase
+        let celularOverride: string | null = null;
+        const { data: overrideData } = await supabase
+          .from('celulares_override')
+          .select('celular')
+          .eq('codigo_objeto', envio.codigoObjeto)
+          .maybeSingle();
+        
+        if (overrideData?.celular) {
+          celularOverride = overrideData.celular;
+          console.log(`📱 Celular OVERRIDE encontrado: "${celularOverride}"`);
+        }
+
+        // PASSO 2: Tentar múltiplos campos possíveis onde o celular pode estar (fallback)
+        let celular = celularOverride || destinatario.celular || destinatario.telefone || 
                       envio.destinatarioCelular || envio.destinatario_celular ||
                       envio.celular || envio.telefone || '';
         console.log(`📱 Celular encontrado (raw): "${celular}"`);

@@ -104,6 +104,33 @@ export type Database = {
         }
         Relationships: []
       }
+      celulares_override: {
+        Row: {
+          celular: string
+          codigo_objeto: string
+          created_at: string
+          id: string
+          observacao: string | null
+          updated_at: string
+        }
+        Insert: {
+          celular: string
+          codigo_objeto: string
+          created_at?: string
+          id?: string
+          observacao?: string | null
+          updated_at?: string
+        }
+        Update: {
+          celular?: string
+          codigo_objeto?: string
+          created_at?: string
+          id?: string
+          observacao?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       clientes_indicados: {
         Row: {
           cliente_email: string | null
