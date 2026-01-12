@@ -2,7 +2,6 @@ import { Package, TrendingUp, DollarSign, Truck, CheckCircle, Clock, Send, MapPi
 import { useMemo } from 'react';
 import ReactApexChart from 'react-apexcharts';
 import type { IEmissao } from '../../../types/IEmissao';
-import { ShipmentTrackingMap } from '../../../components/maps/ShipmentTrackingMap';
 
 interface DashboardEmissoesProps {
     emissoes: IEmissao[];
@@ -246,11 +245,8 @@ export const DashboardEmissoes = ({ emissoes }: DashboardEmissoesProps) => {
                             </div>
                         </div>
                     )}
-                </div>
             </div>
-
-            {/* Mapa de Rastreamento */}
-            <ShipmentTrackingMap emissoes={emissoes} />
         </div>
+    </div>
     );
 };
