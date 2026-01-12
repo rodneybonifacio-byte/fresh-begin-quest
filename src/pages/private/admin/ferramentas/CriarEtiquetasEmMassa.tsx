@@ -9,6 +9,7 @@ import { ViacepService } from "../../../../services/viacepService";
 import { isValid as isValidCpf, strip as stripCpf, generate as generateCpf } from "@fnando/cpf";
 import { getSupabaseWithAuth } from "../../../../integrations/supabase/custom-auth";
 import authStore from "../../../../authentica/authentication.store";
+import { CreditoService } from "../../../../services/CreditoService";
 
 interface LogEntry {
   timestamp: string;
@@ -395,14 +396,41 @@ export default function CriarEtiquetasEmMassa() {
       
       addLog(`API respondeu com sucesso!`, "success");
       
-      // Extrair PDFs da resposta
+      // Extrair PDFs da resposta e bloquear créditos
       const pdfArray: string[] = [];
+      const creditoService = new CreditoService();
+      
+      // Obter clienteId para bloquear créditos
+      const userData = authStore.getUser();
+      const clienteId = (userData as any)?.clienteId || userData?.id;
       
       if (resultado.data && Array.isArray(resultado.data)) {
-        resultado.data.forEach((item: any, idx: number) => {
+        for (let idx = 0; idx < resultado.data.length; idx++) {
+          const item = resultado.data[idx];
           if (item.pdf_etiqueta) {
             pdfArray.push(item.pdf_etiqueta);
             addLog(`Etiqueta ${idx + 1} gerada com sucesso`, "success");
+            
+            // Bloquear créditos para esta etiqueta
+            if (clienteId && item.id) {
+              try {
+                const valorFrete = parseFloat(item.valorTotal || item.frete?.valorTotal || enviosProcessados[idx]?.valor_frete || '0');
+                const codigoObjeto = item.codigoObjeto || item.codigo_objeto;
+                
+                if (valorFrete > 0) {
+                  await creditoService.bloquearCreditoEtiqueta(
+                    clienteId,
+                    item.id,
+                    valorFrete,
+                    codigoObjeto
+                  );
+                  addLog(`💰 Crédito R$ ${valorFrete.toFixed(2)} bloqueado para etiqueta ${codigoObjeto || item.id}`, "info");
+                }
+              } catch (creditoError: any) {
+                console.error("Erro ao bloquear crédito:", creditoError);
+                addLog(`⚠️ Erro ao bloquear crédito para etiqueta ${idx + 1}: ${creditoError.message}`, "warning");
+              }
+            }
           } else {
             // Etiqueta falhou na geração - salvar para correção
             addLog(`Etiqueta ${idx + 1} – Falha na geração (será salva para correção)`, "warning");
@@ -415,7 +443,7 @@ export default function CriarEtiquetasEmMassa() {
               });
             }
           }
-        });
+        }
       }
 
       // Salvar etiquetas que falharam na geração pela API
