@@ -652,6 +652,39 @@ serve(async (req) => {
     const emissaoData = JSON.parse(responseText);
     console.log('✅ Etiqueta emitida com sucesso!');
 
+    // Bloquear créditos do cliente para esta etiqueta
+    try {
+      const supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      );
+
+      const emissaoId = emissaoData?.data?.id || emissaoData?.id;
+      const codigoObjeto = emissaoData?.data?.codigoObjeto || emissaoData?.codigoObjeto;
+      const valorFrete = parseFloat(emissaoData?.data?.frete?.valorTotal || emissaoData?.frete?.valorTotal || emissaoPayload?.cotacao?.valorTotal || '0');
+
+      if (emissaoId && clienteId && valorFrete > 0) {
+        console.log('💰 Bloqueando créditos:', { clienteId, emissaoId, valorFrete, codigoObjeto });
+        
+        const { data: transacaoId, error: bloqueioError } = await supabaseClient.rpc('bloquear_credito_etiqueta', {
+          p_cliente_id: clienteId,
+          p_emissao_id: emissaoId,
+          p_valor: valorFrete,
+          p_codigo_objeto: codigoObjeto || null
+        });
+
+        if (bloqueioError) {
+          console.error('⚠️ Erro ao bloquear créditos (não impede emissão):', bloqueioError);
+        } else {
+          console.log('✅ Créditos bloqueados com sucesso! Transação:', transacaoId);
+        }
+      } else {
+        console.log('⚠️ Dados insuficientes para bloquear créditos:', { emissaoId, clienteId, valorFrete });
+      }
+    } catch (creditError) {
+      console.error('⚠️ Erro ao processar créditos (não impede emissão):', creditError);
+    }
+
     return new Response(
       JSON.stringify(emissaoData),
       {
