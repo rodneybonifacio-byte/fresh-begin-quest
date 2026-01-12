@@ -81,8 +81,8 @@ export const GerarNotaFiscal = () => {
     try {
       const boletoService = new BoletoService();
       
-      // Vencimento fixo: 16/01/2025
-      const vencimento = new Date(2025, 0, 16); // Janeiro é mês 0
+      // Vencimento fixo: 16/01/2026
+      const vencimento = new Date(2026, 0, 16); // Janeiro é mês 0
 
       const boleto = await boletoService.emitir({
         faturaId: `NF-${numeroNF}`,
