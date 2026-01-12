@@ -44,7 +44,7 @@ const RltEnvios = () => {
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [data, setData] = useState<IEmissao[]>([]);
     const [isModalViewPDF, setIsModalViewPDF] = useState(false);
-    const [etiqueta, setEtiqueta] = useState<{ nome: string; dados: string }>();
+    const [etiqueta] = useState<{ nome: string; dados: string }>();
     const [isModalUpdatePrecos, setIsModalUpdatePrecos] = useState<{ isOpen: boolean; emissao: IEmissao }>({ isOpen: false, emissao: {} as IEmissao });
     const [showMap, setShowMap] = useState(true);
     const [isModalManifesto, setIsModalManifesto] = useState(false);
@@ -395,15 +395,15 @@ const RltEnvios = () => {
         setPage(pageNumber);
     };
 
-    const { onEmissaoImprimir } = useImprimirEtiquetaPDF();
+    const { onEmissaoVisualizarPDF } = useImprimirEtiquetaPDF();
     const handleOnPDF = async (emissao: IEmissao, mergePdf: boolean = false) => {
-        let novaEtiqueta: IResponse<{ nome: string; dados: string }>;
-        if (mergePdf) {
-            novaEtiqueta = await onEmissaoImprimir(emissao, 'merge', setIsLoading, setIsModalViewPDF);
-        } else {
-            novaEtiqueta = await onEmissaoImprimir(emissao, 'etiqueta', setIsLoading, setIsModalViewPDF);
+        try {
+            const tipo = mergePdf ? 'merge' : 'etiqueta';
+            await onEmissaoVisualizarPDF(emissao, tipo, setIsLoading);
+        } catch (error) {
+            console.error('Erro ao imprimir:', error);
+            toast.error('Erro ao gerar PDF para impressão');
         }
-        setEtiqueta(novaEtiqueta.data);
     };
 
     return (
