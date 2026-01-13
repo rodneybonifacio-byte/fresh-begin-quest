@@ -327,7 +327,7 @@ export const ListaClientes = () => {
                                         onClick: async (cliente) => {
                                             if (window.confirm(`Deseja DESATIVAR o cliente "${cliente.nomeEmpresa}"?`)) {
                                                 try {
-                                                    await service.update(cliente.id, { ...cliente, status: 'INATIVO' });
+                                                    await service.update(cliente.id, { status: 'INATIVO' } as any);
                                                     toast.success('Cliente desativado com sucesso!');
                                                     queryClient.invalidateQueries({ queryKey: ['clientes'] });
                                                 } catch (error: any) {
