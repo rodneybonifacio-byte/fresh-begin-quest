@@ -77,7 +77,9 @@ export const ListaClientes = () => {
         setReactivatingClienteId(cliente.id);
         try {
             console.log('Reativando cliente:', cliente.id);
-            await service.update(cliente.id, { ...cliente, status: 'ATIVO' });
+            // Buscar dados completos do cliente antes de atualizar
+            const clienteCompleto = await service.getById(cliente.id);
+            await service.update(cliente.id, { ...clienteCompleto, status: 'ATIVO' });
             console.log('Cliente reativado com sucesso');
             toast.success('Cliente reativado com sucesso!');
             queryClient.invalidateQueries({ queryKey: ['clientes'] });
@@ -327,11 +329,13 @@ export const ListaClientes = () => {
                                         onClick: async (cliente) => {
                                             if (window.confirm(`Deseja DESATIVAR o cliente "${cliente.nomeEmpresa}"?`)) {
                                                 try {
-                                                    await service.update(cliente.id, { status: 'INATIVO' } as any);
+                                                    // Buscar dados completos do cliente antes de atualizar
+                                                    const clienteCompleto = await service.getById(cliente.id);
+                                                    await service.update(cliente.id, { ...clienteCompleto, status: 'INATIVO' });
                                                     toast.success('Cliente desativado com sucesso!');
                                                     queryClient.invalidateQueries({ queryKey: ['clientes'] });
                                                 } catch (error: any) {
-                                                    toast.error(error?.message || 'Erro ao desativar cliente.');
+                                                    toast.error(error?.response?.data?.message || error?.message || 'Erro ao desativar cliente.');
                                                 }
                                             }
                                         },
