@@ -364,7 +364,9 @@ export const ListaClientes = () => {
                                                     const sanitizedData = sanitizeClienteData({ ...clienteCompleto, status: 'INATIVO' });
                                                     await service.update(cliente.id, sanitizedData as any);
                                                     toast.success('Cliente desativado com sucesso!');
-                                                    queryClient.invalidateQueries({ queryKey: ['clientes'] });
+                                                    // Força refetch imediato
+                                                    await queryClient.refetchQueries({ queryKey: ['clientes'] });
+                                                    queryClient.invalidateQueries({ queryKey: ['dashboard-totais'] });
                                                 } catch (error: any) {
                                                     toast.error(error?.response?.data?.message || error?.message || 'Erro ao desativar cliente.');
                                                 }
