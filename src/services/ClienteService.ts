@@ -34,4 +34,8 @@ export class ClienteService extends BaseService<ICliente> {
         const response = await this.httpClient.get<IResponse<any>>(`${this.endpoint}/dashboard`);
         return response.data;
     }
+
+    async deletarCliente(id: string): Promise<void> {
+        await this.httpClient.delete<void>(`${this.endpoint}/${id}`);
+    }
 }
