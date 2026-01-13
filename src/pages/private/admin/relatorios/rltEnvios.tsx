@@ -46,7 +46,7 @@ const RltEnvios = () => {
     const [isModalViewPDF, setIsModalViewPDF] = useState(false);
     const [etiqueta] = useState<{ nome: string; dados: string }>();
     const [isModalUpdatePrecos, setIsModalUpdatePrecos] = useState<{ isOpen: boolean; emissao: IEmissao }>({ isOpen: false, emissao: {} as IEmissao });
-    const [showMap, setShowMap] = useState(true);
+    const [showMap, setShowMap] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 768);
     const [isModalManifesto, setIsModalManifesto] = useState(false);
 
     const [searchParams] = useSearchParams();
@@ -456,40 +456,40 @@ const RltEnvios = () => {
         >
             {isLoading ? <LoadSpinner mensagem="Carregando..." /> : null}
             
-            {/* Indicador de Filtros Ativos */}
+            {/* Indicador de Filtros Ativos - Compacto no mobile */}
             {(searchParams.get('dataIni') || searchParams.get('dataFim') || searchParams.get('status') || 
               searchParams.get('clienteId') || searchParams.get('remetenteId') || searchParams.get('transportadora')) && (
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-2 sm:p-4 mb-2 sm:mb-4">
                     <div className="flex items-start gap-2">
-                        <Filter className="text-blue-600 dark:text-blue-400 mt-0.5" size={18} />
-                        <div className="flex-1">
-                            <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
-                                Filtros Aplicados (serão considerados na exportação):
+                        <Filter className="text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" size={16} />
+                        <div className="flex-1 min-w-0">
+                            <p className="text-xs sm:text-sm font-medium text-blue-900 dark:text-blue-100 mb-1 sm:mb-2">
+                                Filtros Ativos
                             </p>
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap gap-1 sm:gap-2">
                                 {searchParams.get('dataIni') && (
-                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200">
-                                        Período: {searchParams.get('dataIni')} até {searchParams.get('dataFim')}
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200">
+                                        {searchParams.get('dataIni')} - {searchParams.get('dataFim')}
                                     </span>
                                 )}
                                 {searchParams.get('status') && (
-                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-200">
-                                        Status: {searchParams.get('status')}
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-200">
+                                        {searchParams.get('status')}
                                     </span>
                                 )}
                                 {searchParams.get('transportadora') && (
-                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200">
-                                        Transportadora: {searchParams.get('transportadora')}
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200">
+                                        {searchParams.get('transportadora')}
                                     </span>
                                 )}
                                 {searchParams.get('clienteId') && (
-                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 dark:bg-orange-800 text-orange-800 dark:text-orange-200">
-                                        Cliente filtrado
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-orange-100 dark:bg-orange-800 text-orange-800 dark:text-orange-200">
+                                        Cliente
                                     </span>
                                 )}
                                 {searchParams.get('remetenteId') && (
-                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-pink-100 dark:bg-pink-800 text-pink-800 dark:text-pink-200">
-                                        Remetente filtrado
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-pink-100 dark:bg-pink-800 text-pink-800 dark:text-pink-200">
+                                        Remetente
                                     </span>
                                 )}
                             </div>
@@ -500,88 +500,91 @@ const RltEnvios = () => {
             
             <>
                 {isFilterOpen && <FiltroEmissao onCancel={handlerToggleFilter} isDestinatario />}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-5 gap-4">
+                
+                {/* KPIs - Layout compacto para mobile */}
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2 sm:gap-4">
                     {/* Total de Envios */}
-                    <div className="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-gray-100 dark:border-slate-600">
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <p className="text-gray-500 dark:text-slate-400 text-xs">Total de Envios</p>
-                                <p className="text-sm font-semibold text-slate-800 dark:text-white mt-1">{dashboard?.totalEnvios}</p>
+                    <div className="bg-white dark:bg-slate-800 rounded-lg sm:rounded-xl p-3 sm:p-5 shadow-sm border border-gray-100 dark:border-slate-600">
+                        <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                                <p className="text-gray-500 dark:text-slate-400 text-[10px] sm:text-xs truncate">Total Envios</p>
+                                <p className="text-sm sm:text-base font-bold text-slate-800 dark:text-white mt-0.5">{dashboard?.totalEnvios ?? '-'}</p>
                             </div>
-                            <div className="bg-purple-100 dark:bg-purple-900 p-3 rounded-lg">
-                                <PackageCheck className="text-purple-600 dark:text-purple-400 text-xl" />
+                            <div className="bg-purple-100 dark:bg-purple-900 p-2 sm:p-3 rounded-lg flex-shrink-0">
+                                <PackageCheck className="text-purple-600 dark:text-purple-400 w-4 h-4 sm:w-5 sm:h-5" />
                             </div>
                         </div>
                     </div>
                     {/* Total de Vendas */}
-                    <div className="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-gray-100 dark:border-slate-600">
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <p className="text-gray-500 dark:text-slate-400 text-xs">Vendas Aproximado</p>
-                                <p className="text-sm font-semibold text-slate-800 dark:text-white mt-1">{formatMoedaDecimal(dashboard?.totalVendas || 0)}</p>
+                    <div className="bg-white dark:bg-slate-800 rounded-lg sm:rounded-xl p-3 sm:p-5 shadow-sm border border-gray-100 dark:border-slate-600">
+                        <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                                <p className="text-gray-500 dark:text-slate-400 text-[10px] sm:text-xs truncate">Vendas</p>
+                                <p className="text-sm sm:text-base font-bold text-slate-800 dark:text-white mt-0.5 truncate">{formatMoedaDecimal(dashboard?.totalVendas || 0)}</p>
                             </div>
-                            <div className="bg-orange-100 dark:bg-orange-900 p-3 rounded-lg">
-                                <ShoppingCart className="text-orange-600 dark:text-orange-400 text-xl" />
+                            <div className="bg-orange-100 dark:bg-orange-900 p-2 sm:p-3 rounded-lg flex-shrink-0">
+                                <ShoppingCart className="text-orange-600 dark:text-orange-400 w-4 h-4 sm:w-5 sm:h-5" />
                             </div>
                         </div>
                     </div>
                     {/* Custo Total */}
-                    <div className="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-gray-100 dark:border-slate-600">
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <p className="text-gray-500 dark:text-slate-400 text-xs">Custo Aproximado</p>
-                                <p className="text-sm font-semibold text-slate-800 dark:text-white mt-1">{formatMoedaDecimal(dashboard?.totalCusto || 0)}</p>
+                    <div className="bg-white dark:bg-slate-800 rounded-lg sm:rounded-xl p-3 sm:p-5 shadow-sm border border-gray-100 dark:border-slate-600">
+                        <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                                <p className="text-gray-500 dark:text-slate-400 text-[10px] sm:text-xs truncate">Custo</p>
+                                <p className="text-sm sm:text-base font-bold text-slate-800 dark:text-white mt-0.5 truncate">{formatMoedaDecimal(dashboard?.totalCusto || 0)}</p>
                             </div>
-                            <div className="bg-red-100 dark:bg-red-900 p-3 rounded-lg">
-                                <Wallet className="text-red-600 dark:text-red-400 text-xl" />
+                            <div className="bg-red-100 dark:bg-red-900 p-2 sm:p-3 rounded-lg flex-shrink-0">
+                                <Wallet className="text-red-600 dark:text-red-400 w-4 h-4 sm:w-5 sm:h-5" />
                             </div>
                         </div>
                     </div>
                     {/* Lucro Total */}
-                    <div className="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-gray-100 dark:border-slate-600">
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <p className="text-gray-500 dark:text-slate-400 text-xs">Lucro Aproximado</p>
-                                <p className="text-sm font-semibold text-slate-800 dark:text-white mt-1">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg sm:rounded-xl p-3 sm:p-5 shadow-sm border border-gray-100 dark:border-slate-600">
+                        <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                                <p className="text-gray-500 dark:text-slate-400 text-[10px] sm:text-xs truncate">Lucro</p>
+                                <p className="text-sm sm:text-base font-bold text-green-600 dark:text-green-400 mt-0.5 truncate">
                                     {calcularLucro(Number(dashboard?.totalVendas), Number(dashboard?.totalCusto))}
                                 </p>
                             </div>
-                            <div className="bg-green-100 dark:bg-green-900 p-3 rounded-lg">
-                                <DollarSign className="text-green-600 dark:text-green-400 text-xl" />
+                            <div className="bg-green-100 dark:bg-green-900 p-2 sm:p-3 rounded-lg flex-shrink-0">
+                                <DollarSign className="text-green-600 dark:text-green-400 w-4 h-4 sm:w-5 sm:h-5" />
                             </div>
                         </div>
                     </div>
                     {/* Total de Clientes */}
-                    <div className="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-gray-100 dark:border-slate-600">
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <p className="text-gray-500 dark:text-slate-400 text-xs">Total de Clientes</p>
-                                <p className="text-sm font-semibold text-slate-800 dark:text-white mt-1">{dashboard?.totalClientes}</p>
+                    <div className="bg-white dark:bg-slate-800 rounded-lg sm:rounded-xl p-3 sm:p-5 shadow-sm border border-gray-100 dark:border-slate-600 col-span-2 md:col-span-1">
+                        <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                                <p className="text-gray-500 dark:text-slate-400 text-[10px] sm:text-xs truncate">Clientes</p>
+                                <p className="text-sm sm:text-base font-bold text-slate-800 dark:text-white mt-0.5">{dashboard?.totalClientes ?? '-'}</p>
                             </div>
-                            <div className="bg-blue-100 dark:bg-blue-900 p-3 rounded-lg">
-                                <Users className="text-blue-600 dark:text-blue-400 text-xl" />
+                            <div className="bg-blue-100 dark:bg-blue-900 p-2 sm:p-3 rounded-lg flex-shrink-0">
+                                <Users className="text-blue-600 dark:text-blue-400 w-4 h-4 sm:w-5 sm:h-5" />
                             </div>
                         </div>
                     </div>
                 </div>
             </>
 
-            {/* Mapa de Rastreamento Admin */}
-            <div className="mb-6">
-                <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-slate-800 dark:text-white flex items-center gap-2">
-                        <MapIcon className="h-5 w-5 text-primary" />
-                        Mapa de Rastreamento
+            {/* Mapa de Rastreamento Admin - Oculto por padrão no mobile */}
+            <div className="mb-4 sm:mb-6">
+                <div className="flex items-center justify-between mb-2 sm:mb-4">
+                    <h3 className="text-sm sm:text-lg font-semibold text-slate-800 dark:text-white flex items-center gap-2">
+                        <MapIcon className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+                        <span className="hidden sm:inline">Mapa de Rastreamento</span>
+                        <span className="sm:hidden">Mapa</span>
                     </h3>
                     <button
                         onClick={() => setShowMap(!showMap)}
-                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                        className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                             showMap 
                                 ? 'bg-primary text-white' 
                                 : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
                         }`}
                     >
-                        {showMap ? 'Ocultar Mapa' : 'Mostrar Mapa'}
+                        {showMap ? 'Ocultar' : 'Mostrar'}
                     </button>
                 </div>
                 {showMap && allEmissoesForMap && allEmissoesForMap.length > 0 && (
@@ -599,7 +602,7 @@ const RltEnvios = () => {
             <ResponsiveTabMenu tab={tab} setTab={setTab}>
                 {!isLoading && !isError && emissoes && emissoes.data.length > 0 && (
                     <>
-                        <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm overflow-visible">
+                        <div className="bg-white dark:bg-slate-800 rounded-lg sm:rounded-xl p-2 sm:p-6 shadow-sm overflow-visible">
                             <DataTable<IEmissao>
                                 data={data}
                                 rowKey={(row) => row.id?.toString() || ''}
