@@ -321,14 +321,30 @@ export const ListaClientes = () => {
                                         onClick: (cliente) => LoginAsClient(cliente),
                                         show: true,
                                     },
-                                                    {
-                                                        label: 'Excluir Cliente',
-                                                        icon: <Trash2 size={16} />,
-                                                        onClick: (cliente) => handleRemoverCliente(cliente),
-                                                        show: true,
-                                                        loading: deletingClienteId !== null,
-                                                        disabled: (cliente: ICliente) => deletingClienteId === cliente.id,
-                                                    },
+                                    {
+                                        label: 'Desativar Cliente',
+                                        icon: <Power size={16} />,
+                                        onClick: async (cliente) => {
+                                            if (window.confirm(`Deseja DESATIVAR o cliente "${cliente.nomeEmpresa}"?`)) {
+                                                try {
+                                                    await service.update(cliente.id, { ...cliente, status: 'INATIVO' });
+                                                    toast.success('Cliente desativado com sucesso!');
+                                                    queryClient.invalidateQueries({ queryKey: ['clientes'] });
+                                                } catch (error: any) {
+                                                    toast.error(error?.message || 'Erro ao desativar cliente.');
+                                                }
+                                            }
+                                        },
+                                        show: (cliente: ICliente) => cliente.status !== 'INATIVO',
+                                    },
+                                    {
+                                        label: 'Excluir Cliente',
+                                        icon: <Trash2 size={16} />,
+                                        onClick: (cliente) => handleRemoverCliente(cliente),
+                                        show: true,
+                                        loading: deletingClienteId !== null,
+                                        disabled: (cliente: ICliente) => deletingClienteId === cliente.id,
+                                    },
                                     {
                                         label: 'Reativar Cliente',
                                         icon: <Power size={16} />,
