@@ -568,34 +568,42 @@ const RltEnvios = () => {
                 </div>
             </>
 
-            {/* Mapa de Rastreamento Admin - Oculto por padrão no mobile */}
+            {/* Mapa de Rastreamento - Carrega SOB DEMANDA para economizar recursos */}
             <div className="mb-4 sm:mb-6">
-                <div className="flex items-center justify-between mb-2 sm:mb-4">
-                    <h3 className="text-sm sm:text-lg font-semibold text-slate-800 dark:text-white flex items-center gap-2">
-                        <MapIcon className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                        <span className="hidden sm:inline">Mapa de Rastreamento</span>
-                        <span className="sm:hidden">Mapa</span>
-                    </h3>
+                {!showMap ? (
                     <button
-                        onClick={() => setShowMap(!showMap)}
-                        className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
-                            showMap 
-                                ? 'bg-primary text-white' 
-                                : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
-                        }`}
+                        onClick={() => setShowMap(true)}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 transition-colors"
                     >
-                        {showMap ? 'Ocultar' : 'Mostrar'}
+                        <MapIcon className="h-5 w-5 text-primary" />
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                            Abrir Mapa de Rastreamento
+                        </span>
                     </button>
-                </div>
-                {showMap && allEmissoesForMap && allEmissoesForMap.length > 0 && (
-                    <ShipmentTrackingMap 
-                        emissoes={allEmissoesForMap.filter(e => 
-                            ['EM_TRANSITO', 'POSTADO', 'SAIU_PARA_ENTREGA', 'EM_ATRASO', 'AGUARDANDO_RETIRADA'].includes(e.status || '')
-                        )} 
-                        enableAutoRefresh={true}
-                        refreshIntervalMs={5 * 60 * 1000}
-                        isAdmin={true}
-                    />
+                ) : (
+                    <>
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-sm sm:text-lg font-semibold text-slate-800 dark:text-white flex items-center gap-2">
+                                <MapIcon className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+                                Mapa de Rastreamento
+                            </h3>
+                            <button
+                                onClick={() => setShowMap(false)}
+                                className="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors"
+                            >
+                                Fechar Mapa
+                            </button>
+                        </div>
+                        {allEmissoesForMap && allEmissoesForMap.length > 0 && (
+                            <ShipmentTrackingMap 
+                                emissoes={allEmissoesForMap.filter(e => 
+                                    ['EM_TRANSITO', 'POSTADO', 'SAIU_PARA_ENTREGA', 'EM_ATRASO', 'AGUARDANDO_RETIRADA'].includes(e.status || '')
+                                )} 
+                                enableAutoRefresh={false}
+                                isAdmin={true}
+                            />
+                        )}
+                    </>
                 )}
             </div>
 
