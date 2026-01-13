@@ -114,32 +114,54 @@ export const Content = ({ children, titulo, subTitulo, isButton, button, data, i
                                     </button>
 
                                     {dropdownOpen && (
-                                        <div className="absolute right-0 top-12 z-50 bg-white dark:bg-slate-800 shadow-lg border border-gray-100 dark:border-slate-700 rounded-lg overflow-hidden min-w-[200px]">
-                                            {visibleButtons.slice(0, -1).map((btn, index) =>
-                                                btn.link ? (
-                                                    <Link
-                                                        key={index}
-                                                        to={btn.link}
-                                                        className="w-full text-left px-4 py-3 min-h-[44px] text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center gap-3 transition-colors"
+                                        <>
+                                            {/* Overlay */}
+                                            <div 
+                                                className="fixed inset-0 bg-black/20 z-40"
+                                                onClick={() => setDropdownOpen(false)}
+                                            />
+                                            {/* Bottom Sheet */}
+                                            <div className="fixed left-4 right-4 bottom-4 z-50 bg-white dark:bg-slate-800 shadow-xl border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden max-h-[70vh] overflow-y-auto">
+                                                {/* Header */}
+                                                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                                                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Ações</span>
+                                                    <button 
+                                                        onClick={() => setDropdownOpen(false)}
+                                                        className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 p-1"
                                                     >
-                                                        {btn.icon}
-                                                        <span className="flex-1">{btn.label}</span>
-                                                    </Link>
-                                                ) : (
-                                                    <button
-                                                        key={index}
-                                                        onClick={() => {
-                                                            btn.onClick?.();
-                                                            setDropdownOpen(false);
-                                                        }}
-                                                        className="w-full text-left px-4 py-3 min-h-[44px] text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center gap-3 transition-colors"
-                                                    >
-                                                        {btn.icon}
-                                                        <span className="flex-1">{btn.label}</span>
+                                                        ✕
                                                     </button>
-                                                )
-                                            )}
-                                        </div>
+                                                </div>
+                                                {/* Itens */}
+                                                <div className="py-2">
+                                                    {visibleButtons.slice(0, -1).map((btn, index) =>
+                                                        btn.link ? (
+                                                            <Link
+                                                                key={index}
+                                                                to={btn.link}
+                                                                onClick={() => setDropdownOpen(false)}
+                                                                className="w-full text-left px-4 py-3.5 min-h-[48px] text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 active:bg-gray-200 flex items-center gap-3 transition-colors"
+                                                            >
+                                                                <span className="text-slate-500 dark:text-slate-400">{btn.icon}</span>
+                                                                <span className="flex-1 font-medium">{btn.label}</span>
+                                                            </Link>
+                                                        ) : (
+                                                            <button
+                                                                key={index}
+                                                                onClick={() => {
+                                                                    btn.onClick?.();
+                                                                    setDropdownOpen(false);
+                                                                }}
+                                                                className="w-full text-left px-4 py-3.5 min-h-[48px] text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 active:bg-gray-200 flex items-center gap-3 transition-colors"
+                                                            >
+                                                                <span className="text-slate-500 dark:text-slate-400">{btn.icon}</span>
+                                                                <span className="flex-1 font-medium">{btn.label}</span>
+                                                            </button>
+                                                        )
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </>
                                     )}
                                 </div>
                             )}
