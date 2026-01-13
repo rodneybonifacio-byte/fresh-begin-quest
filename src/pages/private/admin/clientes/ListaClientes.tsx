@@ -96,6 +96,22 @@ export const ListaClientes = () => {
         return sanitized;
     };
 
+    const patchClienteStatusLocal = (clienteId: string, status: string) => {
+        // Atualiza imediatamente a tabela (estado local)
+        setData((prev) => prev.map((c) => (c.id === clienteId ? { ...c, status } : c)));
+
+        // Atualiza caches já carregados (todas as páginas/filtros)
+        queryClient.setQueriesData({ queryKey: ['clientes'] }, (old: any) => {
+            if (!old || typeof old !== 'object') return old;
+            const list = (old as any).data;
+            if (!Array.isArray(list)) return old;
+            return {
+                ...(old as any),
+                data: list.map((c: any) => (c?.id === clienteId ? { ...c, status } : c)),
+            };
+        });
+    };
+
     const handleReativarCliente = useCallback(async (cliente: ICliente) => {
         const confirmar = window.confirm(
             `Tem certeza que deseja REATIVAR o cliente "${cliente.nomeEmpresa}"?\n\nO cliente poderá acessar o sistema novamente.`
@@ -110,9 +126,14 @@ export const ListaClientes = () => {
             const { data: clienteCompleto } = await service.getById(cliente.id);
             const sanitizedData = sanitizeClienteData({ ...clienteCompleto, status: 'ATIVO' });
             await service.update(cliente.id, sanitizedData as any);
+
+            // Confirma o status salvo no backend (evita UI ficar desatualizada)
+            const { data: clienteAtualizado } = await service.getById(cliente.id);
+            patchClienteStatusLocal(cliente.id, (clienteAtualizado as any)?.status || 'ATIVO');
+
             console.log('Cliente reativado com sucesso');
             toast.success('Cliente reativado com sucesso!');
-            queryClient.invalidateQueries({ queryKey: ['clientes'] });
+            await queryClient.refetchQueries({ predicate: (q: any) => q.queryKey?.[0] === 'clientes' });
             queryClient.invalidateQueries({ queryKey: ['dashboard-totais'] });
         } catch (error: any) {
             console.error('Erro ao reativar cliente:', error);
@@ -363,9 +384,14 @@ export const ListaClientes = () => {
                                                     const { data: clienteCompleto } = await service.getById(cliente.id);
                                                     const sanitizedData = sanitizeClienteData({ ...clienteCompleto, status: 'INATIVO' });
                                                     await service.update(cliente.id, sanitizedData as any);
+
+                                                    // Confirma o status salvo no backend (evita UI ficar desatualizada)
+                                                    const { data: clienteAtualizado } = await service.getById(cliente.id);
+                                                    patchClienteStatusLocal(cliente.id, (clienteAtualizado as any)?.status || 'INATIVO');
+
                                                     toast.success('Cliente desativado com sucesso!');
                                                     // Força refetch imediato
-                                                    await queryClient.refetchQueries({ queryKey: ['clientes'] });
+                                                    await queryClient.refetchQueries({ predicate: (q: any) => q.queryKey?.[0] === 'clientes' });
                                                     queryClient.invalidateQueries({ queryKey: ['dashboard-totais'] });
                                                 } catch (error: any) {
                                                     toast.error(error?.response?.data?.message || error?.message || 'Erro ao desativar cliente.');
