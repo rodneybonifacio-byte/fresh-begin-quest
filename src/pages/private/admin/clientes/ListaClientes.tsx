@@ -67,6 +67,35 @@ export const ListaClientes = () => {
         }
     }, [service, queryClient]);
 
+    // Função para sanitizar dados do cliente antes de enviar para API
+    const sanitizeClienteData = (data: any) => {
+        const sanitized = { ...data };
+        
+        // Fix configuracoes types
+        if (sanitized.configuracoes) {
+            if (typeof sanitized.configuracoes.incluir_valor_declarado_na_nota === 'string') {
+                sanitized.configuracoes.incluir_valor_declarado_na_nota = 
+                    sanitized.configuracoes.incluir_valor_declarado_na_nota === 'true';
+            }
+            if (typeof sanitized.configuracoes.valor_disparo_evento_rastreio_whatsapp === 'number') {
+                sanitized.configuracoes.valor_disparo_evento_rastreio_whatsapp = 
+                    String(sanitized.configuracoes.valor_disparo_evento_rastreio_whatsapp);
+            }
+        }
+        
+        // Fix transportadoraConfiguracoes types
+        if (Array.isArray(sanitized.transportadoraConfiguracoes)) {
+            sanitized.transportadoraConfiguracoes = sanitized.transportadoraConfiguracoes.map((config: any) => ({
+                ...config,
+                valorAcrescimo: typeof config.valorAcrescimo === 'string' 
+                    ? parseFloat(config.valorAcrescimo) || 0 
+                    : config.valorAcrescimo,
+            }));
+        }
+        
+        return sanitized;
+    };
+
     const handleReativarCliente = useCallback(async (cliente: ICliente) => {
         const confirmar = window.confirm(
             `Tem certeza que deseja REATIVAR o cliente "${cliente.nomeEmpresa}"?\n\nO cliente poderá acessar o sistema novamente.`
@@ -79,7 +108,8 @@ export const ListaClientes = () => {
             console.log('Reativando cliente:', cliente.id);
             // Buscar dados completos do cliente antes de atualizar
             const { data: clienteCompleto } = await service.getById(cliente.id);
-            await service.update(cliente.id, { ...clienteCompleto, status: 'ATIVO' } as any);
+            const sanitizedData = sanitizeClienteData({ ...clienteCompleto, status: 'ATIVO' });
+            await service.update(cliente.id, sanitizedData as any);
             console.log('Cliente reativado com sucesso');
             toast.success('Cliente reativado com sucesso!');
             queryClient.invalidateQueries({ queryKey: ['clientes'] });
@@ -331,7 +361,8 @@ export const ListaClientes = () => {
                                                 try {
                                                     // Buscar dados completos do cliente antes de atualizar
                                                     const { data: clienteCompleto } = await service.getById(cliente.id);
-                                                    await service.update(cliente.id, { ...clienteCompleto, status: 'INATIVO' } as any);
+                                                    const sanitizedData = sanitizeClienteData({ ...clienteCompleto, status: 'INATIVO' });
+                                                    await service.update(cliente.id, sanitizedData as any);
                                                     toast.success('Cliente desativado com sucesso!');
                                                     queryClient.invalidateQueries({ queryKey: ['clientes'] });
                                                 } catch (error: any) {
