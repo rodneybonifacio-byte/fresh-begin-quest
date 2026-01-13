@@ -20,7 +20,7 @@ export const useMapTrackingData = (
   options: UseMapTrackingDataOptions = {}
 ) => {
   const {
-    enabled = true,
+    enabled = false, // Desabilitado por padrão para economizar recursos
     refreshInterval = 5 * 60 * 1000, // 5 minutes default
   } = options;
 
