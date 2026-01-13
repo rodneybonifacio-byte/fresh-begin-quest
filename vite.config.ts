@@ -17,6 +17,35 @@ export default defineConfig(({ mode }) => ({
         VitePWA({
             registerType: 'autoUpdate',
             includeAssets: ['favicon.svg', 'favicon.ico', 'robots.txt'],
+            workbox: {
+                // Força limpeza de cache antigo
+                cleanupOutdatedCaches: true,
+                // Skip waiting - atualiza imediatamente
+                skipWaiting: true,
+                // Claim clients - assume controle imediato
+                clientsClaim: true,
+                // Cache de navegação
+                navigateFallback: 'index.html',
+                // Não cachear chamadas de API
+                navigateFallbackDenylist: [/^\/api/, /^\/functions/],
+                // Runtime caching para assets
+                runtimeCaching: [
+                    {
+                        urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+                        handler: 'CacheFirst',
+                        options: {
+                            cacheName: 'google-fonts-cache',
+                            expiration: {
+                                maxEntries: 10,
+                                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 ano
+                            },
+                            cacheableResponse: {
+                                statuses: [0, 200]
+                            }
+                        }
+                    }
+                ]
+            },
             manifest: {
                 name: 'BRHUB Envios',
                 short_name: 'BRHUB',
