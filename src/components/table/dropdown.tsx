@@ -60,42 +60,77 @@ export const TableDropdown = ({ dropdownKey, items }: TableDropdownProps) => {
         <div className="relative dropdown-container">
             <button
                 onClick={() => toggleDropdown(dropdownKey)}
-                className="text-sm font-medium text-white rounded-md hover:text-white flex"
+                className="text-sm font-medium rounded-md flex p-2 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
             >
-                <EllipsisVertical className="text-slate-950 dark:text-slate-100" />
+                <EllipsisVertical className="text-slate-950 dark:text-slate-100" size={20} />
             </button>
 
             {openDropdown === dropdownKey && (
-                <div
-                    ref={dropdownRef}
-                    className={`text-left absolute mt-1 w-60 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 -right-52 md:right-12`}
-                >
-                    <ul className="py-2">
-                        {items.filter(item => item.isShow !== false).map(item => (
-                            <li key={item.id}>
-                                {item.type === 'link' && item.to ? (
-                                    <Link to={item.to} {...item.target ? { target: item.target } : {}} className="flex flex-col px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600">
-                                        {item.label}
-                                        {item.subTitle && <small className="text-slate-400 dark:text-slate-300">{item.subTitle}</small>}
-                                    </Link>
-                                ) : item.type === 'link' && item.href ? (
-                                    <a href={item.href} className="flex flex-col px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600">
-                                        {item.label}
-                                        {item.subTitle && <small className="text-slate-400 dark:text-slate-300">{item.subTitle}</small>}
-                                    </a>
-                                ) : (
-                                    <button
-                                        onClick={item.onClick}
-                                        className="w-full flex-col text-left flex px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
-                                    >
-                                        {item.label}
-                                        {item.subTitle && <small className="text-slate-400 dark:text-slate-300">{item.subTitle}</small>}
-                                    </button>
-                                )}
-                            </li>
-                        ))}
-                    </ul>
-                </div>
+                <>
+                    {/* Overlay para mobile */}
+                    <div 
+                        className="fixed inset-0 bg-black/20 z-40 md:hidden"
+                        onClick={() => setOpenDropdown(null)}
+                    />
+                    <div
+                        ref={dropdownRef}
+                        className={`
+                            text-left bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50
+                            fixed md:absolute
+                            left-4 right-4 bottom-4 md:left-auto md:right-0 md:bottom-auto
+                            md:mt-1 md:w-64
+                            max-h-[70vh] md:max-h-96 overflow-y-auto
+                        `}
+                    >
+                        {/* Header mobile */}
+                        <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Ações</span>
+                            <button 
+                                onClick={() => setOpenDropdown(null)}
+                                className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <ul className="py-2">
+                            {items.filter(item => item.isShow !== false).map(item => (
+                                <li key={item.id}>
+                                    {item.type === 'link' && item.to ? (
+                                        <Link 
+                                            to={item.to} 
+                                            {...item.target ? { target: item.target } : {}} 
+                                            className="flex flex-col px-4 py-3 md:py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 active:bg-gray-200"
+                                            onClick={() => setOpenDropdown(null)}
+                                        >
+                                            <span className="font-medium">{item.label}</span>
+                                            {item.subTitle && <small className="text-slate-400 dark:text-slate-300 mt-0.5">{item.subTitle}</small>}
+                                        </Link>
+                                    ) : item.type === 'link' && item.href ? (
+                                        <a 
+                                            href={item.href} 
+                                            className="flex flex-col px-4 py-3 md:py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 active:bg-gray-200"
+                                            onClick={() => setOpenDropdown(null)}
+                                        >
+                                            <span className="font-medium">{item.label}</span>
+                                            {item.subTitle && <small className="text-slate-400 dark:text-slate-300 mt-0.5">{item.subTitle}</small>}
+                                        </a>
+                                    ) : (
+                                        <button
+                                            onClick={() => {
+                                                item.onClick?.();
+                                                setOpenDropdown(null);
+                                            }}
+                                            className="w-full flex-col text-left flex px-4 py-3 md:py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 active:bg-gray-200"
+                                        >
+                                            <span className="font-medium">{item.label}</span>
+                                            {item.subTitle && <small className="text-slate-400 dark:text-slate-300 mt-0.5">{item.subTitle}</small>}
+                                        </button>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                </>
             )}
         </div>
     );
