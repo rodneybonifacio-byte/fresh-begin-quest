@@ -78,8 +78,8 @@ export const ListaClientes = () => {
         try {
             console.log('Reativando cliente:', cliente.id);
             // Buscar dados completos do cliente antes de atualizar
-            const clienteCompleto = await service.getById(cliente.id);
-            await service.update(cliente.id, { ...clienteCompleto, status: 'ATIVO' });
+            const { data: clienteCompleto } = await service.getById(cliente.id);
+            await service.update(cliente.id, { ...clienteCompleto, status: 'ATIVO' } as any);
             console.log('Cliente reativado com sucesso');
             toast.success('Cliente reativado com sucesso!');
             queryClient.invalidateQueries({ queryKey: ['clientes'] });
@@ -330,8 +330,8 @@ export const ListaClientes = () => {
                                             if (window.confirm(`Deseja DESATIVAR o cliente "${cliente.nomeEmpresa}"?`)) {
                                                 try {
                                                     // Buscar dados completos do cliente antes de atualizar
-                                                    const clienteCompleto = await service.getById(cliente.id);
-                                                    await service.update(cliente.id, { ...clienteCompleto, status: 'INATIVO' });
+                                                    const { data: clienteCompleto } = await service.getById(cliente.id);
+                                                    await service.update(cliente.id, { ...clienteCompleto, status: 'INATIVO' } as any);
                                                     toast.success('Cliente desativado com sucesso!');
                                                     queryClient.invalidateQueries({ queryKey: ['clientes'] });
                                                 } catch (error: any) {
