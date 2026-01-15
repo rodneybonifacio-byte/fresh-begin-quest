@@ -171,7 +171,7 @@ export const Login = () => {
             {/* Login Card */}
             <div className="w-full max-w-md relative z-10 animate-fade-in">
                 {/* Logo Section */}
-                <div className="flex flex-col items-center gap-3 mb-8">
+                <div className="flex flex-col items-center gap-3 mb-6">
                     <div className="p-4 bg-primary/10 rounded-2xl">
                         <LogoApp light />
                     </div>
@@ -179,6 +179,14 @@ export const Login = () => {
                         <h1 className="text-2xl font-bold text-foreground mb-2">Bem-vindo de volta</h1>
                         <p className="text-muted-foreground text-sm">Insira suas credenciais para continuar</p>
                     </div>
+                </div>
+
+                {/* Widget de Rastreamento Público - No topo */}
+                <div className="mb-6 w-full">
+                    <div className="text-center mb-3">
+                        <h3 className="text-sm font-medium text-muted-foreground">📦 Rastreie sua encomenda</h3>
+                    </div>
+                    <PublicTrackingWidget />
                 </div>
 
                 {/* Form Card */}
@@ -225,13 +233,6 @@ export const Login = () => {
                     </div>
                 </div>
 
-                {/* Widget de Rastreamento Público */}
-                <div className="mt-8 w-full">
-                    <div className="text-center mb-4">
-                        <h3 className="text-sm font-medium text-muted-foreground">Rastreie sua encomenda</h3>
-                    </div>
-                    <PublicTrackingWidget />
-                </div>
             </div>
         </div>
     </>;
