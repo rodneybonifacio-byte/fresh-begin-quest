@@ -34,9 +34,21 @@ export const RecuperarSenha = () => {
             setIsLoading(true);
             
             // Chamar a API externa para enviar o email de recuperação
-            await clientHttp.post('recover', {
-                email: data.email
-            });
+            // Tentar diferentes endpoints possíveis
+            try {
+                await clientHttp.post('recover/request', {
+                    email: data.email
+                });
+            } catch (e: any) {
+                // Se não existir, tentar endpoint alternativo
+                if (e.message?.includes('404')) {
+                    await clientHttp.post('usuarios/recover', {
+                        email: data.email
+                    });
+                } else {
+                    throw e;
+                }
+            }
 
             // Salvar email na sessionStorage para uso na página de PIN
             sessionStorage.setItem('emailRecovery', data.email);
@@ -46,7 +58,9 @@ export const RecuperarSenha = () => {
             reset();
         } catch (error: any) {
             console.error(error);
-            if (error.response?.status === 404) {
+            if (error.message?.includes('404')) {
+                toast.error("Serviço de recuperação indisponível. Entre em contato com o suporte.");
+            } else if (error.message?.includes('400')) {
                 toast.error("Email não encontrado. Verifique se o email está correto.");
             } else {
                 toast.error(error.message || "Erro ao processar solicitação");
