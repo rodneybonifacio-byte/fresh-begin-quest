@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { LoadSpinner } from "../../../components/loading";
 import { ButtonComponent } from "../../../components/button";
@@ -7,7 +7,7 @@ import { InputLabel } from "../../../components/input-label";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useForm } from "react-hook-form";
 import * as yup from 'yup'
-import { supabase } from "../../../integrations/supabase/client";
+import { CustomHttpClient } from "../../../utils/http-axios-client";
 import { toast } from "sonner";
 
 const schemaRecuperarSenha = yup.object({
@@ -17,8 +17,10 @@ const schemaRecuperarSenha = yup.object({
 type FormDataRecuperarSenha = yup.InferType<typeof schemaRecuperarSenha>;
 
 export const RecuperarSenha = () => {
+    const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(false);
     const [emailEnviado, setEmailEnviado] = useState(false);
+    const clientHttp = new CustomHttpClient();
 
     const { register, handleSubmit, formState: { errors }, reset } = useForm<FormDataRecuperarSenha>({
         resolver: yupResolver(schemaRecuperarSenha),
@@ -30,23 +32,25 @@ export const RecuperarSenha = () => {
     const onSubmit = async (data: FormDataRecuperarSenha) => {
         try {
             setIsLoading(true);
-            const redirectUrl = `${window.location.origin}/nova-senha`;
             
-            const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
-                redirectTo: redirectUrl,
+            // Chamar a API externa para enviar o email de recuperação
+            await clientHttp.post('recover', {
+                email: data.email
             });
 
-            if (error) {
-                toast.error("Erro ao enviar email de recuperação: " + error.message);
-                return;
-            }
+            // Salvar email na sessionStorage para uso na página de PIN
+            sessionStorage.setItem('emailRecovery', data.email);
 
             toast.success("Email de recuperação enviado! Verifique sua caixa de entrada.");
             setEmailEnviado(true);
             reset();
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            toast.error("Erro ao processar solicitação");
+            if (error.response?.status === 404) {
+                toast.error("Email não encontrado. Verifique se o email está correto.");
+            } else {
+                toast.error(error.message || "Erro ao processar solicitação");
+            }
         } finally {
             setIsLoading(false);
         }
@@ -64,12 +68,18 @@ export const RecuperarSenha = () => {
                         <div className="flex flex-col gap-6">
                             <span className="text-center text-slate-800 text-2xl font-light leading-[28.80px]">Verifique seu e-mail!</span>
                             <span className="text-center text-slate-600 text-sm font-normal leading-[21px]">
-                                Enviamos um link de recuperação para seu email.<br />
-                                Clique no link para criar uma nova senha.
+                                Enviamos um código de 6 dígitos para seu email.<br />
+                                Digite o código para redefinir sua senha.
                             </span>
                         </div>
-                        <div className="w-full">
-                            <Link to="/login" className="h-12 w-full bg-secondary text-white text-sm font-medium rounded-lg flex justify-center items-center hover:bg-secondary/90 transition-colors">
+                        <div className="w-full flex flex-col gap-3">
+                            <button 
+                                onClick={() => navigate('/pin-code')}
+                                className="h-12 w-full bg-secondary text-white text-sm font-medium rounded-lg flex justify-center items-center hover:bg-secondary/90 transition-colors"
+                            >
+                                Digitar código
+                            </button>
+                            <Link to="/login" className="h-12 w-full border border-slate-300 text-slate-700 text-sm font-medium rounded-lg flex justify-center items-center hover:bg-slate-50 transition-colors">
                                 Voltar ao login
                             </Link>
                         </div>
