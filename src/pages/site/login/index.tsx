@@ -19,6 +19,7 @@ import { PromoBannerRecarga } from "../../../components/PromoBannerRecarga";
 import { supabase } from "../../../integrations/supabase/client";
 import type { TokenPayload } from "../../../types/ITokenPayload";
 import { InstallAppButtons } from "../../../components/InstallAppButtons";
+import { PublicTrackingWidget } from "../../../components/public/PublicTrackingWidget";
 
 const loginSchame = yup.object({
   email: yup.string().required("Informe seu email."),
@@ -222,6 +223,14 @@ export const Login = () => {
                     <div className="mt-6 pt-6 border-t border-border">
                         <InstallAppButtons />
                     </div>
+                </div>
+
+                {/* Widget de Rastreamento Público */}
+                <div className="mt-8 w-full">
+                    <div className="text-center mb-4">
+                        <h3 className="text-sm font-medium text-muted-foreground">Rastreie sua encomenda</h3>
+                    </div>
+                    <PublicTrackingWidget />
                 </div>
             </div>
         </div>
