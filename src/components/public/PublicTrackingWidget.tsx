@@ -31,13 +31,16 @@ export const PublicTrackingWidget = () => {
 
             if (fnError) throw fnError;
 
-            if (data?.rastreio) {
-                setRastreio(data.rastreio);
+            // A API retorna os dados em data.dados.data
+            const rastreioData = data?.dados?.data || data?.rastreio;
+            
+            if (rastreioData && rastreioData.eventos && rastreioData.eventos.length > 0) {
+                setRastreio(rastreioData);
             } else if (data?.error) {
                 setError(data.error);
                 toast.error(data.error);
             } else {
-                setError("Nenhum resultado encontrado");
+                setError("Nenhum resultado encontrado para este código");
                 toast.error("Nenhum resultado encontrado");
             }
         } catch (err: any) {
