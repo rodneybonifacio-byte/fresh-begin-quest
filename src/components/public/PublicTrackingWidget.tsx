@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Search, Package, MapPin, Clock, Loader2 } from "lucide-react";
+import { Search, Package, MapPin, Clock, Loader2, X } from "lucide-react";
 import { supabase } from "../../integrations/supabase/client";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
@@ -103,12 +103,22 @@ export const PublicTrackingWidget = () => {
                             <div className="flex items-center gap-2">
                                 <Package className="h-4 w-4 text-[#F2541B]" />
                                 <span className="font-semibold text-gray-900">{rastreio.codigoObjeto}</span>
+                                {rastreio.servico && (
+                                    <span className="text-xs bg-[#F2541B]/10 text-[#F2541B] px-2 py-1 rounded-full font-medium">
+                                        {rastreio.servico}
+                                    </span>
+                                )}
                             </div>
-                            {rastreio.servico && (
-                                <span className="text-xs bg-[#F2541B]/10 text-[#F2541B] px-2 py-1 rounded-full font-medium">
-                                    {rastreio.servico}
-                                </span>
-                            )}
+                            <button
+                                onClick={() => {
+                                    setRastreio(null);
+                                    setCodigo("");
+                                }}
+                                className="p-1.5 hover:bg-gray-200 rounded-full transition-colors"
+                                title="Fechar rastreamento"
+                            >
+                                <X className="h-4 w-4 text-gray-500" />
+                            </button>
                         </div>
                         {rastreio.dataPrevisaoEntrega && (
                             <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
