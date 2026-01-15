@@ -1,6 +1,7 @@
 import { LogoApp } from "../../components/logo";
 import { NavBarPublico } from "./layout/NavBarPublico";
 import { PromoBannerRecarga } from "../../components/PromoBannerRecarga";
+import { PublicTrackingWidget } from "../../components/public/PublicTrackingWidget";
 
 export const Home = () => {
     return (
@@ -33,6 +34,15 @@ export const Home = () => {
                                 </a>
                             </div>
                         </div>
+                    </div>
+
+                    {/* Widget de Rastreamento */}
+                    <div className="mt-12 md:mt-16">
+                        <div className="text-center mb-6">
+                            <h2 className="text-xl font-semibold text-gray-800">Rastreie sua encomenda</h2>
+                            <p className="text-gray-500 text-sm mt-1">Digite o código de rastreamento para acompanhar seu envio</p>
+                        </div>
+                        <PublicTrackingWidget />
                     </div>
                 </div>
             </div>
