@@ -9,7 +9,24 @@ interface CotacaoListProps {
     emptyStateMessage?: string;
     isLoading?: boolean;
     maxItems?: number;
+    disabledServices?: string[];
 }
+
+// Verifica se a cotação pertence a um serviço desabilitado
+const isServiceDisabled = (cotacao: ICotacaoMinimaResponse, disabledServices: string[]): boolean => {
+    if (disabledServices.length === 0) return false;
+    
+    const nomeServico = cotacao.nomeServico?.toLowerCase() || '';
+    const imagem = cotacao.imagem?.toLowerCase() || '';
+    
+    // Verifica se é Correios
+    if (disabledServices.includes('correios')) {
+        const isRodonaves = nomeServico.includes('rodonaves') || imagem.includes('rodonaves');
+        if (!isRodonaves) return true;
+    }
+    
+    return false;
+};
 
 export const CotacaoList = ({ 
     cotacoes, 
@@ -18,7 +35,8 @@ export const CotacaoList = ({
     showSelectButtons = false,
     emptyStateMessage = "Nenhuma cotação encontrada",
     isLoading = false,
-    maxItems = 5
+    maxItems = 5,
+    disabledServices = []
 }: CotacaoListProps) => {
     if (isLoading) {
         return (
@@ -85,17 +103,22 @@ export const CotacaoList = ({
 
     return (
         <div className={`w-full grid ${getGridCols()} gap-4`}>
-            {cotacoesExibidas.map((cotacao: ICotacaoMinimaResponse, index: number) => (
-                <CotacaoCard
-                    key={`${cotacao.codigoServico}-${index}`}
-                    cotacao={cotacao}
-                    onSelect={onSelectCotacao}
-                    isSelected={selectedCotacao?.nomeServico === cotacao.nomeServico}
-                    showSelectButton={showSelectButtons}
-                    isBestPrice={index === 0}
-                    compact={cotacoesExibidas.length > 3}
-                />
-            ))}
+            {cotacoesExibidas.map((cotacao: ICotacaoMinimaResponse, index: number) => {
+                const isDisabled = isServiceDisabled(cotacao, disabledServices);
+                return (
+                    <CotacaoCard
+                        key={`${cotacao.codigoServico}-${index}`}
+                        cotacao={cotacao}
+                        onSelect={isDisabled ? undefined : onSelectCotacao}
+                        isSelected={selectedCotacao?.nomeServico === cotacao.nomeServico}
+                        showSelectButton={showSelectButtons}
+                        isBestPrice={index === 0 && !isDisabled}
+                        compact={cotacoesExibidas.length > 3}
+                        isDisabled={isDisabled}
+                        disabledReason="Não disponível para múltiplos volumes"
+                    />
+                );
+            })}
         </div>
     );
 };

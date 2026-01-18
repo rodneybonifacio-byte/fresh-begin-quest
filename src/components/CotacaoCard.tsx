@@ -1,6 +1,6 @@
 import type { ICotacaoMinimaResponse } from '../types/ICotacao';
 import { getTransportadoraAltText, getTransportadoraImage } from '../utils/imageHelper';
-import { BadgePercent } from 'lucide-react';
+import { BadgePercent, AlertCircle } from 'lucide-react';
 
 interface CotacaoCardProps {
     cotacao: ICotacaoMinimaResponse;
@@ -9,6 +9,8 @@ interface CotacaoCardProps {
     showSelectButton?: boolean;
     isBestPrice?: boolean;
     compact?: boolean;
+    isDisabled?: boolean;
+    disabledReason?: string;
 }
 
 export const CotacaoCard = ({ 
@@ -17,7 +19,9 @@ export const CotacaoCard = ({
     isSelected = false, 
     showSelectButton = false, 
     isBestPrice = false,
-    compact = false
+    compact = false,
+    isDisabled = false,
+    disabledReason
 }: CotacaoCardProps) => {
     const isRodonaves = cotacao.imagem?.toLowerCase().includes('rodonaves') || 
                         cotacao.nomeServico?.toLowerCase().includes('rodonaves');
@@ -43,12 +47,14 @@ export const CotacaoCard = ({
     if (compact) {
         return (
             <div
-                className={`group bg-card rounded-xl shadow-md p-3 gap-2 w-full flex flex-col relative border-2 transition-all duration-200 hover:shadow-lg hover:scale-[1.01] ${
-                    isSelected
-                        ? 'border-primary ring-2 ring-primary/20 bg-primary/5'
+                className={`group bg-card rounded-xl shadow-md p-3 gap-2 w-full flex flex-col relative border-2 transition-all duration-200 ${
+                    isDisabled
+                        ? 'opacity-50 cursor-not-allowed border-muted bg-muted/30'
+                        : isSelected
+                        ? 'border-primary ring-2 ring-primary/20 bg-primary/5 hover:shadow-lg hover:scale-[1.01]'
                         : isBestPrice
-                        ? 'border-green-500 ring-2 ring-green-500/20 bg-green-50 dark:bg-green-950/20'
-                        : 'border-border hover:border-primary/50'
+                        ? 'border-green-500 ring-2 ring-green-500/20 bg-green-50 dark:bg-green-950/20 hover:shadow-lg hover:scale-[1.01]'
+                        : 'border-border hover:border-primary/50 hover:shadow-lg hover:scale-[1.01]'
                 }`}
             >
                 {/* Badge de melhor preço compacto */}
@@ -96,7 +102,14 @@ export const CotacaoCard = ({
                     </span>
                 </div>
 
-                {showSelectButton && (
+                {isDisabled && disabledReason && (
+                    <div className="flex items-center gap-1.5 p-2 bg-amber-50 dark:bg-amber-900/20 rounded-md border border-amber-200 dark:border-amber-700">
+                        <AlertCircle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                        <span className="text-xs text-amber-700 dark:text-amber-300">{disabledReason}</span>
+                    </div>
+                )}
+
+                {showSelectButton && !isDisabled && (
                     <button
                         type="button"
                         onClick={(e) => {
@@ -113,18 +126,30 @@ export const CotacaoCard = ({
                         {isSelected ? '✓ Selecionado' : 'Selecionar'}
                     </button>
                 )}
+
+                {showSelectButton && isDisabled && (
+                    <button
+                        type="button"
+                        disabled
+                        className="w-full py-2 px-3 rounded-lg text-xs font-bold bg-muted text-muted-foreground cursor-not-allowed"
+                    >
+                        Indisponível
+                    </button>
+                )}
             </div>
         );
     }
 
     return (
         <div
-            className={`group bg-card rounded-xl shadow-lg p-5 gap-3 w-full flex flex-col relative border-2 transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] ${
-                isSelected
-                    ? 'border-primary ring-4 ring-primary/20 bg-primary/5'
+            className={`group bg-card rounded-xl shadow-lg p-5 gap-3 w-full flex flex-col relative border-2 transition-all duration-300 ${
+                isDisabled
+                    ? 'opacity-50 cursor-not-allowed border-muted bg-muted/30'
+                    : isSelected
+                    ? 'border-primary ring-4 ring-primary/20 bg-primary/5 hover:shadow-2xl hover:scale-[1.02]'
                     : isBestPrice
-                    ? 'border-green-500 ring-4 ring-green-500/30 bg-green-50 dark:bg-green-950/20'
-                    : 'border-border hover:border-primary/50'
+                    ? 'border-green-500 ring-4 ring-green-500/30 bg-green-50 dark:bg-green-950/20 hover:shadow-2xl hover:scale-[1.02]'
+                    : 'border-border hover:border-primary/50 hover:shadow-2xl hover:scale-[1.02]'
             }`}
         >
             {/* Badge de melhor preço */}
@@ -196,7 +221,14 @@ export const CotacaoCard = ({
                 </div>
             </div>
 
-            {showSelectButton && (
+            {isDisabled && disabledReason && (
+                <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-700">
+                    <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                    <span className="text-sm text-amber-700 dark:text-amber-300">{disabledReason}</span>
+                </div>
+            )}
+
+            {showSelectButton && !isDisabled && (
                 <div className="mt-2">
                     <button
                         type="button"
@@ -212,6 +244,18 @@ export const CotacaoCard = ({
                         }`}
                     >
                         {isSelected ? '✓ Frete Selecionado' : 'Selecionar Frete'}
+                    </button>
+                </div>
+            )}
+
+            {showSelectButton && isDisabled && (
+                <div className="mt-2">
+                    <button
+                        type="button"
+                        disabled
+                        className="w-full py-3 px-6 rounded-xl text-base font-bold bg-muted text-muted-foreground cursor-not-allowed"
+                    >
+                        Indisponível
                     </button>
                 </div>
             )}

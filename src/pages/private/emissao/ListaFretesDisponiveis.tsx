@@ -6,13 +6,15 @@ interface ListaFretesDisponiveisProps {
     onSelected: (frete: ICotacaoMinimaResponse) => void
     selected: ICotacaoMinimaResponse | null
     isLoading?: boolean
+    disabledServices?: string[]
 }
 
 export const ListaFretesDisponiveis = ({
     onSelected,
     data,
     selected,
-    isLoading = false
+    isLoading = false,
+    disabledServices = []
 }: ListaFretesDisponiveisProps) => {
     return (
         <div className="flex flex-col w-full gap-6">
@@ -32,6 +34,7 @@ export const ListaFretesDisponiveis = ({
                     showSelectButtons={true}
                     isLoading={isLoading}
                     emptyStateMessage="Nenhuma opção de frete disponível. Verifique os dados do pedido."
+                    disabledServices={disabledServices}
                 />
             </div>
         </div>

@@ -1,4 +1,4 @@
-import { Truck, BadgePercent } from 'lucide-react';
+import { Truck, BadgePercent, AlertTriangle } from 'lucide-react';
 import { useEffect } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { FormCard } from '../../../../components/FormCard';
@@ -6,6 +6,8 @@ import { ButtonComponent } from '../../../../components/button';
 import { ListaFretesDisponiveis } from '../ListaFretesDisponiveis';
 import { useCotacao } from '../../../../hooks/useCotacao';
 import type { ICotacaoMinimaResponse } from '../../../../types/ICotacao';
+import { toast } from 'sonner';
+
 interface Step3FreteProps {
   onNext: () => void;
   onBack: () => void;
@@ -33,6 +35,32 @@ export const Step3Frete = ({
     cotacoes,
     isLoadingCotacao
   } = useCotacao();
+
+  // Obter quantidade de volumes do formulário
+  const quantidadeVolumes = getValues('embalagem.quantidadeVolumes') || 1;
+  const isMultiVolume = quantidadeVolumes > 1;
+
+  // Função para verificar se é Correios
+  const isCorreios = (cotacao: ICotacaoMinimaResponse) => {
+    const nomeServico = cotacao.nomeServico?.toLowerCase() || '';
+    const imagem = cotacao.imagem?.toLowerCase() || '';
+    return !nomeServico.includes('rodonaves') && !imagem.includes('rodonaves');
+  };
+
+  // Handler para seleção com validação de multi-volume
+  const handleSelectCotacao = (cotacao: ICotacaoMinimaResponse) => {
+    if (isMultiVolume && isCorreios(cotacao)) {
+      toast.error(
+        'Os Correios não permitem envio de múltiplos volumes. Por favor, selecione Rodonaves ou reduza para 1 volume.',
+        { duration: 5000 }
+      );
+      return;
+    }
+    setCotacaoSelecionado(cotacao);
+    setValue('cotacao.codigoServico', cotacao.codigoServico);
+    clearErrors('cotacao');
+  };
+
   useEffect(() => {
     const calcularFrete = async () => {
       console.log('🚚 Iniciando cálculo de frete...');
@@ -84,6 +112,21 @@ export const Step3Frete = ({
   };
   return <FormCard icon={Truck} title="Escolha o Frete" description="Selecione a melhor opção de envio com desconto exclusivo">
       <div className="space-y-6">
+        {/* Aviso de multi-volume */}
+        {isMultiVolume && (
+          <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border-2 border-amber-300 dark:border-amber-700 flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-amber-800 dark:text-amber-200">
+                Envio com {quantidadeVolumes} volumes
+              </p>
+              <p className="text-sm text-amber-700 dark:text-amber-300">
+                Os Correios não permitem envio de múltiplos volumes. Apenas Rodonaves está disponível para esta opção.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Header com destaque de desconto */}
         <div className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 p-4 rounded-xl border-2 border-green-200 dark:border-green-700">
           <div className="flex items-center gap-3 justify-center">
@@ -99,11 +142,14 @@ export const Step3Frete = ({
             <span className="text-lg font-medium text-muted-foreground animate-pulse">Calculando melhores fretes...</span>
           </div>}
         
-        {cotacoes && cotacoes.length > 0 && <ListaFretesDisponiveis data={cotacoes} onSelected={c => {
-        setCotacaoSelecionado(c);
-        setValue('cotacao.codigoServico', c.codigoServico);
-        clearErrors('cotacao');
-      }} selected={cotacaoSelecionado || null} />}
+        {cotacoes && cotacoes.length > 0 && (
+          <ListaFretesDisponiveis 
+            data={cotacoes} 
+            onSelected={handleSelectCotacao} 
+            selected={cotacaoSelecionado || null}
+            disabledServices={isMultiVolume ? ['correios'] : []}
+          />
+        )}
 
         {cotacoes && cotacoes.length === 0 && !isLoadingCotacao && <div className="text-center py-8 text-muted-foreground">
             Nenhum frete disponível para esta rota. Verifique os dados informados.
