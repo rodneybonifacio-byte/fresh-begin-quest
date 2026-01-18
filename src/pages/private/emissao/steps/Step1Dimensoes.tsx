@@ -87,7 +87,7 @@ export const Step1Dimensoes = ({
           console.log('Largura mudou:', value);
           setLargura(value);
         }} />
-          <InputField label="Comprimento (cm)" type="number" min="0" step="0.01" placeholder="0" defaultValue={0} onChange={e => {
+          <InputField label="Compr. (cm)" type="number" min="0" step="0.01" placeholder="0" defaultValue={0} onChange={e => {
           const value = parseFloat(e.target.value) || 0;
           console.log('Comprimento mudou:', value);
           setComprimento(value);
