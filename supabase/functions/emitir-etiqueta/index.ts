@@ -358,6 +358,12 @@ serve(async (req) => {
       clienteId,
     };
 
+    // Garantir que quantidadeVolumes seja passada na embalagem
+    if (emissaoPayload.embalagem) {
+      emissaoPayload.embalagem.quantidadeVolumes = emissaoPayload.embalagem.quantidadeVolumes || 1;
+      console.log('📦 Quantidade de volumes:', emissaoPayload.embalagem.quantidadeVolumes);
+    }
+
     // Helpers de sanitização/validação (server-side)
     const digitsOnly = (v: any) => String(v ?? '').replace(/\D/g, '');
 

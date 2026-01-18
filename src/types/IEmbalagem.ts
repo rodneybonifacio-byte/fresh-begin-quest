@@ -7,6 +7,7 @@ export interface IEmbalagem {
     peso: number;
     diametro: number;
     formatoObjeto: FormatoObjeto;
+    quantidadeVolumes?: number;
 }
 
 export const formatoObjeto: { label: string; value: FormatoObjeto }[] = [

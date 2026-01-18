@@ -40,6 +40,7 @@ export const MobileSimulador = () => {
   const [cepDestino, setCepDestino] = useState('');
   const [remetenteSelecionado, setRemetenteSelecionado] = useState<Remetente | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [quantidadeVolumes, setQuantidadeVolumes] = useState<number>(1);
 
   // Inicializa o remetente com o cliente quando carregado
   useEffect(() => {
@@ -59,9 +60,10 @@ export const MobileSimulador = () => {
         peso: dimensoes.peso,
         diametro: 0,
         formatoObjeto: 'CAIXA_PACOTE',
+        quantidadeVolumes: quantidadeVolumes,
       });
     }
-  }, [dimensoes]);
+  }, [dimensoes, quantidadeVolumes]);
 
   const handleCepChange = async (value: string) => {
     const formatted = formatCep(value);
@@ -211,6 +213,23 @@ export const MobileSimulador = () => {
                 onChange={(e) => setDimensoes(prev => ({ ...prev, peso: removeNegativo(Number(e.target.value)) }))}
                 className="w-full px-4 py-3 rounded-xl border border-input bg-background text-foreground text-center text-lg font-medium focus:outline-none focus:ring-2 focus:ring-primary"
               />
+            </div>
+            <div className="col-span-2">
+              <label className="text-xs text-muted-foreground mb-1 block">Quantidade de Volumes</label>
+              <input
+                type="number"
+                placeholder="1"
+                min={1}
+                defaultValue={1}
+                onChange={(e) => setQuantidadeVolumes(Math.max(1, Number(e.target.value) || 1))}
+                className="w-full px-4 py-3 rounded-xl border border-input bg-background text-foreground text-center text-lg font-medium focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              {quantidadeVolumes > 1 && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                  <Package className="h-3 w-3" />
+                  Multi-volume: apenas Rodonaves disponível
+                </p>
+              )}
             </div>
           </div>
         </div>
