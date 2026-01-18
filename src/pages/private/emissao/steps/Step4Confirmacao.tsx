@@ -144,6 +144,7 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
         comprimento: Number(data.embalagem.comprimento),
         peso: Number(data.embalagem.peso),
         diametro: 0,
+        quantidadeVolumes: Number(data.embalagem.quantidadeVolumes) || 1,
       };
 
       const emissao: IEmissao = {

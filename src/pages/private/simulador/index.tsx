@@ -35,6 +35,7 @@ const schame = yup.object().shape({
         largura: yup.number().typeError('A largura deve ser um número').required('A largura do produto é obrigatório'),
         peso: yup.number().typeError('O peso deve ser um número').required('O peso do produto é obrigatório'),
         formatoObjeto: yup.string().default('CAIXA_PACOTE'),
+        quantidadeVolumes: yup.number().default(1).min(1),
     }),
     valorDeclarado: yup.string().optional(),
 });
@@ -51,6 +52,7 @@ const DesktopSimuladorFreteForm = () => {
     const [selectedEmbalagem, setSelectedEmbalagem] = useState<IEmbalagem | null>();
     const [valorDeclarado, setValorDeclarado] = useState<string>('');
     const [remetenteSelecionado, setRemetenteSelecionado] = useState<any>(null);
+    const [quantidadeVolumes, setQuantidadeVolumes] = useState<number>(1);
 
     const methods = useForm<FormDataSchema>({
         resolver: yupResolver(schame),
@@ -111,6 +113,7 @@ const DesktopSimuladorFreteForm = () => {
                 peso: atual.peso,
                 diametro: 0,
                 formatoObjeto: 'CAIXA_PACOTE',
+                quantidadeVolumes: quantidadeVolumes,
             };
 
             setSelectedEmbalagem(embalagem);
@@ -232,12 +235,31 @@ const DesktopSimuladorFreteForm = () => {
                                     })}
                                     fieldError={errors.embalagem?.peso?.message}
                                 />
-                            </div>
                         </div>
-                        <small className="text-xs text-gray-500 dark:text-gray-400">
-                            o peso deve ser em gramas. Ex: 100 gramas = 100 (<small className="text-red-500 dark:text-red-400">Apenas números</small>)
-                        </small>
+                        <div className="col-span-3">
+                            <InputLabel
+                                labelTitulo="Volumes:"
+                                type="number"
+                                placeholder="1"
+                                min={1}
+                                defaultValue={1}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                    const valor = Math.max(1, Number(e.target.value) || 1);
+                                    setQuantidadeVolumes(valor);
+                                    if (selectedEmbalagem) {
+                                        setSelectedEmbalagem({
+                                            ...selectedEmbalagem,
+                                            quantidadeVolumes: valor
+                                        });
+                                    }
+                                }}
+                            />
+                        </div>
                     </div>
+                    <small className="text-xs text-gray-500 dark:text-gray-400">
+                        o peso deve ser em gramas. Ex: 100 gramas = 100 (<small className="text-red-500 dark:text-red-400">Apenas números</small>)
+                    </small>
+                </div>
                     <div className="flex flex-row w-full gap-3 items-end">
                         <div className="flex flex-col w-full">
                             <InputLabel
