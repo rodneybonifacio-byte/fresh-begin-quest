@@ -1,4 +1,4 @@
-import { Box, RefreshCw } from 'lucide-react';
+import { Box, RefreshCw, Package } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
 import { useState, useEffect } from 'react';
 import { FormCard } from '../../../../components/FormCard';
@@ -31,6 +31,7 @@ export const Step1Dimensoes = ({
   const [largura, setLargura] = useState<number>(0);
   const [comprimento, setComprimento] = useState<number>(0);
   const [peso, setPeso] = useState<number>(0);
+  const [quantidadeVolumes, setQuantidadeVolumes] = useState<number>(1);
 
   // Atualiza o formulário quando os valores mudam
   useEffect(() => {
@@ -38,13 +39,15 @@ export const Step1Dimensoes = ({
     setValue('embalagem.largura', largura);
     setValue('embalagem.comprimento', comprimento);
     setValue('embalagem.peso', peso);
+    setValue('embalagem.quantidadeVolumes', quantidadeVolumes);
     console.log('📦 Dimensões atualizadas:', {
       altura,
       largura,
       comprimento,
-      peso
+      peso,
+      quantidadeVolumes
     });
-  }, [altura, largura, comprimento, peso, setValue]);
+  }, [altura, largura, comprimento, peso, quantidadeVolumes, setValue]);
   const isFormValid = !!(clienteSelecionado && altura > 0 && largura > 0 && comprimento > 0 && peso > 0);
   const handleNext = () => {
     const formData = getValues();
@@ -73,7 +76,7 @@ export const Step1Dimensoes = ({
         setValue('remetenteId', r.id);
       }} />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <InputField label="Altura (cm)" type="number" min="0" step="0.01" placeholder="0" defaultValue={0} onChange={e => {
           const value = parseFloat(e.target.value) || 0;
           console.log('Altura mudou:', value);
@@ -94,6 +97,29 @@ export const Step1Dimensoes = ({
           console.log('Peso mudou:', value);
           setPeso(value);
         }} />
+          <div className="relative">
+            <InputField 
+              label="Volumes" 
+              type="number" 
+              min="1" 
+              step="1" 
+              placeholder="1" 
+              defaultValue={1} 
+              onChange={e => {
+                const value = Math.max(1, parseInt(e.target.value) || 1);
+                console.log('Quantidade de volumes mudou:', value);
+                setQuantidadeVolumes(value);
+              }} 
+            />
+            {quantidadeVolumes > 1 && (
+              <div className="absolute -bottom-5 left-0 right-0">
+                <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                  <Package className="h-3 w-3" />
+                  Multi-volume
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Toggle Logística Reversa */}
