@@ -3,7 +3,7 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ShoppingBag, Link2, Trash2, RefreshCcw, CheckCircle, XCircle } from 'lucide-react';
+import { ShoppingBag, Link2, Trash2, RefreshCcw, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-react';
 import { Content } from '../../Content';
 import { LoadSpinner } from '../../../../components/loading';
 import { InputLabel } from '../../../../components/input-label';
@@ -47,6 +47,9 @@ const ShopifyIntegracao = () => {
     const remetenteService = new RemetenteSupabaseDirectService();
     const [selectedRemetente, setSelectedRemetente] = useState<Remetente | null>(null);
     const [integracaoExistente, setIntegracaoExistente] = useState<IIntegracao | null>(null);
+    const [showToken, setShowToken] = useState(false);
+    const [tokenValue, setTokenValue] = useState<string | null>(null);
+    const [loadingToken, setLoadingToken] = useState(false);
 
     const methods = useForm<FormData>({
         resolver: yupResolver(schema),
@@ -203,10 +206,42 @@ const ShopifyIntegracao = () => {
 
                                 <div className="flex items-center gap-2 text-sm">
                                     <span className="text-green-700 dark:text-green-300 font-medium">Token:</span>
-                                    <span className="text-green-800 dark:text-green-200 font-mono">
-                                        ••••••••••••••••
+                                    <span className="text-green-800 dark:text-green-200 font-mono break-all">
+                                        {showToken && tokenValue ? tokenValue : '••••••••••••••••'}
                                     </span>
-                                    <span className="text-xs text-green-600 dark:text-green-400">(armazenado com segurança)</span>
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            if (showToken) {
+                                                setShowToken(false);
+                                            } else {
+                                                if (!tokenValue && integracaoExistente?.id) {
+                                                    setLoadingToken(true);
+                                                    try {
+                                                        const response = await service.getCredenciais(integracaoExistente.id);
+                                                        setTokenValue(response.data?.accessToken || 'Token não encontrado');
+                                                    } catch (error) {
+                                                        console.error('Erro ao buscar token:', error);
+                                                        setTokenValue('Erro ao carregar');
+                                                    } finally {
+                                                        setLoadingToken(false);
+                                                    }
+                                                }
+                                                setShowToken(true);
+                                            }
+                                        }}
+                                        disabled={loadingToken}
+                                        className="p-1 hover:bg-green-200 dark:hover:bg-green-800 rounded transition-colors"
+                                        title={showToken ? 'Ocultar token' : 'Mostrar token'}
+                                    >
+                                        {loadingToken ? (
+                                            <RefreshCcw className="w-4 h-4 text-green-600 dark:text-green-400 animate-spin" />
+                                        ) : showToken ? (
+                                            <EyeOff className="w-4 h-4 text-green-600 dark:text-green-400" />
+                                        ) : (
+                                            <Eye className="w-4 h-4 text-green-600 dark:text-green-400" />
+                                        )}
+                                    </button>
                                 </div>
 
                                 <div className="flex items-center gap-2 text-sm">

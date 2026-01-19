@@ -214,6 +214,36 @@ serve(async (req) => {
         break;
       }
 
+      case "get-credenciais": {
+        const { id } = body;
+
+        // Buscar integração para verificar que pertence ao cliente
+        const { data: integracao, error: fetchError } = await supabase
+          .from("integracoes")
+          .select("id, credenciais_encrypted")
+          .eq("id", id)
+          .eq("cliente_id", clienteId)
+          .single();
+
+        if (fetchError || !integracao) {
+          console.error("Integração não encontrada:", fetchError);
+          throw new Error("Integração não encontrada");
+        }
+
+        // Descriptografar credenciais
+        const { data: decryptedCredenciais, error: decryptError } = await supabase
+          .rpc('decrypt_credentials', { encrypted_data: integracao.credenciais_encrypted });
+
+        if (decryptError) {
+          console.error("Erro ao descriptografar credenciais:", decryptError);
+          throw new Error("Erro ao recuperar credenciais");
+        }
+
+        console.log("Credenciais recuperadas para integração:", id);
+        result = { message: "Credenciais recuperadas", data: decryptedCredenciais };
+        break;
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: "Ação não reconhecida" }),
