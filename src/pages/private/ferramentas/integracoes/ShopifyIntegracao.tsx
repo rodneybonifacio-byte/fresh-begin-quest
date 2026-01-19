@@ -196,9 +196,17 @@ const ShopifyIntegracao = () => {
                                 <div className="flex items-center gap-2 text-sm">
                                     <ShoppingBag className="w-4 h-4 text-green-600 dark:text-green-400" />
                                     <span className="text-green-700 dark:text-green-300 font-medium">Loja:</span>
-                                    <span className="text-green-800 dark:text-green-200">
+                                    <span className="text-green-800 dark:text-green-200 font-mono">
                                         {integracaoExistente.storeId || methods.getValues('shopDomain') || 'Não informada'}
                                     </span>
+                                </div>
+
+                                <div className="flex items-center gap-2 text-sm">
+                                    <span className="text-green-700 dark:text-green-300 font-medium">Token:</span>
+                                    <span className="text-green-800 dark:text-green-200 font-mono">
+                                        ••••••••••••••••
+                                    </span>
+                                    <span className="text-xs text-green-600 dark:text-green-400">(armazenado com segurança)</span>
                                 </div>
 
                                 <div className="flex items-center gap-2 text-sm">
