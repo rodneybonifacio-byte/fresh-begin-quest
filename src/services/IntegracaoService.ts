@@ -240,6 +240,20 @@ export class IntegracaoService {
         }
     }
 
+    public async getCredenciais(integracaoId: string): Promise<IResponse<Record<string, any>>> {
+        try {
+            const result = await this.invokeFunction("get-credenciais", { id: integracaoId });
+
+            return {
+                message: result.message || "Credenciais recuperadas",
+                data: result.data || {},
+            };
+        } catch (error) {
+            console.error("Erro ao buscar credenciais:", error);
+            throw error;
+        }
+    }
+
     public async delete(id: string): Promise<IResponse<void>> {
         try {
             const result = await this.invokeFunction("delete", { id });
