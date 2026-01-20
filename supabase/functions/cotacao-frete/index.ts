@@ -49,28 +49,17 @@ serve(async (req) => {
     // Preparar dados da cotação - SEMPRE incluir clienteId para aplicar regras específicas
     const isLogisticaReversa = requestData.logisticaReversa === 'S';
     
-    // WORKAROUND: Para logística reversa, apenas invertemos os CEPs e usamos PAC/SEDEX normais
-    // Isso evita a necessidade de contrato especial de logística reversa com Correios
-    let cepOrigem = requestData.cepOrigem;
-    let cepDestino = requestData.cepDestino;
-    
     if (isLogisticaReversa) {
-      console.log('🔄 Logística reversa ativa - invertendo CEPs para usar PAC/SEDEX normais');
-      console.log(`   CEP Origem original: ${cepOrigem} → ${cepDestino}`);
-      console.log(`   CEP Destino original: ${cepDestino} → ${cepOrigem}`);
-      // Inverter CEPs - o pacote vai do destinatário (cliente) para o remetente (loja)
-      const temp = cepOrigem;
-      cepOrigem = cepDestino;
-      cepDestino = temp;
+      console.log('🔄 Logística reversa ativa - enviando logisticaReversa: "S" para API');
     }
     
     const cotacaoPayload = {
-      cepOrigem,
-      cepDestino,
+      cepOrigem: requestData.cepOrigem,
+      cepDestino: requestData.cepDestino,
       embalagem: requestData.embalagem,
-      // NÃO enviar logisticaReversa para API - usaremos PAC/SEDEX normais
       valorDeclarado: requestData.valorDeclarado || 0,
       clienteId, // CRÍTICO: Sempre enviar para aplicar regras do cliente
+      ...(isLogisticaReversa && { logisticaReversa: 'S' }), // Enviar logisticaReversa: "S" quando ativo
       ...(requestData.cpfCnpjLoja && { cpfCnpjLoja: requestData.cpfCnpjLoja }),
     };
 
