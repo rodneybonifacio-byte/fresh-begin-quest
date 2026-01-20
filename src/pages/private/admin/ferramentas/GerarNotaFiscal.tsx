@@ -40,23 +40,13 @@ const dadosDestinatario = {
 const itensNota = [
   {
     codigo: '001',
-    descricao: 'Cabo de Rede Cat6 – 305 m (caixa)',
-    ncm: '85444900',
-    cfop: '5102',
-    unidade: 'CX',
-    quantidade: 2,
-    valorUnitario: 1040.00,
-    valorTotal: 2080.00
-  },
-  {
-    codigo: '002',
-    descricao: 'Conectores RJ45 Cat6 – pacote com 100 unidades',
-    ncm: '85366990',
-    cfop: '5102',
-    unidade: 'PCT',
-    quantidade: 3,
-    valorUnitario: 70.00,
-    valorTotal: 210.00
+    descricao: 'Serviços técnicos - Crimpagem, conexões, identificar cabos, instalação de Switches',
+    ncm: '99990000',
+    cfop: '5933',
+    unidade: 'SV',
+    quantidade: 1,
+    valorUnitario: 1250.00,
+    valorTotal: 1250.00
   }
 ];
 
@@ -81,8 +71,8 @@ export const GerarNotaFiscal = () => {
     try {
       const boletoService = new BoletoService();
       
-      // Vencimento fixo: 16/01/2026
-      const vencimento = new Date(2026, 0, 16); // Janeiro é mês 0
+      // Vencimento fixo: 21/01/2026
+      const vencimento = new Date(2026, 0, 21); // Janeiro é mês 0
 
       const boleto = await boletoService.emitir({
         faturaId: `NF-${numeroNF}`,
