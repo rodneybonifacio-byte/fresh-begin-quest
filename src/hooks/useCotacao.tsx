@@ -50,10 +50,23 @@ export const useCotacao = () => {
                 status: error?.response?.status
             });
             
-            toast.error(`Erro ao calcular frete: ${error?.message || 'Tente novamente'}`, {
-                duration: 5000,
-                position: "top-center"
-            });
+            // Detectar erro de dimensões/peso excedendo limites
+            const errorMessage = error?.message?.toLowerCase() || '';
+            const isLimitError = errorMessage.includes('nenhum provedor') || 
+                                 errorMessage.includes('cotação válida') ||
+                                 errorMessage.includes('no freight');
+            
+            if (isLimitError) {
+                toast.error('As dimensões ou peso informados excedem os limites permitidos pelas transportadoras. Verifique: Correios aceita até 100cm por lado e 30kg. Rodonaves aceita até 200cm e 200kg.', {
+                    duration: 8000,
+                    position: "top-center"
+                });
+            } else {
+                toast.error(`Erro ao calcular frete: ${error?.message || 'Tente novamente'}`, {
+                    duration: 5000,
+                    position: "top-center"
+                });
+            }
         },
     })
 
