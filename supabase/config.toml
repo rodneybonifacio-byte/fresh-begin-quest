@@ -152,3 +152,9 @@ verify_jwt = false
 
 [functions.gerar-manifesto-api]
 verify_jwt = false
+
+[functions.api-consultar-saldo]
+verify_jwt = false
+
+[functions.api-adicionar-credito]
+verify_jwt = false
