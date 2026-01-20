@@ -161,3 +161,6 @@ verify_jwt = false
 
 [functions.api-gerar-pix-recarga]
 verify_jwt = false
+
+[functions.api-consultar-cliente]
+verify_jwt = false
