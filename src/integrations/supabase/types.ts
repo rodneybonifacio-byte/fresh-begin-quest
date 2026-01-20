@@ -941,6 +941,7 @@ export type Database = {
           emissao_id: string | null
           id: string
           liberado_em: string | null
+          referencia_externa: string | null
           status: string | null
           tipo: string
           updated_at: string | null
@@ -955,6 +956,7 @@ export type Database = {
           emissao_id?: string | null
           id?: string
           liberado_em?: string | null
+          referencia_externa?: string | null
           status?: string | null
           tipo: string
           updated_at?: string | null
@@ -969,6 +971,7 @@ export type Database = {
           emissao_id?: string | null
           id?: string
           liberado_em?: string | null
+          referencia_externa?: string | null
           status?: string | null
           tipo?: string
           updated_at?: string | null
