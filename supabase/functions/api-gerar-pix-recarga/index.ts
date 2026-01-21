@@ -439,8 +439,15 @@ serve(async (req: Request) => {
     const tokenData = await tokenResponse.json();
     const accessToken = tokenData.access_token;
 
-    // Gerar txid único
-    const txid = `BRHUB${Date.now()}${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    // Gerar txid único - deve ter entre 26-35 caracteres alfanuméricos [a-zA-Z0-9]
+    // Formato: BRHUB (5) + timestamp em hex (11) + random alfanumérico (10-19) = 26-35 chars
+    const timestamp = Date.now().toString(16).toUpperCase(); // ~11 chars
+    const randomPart = Array.from({ length: 15 }, () => {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      return chars[Math.floor(Math.random() * chars.length)];
+    }).join('');
+    const txid = `BRHUB${timestamp}${randomPart}`.substring(0, 35); // Garante max 35 chars
+    console.log('🔑 TxId gerado:', txid, '(length:', txid.length, ')');
     const dataExpiracao = new Date(Date.now() + expiracao * 1000).toISOString();
 
     // Configurar webhook
