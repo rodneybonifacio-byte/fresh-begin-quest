@@ -1,5 +1,8 @@
 project_id = "xikvfybxthvqhpjbrszp"
 
+[functions.api-login-cliente]
+verify_jwt = false
+
 [functions.buscar-fechamentos]
 verify_jwt = false
 
