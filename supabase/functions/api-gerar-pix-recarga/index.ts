@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import { decode } from "https://deno.land/x/djwt@v2.8/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,11 +15,22 @@ const corsHeaders = {
  * 
  * Endpoint:
  * POST /api-gerar-pix-recarga
+ * 
+ * Opção 1 - Com clienteId:
  * {
  *   clienteId: "UUID",
  *   valor: 100.00,
- *   expiracao?: 3600, // segundos (padrão: 1 hora)
- *   referencia?: "ORDER-12345" // ID externo opcional
+ *   expiracao?: 3600,
+ *   referencia?: "ORDER-12345"
+ * }
+ * 
+ * Opção 2 - Com login:
+ * {
+ *   email: "cliente@email.com",
+ *   senha: "senha123",
+ *   valor: 100.00,
+ *   expiracao?: 3600,
+ *   referencia?: "ORDER-12345"
  * }
  * 
  * Response:
@@ -34,11 +46,6 @@ const corsHeaders = {
  *     referencia: "ORDER-12345"
  *   }
  * }
- * 
- * Fluxo:
- * 1. Sistema externo chama este endpoint
- * 2. Retorna QR Code PIX para pagamento
- * 3. Quando pago, webhook banco-inter-webhook adiciona crédito automaticamente
  */
 
 // Validar API Key
@@ -62,6 +69,66 @@ async function validateApiKey(req: Request): Promise<{ valid: boolean; error?: s
   }
 
   return { valid: true };
+}
+
+// Extrair clienteId do JWT
+function extractClienteIdFromToken(token: string): { clienteId: string | null } {
+  try {
+    const [, payload] = decode(token);
+    const data = payload as any;
+    return {
+      clienteId: data.clienteId || data.cliente_id || data.sub || null
+    };
+  } catch (error) {
+    console.error('Erro ao decodificar JWT:', error);
+    return { clienteId: null };
+  }
+}
+
+// Fazer login na API BRHUB e obter clienteId
+async function loginAndGetClienteId(email: string, senha: string): Promise<{ clienteId: string | null; error?: string }> {
+  const BASE_API_URL = Deno.env.get('BASE_API_URL');
+  
+  if (!BASE_API_URL) {
+    return { clienteId: null, error: 'Erro de configuração do servidor' };
+  }
+
+  try {
+    const loginResponse = await fetch(`${BASE_API_URL}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: senha }),
+    });
+
+    if (!loginResponse.ok) {
+      const status = loginResponse.status;
+      if (status === 401 || status === 403) {
+        return { clienteId: null, error: 'Email ou senha incorretos' };
+      }
+      if (status === 404) {
+        return { clienteId: null, error: 'Usuário não encontrado' };
+      }
+      return { clienteId: null, error: 'Erro de autenticação' };
+    }
+
+    const loginData = await loginResponse.json();
+    const token = loginData.token;
+
+    if (!token) {
+      return { clienteId: null, error: 'Token não retornado' };
+    }
+
+    const { clienteId } = extractClienteIdFromToken(token);
+    
+    if (!clienteId) {
+      return { clienteId: null, error: 'ClienteId não encontrado no token' };
+    }
+
+    return { clienteId };
+  } catch (error) {
+    console.error('Erro no login:', error);
+    return { clienteId: null, error: 'Erro ao conectar com servidor de autenticação' };
+  }
 }
 
 // Formatar certificado PEM
@@ -106,16 +173,57 @@ serve(async (req: Request) => {
 
     // Parse request body
     const body = await req.json();
-    const { clienteId, valor, expiracao = 3600, referencia } = body;
+    const { clienteId: clienteIdDireto, email, senha, valor, expiracao = 3600, referencia } = body;
 
-    // Validações
+    // Determinar clienteId (direto ou via login)
+    let clienteId: string | null = clienteIdDireto;
+
+    // Se não tem clienteId direto, fazer login para obter
     if (!clienteId) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'clienteId é obrigatório', code: 'MISSING_PARAMETER' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      if (!email || !senha) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Informe clienteId ou (email + senha) para identificar o cliente',
+            code: 'MISSING_PARAMETER'
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Validar formato de email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Formato de email inválido',
+            code: 'INVALID_PARAMETER'
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('🔑 Fazendo login para obter clienteId:', email);
+      
+      const loginResult = await loginAndGetClienteId(email, senha);
+      
+      if (!loginResult.clienteId) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: loginResult.error || 'Erro ao identificar cliente',
+            code: 'AUTH_ERROR'
+          }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      clienteId = loginResult.clienteId;
+      console.log('✅ ClienteId obtido via login:', clienteId);
     }
 
+    // Validações
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(clienteId)) {
       return new Response(
@@ -144,20 +252,6 @@ serve(async (req: Request) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Verificar se cliente existe
-    const { data: cliente, error: clienteError } = await supabase
-      .from('clientes')
-      .select('id, nome')
-      .eq('id', clienteId)
-      .maybeSingle();
-
-    if (clienteError || !cliente) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Cliente não encontrado', code: 'CLIENT_NOT_FOUND' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
 
     // Verificar duplicidade por referência
     if (referencia) {
@@ -235,6 +329,7 @@ serve(async (req: Request) => {
           success: true,
           data: {
             transacaoId: recarga.id,
+            clienteId,
             txid,
             pixCopiaECola: pixSimulado,
             qrCodeBase64: null,
@@ -378,6 +473,7 @@ serve(async (req: Request) => {
         success: true,
         data: {
           transacaoId: recarga.id,
+          clienteId,
           txid,
           pixCopiaECola,
           qrCodeBase64,
