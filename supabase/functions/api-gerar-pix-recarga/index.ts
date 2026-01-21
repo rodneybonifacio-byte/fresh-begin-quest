@@ -311,10 +311,9 @@ serve(async (req: Request) => {
           valor,
           txid,
           pix_copia_cola: pixSimulado,
-          qr_code_base64: null,
+          qr_code_image: null,
           data_expiracao: dataExpiracao,
-          status: 'ATIVA',
-          referencia_externa: referencia || null
+          status: 'pendente_pagamento'
         })
         .select()
         .single();
@@ -453,10 +452,9 @@ serve(async (req: Request) => {
         valor,
         txid,
         pix_copia_cola: pixCopiaECola,
-        qr_code_base64: qrCodeBase64,
+        qr_code_image: qrCodeBase64,
         data_expiracao: dataExpiracao,
-        status: 'ATIVA',
-        referencia_externa: referencia || null
+        status: 'pendente_pagamento'
       })
       .select()
       .single();
