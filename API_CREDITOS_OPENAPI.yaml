@@ -1,0 +1,575 @@
+openapi: 3.0.3
+info:
+  title: BRHUB Créditos API
+  description: |
+    API de integração de créditos BRHUB para sistemas externos.
+    
+    ## Autenticação
+    Todas as requisições devem incluir o header `X-API-Key` com a chave de API fornecida.
+    
+    ## Fluxo Recomendado
+    1. **Identificar Cliente** → Login ou Consulta por CPF/Email
+    2. **Gerar PIX** → Criar cobrança PIX
+    3. **Cliente Paga** → Exibir QR Code
+    4. **Webhook Confirma** → Crédito adicionado automaticamente
+    5. **Verificar Saldo** → Confirmar crédito
+    
+  version: 1.0.0
+  contact:
+    name: Suporte BRHUB
+    email: suporte@brhub.com.br
+
+servers:
+  - url: https://xikvfybxthvqhpjbrszp.supabase.co/functions/v1
+    description: Produção
+
+security:
+  - ApiKeyAuth: []
+
+tags:
+  - name: Identificação
+    description: Endpoints para identificar clientes
+  - name: Créditos
+    description: Operações de crédito e saldo
+  - name: PIX
+    description: Geração de cobranças PIX
+
+paths:
+  /api-login-cliente:
+    post:
+      tags:
+        - Identificação
+      summary: Login de Cliente
+      description: |
+        Autentica o cliente na API BRHUB e retorna o `clienteId` extraído do JWT.
+        
+        **Quando usar:** Quando você tem email e senha do cliente.
+      operationId: loginCliente
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: cliente@email.com
+              senha: senha123
+      responses:
+        '200':
+          description: Login realizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Credenciais inválidas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                error: Email ou senha incorretos
+                code: INVALID_CREDENTIALS
+        '404':
+          description: Usuário não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api-consultar-cliente:
+    get:
+      tags:
+        - Identificação
+      summary: Consultar Cliente por CPF/Email
+      description: |
+        Localiza o `clienteId` através do CPF/CNPJ ou email, **sem necessidade de senha**.
+        
+        **Quando usar:** Quando você só tem o documento ou email do cliente.
+      operationId: consultarCliente
+      parameters:
+        - name: cpfCnpj
+          in: query
+          description: CPF (11 dígitos) ou CNPJ (14 dígitos)
+          schema:
+            type: string
+            example: "12345678900"
+        - name: email
+          in: query
+          description: Email do cliente
+          schema:
+            type: string
+            format: email
+            example: cliente@email.com
+      responses:
+        '200':
+          description: Cliente encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsultaClienteResponse'
+        '400':
+          description: Parâmetro inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Cliente não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - Identificação
+      summary: Consultar Cliente (POST)
+      description: Alternativa POST para consultar cliente
+      operationId: consultarClientePost
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cpfCnpj:
+                  type: string
+                  description: CPF (11 dígitos) ou CNPJ (14 dígitos)
+                email:
+                  type: string
+                  format: email
+            example:
+              cpfCnpj: "12345678900"
+      responses:
+        '200':
+          description: Cliente encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsultaClienteResponse'
+
+  /api-consultar-saldo:
+    get:
+      tags:
+        - Créditos
+      summary: Consultar Saldo do Cliente
+      description: |
+        Retorna o saldo disponível e informações detalhadas de créditos do cliente.
+        
+        **Campos retornados:**
+        - `saldoDisponivel`: Créditos disponíveis para uso
+        - `creditosBloqueados`: Créditos reservados (etiquetas pendentes)
+        - `creditosConsumidos`: Créditos já utilizados
+        - `totalRecargas`: Total histórico de recargas
+      operationId: consultarSaldo
+      parameters:
+        - name: clienteId
+          in: query
+          required: true
+          description: UUID do cliente
+          schema:
+            type: string
+            format: uuid
+            example: 123e4567-e89b-12d3-a456-426614174000
+      responses:
+        '200':
+          description: Saldo consultado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaldoResponse'
+        '400':
+          description: clienteId inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Cliente não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api-gerar-pix-recarga:
+    post:
+      tags:
+        - PIX
+      summary: Gerar PIX para Recarga
+      description: |
+        Gera uma cobrança PIX para recarga de crédito do cliente.
+        
+        **Importante:** O crédito é adicionado AUTOMATICAMENTE quando o pagamento é confirmado via webhook.
+        
+        **Idempotência:** Use o campo `referencia` para evitar cobranças duplicadas.
+      operationId: gerarPixRecarga
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GerarPixRequest'
+            example:
+              clienteId: 123e4567-e89b-12d3-a456-426614174000
+              valor: 100.00
+              expiracao: 3600
+              referencia: ORDER-12345
+      responses:
+        '201':
+          description: PIX gerado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PixResponse'
+        '200':
+          description: PIX já existente (idempotência)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PixResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          duplicado:
+                            type: boolean
+                            example: true
+                          mensagem:
+                            type: string
+                            example: PIX já gerado anteriormente
+        '400':
+          description: Parâmetros inválidos ou limite excedido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Cliente não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api-adicionar-credito:
+    post:
+      tags:
+        - Créditos
+      summary: Adicionar Crédito (Direto)
+      description: |
+        Adiciona créditos diretamente à conta do cliente, **sem necessidade de PIX**.
+        
+        **Quando usar:** Quando o pagamento já foi confirmado por outro meio.
+        
+        **Idempotência:** Use o campo `referencia` para evitar créditos duplicados.
+      operationId: adicionarCredito
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdicionarCreditoRequest'
+            example:
+              clienteId: 123e4567-e89b-12d3-a456-426614174000
+              valor: 100.00
+              descricao: Recarga via plataforma Tech
+              referencia: ORDER-12345
+      responses:
+        '201':
+          description: Crédito adicionado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreditoResponse'
+        '200':
+          description: Transação já processada (idempotência)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CreditoResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          duplicado:
+                            type: boolean
+                            example: true
+                          mensagem:
+                            type: string
+                            example: Transação já processada anteriormente
+        '400':
+          description: Parâmetros inválidos ou limite excedido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Cliente não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Chave de API fornecida pela BRHUB
+
+  schemas:
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - senha
+      properties:
+        email:
+          type: string
+          format: email
+          description: Email do cliente cadastrado
+        senha:
+          type: string
+          description: Senha do cliente
+
+    LoginResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            clienteId:
+              type: string
+              format: uuid
+              description: ID único do cliente
+              example: 123e4567-e89b-12d3-a456-426614174000
+            nome:
+              type: string
+              description: Nome do cliente
+              example: Nome do Cliente
+            email:
+              type: string
+              format: email
+              example: cliente@email.com
+            token:
+              type: string
+              description: JWT token de autenticação
+              example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+            timestamp:
+              type: string
+              format: date-time
+              example: "2026-01-21T12:00:00.000Z"
+
+    ConsultaClienteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            clienteId:
+              type: string
+              format: uuid
+              example: 123e4567-e89b-12d3-a456-426614174000
+            nome:
+              type: string
+              example: Nome do Cliente
+            email:
+              type: string
+              format: email
+              example: cliente@email.com
+            cpfCnpj:
+              type: string
+              description: CPF/CNPJ mascarado
+              example: "***.***.***-00"
+            status:
+              type: string
+              example: ativo
+            timestamp:
+              type: string
+              format: date-time
+
+    SaldoResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            clienteId:
+              type: string
+              format: uuid
+              example: 123e4567-e89b-12d3-a456-426614174000
+            saldoDisponivel:
+              type: number
+              format: double
+              description: Créditos disponíveis para uso
+              example: 1250.50
+            creditosBloqueados:
+              type: number
+              format: double
+              description: Créditos reservados (etiquetas pendentes)
+              example: 50.00
+            creditosConsumidos:
+              type: number
+              format: double
+              description: Créditos já utilizados
+              example: 200.00
+            totalRecargas:
+              type: number
+              format: double
+              description: Total histórico de recargas
+              example: 1500.50
+            timestamp:
+              type: string
+              format: date-time
+
+    GerarPixRequest:
+      type: object
+      required:
+        - clienteId
+        - valor
+      properties:
+        clienteId:
+          type: string
+          format: uuid
+          description: ID único do cliente
+        valor:
+          type: number
+          format: double
+          minimum: 0.01
+          maximum: 50000
+          description: Valor da recarga (máx R$ 50.000)
+        expiracao:
+          type: integer
+          default: 3600
+          description: Tempo de expiração em segundos (padrão 1 hora)
+        referencia:
+          type: string
+          description: ID externo para rastreabilidade (idempotência)
+
+    PixResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            transacaoId:
+              type: string
+              format: uuid
+              description: ID da transação de recarga
+            txid:
+              type: string
+              description: ID da transação PIX
+              example: BRHUB1234567890ABC
+            pixCopiaECola:
+              type: string
+              description: Código Pix Copia e Cola
+              example: "00020126580014br.gov.bcb.pix..."
+            qrCodeBase64:
+              type: string
+              description: QR Code em Base64
+              example: "data:image/png;base64,..."
+            valor:
+              type: number
+              format: double
+              example: 100.00
+            expiraEm:
+              type: string
+              format: date-time
+              description: Data/hora de expiração
+            referencia:
+              type: string
+              description: Referência externa
+
+    AdicionarCreditoRequest:
+      type: object
+      required:
+        - clienteId
+        - valor
+      properties:
+        clienteId:
+          type: string
+          format: uuid
+          description: ID único do cliente
+        valor:
+          type: number
+          format: double
+          minimum: 0.01
+          maximum: 50000
+          description: Valor da recarga (máx R$ 50.000)
+        descricao:
+          type: string
+          description: Descrição da transação
+        referencia:
+          type: string
+          description: ID externo para rastreabilidade (idempotência)
+
+    CreditoResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            transacaoId:
+              type: string
+              format: uuid
+            clienteId:
+              type: string
+              format: uuid
+            valor:
+              type: number
+              format: double
+              example: 100.00
+            novoSaldo:
+              type: number
+              format: double
+              example: 350.00
+            referencia:
+              type: string
+            timestamp:
+              type: string
+              format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          description: Mensagem de erro
+        code:
+          type: string
+          description: Código do erro
+          enum:
+            - UNAUTHORIZED
+            - INVALID_CREDENTIALS
+            - MISSING_PARAMETER
+            - INVALID_PARAMETER
+            - LIMIT_EXCEEDED
+            - NOT_FOUND
+            - USER_NOT_FOUND
+            - CLIENT_NOT_FOUND
+            - METHOD_NOT_ALLOWED
+            - INTERNAL_ERROR
