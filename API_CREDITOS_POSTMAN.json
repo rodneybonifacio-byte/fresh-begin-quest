@@ -1,0 +1,273 @@
+{
+  "info": {
+    "_postman_id": "brhub-creditos-api",
+    "name": "BRHUB Créditos API",
+    "description": "API de integração de créditos BRHUB para sistemas externos",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://xikvfybxthvqhpjbrszp.supabase.co/functions/v1",
+      "type": "string"
+    },
+    {
+      "key": "apiKey",
+      "value": "SUA_API_KEY_AQUI",
+      "type": "string"
+    },
+    {
+      "key": "clienteId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      {
+        "key": "key",
+        "value": "X-API-Key",
+        "type": "string"
+      },
+      {
+        "key": "value",
+        "value": "{{apiKey}}",
+        "type": "string"
+      },
+      {
+        "key": "in",
+        "value": "header",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "1. Identificar Cliente",
+      "item": [
+        {
+          "name": "Login Cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"cliente@email.com\",\n  \"senha\": \"senha123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api-login-cliente",
+              "host": ["{{baseUrl}}"],
+              "path": ["api-login-cliente"]
+            },
+            "description": "Autentica o cliente e retorna o clienteId extraído do JWT.\n\n**Quando usar:** Quando você tem email e senha do cliente.\n\n**Retorna:** clienteId, nome, email, token"
+          },
+          "response": [
+            {
+              "name": "Sucesso",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"clienteId\": \"123e4567-e89b-12d3-a456-426614174000\",\n    \"nome\": \"Nome do Cliente\",\n    \"email\": \"cliente@email.com\",\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"timestamp\": \"2026-01-21T12:00:00.000Z\"\n  }\n}"
+            },
+            {
+              "name": "Credenciais Inválidas",
+              "status": "Unauthorized",
+              "code": 401,
+              "body": "{\n  \"success\": false,\n  \"error\": \"Email ou senha incorretos\",\n  \"code\": \"INVALID_CREDENTIALS\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Consultar Cliente por CPF",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api-consultar-cliente?cpfCnpj=12345678900",
+              "host": ["{{baseUrl}}"],
+              "path": ["api-consultar-cliente"],
+              "query": [
+                {
+                  "key": "cpfCnpj",
+                  "value": "12345678900",
+                  "description": "CPF (11 dígitos) ou CNPJ (14 dígitos)"
+                }
+              ]
+            },
+            "description": "Busca cliente pelo CPF/CNPJ sem necessidade de senha.\n\n**Quando usar:** Quando você só tem o documento do cliente.\n\n**Retorna:** clienteId, nome, email (mascarado)"
+          },
+          "response": [
+            {
+              "name": "Sucesso",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"clienteId\": \"123e4567-e89b-12d3-a456-426614174000\",\n    \"nome\": \"Nome do Cliente\",\n    \"email\": \"cliente@email.com\",\n    \"cpfCnpj\": \"***.***.***-00\",\n    \"status\": \"ativo\",\n    \"timestamp\": \"2026-01-21T12:00:00.000Z\"\n  }\n}"
+            },
+            {
+              "name": "Não Encontrado",
+              "status": "Not Found",
+              "code": 404,
+              "body": "{\n  \"success\": false,\n  \"error\": \"Cliente não encontrado\",\n  \"code\": \"NOT_FOUND\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Consultar Cliente por Email",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api-consultar-cliente?email=cliente@email.com",
+              "host": ["{{baseUrl}}"],
+              "path": ["api-consultar-cliente"],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "cliente@email.com",
+                  "description": "Email do cliente"
+                }
+              ]
+            },
+            "description": "Busca cliente pelo email sem necessidade de senha."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Operações de Crédito",
+      "item": [
+        {
+          "name": "Consultar Saldo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api-consultar-saldo?clienteId={{clienteId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api-consultar-saldo"],
+              "query": [
+                {
+                  "key": "clienteId",
+                  "value": "{{clienteId}}",
+                  "description": "UUID do cliente"
+                }
+              ]
+            },
+            "description": "Retorna o saldo disponível e informações detalhadas de créditos.\n\n**Campos retornados:**\n- saldoDisponivel: Créditos disponíveis para uso\n- creditosBloqueados: Créditos reservados (etiquetas pendentes)\n- creditosConsumidos: Créditos já utilizados\n- totalRecargas: Total histórico de recargas"
+          },
+          "response": [
+            {
+              "name": "Sucesso",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"clienteId\": \"123e4567-e89b-12d3-a456-426614174000\",\n    \"saldoDisponivel\": 1250.50,\n    \"creditosBloqueados\": 50.00,\n    \"creditosConsumidos\": 200.00,\n    \"totalRecargas\": 1500.50,\n    \"timestamp\": \"2026-01-21T10:30:00.000Z\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Gerar PIX para Recarga",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clienteId\": \"{{clienteId}}\",\n  \"valor\": 100.00,\n  \"expiracao\": 3600,\n  \"referencia\": \"ORDER-12345\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api-gerar-pix-recarga",
+              "host": ["{{baseUrl}}"],
+              "path": ["api-gerar-pix-recarga"]
+            },
+            "description": "Gera uma cobrança PIX para recarga de crédito.\n\n**Parâmetros:**\n- clienteId (obrigatório): UUID do cliente\n- valor (obrigatório): Valor da recarga (máx R$ 50.000)\n- expiracao (opcional): Tempo em segundos (padrão: 3600 = 1 hora)\n- referencia (opcional): ID externo para idempotência\n\n**Importante:** O crédito é adicionado AUTOMATICAMENTE quando o pagamento é confirmado via webhook."
+          },
+          "response": [
+            {
+              "name": "Sucesso",
+              "status": "Created",
+              "code": 201,
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"transacaoId\": \"uuid-da-recarga\",\n    \"txid\": \"BRHUB1234567890ABC\",\n    \"pixCopiaECola\": \"00020126580014br.gov.bcb.pix...\",\n    \"qrCodeBase64\": \"data:image/png;base64,...\",\n    \"valor\": 100.00,\n    \"expiraEm\": \"2026-01-21T13:00:00.000Z\",\n    \"referencia\": \"ORDER-12345\"\n  }\n}"
+            },
+            {
+              "name": "PIX Duplicado",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"transacaoId\": \"uuid-da-recarga\",\n    \"txid\": \"BRHUB1234567890ABC\",\n    \"pixCopiaECola\": \"00020126580014br.gov.bcb.pix...\",\n    \"qrCodeBase64\": \"data:image/png;base64,...\",\n    \"valor\": 100.00,\n    \"expiraEm\": \"2026-01-21T13:00:00.000Z\",\n    \"referencia\": \"ORDER-12345\",\n    \"duplicado\": true,\n    \"mensagem\": \"PIX já gerado anteriormente\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Adicionar Crédito (Direto)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clienteId\": \"{{clienteId}}\",\n  \"valor\": 100.00,\n  \"descricao\": \"Recarga via plataforma Tech\",\n  \"referencia\": \"ORDER-12345\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api-adicionar-credito",
+              "host": ["{{baseUrl}}"],
+              "path": ["api-adicionar-credito"]
+            },
+            "description": "Adiciona créditos diretamente à conta do cliente, SEM necessidade de PIX.\n\n**Quando usar:** Quando o pagamento já foi confirmado por outro meio.\n\n**Parâmetros:**\n- clienteId (obrigatório): UUID do cliente\n- valor (obrigatório): Valor da recarga (máx R$ 50.000)\n- descricao (opcional): Descrição da transação\n- referencia (opcional): ID externo para idempotência"
+          },
+          "response": [
+            {
+              "name": "Sucesso",
+              "status": "Created",
+              "code": 201,
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"transacaoId\": \"789e0123-e89b-12d3-a456-426614174000\",\n    \"clienteId\": \"123e4567-e89b-12d3-a456-426614174000\",\n    \"valor\": 100.00,\n    \"novoSaldo\": 350.00,\n    \"referencia\": \"ORDER-12345\",\n    \"timestamp\": \"2026-01-21T10:35:00.000Z\"\n  }\n}"
+            },
+            {
+              "name": "Duplicado",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"transacaoId\": \"789e0123-e89b-12d3-a456-426614174000\",\n    \"clienteId\": \"123e4567-e89b-12d3-a456-426614174000\",\n    \"valor\": 100.00,\n    \"novoSaldo\": 350.00,\n    \"referencia\": \"ORDER-12345\",\n    \"duplicado\": true,\n    \"mensagem\": \"Transação já processada anteriormente\"\n  }\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Auto-save clienteId from login/consulta responses",
+          "if (pm.response.code === 200 || pm.response.code === 201) {",
+          "    var jsonData = pm.response.json();",
+          "    if (jsonData.success && jsonData.data && jsonData.data.clienteId) {",
+          "        pm.collectionVariables.set('clienteId', jsonData.data.clienteId);",
+          "        console.log('clienteId saved:', jsonData.data.clienteId);",
+          "    }",
+          "}"
+        ]
+      }
+    }
+  ]
+}
