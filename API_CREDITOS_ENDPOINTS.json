@@ -1,0 +1,84 @@
+{
+  "baseUrl": "https://xikvfybxthvqhpjbrszp.supabase.co/functions/v1",
+  "auth": {
+    "header": "X-API-Key",
+    "value": "SUA_API_KEY"
+  },
+  "endpoints": {
+    "loginCliente": {
+      "method": "POST",
+      "path": "/api-login-cliente",
+      "body": {
+        "email": "cliente@email.com",
+        "senha": "senha123"
+      },
+      "response": {
+        "clienteId": "uuid",
+        "nome": "string",
+        "email": "string",
+        "token": "jwt-token"
+      }
+    },
+    "consultarCliente": {
+      "method": "POST",
+      "path": "/api-consultar-cliente",
+      "body": {
+        "cpfCnpj": "12345678900"
+      },
+      "alternativeBody": {
+        "email": "cliente@email.com"
+      },
+      "response": {
+        "clienteId": "uuid",
+        "nome": "string",
+        "email": "string",
+        "cpfCnpj": "***.***.***-XX"
+      }
+    },
+    "consultarSaldo": {
+      "method": "POST",
+      "path": "/api-consultar-saldo",
+      "body": {
+        "clienteId": "uuid-do-cliente"
+      },
+      "response": {
+        "saldoDisponivel": 150.00,
+        "creditosBloqueados": 25.00,
+        "totalRecargas": 200.00,
+        "totalConsumido": 25.00
+      }
+    },
+    "gerarPixRecarga": {
+      "method": "POST",
+      "path": "/api-gerar-pix-recarga",
+      "body": {
+        "clienteId": "uuid-do-cliente",
+        "valor": 100.00,
+        "expiracao": 3600,
+        "referencia": "pedido-externo-123"
+      },
+      "response": {
+        "transacaoId": "uuid",
+        "txid": "string",
+        "pixCopiaECola": "string",
+        "qrCodeBase64": "base64-image",
+        "valor": 100.00,
+        "expiraEm": "2026-01-21T13:00:00.000Z"
+      }
+    },
+    "adicionarCredito": {
+      "method": "POST",
+      "path": "/api-adicionar-credito",
+      "body": {
+        "clienteId": "uuid-do-cliente",
+        "valor": 100.00,
+        "descricao": "Recarga via integração",
+        "referencia": "ref-externa-123"
+      },
+      "response": {
+        "transacaoId": "uuid",
+        "saldoAtual": 250.00
+      }
+    }
+  }
+}
