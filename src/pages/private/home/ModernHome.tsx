@@ -20,7 +20,8 @@ export const ModernHome = () => {
     peso: "",
     altura: "",
     largura: "",
-    comprimento: ""
+    comprimento: "",
+    volumes: "1"
   });
   const handleCalcular = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,7 +119,7 @@ export const ModernHome = () => {
                             </div>
 
                             {/* Dimensões */}
-                            <div className="grid grid-cols-3 gap-3">
+                            <div className="grid grid-cols-4 gap-3">
                                 <div>
                                     <label className="block text-xs font-medium mb-2">Altura (cm)</label>
                                     <input type="number" placeholder="2" value={freteData.altura} onChange={e => setFreteData({
@@ -140,7 +141,23 @@ export const ModernHome = () => {
                   comprimento: e.target.value
                 })} className="w-full px-3 py-2 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary text-sm" />
                                 </div>
+                                <div>
+                                    <label className="block text-xs font-medium mb-2">Volumes</label>
+                                    <input type="number" placeholder="1" min="1" value={freteData.volumes} onChange={e => setFreteData({
+                  ...freteData,
+                  volumes: e.target.value
+                })} className="w-full px-3 py-2 rounded-lg border border-input bg-background focus:outline-none focus:ring-2 focus:ring-primary text-sm" />
+                                </div>
                             </div>
+                            
+                            {/* Aviso multi-volume */}
+                            {parseInt(freteData.volumes) > 1 && (
+                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                                    <p className="text-xs text-amber-700">
+                                        ⚠️ Correios não aceita envios multi-volume. Apenas transportadoras parceiras estarão disponíveis.
+                                    </p>
+                                </div>
+                            )}
 
                             <button type="submit" disabled={isLoadingCotacao} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-4 rounded-xl font-bold text-lg shadow-2xl shadow-primary/40 transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed text-slate-50 bg-slate-950 hover:bg-slate-800">
                                 {isLoadingCotacao ? "Calculando..." : "Calcular frete com desconto"}
