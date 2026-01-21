@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import { decode } from "https://deno.land/x/djwt@v2.8/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,6 +16,7 @@ const corsHeaders = {
  * Endpoints:
  * GET /api-consultar-saldo?clienteId=UUID
  * POST /api-consultar-saldo { clienteId: "UUID" }
+ * POST /api-consultar-saldo { email: "...", senha: "..." } // via login
  * 
  * Response:
  * {
@@ -52,6 +54,66 @@ async function validateApiKey(req: Request): Promise<{ valid: boolean; error?: s
   return { valid: true };
 }
 
+// Extrair clienteId do JWT
+function extractClienteIdFromToken(token: string): { clienteId: string | null } {
+  try {
+    const [, payload] = decode(token);
+    const data = payload as any;
+    return {
+      clienteId: data.clienteId || data.cliente_id || data.sub || null
+    };
+  } catch (error) {
+    console.error('Erro ao decodificar JWT:', error);
+    return { clienteId: null };
+  }
+}
+
+// Fazer login na API BRHUB e obter clienteId
+async function loginAndGetClienteId(email: string, senha: string): Promise<{ clienteId: string | null; error?: string }> {
+  const BASE_API_URL = Deno.env.get('BASE_API_URL');
+  
+  if (!BASE_API_URL) {
+    return { clienteId: null, error: 'Erro de configuração do servidor' };
+  }
+
+  try {
+    const loginResponse = await fetch(`${BASE_API_URL}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: senha }),
+    });
+
+    if (!loginResponse.ok) {
+      const status = loginResponse.status;
+      if (status === 401 || status === 403) {
+        return { clienteId: null, error: 'Email ou senha incorretos' };
+      }
+      if (status === 404) {
+        return { clienteId: null, error: 'Usuário não encontrado' };
+      }
+      return { clienteId: null, error: 'Erro de autenticação' };
+    }
+
+    const loginData = await loginResponse.json();
+    const token = loginData.token;
+
+    if (!token) {
+      return { clienteId: null, error: 'Token não retornado' };
+    }
+
+    const { clienteId } = extractClienteIdFromToken(token);
+    
+    if (!clienteId) {
+      return { clienteId: null, error: 'ClienteId não encontrado no token' };
+    }
+
+    return { clienteId };
+  } catch (error) {
+    console.error('Erro no login:', error);
+    return { clienteId: null, error: 'Erro ao conectar com servidor de autenticação' };
+  }
+}
+
 serve(async (req: Request) => {
   // Handle CORS
   if (req.method === 'OPTIONS') {
@@ -79,7 +141,7 @@ serve(async (req: Request) => {
       );
     }
 
-    // Obter clienteId
+    // Obter clienteId (direto ou via login)
     let clienteId: string | null = null;
     
     if (req.method === 'GET') {
@@ -88,13 +150,37 @@ serve(async (req: Request) => {
     } else if (req.method === 'POST') {
       const body = await req.json();
       clienteId = body.clienteId;
+      
+      // Se não tem clienteId, tentar via login
+      if (!clienteId && body.email && body.senha) {
+        console.log('🔑 Fazendo login para obter clienteId:', body.email);
+        
+        const loginResult = await loginAndGetClienteId(body.email, body.senha);
+        
+        if (!loginResult.clienteId) {
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: loginResult.error || 'Erro ao identificar cliente',
+              code: 'AUTH_ERROR'
+            }),
+            { 
+              status: 401, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          );
+        }
+
+        clienteId = loginResult.clienteId;
+        console.log('✅ ClienteId obtido via login:', clienteId);
+      }
     }
 
     if (!clienteId) {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'clienteId é obrigatório',
+          error: 'Informe clienteId ou (email + senha) para identificar o cliente',
           code: 'MISSING_PARAMETER'
         }),
         { 

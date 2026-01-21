@@ -51,8 +51,16 @@
     "gerarPixRecarga": {
       "method": "POST",
       "path": "/api-gerar-pix-recarga",
-      "body": {
+      "description": "Aceita clienteId OU (email + senha)",
+      "bodyOpcao1_clienteId": {
         "clienteId": "uuid-do-cliente",
+        "valor": 100.00,
+        "expiracao": 3600,
+        "referencia": "pedido-externo-123"
+      },
+      "bodyOpcao2_login": {
+        "email": "cliente@email.com",
+        "senha": "senha123",
         "valor": 100.00,
         "expiracao": 3600,
         "referencia": "pedido-externo-123"
@@ -69,15 +77,26 @@
     "adicionarCredito": {
       "method": "POST",
       "path": "/api-adicionar-credito",
-      "body": {
+      "description": "Aceita clienteId OU (email + senha)",
+      "bodyOpcao1_clienteId": {
         "clienteId": "uuid-do-cliente",
+        "valor": 100.00,
+        "descricao": "Recarga via integração",
+        "referencia": "ref-externa-123"
+      },
+      "bodyOpcao2_login": {
+        "email": "cliente@email.com",
+        "senha": "senha123",
         "valor": 100.00,
         "descricao": "Recarga via integração",
         "referencia": "ref-externa-123"
       },
       "response": {
         "transacaoId": "uuid",
-        "saldoAtual": 250.00
+        "clienteId": "uuid",
+        "valor": 100.00,
+        "novoSaldo": 250.00,
+        "referencia": "ref-externa-123"
       }
     }
   }
