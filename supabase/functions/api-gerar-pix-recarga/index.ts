@@ -286,18 +286,28 @@ serve(async (req: Request) => {
       }
     }
 
-    // Obter credenciais do Banco Inter
+    // Obter credenciais do Banco Inter (nomes corretos das secrets)
     const clientId = Deno.env.get('BANCO_INTER_CLIENT_ID');
     const clientSecret = Deno.env.get('BANCO_INTER_CLIENT_SECRET');
-    const pixKey = Deno.env.get('BANCO_INTER_PIX_KEY');
-    const certPem = Deno.env.get('BANCO_INTER_CERT');
-    const keyPem = Deno.env.get('BANCO_INTER_KEY');
+    const pixKey = Deno.env.get('BANCO_INTER_CHAVE_PIX');
+    const certPem = Deno.env.get('BANCO_INTER_CLIENT_CERT');
+    const keyPem = Deno.env.get('BANCO_INTER_CLIENT_KEY');
+    const caCert = Deno.env.get('BANCO_INTER_CA_CERT');
+
+    console.log('🔐 Credenciais Banco Inter:', {
+      clientId: !!clientId,
+      clientSecret: !!clientSecret,
+      pixKey: !!pixKey,
+      certPem: !!certPem,
+      keyPem: !!keyPem,
+      caCert: !!caCert
+    });
 
     // Modo simulação se credenciais não configuradas
-    const isSimulationMode = !clientId || !clientSecret || !certPem || !keyPem;
+    const isSimulationMode = !clientId || !clientSecret || !certPem || !keyPem || !pixKey;
 
     if (isSimulationMode) {
-      console.log('⚠️ Modo simulação - credenciais Banco Inter não configuradas');
+      console.log('⚠️ Modo simulação - credenciais Banco Inter incompletas');
       
       const txid = `SIM${Date.now()}${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
       const dataExpiracao = new Date(Date.now() + expiracao * 1000).toISOString();
@@ -336,7 +346,15 @@ serve(async (req: Request) => {
             expiraEm: dataExpiracao,
             referencia: referencia || null,
             simulacao: true,
-            mensagem: 'PIX em modo simulação - configure credenciais Banco Inter para produção'
+            mensagem: 'PIX em modo simulação - credenciais Banco Inter incompletas',
+            credenciaisStatus: {
+              clientId: !!clientId,
+              clientSecret: !!clientSecret,
+              pixKey: !!pixKey,
+              cert: !!certPem,
+              key: !!keyPem,
+              caCert: !!caCert
+            }
           }
         }),
         { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -346,16 +364,60 @@ serve(async (req: Request) => {
     // Produção - Integração real com Banco Inter
     console.log('🏦 Gerando PIX via Banco Inter...');
 
-    const formattedCert = formatPemCert(certPem, 'CERTIFICATE');
-    const formattedKey = formatPemCert(keyPem, 'PRIVATE KEY');
+    // Função para formatar certificado PEM corretamente
+    const formatPemCertFull = (pemString: string) => {
+      let cleaned = pemString.trim();
+      
+      // Se já tem quebras de linha, retorna como está
+      if (cleaned.includes('\n')) {
+        return cleaned;
+      }
+      
+      // Encontra os marcadores BEGIN e END
+      const beginRegex = /(-----BEGIN [^-]+-----)/;
+      const endRegex = /(-----END [^-]+-----)/;
+      
+      const beginMatch = cleaned.match(beginRegex);
+      const endMatch = cleaned.match(endRegex);
+      
+      if (!beginMatch || !endMatch) {
+        console.error('Formato de certificado inválido');
+        return pemString;
+      }
+      
+      const header = beginMatch[0];
+      const footer = endMatch[0];
+      const startPos = cleaned.indexOf(header) + header.length;
+      const endPos = cleaned.indexOf(footer);
+      const content = cleaned.substring(startPos, endPos).replace(/\s/g, '');
+      
+      // Adiciona quebras de linha a cada 64 caracteres
+      const formatted = content.match(/.{1,64}/g)?.join('\n') || content;
+      
+      return `${header}\n${formatted}\n${footer}`;
+    };
 
-    const httpClient = Deno.createHttpClient({
-      caCerts: [],
+    const formattedCert = formatPemCertFull(certPem);
+    const formattedKey = formatPemCertFull(keyPem);
+    const formattedCaCert = caCert ? formatPemCertFull(caCert) : undefined;
+
+    console.log('📜 Certificados formatados');
+
+    // Criar cliente HTTP com mTLS
+    const httpClientOptions: any = {
       cert: formattedCert,
       key: formattedKey,
-    });
+    };
+    
+    if (formattedCaCert) {
+      httpClientOptions.caCerts = [formattedCaCert];
+    }
+
+    const httpClient = Deno.createHttpClient(httpClientOptions);
 
     // Obter token de acesso
+    console.log('🔑 Obtendo token de acesso do Banco Inter...');
+    
     const tokenResponse = await fetch('https://cdpj.partners.bancointer.com.br/oauth/v2/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -366,7 +428,7 @@ serve(async (req: Request) => {
         grant_type: 'client_credentials',
       }),
       client: httpClient,
-    });
+    } as any);
 
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();
@@ -382,9 +444,10 @@ serve(async (req: Request) => {
     const dataExpiracao = new Date(Date.now() + expiracao * 1000).toISOString();
 
     // Configurar webhook
+    console.log('🔔 Configurando webhook PIX...');
     const webhookUrl = `${supabaseUrl}/functions/v1/banco-inter-webhook`;
     try {
-      await fetch(`https://cdpj.partners.bancointer.com.br/pix/v2/webhook/${pixKey}`, {
+      await fetch(`https://cdpj.partners.bancointer.com.br/pix/v2/webhook/${encodeURIComponent(pixKey)}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -392,12 +455,14 @@ serve(async (req: Request) => {
         },
         body: JSON.stringify({ webhookUrl }),
         client: httpClient,
-      });
+      } as any);
+      console.log('✅ Webhook configurado:', webhookUrl);
     } catch (webhookError) {
       console.warn('⚠️ Erro ao configurar webhook (não crítico):', webhookError);
     }
 
     // Criar cobrança PIX
+    console.log('💳 Criando cobrança PIX...', { txid, valor, pixKey });
     const cobResponse = await fetch(`https://cdpj.partners.bancointer.com.br/pix/v2/cob/${txid}`, {
       method: 'PUT',
       headers: {
@@ -413,15 +478,18 @@ serve(async (req: Request) => {
           : 'Recarga de créditos BRHUB',
       }),
       client: httpClient,
-    });
+    } as any);
 
     if (!cobResponse.ok) {
       const errorText = await cobResponse.text();
-      console.error('❌ Erro ao criar cobrança:', errorText);
-      throw new Error('Falha ao criar cobrança PIX');
+      console.error('❌ Erro ao criar cobrança:', cobResponse.status, errorText);
+      httpClient.close();
+      throw new Error(`Falha ao criar cobrança PIX: ${cobResponse.status}`);
     }
 
     const cobData = await cobResponse.json();
+    console.log('✅ Cobrança PIX criada:', cobData);
+    
     const pixCopiaECola = cobData.pixCopiaECola;
     const location = cobData.location;
 
@@ -429,20 +497,25 @@ serve(async (req: Request) => {
     let qrCodeBase64 = null;
     if (location) {
       try {
+        console.log('📷 Obtendo QR Code...');
         const qrResponse = await fetch(`${location}/qrcode`, {
           method: 'GET',
           headers: { 'Authorization': `Bearer ${accessToken}` },
           client: httpClient,
-        });
+        } as any);
         
         if (qrResponse.ok) {
           const qrData = await qrResponse.json();
           qrCodeBase64 = qrData.imagemQrcode;
+          console.log('✅ QR Code obtido');
         }
       } catch (qrError) {
         console.warn('⚠️ Erro ao obter QR Code:', qrError);
       }
     }
+
+    // Fechar cliente HTTP
+    httpClient.close();
 
     // Salvar no banco
     const { data: recarga, error: insertError } = await supabase
