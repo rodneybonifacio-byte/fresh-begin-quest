@@ -6,6 +6,15 @@ export interface ICotacaoMinimaResponse {
     prazo: number;
     imagem?: string;
     isNotaFiscal?: boolean;
+    // Campos adicionais para Rodonaves e outras transportadoras
+    transportadora?: string;
+    embalagem?: {
+        peso: number;
+        comprimento: number;
+        altura: number;
+        largura: number;
+        diametro: number;
+    };
 }
 
 export interface ICotacaoResponse {

@@ -181,6 +181,19 @@ const FormularioEmissao = ({ onCancel }: FormularioProdutoProps) => {
         };
 
         try {
+            // Enriquecer cotação com embalagem e transportadora
+            const cotacaoEnriquecida = {
+                ...cotacaoSelecionado,
+                transportadora: cotacaoSelecionado?.transportadora || cotacaoSelecionado?.codigoServico || cotacaoSelecionado?.nomeServico?.toUpperCase(),
+                embalagem: {
+                    peso: selectedEmbalagem?.peso || 0,
+                    comprimento: selectedEmbalagem?.comprimento || 0,
+                    altura: selectedEmbalagem?.altura || 0,
+                    largura: selectedEmbalagem?.largura || 0,
+                    diametro: selectedEmbalagem?.diametro || 0,
+                },
+            };
+
             const dataSend: IEmissao = {
                 remetenteId: clienteSelecionado?.id || '',
                 cienteObjetoNaoProibido: data.cienteObjetoNaoProibido,
@@ -190,11 +203,12 @@ const FormularioEmissao = ({ onCancel }: FormularioProdutoProps) => {
                 chaveNFe: data.chaveNFe || '',
                 numeroNotaFiscal: data.numeroNotaFiscal || '',
                 logisticaReversa: logisticaReversa,
-                cotacao: cotacaoSelecionado as ICotacaoMinimaResponse,
+                cotacao: cotacaoEnriquecida as ICotacaoMinimaResponse,
                 embalagem: selectedEmbalagem as IEmbalagem,
                 valorDeclarado: Number(formatNumberString(valorDeclarado || '0')),
                 valorNotaFiscal: Number(formatNumberString(valorNotaFiscal || '0')),
                 destinatario: destinatario,
+                quantidadeVolumes: selectedEmbalagem?.quantidadeVolumes || 1,
                 // Envia o remetente completo com endereço para replicar comportamento da API
                 remetente: clienteSelecionado ? {
                     id: clienteSelecionado.id,

@@ -358,10 +358,30 @@ serve(async (req) => {
       clienteId,
     };
 
-    // Garantir que quantidadeVolumes seja passada na embalagem
+    // Garantir que quantidadeVolumes seja passada na embalagem E no root level
     if (emissaoPayload.embalagem) {
       emissaoPayload.embalagem.quantidadeVolumes = emissaoPayload.embalagem.quantidadeVolumes || 1;
       console.log('📦 Quantidade de volumes:', emissaoPayload.embalagem.quantidadeVolumes);
+    }
+    // Enviar quantidadeVolumes também no root level para compatibilidade com Rodonaves
+    emissaoPayload.quantidadeVolumes = emissaoPayload.quantidadeVolumes || emissaoPayload.embalagem?.quantidadeVolumes || 1;
+
+    // Garantir que cotacao tenha transportadora e embalagem
+    if (emissaoPayload.cotacao) {
+      emissaoPayload.cotacao.transportadora = emissaoPayload.cotacao.transportadora || 
+        emissaoPayload.cotacao.codigoServico || 
+        emissaoPayload.cotacao.nomeServico?.toUpperCase();
+      
+      if (!emissaoPayload.cotacao.embalagem && emissaoPayload.embalagem) {
+        emissaoPayload.cotacao.embalagem = {
+          peso: emissaoPayload.embalagem.peso,
+          comprimento: emissaoPayload.embalagem.comprimento,
+          altura: emissaoPayload.embalagem.altura,
+          largura: emissaoPayload.embalagem.largura,
+          diametro: emissaoPayload.embalagem.diametro || 0,
+        };
+      }
+      console.log('🚚 Transportadora:', emissaoPayload.cotacao.transportadora);
     }
 
     // Helpers de sanitização/validação (server-side)
