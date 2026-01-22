@@ -42,6 +42,7 @@ export interface IEmissao {
     remetenteNome?: string
     remetenteCpfCnpj?: string
     transportadora?: string
+    quantidadeVolumes?: number
 }
 
 export type LogisticaReversa = "S" | "N"

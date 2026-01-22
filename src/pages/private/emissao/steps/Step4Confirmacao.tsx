@@ -147,16 +147,30 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
         quantidadeVolumes: Number(data.embalagem.quantidadeVolumes) || 1,
       };
 
+      // Enriquecer cotação com embalagem e transportadora se necessário
+      const cotacaoEnriquecida = {
+        ...cotacaoSelecionado,
+        transportadora: cotacaoSelecionado?.transportadora || cotacaoSelecionado?.codigoServico || cotacaoSelecionado?.nomeServico?.toUpperCase(),
+        embalagem: {
+          peso: embalagem.peso,
+          comprimento: embalagem.comprimento,
+          altura: embalagem.altura,
+          largura: embalagem.largura,
+          diametro: embalagem.diametro || 0,
+        },
+      };
+
       const emissao: IEmissao = {
         remetenteId: data.remetenteId,
         cienteObjetoNaoProibido: true,
         embalagem: embalagem,
-        cotacao: cotacaoSelecionado,
+        cotacao: cotacaoEnriquecida,
         logisticaReversa: isLogisticaReversa ? 'S' : 'N',
         valorDeclarado: Number(formatNumberString('0')),
-        valorNotaFiscal: Number(formatNumberString('0')),
+        valorNotaFiscal: Number(formatNumberString(data.valorNotaFiscal || '0')),
         itensDeclaracaoConteudo: [],
         destinatario: data.destinatario,
+        quantidadeVolumes: embalagem.quantidadeVolumes || 1,
       };
       
       // Buscar saldo atual
