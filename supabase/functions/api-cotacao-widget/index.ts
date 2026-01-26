@@ -38,7 +38,7 @@ serve(async (req) => {
     console.log('🚚 Widget: Iniciando cotação de frete...');
 
     // Validar campos obrigatórios
-    const { cepOrigem, cepDestino, peso, altura, largura, comprimento, valorDeclarado, clienteEmail, clienteSenha } = requestData;
+    const { cepOrigem, cepDestino, peso, altura, largura, comprimento, valorDeclarado } = requestData;
 
     if (!cepOrigem || !cepDestino) {
       return new Response(
@@ -68,15 +68,20 @@ serve(async (req) => {
       );
     }
 
+    // Usar credenciais do secret (seguro no backend)
+    const clienteEmail = Deno.env.get('WIDGET_CLIENT_EMAIL');
+    const clienteSenha = Deno.env.get('WIDGET_CLIENT_PASSWORD');
+
     if (!clienteEmail || !clienteSenha) {
+      console.error('❌ Credenciais do widget não configuradas');
       return new Response(
         JSON.stringify({ 
           success: false,
-          error: 'Credenciais do cliente (clienteEmail, clienteSenha) são obrigatórias',
-          code: 'MISSING_CREDENTIALS'
+          error: 'Widget não configurado corretamente',
+          code: 'WIDGET_NOT_CONFIGURED'
         }),
         { 
-          status: 400, 
+          status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );
