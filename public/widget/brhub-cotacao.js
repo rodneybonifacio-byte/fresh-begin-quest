@@ -5,19 +5,16 @@
  * Widget embedável para cotação de frete em qualquer site.
  * Documentação: https://envios.brhubb.com.br/widget-docs
  * 
- * Uso simples:
+ * Uso:
  * 1. Adicione: <div id="brhub-cotacao"></div>
  * 2. Inclua: <script src="https://envios.brhubb.com.br/widget/brhub-cotacao.js"></script>
- * 3. Inicialize: BRHUBCotacao.init({ apiKey: 'SUA_API_KEY', cepOrigem: '01310100' });
+ * 3. Inicialize: BRHUBCotacao.init({ cepOrigem: '01310100' });
  */
 (function() {
   'use strict';
 
-  // Configuração global
-  const CONFIG = {
-    API_URL: 'https://xikvfybxthvqhpjbrszp.supabase.co/functions/v1/api-cotacao-widget',
-    VERSION: '1.0.0'
-  };
+  // Configuração - URL da API BRHUB
+  const API_URL = 'https://xikvfybxthvqhpjbrszp.supabase.co/functions/v1/api-cotacao-widget';
 
   // Estilos do widget
   const STYLES = `
@@ -203,7 +200,7 @@
     }
   `;
 
-  // Template HTML do widget
+  // Template HTML
   function getTemplate(config) {
     const showCepOrigem = !config.cepOrigem;
     const showDimensoes = !config.peso || !config.altura || !config.largura || !config.comprimento;
@@ -266,7 +263,7 @@
     `;
   }
 
-  // Classe principal do Widget
+  // Widget
   class BRHUBCotacaoWidget {
     constructor() {
       this.config = {};
@@ -274,14 +271,7 @@
     }
 
     init(options = {}) {
-      // Validar API Key obrigatória
-      if (!options.apiKey) {
-        console.error('[BRHUB Widget] apiKey é obrigatória');
-        return;
-      }
-
       this.config = {
-        apiKey: options.apiKey,
         containerId: options.containerId || 'brhub-cotacao',
         cepOrigem: options.cepOrigem || '',
         titulo: options.titulo || 'Calcular Frete',
@@ -296,10 +286,10 @@
 
       this.render();
       this.attachEvents();
+      console.log('[BRHUB Widget] Inicializado');
     }
 
     render() {
-      // Injetar estilos
       if (!document.getElementById('brhub-widget-styles')) {
         const styleEl = document.createElement('style');
         styleEl.id = 'brhub-widget-styles';
@@ -307,13 +297,11 @@
         document.head.appendChild(styleEl);
       }
 
-      // Renderizar widget
       const container = document.getElementById(this.config.containerId);
       if (!container) {
         console.error('[BRHUB Widget] Container não encontrado:', this.config.containerId);
         return;
       }
-
       container.innerHTML = getTemplate(this.config);
     }
 
@@ -321,19 +309,15 @@
       const form = document.getElementById('brhub-form');
       if (!form) return;
 
-      // Máscara de CEP
-      const cepInputs = form.querySelectorAll('input[id^="brhub-cep"]');
-      cepInputs.forEach(input => {
+      // Máscara CEP
+      form.querySelectorAll('input[id^="brhub-cep"]').forEach(input => {
         input.addEventListener('input', (e) => {
-          let value = e.target.value.replace(/\D/g, '');
-          if (value.length > 5) {
-            value = value.substring(0, 5) + '-' + value.substring(5, 8);
-          }
-          e.target.value = value;
+          let v = e.target.value.replace(/\D/g, '');
+          if (v.length > 5) v = v.substring(0, 5) + '-' + v.substring(5, 8);
+          e.target.value = v;
         });
       });
 
-      // Submit do form
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
         await this.calcularFrete();
@@ -344,13 +328,11 @@
       const btn = document.getElementById('brhub-submit');
       const resultsDiv = document.getElementById('brhub-results');
       
-      // Estado de loading
       btn.disabled = true;
       btn.innerHTML = '<span class="brhub-loading"><span class="brhub-spinner"></span> Calculando...</span>';
       resultsDiv.innerHTML = '';
 
       try {
-        // Coletar dados
         const cepOrigemEl = document.getElementById('brhub-cep-origem');
         const cepOrigem = cepOrigemEl ? cepOrigemEl.value : this.config.cepOrigem;
         const cepDestino = document.getElementById('brhub-cep-destino').value;
@@ -370,31 +352,21 @@
           valorDeclarado: this.config.valorDeclarado
         };
 
-        // Chamar API
-        const response = await fetch(CONFIG.API_URL, {
+        const response = await fetch(API_URL, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': this.config.apiKey
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
 
         const data = await response.json();
-
-        if (!data.success) {
-          throw new Error(data.error || 'Erro ao calcular frete');
-        }
-
+        if (!data.success) throw new Error(data.error || 'Erro ao calcular frete');
+        
         this.renderResults(data.data.opcoes);
 
       } catch (error) {
         console.error('[BRHUB Widget] Erro:', error);
         resultsDiv.innerHTML = `<div class="brhub-error">${error.message}</div>`;
-        
-        if (this.config.onError) {
-          this.config.onError(error);
-        }
+        if (this.config.onError) this.config.onError(error);
       } finally {
         btn.disabled = false;
         btn.textContent = 'Calcular Frete';
@@ -405,18 +377,15 @@
       const resultsDiv = document.getElementById('brhub-results');
       
       if (!opcoes || opcoes.length === 0) {
-        resultsDiv.innerHTML = '<div class="brhub-error">Nenhuma opção de frete encontrada para este destino.</div>';
+        resultsDiv.innerHTML = '<div class="brhub-error">Nenhuma opção de frete encontrada.</div>';
         return;
       }
 
-      let html = `
-        <div class="brhub-results">
-          <div class="brhub-results-title">Opções de Envio (${opcoes.length})</div>
-      `;
-
-      opcoes.forEach((opcao, index) => {
+      let html = `<div class="brhub-results"><div class="brhub-results-title">Opções de Envio (${opcoes.length})</div>`;
+      
+      opcoes.forEach((opcao, i) => {
         html += `
-          <div class="brhub-option" data-index="${index}">
+          <div class="brhub-option" data-index="${i}">
             <div class="brhub-option-info">
               <span class="brhub-option-name">${opcao.servico}</span>
               <span class="brhub-option-carrier">${opcao.transportadora}</span>
@@ -425,37 +394,24 @@
               <span class="brhub-option-price">R$ ${opcao.preco}</span>
               <span class="brhub-option-time">${opcao.prazoTexto}</span>
             </div>
-          </div>
-        `;
+          </div>`;
       });
 
       html += '</div>';
       resultsDiv.innerHTML = html;
 
-      // Eventos de seleção
-      const optionEls = resultsDiv.querySelectorAll('.brhub-option');
-      optionEls.forEach((el) => {
+      resultsDiv.querySelectorAll('.brhub-option').forEach(el => {
         el.addEventListener('click', () => {
-          // Remover seleção anterior
-          optionEls.forEach(o => o.classList.remove('selected'));
+          resultsDiv.querySelectorAll('.brhub-option').forEach(o => o.classList.remove('selected'));
           el.classList.add('selected');
-
-          const index = parseInt(el.dataset.index);
-          this.selectedOption = opcoes[index];
-
-          if (this.config.onSelect) {
-            this.config.onSelect(this.selectedOption);
-          }
+          this.selectedOption = opcoes[parseInt(el.dataset.index)];
+          if (this.config.onSelect) this.config.onSelect(this.selectedOption);
         });
       });
     }
 
-    getSelectedOption() {
-      return this.selectedOption;
-    }
+    getSelectedOption() { return this.selectedOption; }
   }
 
-  // Expor globalmente
   window.BRHUBCotacao = new BRHUBCotacaoWidget();
-
 })();

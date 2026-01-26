@@ -15,24 +15,8 @@ serve(async (req) => {
   }
 
   try {
-    // Validar API Key
-    const apiKey = req.headers.get('x-api-key');
-    const expectedApiKey = Deno.env.get('BRHUB_EXTERNAL_API_KEY');
-    
-    if (!apiKey || apiKey !== expectedApiKey) {
-      console.error('❌ API Key inválida ou não fornecida');
-      return new Response(
-        JSON.stringify({ 
-          success: false,
-          error: 'API Key inválida ou não fornecida',
-          code: 'INVALID_API_KEY'
-        }),
-        { 
-          status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-    }
+    // API pública para widget - sem necessidade de API Key
+    // As credenciais do cliente são gerenciadas no backend via secrets
 
     const requestData = await req.json();
     console.log('🚚 Widget: Iniciando cotação de frete...');

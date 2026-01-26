@@ -19,7 +19,6 @@ export default function WidgetDocs() {
 <!-- Inicialize o widget -->
 <script>
   BRHUBCotacao.init({
-    apiKey: 'SUA_API_KEY',
     cepOrigem: '01310100', // CEP fixo da sua loja (opcional)
     titulo: 'Calcular Frete',
     onSelect: function(opcao) {
@@ -39,7 +38,6 @@ function brhub_cotacao_shortcode() {
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             BRHUBCotacao.init({
-                apiKey: "SUA_API_KEY",
                 cepOrigem: "01310100"
             });
         });
@@ -69,7 +67,6 @@ function brhub_shipping_calculator() {
     echo '<script>
         document.addEventListener("DOMContentLoaded", function() {
             BRHUBCotacao.init({
-                apiKey: "SUA_API_KEY",
                 cepOrigem: "01310100",
                 peso: ' . $weight . ',
                 altura: ' . $height . ',
@@ -86,7 +83,6 @@ function brhub_shipping_calculator() {
 }`;
 
   const configOptions = [
-    { nome: 'apiKey', tipo: 'string', obrigatorio: true, descricao: 'Sua chave de API do BRHUB Envios (solicite ao suporte)' },
     { nome: 'containerId', tipo: 'string', obrigatorio: false, descricao: 'ID do elemento HTML (padrão: "brhub-cotacao")' },
     { nome: 'cepOrigem', tipo: 'string', obrigatorio: false, descricao: 'CEP de origem fixo (sua loja)' },
     { nome: 'titulo', tipo: 'string', obrigatorio: false, descricao: 'Título do widget (padrão: "Calcular Frete")' },
