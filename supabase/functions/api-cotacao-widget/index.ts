@@ -79,10 +79,10 @@ serve(async (req) => {
     // 1. Fazer login do cliente para obter token
     console.log('🔐 Autenticando cliente:', clienteEmail);
     
-    const loginResponse = await fetch(`${baseUrl}/auth/login`, {
+    const loginResponse = await fetch(`${baseUrl}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: clienteEmail, senha: clienteSenha }),
+      body: JSON.stringify({ email: clienteEmail, password: clienteSenha }),
     });
 
     if (!loginResponse.ok) {
