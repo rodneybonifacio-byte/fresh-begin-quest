@@ -24,7 +24,7 @@ const FaturaSimple = lazy(() => import('../pages/site/FaturaSimple'));
 const VisualizarPdf = lazy(() => import('../pages/site/VisualizarPdf'));
 const CadastroCliente = lazy(() => import('../pages/site/cadastro/cadastro-cliente').then(module => ({ default: module.CadastroCliente })));
 const CadastroRemetente = lazy(() => import('../pages/site/cadastro/cadastro-remetente').then(module => ({ default: module.CadastroRemetente })));
-
+const WidgetDocs = lazy(() => import('../pages/site/widget-docs/WidgetDocs'));
 // Conecta+ Pages
 const LandingHome = lazy(() => import('../pages/conecta/LandingHome'));
 const LandingConecta = lazy(() => import('../pages/conecta/LandingConecta'));
@@ -67,6 +67,7 @@ export const RouterBase = () => {
                     <Route path="/relatorio-desempenho" element={<RelatorioDesempenho />} />
                     <Route path="/fatura/viewInPdf/:faturaId/:subFaturaId?" element={<FaturaSimple />} />
                     <Route path="/apidocs" element={<ApiDocs />} />
+                    <Route path="/widget-docs" element={<WidgetDocs />} />
                     <Route path="/rastreio/encomenda" element={<RastreioPublica />} />
                     <Route path="/redefinir-senha-success" element={<MessageRedefinirSenha />} />
                     <Route path="/pin-code" element={<PinCode />} />
