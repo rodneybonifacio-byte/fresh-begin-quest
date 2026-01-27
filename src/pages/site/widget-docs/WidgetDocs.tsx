@@ -96,24 +96,24 @@ function brhub_shipping_calculator() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-orange-600">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-orange-900">
       {/* Header */}
-      <header className="bg-white/95 backdrop-blur-md border-b border-purple-200 shadow-lg sticky top-0 z-10">
+      <header className="bg-white/95 backdrop-blur-md border-b border-orange-200 shadow-lg sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
+            <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
               <Package className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h1 className="font-bold text-xl text-purple-900">BRHUB Widget</h1>
-              <p className="text-sm text-purple-600 font-medium">Documentação de Integração</p>
+              <h1 className="font-bold text-xl text-gray-900">BRHUB Widget</h1>
+              <p className="text-sm text-orange-600 font-medium">Documentação de Integração</p>
             </div>
           </div>
           <a 
             href="https://brhubenvios.com.br" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="px-4 py-2 bg-gradient-to-r from-purple-600 to-orange-500 text-white rounded-lg font-medium hover:shadow-lg transition-all hover:scale-105"
+            className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg font-medium hover:shadow-lg transition-all hover:scale-105"
           >
             Acessar Painel →
           </a>
@@ -131,34 +131,34 @@ function brhub_shipping_calculator() {
           </p>
           
           <div className="grid md:grid-cols-3 gap-6">
-            <div className="bg-white/95 backdrop-blur p-6 rounded-2xl shadow-xl hover:shadow-2xl transition-all hover:-translate-y-1 border border-purple-100">
-              <div className="w-14 h-14 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center mb-4 shadow-lg">
+            <div className="bg-white/95 backdrop-blur p-6 rounded-2xl shadow-xl hover:shadow-2xl transition-all hover:-translate-y-1 border border-orange-100">
+              <div className="w-14 h-14 bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl flex items-center justify-center mb-4 shadow-lg">
                 <Zap className="w-8 h-8 text-white" />
               </div>
-              <h3 className="font-bold text-lg text-purple-900 mb-2">Fácil Instalação</h3>
-              <p className="text-purple-600">Apenas 3 linhas de código para começar</p>
+              <h3 className="font-bold text-lg text-gray-900 mb-2">Fácil Instalação</h3>
+              <p className="text-gray-600">Apenas 3 linhas de código para começar</p>
             </div>
-            <div className="bg-white/95 backdrop-blur p-6 rounded-2xl shadow-xl hover:shadow-2xl transition-all hover:-translate-y-1 border border-purple-100">
-              <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-700 rounded-xl flex items-center justify-center mb-4 shadow-lg">
+            <div className="bg-white/95 backdrop-blur p-6 rounded-2xl shadow-xl hover:shadow-2xl transition-all hover:-translate-y-1 border border-orange-100">
+              <div className="w-14 h-14 bg-gradient-to-br from-gray-700 to-gray-900 rounded-xl flex items-center justify-center mb-4 shadow-lg">
                 <Code className="w-8 h-8 text-white" />
               </div>
-              <h3 className="font-bold text-lg text-purple-900 mb-2">Personalizável</h3>
-              <p className="text-purple-600">Configure cores, campos e callbacks</p>
+              <h3 className="font-bold text-lg text-gray-900 mb-2">Personalizável</h3>
+              <p className="text-gray-600">Configure cores, campos e callbacks</p>
             </div>
-            <div className="bg-white/95 backdrop-blur p-6 rounded-2xl shadow-xl hover:shadow-2xl transition-all hover:-translate-y-1 border border-purple-100">
-              <div className="w-14 h-14 bg-gradient-to-br from-green-400 to-emerald-600 rounded-xl flex items-center justify-center mb-4 shadow-lg">
+            <div className="bg-white/95 backdrop-blur p-6 rounded-2xl shadow-xl hover:shadow-2xl transition-all hover:-translate-y-1 border border-orange-100">
+              <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl flex items-center justify-center mb-4 shadow-lg">
                 <ShoppingCart className="w-8 h-8 text-white" />
               </div>
-              <h3 className="font-bold text-lg text-purple-900 mb-2">E-commerce Ready</h3>
-              <p className="text-purple-600">Integra com WooCommerce, Shopify e mais</p>
+              <h3 className="font-bold text-lg text-gray-900 mb-2">E-commerce Ready</h3>
+              <p className="text-gray-600">Integra com WooCommerce, Shopify e mais</p>
             </div>
           </div>
         </section>
 
         {/* Instalação Básica */}
         <section className="mb-12 bg-white/95 backdrop-blur rounded-2xl p-6 shadow-xl">
-          <h3 className="text-xl font-bold text-purple-900 mb-4 flex items-center gap-3">
-            <span className="w-10 h-10 bg-gradient-to-br from-purple-600 to-orange-500 text-white rounded-full flex items-center justify-center text-lg font-bold shadow-lg">1</span>
+          <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-3">
+            <span className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-full flex items-center justify-center text-lg font-bold shadow-lg">1</span>
             Instalação Básica (HTML)
           </h3>
           
@@ -181,8 +181,8 @@ function brhub_shipping_calculator() {
 
         {/* WordPress */}
         <section className="mb-12 bg-white/95 backdrop-blur rounded-2xl p-6 shadow-xl">
-          <h3 className="text-xl font-bold text-purple-900 mb-4 flex items-center gap-3">
-            <span className="w-10 h-10 bg-gradient-to-br from-purple-600 to-orange-500 text-white rounded-full flex items-center justify-center text-lg font-bold shadow-lg">2</span>
+          <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-3">
+            <span className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-full flex items-center justify-center text-lg font-bold shadow-lg">2</span>
             WordPress (Shortcode)
           </h3>
           
@@ -205,8 +205,8 @@ function brhub_shipping_calculator() {
 
         {/* WooCommerce */}
         <section className="mb-12 bg-white/95 backdrop-blur rounded-2xl p-6 shadow-xl">
-          <h3 className="text-xl font-bold text-purple-900 mb-4 flex items-center gap-3">
-            <span className="w-10 h-10 bg-gradient-to-br from-purple-600 to-orange-500 text-white rounded-full flex items-center justify-center text-lg font-bold shadow-lg">3</span>
+          <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-3">
+            <span className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-full flex items-center justify-center text-lg font-bold shadow-lg">3</span>
             WooCommerce (Página do Produto)
           </h3>
           
@@ -229,24 +229,24 @@ function brhub_shipping_calculator() {
 
         {/* Opções de Configuração */}
         <section className="mb-12 bg-white/95 backdrop-blur rounded-2xl p-6 shadow-xl">
-          <h3 className="text-xl font-bold text-purple-900 mb-6">
+          <h3 className="text-xl font-bold text-gray-900 mb-6">
             Opções de Configuração
           </h3>
           
-          <div className="bg-white rounded-xl border border-purple-100 overflow-hidden shadow-lg">
+          <div className="bg-white rounded-xl border border-orange-100 overflow-hidden shadow-lg">
             <table className="w-full text-sm">
-              <thead className="bg-gradient-to-r from-purple-50 to-orange-50 border-b border-purple-100">
+              <thead className="bg-gradient-to-r from-gray-50 to-orange-50 border-b border-orange-100">
                 <tr>
-                  <th className="text-left px-4 py-4 font-bold text-purple-900">Parâmetro</th>
-                  <th className="text-left px-4 py-4 font-bold text-purple-900">Tipo</th>
-                  <th className="text-left px-4 py-4 font-bold text-purple-900">Obrigatório</th>
-                  <th className="text-left px-4 py-4 font-bold text-purple-900">Descrição</th>
+                  <th className="text-left px-4 py-4 font-bold text-gray-900">Parâmetro</th>
+                  <th className="text-left px-4 py-4 font-bold text-gray-900">Tipo</th>
+                  <th className="text-left px-4 py-4 font-bold text-gray-900">Obrigatório</th>
+                  <th className="text-left px-4 py-4 font-bold text-gray-900">Descrição</th>
                 </tr>
               </thead>
               <tbody>
                 {configOptions.map((opt, i) => (
-                  <tr key={opt.nome} className={`${i % 2 === 0 ? 'bg-white' : 'bg-purple-50/50'} hover:bg-purple-50 transition-colors`}>
-                    <td className="px-4 py-3 font-mono text-purple-600 font-medium">{opt.nome}</td>
+                  <tr key={opt.nome} className={`${i % 2 === 0 ? 'bg-white' : 'bg-orange-50/50'} hover:bg-orange-50 transition-colors`}>
+                    <td className="px-4 py-3 font-mono text-orange-600 font-medium">{opt.nome}</td>
                     <td className="px-4 py-3 text-gray-600">{opt.tipo}</td>
                     <td className="px-4 py-3">
                       {opt.obrigatorio ? (
@@ -265,17 +265,17 @@ function brhub_shipping_calculator() {
 
         {/* Demo */}
         <section className="mb-12 bg-white/95 backdrop-blur rounded-2xl p-6 shadow-xl">
-          <h3 className="text-xl font-bold text-purple-900 mb-6">
+          <h3 className="text-xl font-bold text-gray-900 mb-6">
             Demonstração
           </h3>
-          <div className="bg-gradient-to-br from-purple-100 to-orange-100 p-8 rounded-xl flex justify-center">
+          <div className="bg-gradient-to-br from-gray-100 to-orange-100 p-8 rounded-xl flex justify-center">
             <div id="brhub-cotacao-demo" className="w-full max-w-md">
               {/* Widget será carregado aqui via script externo */}
-              <div className="bg-white p-8 rounded-2xl border-2 border-purple-200 shadow-lg text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <div className="bg-white p-8 rounded-2xl border-2 border-orange-200 shadow-lg text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                   <Package className="w-9 h-9 text-white" />
                 </div>
-                <p className="text-purple-700 font-medium">
+                <p className="text-gray-700 font-medium">
                   O widget será exibido aqui quando você publicar e configurar com suas credenciais.
                 </p>
               </div>
@@ -304,9 +304,9 @@ function brhub_shipping_calculator() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-purple-900/50 backdrop-blur mt-12">
+      <footer className="bg-gray-900/50 backdrop-blur mt-12">
         <div className="max-w-5xl mx-auto px-4 py-8 text-center">
-          <p className="text-purple-200 font-medium">
+          <p className="text-gray-300 font-medium">
             © {new Date().getFullYear()} BRHUB Envios. Todos os direitos reservados.
           </p>
         </div>
