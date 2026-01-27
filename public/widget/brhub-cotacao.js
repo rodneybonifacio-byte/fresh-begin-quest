@@ -1,19 +1,19 @@
 /**
  * BRHUB Envios - Widget de Cotação de Frete
- * Versão: 1.0.0
+ * Versão: 1.0.1
  * 
  * Widget embedável para cotação de frete em qualquer site.
- * Documentação: https://envios.brhubb.com.br/widget-docs
+ * Documentação: https://brhubenvios.com.br/widget-docs
  * 
  * Uso:
  * 1. Adicione: <div id="brhub-cotacao"></div>
- * 2. Inclua: <script src="https://envios.brhubb.com.br/widget/brhub-cotacao.js"></script>
+ * 2. Inclua: <script src="https://brhubenvios.com.br/widget/brhub-cotacao.js"></script>
  * 3. Inicialize: BRHUBCotacao.init({ cepOrigem: '01310100' });
  */
 (function() {
   'use strict';
 
-  // Configuração - URL da API BRHUB
+  // Configuração - URL da API BRHUB (Edge Function)
   const API_URL = 'https://xikvfybxthvqhpjbrszp.supabase.co/functions/v1/api-cotacao-widget';
 
   // Estilos do widget
@@ -257,7 +257,7 @@
         <div id="brhub-results"></div>
         
         <div class="brhub-powered">
-          Powered by <a href="https://envios.brhubb.com.br" target="_blank" rel="noopener">BRHUB Envios</a>
+          Powered by <a href="https://brhubenvios.com.br" target="_blank" rel="noopener">BRHUB Envios</a>
         </div>
       </div>
     `;

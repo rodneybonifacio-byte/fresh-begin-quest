@@ -14,7 +14,7 @@ export default function WidgetDocs() {
 <div id="brhub-cotacao"></div>
 
 <!-- Inclua o script do widget -->
-<script src="https://envios.brhubb.com.br/widget/brhub-cotacao.js"></script>
+<script src="https://brhubenvios.com.br/widget/brhub-cotacao.js"></script>
 
 <!-- Inicialize o widget -->
 <script>
@@ -34,7 +34,7 @@ export default function WidgetDocs() {
 function brhub_cotacao_shortcode() {
     return '
     <div id="brhub-cotacao"></div>
-    <script src="https://envios.brhubb.com.br/widget/brhub-cotacao.js"></script>
+    <script src="https://brhubenvios.com.br/widget/brhub-cotacao.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             BRHUBCotacao.init({
@@ -63,7 +63,7 @@ function brhub_shipping_calculator() {
     $price = $product->get_price();
     
     echo '<div id="brhub-cotacao" style="margin-top: 20px;"></div>';
-    echo '<script src="https://envios.brhubb.com.br/widget/brhub-cotacao.js"></script>';
+    echo '<script src="https://brhubenvios.com.br/widget/brhub-cotacao.js"></script>';
     echo '<script>
         document.addEventListener("DOMContentLoaded", function() {
             BRHUBCotacao.init({
@@ -110,7 +110,7 @@ function brhub_shipping_calculator() {
             </div>
           </div>
           <a 
-            href="https://envios.brhubb.com.br" 
+            href="https://brhubenvios.com.br" 
             target="_blank" 
             rel="noopener noreferrer"
             className="text-sm text-blue-600 hover:underline"
