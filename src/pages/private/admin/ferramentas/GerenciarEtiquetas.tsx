@@ -3,7 +3,8 @@ import { isValid as isValidCpf, strip as stripCpf, generate as generateCpf } fro
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { EmissaoService } from "../../../../services/EmissaoService";
 import { supabase } from "../../../../integrations/supabase/client";
-import { Trash2, Filter, X, DollarSign, Eye, RefreshCw, ChevronLeft, ChevronRight, Search, AlertTriangle, Package } from "lucide-react";
+import { Trash2, Filter, X, DollarSign, Eye, RefreshCw, ChevronLeft, ChevronRight, Search, AlertTriangle, Package, Loader2 } from "lucide-react";
+import { ViacepService } from "../../../../services/viacepService";
 import { toast } from "sonner";
 import { ModalCustom } from "../../../../components/modal";
 import { format } from "date-fns";
@@ -16,6 +17,7 @@ import { ModalAtualizarPrecosEmMassa } from "./ModalAtualizarPrecosEmMassa";
 import { AtualizarCustoOperaKids } from "./AtualizarCustoOperaKids";
 
 const emissaoService = new EmissaoService();
+const viacepService = new ViacepService();
 
 export default function GerenciarEtiquetas() {
   const { setIsLoading: setGlobalLoading } = useLoadingSpinner();
@@ -36,7 +38,40 @@ export default function GerenciarEtiquetas() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showRegerarModal, setShowRegerarModal] = useState(false);
   const [editableEmissao, setEditableEmissao] = useState<any>(null);
+  const [buscandoCep, setBuscandoCep] = useState(false);
   const queryClient = useQueryClient();
+
+  const handleBuscarCep = async () => {
+    if (!editableEmissao?.cep) return;
+    
+    const cepLimpo = String(editableEmissao.cep).replace(/\D/g, '').padStart(8, '0');
+    if (cepLimpo.length !== 8) {
+      toast.error('CEP deve ter 8 dígitos');
+      return;
+    }
+
+    setBuscandoCep(true);
+    try {
+      const endereco = await viacepService.consulta(cepLimpo);
+      if (endereco && endereco.logradouro) {
+        setEditableEmissao({
+          ...editableEmissao,
+          cep: cepLimpo,
+          logradouro: endereco.logradouro || editableEmissao.logradouro,
+          bairro: endereco.bairro || editableEmissao.bairro,
+          localidade: endereco.localidade || editableEmissao.localidade,
+          uf: endereco.uf || editableEmissao.uf,
+        });
+        toast.success('✓ Endereço encontrado!');
+      } else {
+        toast.error('CEP não encontrado');
+      }
+    } catch (error) {
+      toast.error('Erro ao buscar CEP');
+    } finally {
+      setBuscandoCep(false);
+    }
+  };
 
   const { data: queryResult, isLoading } = useQuery({
     queryKey: ["emissoes-gerenciar", page, appliedFilters],
@@ -818,12 +853,23 @@ export default function GerenciarEtiquetas() {
               </div>
               <div>
                 <label className="text-sm font-medium mb-1 block">CEP</label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 border rounded-lg bg-background"
-                  value={editableEmissao.cep}
-                  onChange={(e) => setEditableEmissao({ ...editableEmissao, cep: e.target.value })}
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    className="flex-1 px-3 py-2 border rounded-lg bg-background"
+                    value={editableEmissao.cep}
+                    onChange={(e) => setEditableEmissao({ ...editableEmissao, cep: e.target.value })}
+                    placeholder="00000-000"
+                  />
+                  <button
+                    onClick={handleBuscarCep}
+                    disabled={buscandoCep}
+                    className="px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm disabled:opacity-50 flex items-center gap-1"
+                  >
+                    {buscandoCep ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                    Buscar
+                  </button>
+                </div>
               </div>
               <div className="md:col-span-2">
                 <label className="text-sm font-medium mb-1 block">Logradouro</label>
