@@ -65,6 +65,12 @@ export default function CriarEtiquetasEmMassa() {
     return stripCpf(value);
   };
 
+  const limparCep = (cep: unknown): string => {
+    const digits = String(cep ?? "").replace(/[^\d]/g, "");
+    const normalized = digits.padStart(8, "0");
+    return normalized.length > 8 ? normalized.slice(0, 8) : normalized;
+  };
+
   const validarCpf = (cpf: string): boolean => {
     const cleaned = stripCpf(cpf || "");
     if (!cleaned) return false;
@@ -97,8 +103,9 @@ export default function CriarEtiquetasEmMassa() {
 
   const consultarCep = async (cep: string): Promise<{ bairro: string; cidade: string; estado: string } | null> => {
     try {
-      // Remove caracteres não numéricos e garante 8 dígitos (adiciona zeros à esquerda se necessário)
-      const cepLimpo = cep.replace(/[^\d]/g, "").padStart(8, "0");
+      // CEP pode vir como número da planilha; normaliza para string com 8 dígitos
+      const cepLimpo = limparCep(cep);
+      if (cepLimpo.length !== 8) return null;
       const resultado = await viacepService.consulta(cepLimpo);
       return {
         bairro: resultado.bairro,
@@ -354,7 +361,7 @@ export default function CriarEtiquetasEmMassa() {
           // Salvar com dados parciais para correção posterior
           const envioComErro: EnvioData = {
             servico_frete: row.servico_frete?.toString().toUpperCase() || "PAC",
-            cep: limparCpfCnpj(row.cep),
+            cep: limparCep(row.cep),
             altura: parseInt(row.altura) || 0,
             largura: parseInt(row.largura) || 0,
             comprimento: parseInt(row.comprimento) || 0,
@@ -398,7 +405,7 @@ export default function CriarEtiquetasEmMassa() {
 
         const envio: EnvioData = {
           servico_frete: row.servico_frete?.toString().toUpperCase() || "PAC",
-          cep: limparCpfCnpj(row.cep),
+          cep: limparCep(row.cep),
           altura: parseInt(row.altura),
           largura: parseInt(row.largura),
           comprimento: parseInt(row.comprimento),
