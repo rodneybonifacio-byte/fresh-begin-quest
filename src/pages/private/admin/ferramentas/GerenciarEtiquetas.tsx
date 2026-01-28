@@ -2,7 +2,6 @@ import { useState } from "react";
 import { isValid as isValidCpf, strip as stripCpf, generate as generateCpf } from "@fnando/cpf";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { EmissaoService } from "../../../../services/EmissaoService";
-import { getSupabaseWithAuth } from "../../../../integrations/supabase/custom-auth";
 import { supabase } from "../../../../integrations/supabase/client";
 import { Trash2, Filter, X, DollarSign, Eye, RefreshCw, ChevronLeft, ChevronRight, Search, AlertTriangle, Package } from "lucide-react";
 import { toast } from "sonner";
@@ -53,26 +52,28 @@ export default function GerenciarEtiquetas() {
 
       const response = await emissaoService.getAll(params, 'admin');
 
-      // Buscar etiquetas pendentes de correção
-      const supabaseClient = getSupabaseWithAuth();
-      let supabaseQuery = supabaseClient
-        .from('etiquetas_pendentes_correcao')
-        .select('*', { count: 'exact' });
+      // Buscar pendentes via backend function (service role)
+      const token = localStorage.getItem('token') || localStorage.getItem('accessToken');
+      if (!token) throw new Error('Token não encontrado - faça login novamente');
 
-      if (appliedFilters.remetente) {
-        supabaseQuery = supabaseQuery.ilike('remetente_nome', `%${appliedFilters.remetente}%`);
-      }
-      if (appliedFilters.dataInicio) {
-        supabaseQuery = supabaseQuery.gte('criado_em', appliedFilters.dataInicio);
-      }
-      if (appliedFilters.dataFim) {
-        supabaseQuery = supabaseQuery.lte('criado_em', appliedFilters.dataFim);
-      }
+      const { data: pendentesResp, error: pendentesErr } = await supabase.functions.invoke('etiquetas-pendentes-listar', {
+        headers: { 'x-brhub-authorization': `Bearer ${token}` },
+        body: {
+          filters: {
+            remetente: appliedFilters.remetente || null,
+            dataInicio: appliedFilters.dataInicio || null,
+            dataFim: appliedFilters.dataFim || null,
+          },
+        },
+      });
 
-      const { data: pendentesData, count: pendentesCount } = await supabaseQuery;
+      if (pendentesErr) throw new Error(pendentesErr.message);
+
+      const pendentesData = (pendentesResp as any)?.data || [];
+      const pendentesCount = (pendentesResp as any)?.count || pendentesData.length;
 
       // Converter etiquetas pendentes para formato IEmissao
-      const pendentesFormatted: IEmissao[] = (pendentesData || []).map(p => ({
+      const pendentesFormatted: IEmissao[] = (pendentesData || []).map((p: any) => ({
         id: p.id,
         codigoObjeto: 'PENDENTE_' + p.id.substring(0, 8),
         transportadora: 'Correios',
@@ -140,12 +141,16 @@ export default function GerenciarEtiquetas() {
 
         // Verificar se é pendente de correção (começa com PENDENTE_)
         if (meta.codigoObjeto.startsWith('PENDENTE_')) {
-          // Deletar do Supabase diretamente
-          const supabaseClient = getSupabaseWithAuth();
-          const { error } = await supabaseClient
-            .from('etiquetas_pendentes_correcao')
-            .delete()
-            .eq('id', id);
+          const token = localStorage.getItem('token') || localStorage.getItem('accessToken');
+          if (!token) {
+            errors.push({ id, error: 'Token não encontrado' });
+            continue;
+          }
+
+          const { error } = await supabase.functions.invoke('etiquetas-pendentes-deletar', {
+            headers: { 'x-brhub-authorization': `Bearer ${token}` },
+            body: { id },
+          });
           
           if (error) {
             errors.push({ id, error: error.message });
