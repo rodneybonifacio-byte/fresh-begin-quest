@@ -105,12 +105,12 @@ serve(async (req) => {
     const loginData = await loginResponse.json();
     const adminToken = loginData.token;
 
-    // Buscar etiquetas do OPERA KIDS VAREJO de hoje
-    // Construir filtros para a API
-    const dataHoje = data || new Date().toISOString().split('T')[0];
+    // Buscar etiquetas do OPERA KIDS VAREJO de HOJE (sempre usa data atual)
+    // IMPORTANTE: Sempre usa a data de hoje para garantir que só processa etiquetas do dia
+    const dataHoje = new Date().toISOString().split('T')[0];
     const remetente = remetenteNome || 'OPERA KIDS VAREJO';
     
-    console.log(`📦 Buscando etiquetas de "${remetente}" do dia ${dataHoje}...`);
+    console.log(`📦 Buscando etiquetas de "${remetente}" do dia ${dataHoje} (data forçada para HOJE)...`);
 
     // Buscar emissões usando endpoint admin com filtros corretos
     // Formato: /emissoes/admin?remetenteNome=X&dataInicio=Y&dataFim=Z
