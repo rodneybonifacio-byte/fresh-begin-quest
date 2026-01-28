@@ -97,7 +97,8 @@ export default function CriarEtiquetasEmMassa() {
 
   const consultarCep = async (cep: string): Promise<{ bairro: string; cidade: string; estado: string } | null> => {
     try {
-      const cepLimpo = cep.replace(/[^\d]/g, "");
+      // Remove caracteres não numéricos e garante 8 dígitos (adiciona zeros à esquerda se necessário)
+      const cepLimpo = cep.replace(/[^\d]/g, "").padStart(8, "0");
       const resultado = await viacepService.consulta(cepLimpo);
       return {
         bairro: resultado.bairro,
