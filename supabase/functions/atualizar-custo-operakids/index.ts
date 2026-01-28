@@ -112,15 +112,17 @@ serve(async (req) => {
     
     console.log(`📦 Buscando etiquetas de "${remetente}" do dia ${dataHoje}...`);
 
-    // Buscar emissões com filtros
+    // Buscar emissões usando endpoint admin com filtros corretos
+    // Formato: /emissoes/admin?remetenteNome=X&dataInicio=Y&dataFim=Z
     const searchParams = new URLSearchParams({
       remetenteNome: remetente,
-      dataInicio: `${dataHoje}T00:00:00`,
-      dataFim: `${dataHoje}T23:59:59`,
-      limit: '1000', // Buscar até 1000 etiquetas
+      dataInicio: dataHoje,
+      dataFim: dataHoje,
+      limit: '1000',
+      offset: '0',
     });
 
-    const emissaoResponse = await fetch(`${BASE_API_URL}/emissoes?${searchParams.toString()}`, {
+    const emissaoResponse = await fetch(`${BASE_API_URL}/emissoes/admin?${searchParams.toString()}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
