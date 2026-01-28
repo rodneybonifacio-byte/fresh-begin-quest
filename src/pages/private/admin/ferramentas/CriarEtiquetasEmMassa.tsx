@@ -1,3 +1,4 @@
+// Criação de etiquetas em massa via planilha
 import { useState, useRef } from "react";
 import { Upload, Download, FileSpreadsheet, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
