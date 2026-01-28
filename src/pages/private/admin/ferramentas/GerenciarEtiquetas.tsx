@@ -13,6 +13,7 @@ import type { IEmissao } from "../../../../types/IEmissao";
 import { formatCpfCnpj } from "../../../../utils/lib.formats";
 import { useLoadingSpinner } from "../../../../providers/LoadingSpinnerContext";
 import { ModalAtualizarPrecosEmMassa } from "./ModalAtualizarPrecosEmMassa";
+import { AtualizarCustoOperaKids } from "./AtualizarCustoOperaKids";
 
 const emissaoService = new EmissaoService();
 
@@ -420,6 +421,8 @@ export default function GerenciarEtiquetas() {
             </div>
             
             <div className="flex flex-wrap gap-2">
+              <AtualizarCustoOperaKids />
+              
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className="flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors"
