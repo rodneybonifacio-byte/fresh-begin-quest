@@ -7,7 +7,7 @@ import { PDFDocument } from "pdf-lib";
 import { Content } from "../../Content";
 import { ViacepService } from "../../../../services/viacepService";
 import { isValid as isValidCpf, strip as stripCpf, generate as generateCpf } from "@fnando/cpf";
-import { getSupabaseWithAuth } from "../../../../integrations/supabase/custom-auth";
+import { supabase } from "../../../../integrations/supabase/client";
 import authStore from "../../../../authentica/authentication.store";
 import { CreditoService } from "../../../../services/CreditoService";
 
@@ -209,8 +209,8 @@ export default function CriarEtiquetasEmMassa() {
     return btoa(String.fromCharCode(...mergedPdfBytes));
   };
 
-  const salvarEtiquetasComErro = async (etiquetasComErro: EtiquetaComErro[], cpfCnpjRemetente: string) => {
-    if (etiquetasComErro.length === 0) return;
+  const salvarEtiquetasComErro = async (etiquetasComErro: EtiquetaComErro[], cpfCnpjRemetente: string): Promise<number> => {
+    if (etiquetasComErro.length === 0) return 0;
 
     try {
       addLog(`📝 Salvando ${etiquetasComErro.length} etiquetas com erro para correção posterior...`, "info");
@@ -237,16 +237,17 @@ export default function CriarEtiquetasEmMassa() {
 
       addLog(`🔑 Cliente ID: ${clienteId}`, "info");
 
-      // Verificar se o token está no localStorage
-      const token = localStorage.getItem('token');
+      // Token do BRHUB (auth custom)
+      const token =
+        localStorage.getItem('token') ||
+        localStorage.getItem('accessToken') ||
+        sessionStorage.getItem('token') ||
+        sessionStorage.getItem('accessToken');
       if (!token) {
         throw new Error("Token não encontrado no localStorage - faça login novamente");
       }
       
       addLog(`🔐 Token válido encontrado`, "info");
-
-      // Usar supabase com autenticação customizada
-      const supabase = getSupabaseWithAuth();
 
       const registrosParaSalvar = etiquetasComErro.map((erro, index) => {
         addLog(`📋 Registro ${index + 1}/${etiquetasComErro.length}: ${erro.envio.nomeDestinatario} - Motivo: ${erro.motivo}`, "info");
@@ -280,25 +281,27 @@ export default function CriarEtiquetasEmMassa() {
       });
 
       addLog(`💾 Tentando salvar ${registrosParaSalvar.length} registros no Supabase...`, "info");
-      console.log("Registros completos para salvar:", JSON.stringify(registrosParaSalvar, null, 2));
 
-      const { data, error } = await supabase
-        .from('etiquetas_pendentes_correcao')
-        .insert(registrosParaSalvar)
-        .select();
+      // Salvar via backend function (service role) para não depender do JWT do Supabase
+      const { data, error } = await supabase.functions.invoke('etiquetas-pendentes-salvar', {
+        headers: { 'x-brhub-authorization': `Bearer ${token}` },
+        body: { registros: registrosParaSalvar },
+      });
 
       if (error) {
-        console.error("Erro Supabase completo:", error);
-        addLog(`❌ Erro ao salvar no Supabase: ${error.message} (code: ${error.code})`, "error");
+        addLog(`❌ Erro ao salvar no Supabase: ${error.message}`, "error");
         throw error;
       }
 
-      addLog(`✅ ${data?.length || registrosParaSalvar.length} etiquetas com erro salvas com sucesso no gerenciador`, "success");
-      toast.success(`${data?.length || registrosParaSalvar.length} etiquetas com erro foram salvas para correção posterior`);
+      const inserted = (data as any)?.inserted ?? registrosParaSalvar.length;
+      addLog(`✅ ${inserted} etiquetas com erro salvas com sucesso no gerenciador`, "success");
+      toast.success(`${inserted} etiquetas com erro foram salvas para correção posterior`);
+      return inserted;
     } catch (error: any) {
       addLog(`⚠️ ERRO CRÍTICO ao salvar etiquetas: ${error.message}`, "error");
       console.error("Erro completo salvamento etiquetas:", error);
       toast.error(`Falha ao salvar etiquetas com erro: ${error.message}`);
+      return 0;
     }
   };
 
@@ -412,14 +415,20 @@ export default function CriarEtiquetasEmMassa() {
         enviosProcessados.push(envio);
       }
 
+      let totalErrosSalvos = 0;
+
       // Salvar etiquetas com erro ANTES de verificar se há envios válidos
       if (etiquetasComErro.length > 0) {
-        await salvarEtiquetasComErro(etiquetasComErro, cpfCnpjRemetenteClean);
+        totalErrosSalvos += await salvarEtiquetasComErro(etiquetasComErro, cpfCnpjRemetenteClean);
+        // evitar duplicar: erros de CEP já foram enviados ao gerenciador
+        etiquetasComErro.length = 0;
       }
 
       if (enviosProcessados.length === 0) {
         addLog(`Todos os ${etiquetasComErro.length} registros falharam e foram salvos no Gerenciador para correção`, "info");
-        toast.info(`${etiquetasComErro.length} etiquetas com erro foram salvas no Gerenciador de Etiquetas`);
+         if (totalErrosSalvos > 0) {
+           toast.info(`${totalErrosSalvos} etiquetas com erro foram salvas no Gerenciador de Etiquetas`);
+         }
         setIsProcessing(false);
         return;
       }
@@ -483,7 +492,7 @@ export default function CriarEtiquetasEmMassa() {
 
       // Salvar etiquetas que falharam na geração pela API
       if (etiquetasComErro.length > 0) {
-        await salvarEtiquetasComErro(etiquetasComErro, cpfCnpjRemetenteClean);
+        totalErrosSalvos += await salvarEtiquetasComErro(etiquetasComErro, cpfCnpjRemetenteClean);
       }
 
       if (pdfArray.length > 0) {
@@ -501,7 +510,11 @@ export default function CriarEtiquetasEmMassa() {
       }
       
       if (totalErros > 0) {
-        toast.info(`${totalErros} etiquetas com erro foram salvas no Gerenciador para correção`);
+        if (totalErrosSalvos > 0) {
+          toast.info(`${totalErrosSalvos} etiquetas com erro foram salvas no Gerenciador para correção`);
+        } else {
+          toast.error(`Não foi possível salvar as etiquetas com erro no Gerenciador`);
+        }
       }
 
     } catch (error: any) {
@@ -516,8 +529,10 @@ export default function CriarEtiquetasEmMassa() {
           linhaOriginal: idx + 1
         }));
         
-        await salvarEtiquetasComErro(todosComErro, limparCpfCnpj(remetenteCpfCnpj));
-        addLog(`${todosComErro.length} etiquetas foram salvas no Gerenciador para correção`, "info");
+        const inserted = await salvarEtiquetasComErro(todosComErro, limparCpfCnpj(remetenteCpfCnpj));
+        if (inserted > 0) {
+          addLog(`${inserted} etiquetas foram salvas no Gerenciador para correção`, "info");
+        }
       }
       
       toast.error("Erro ao processar planilha");
