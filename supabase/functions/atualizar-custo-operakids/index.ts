@@ -136,16 +136,29 @@ serve(async (req) => {
     }
 
     const emissaoData = await emissaoResponse.json();
-    const emissoes = emissaoData?.data || emissaoData || [];
+    const emissoesBrutas = emissaoData?.data || emissaoData || [];
     
-    console.log(`📊 Encontradas ${emissoes.length} etiquetas`);
+    console.log(`📊 Encontradas ${emissoesBrutas.length} etiquetas brutas da API`);
+
+    // IMPORTANTE: Filtrar no servidor pois a API externa não filtra corretamente por remetenteNome
+    // Normalizar o nome do remetente para comparação (remover acentos e uppercase)
+    const normalizar = (str: string) => str?.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim() || '';
+    const remetenteNormalizado = normalizar(remetente);
+    
+    const emissoes = emissoesBrutas.filter((e: any) => {
+      const nomeRemetente = normalizar(e.remetenteNome || '');
+      return nomeRemetente.includes(remetenteNormalizado) || remetenteNormalizado.includes(nomeRemetente);
+    });
+    
+    console.log(`📊 Após filtro por "${remetente}": ${emissoes.length} etiquetas`);
 
     if (emissoes.length === 0) {
       return new Response(
         JSON.stringify({ 
           success: true, 
           message: 'Nenhuma etiqueta encontrada com os filtros especificados',
-          filtros: { remetente, data: dataHoje }
+          filtros: { remetente, data: dataHoje },
+          debug: { totalBruto: emissoesBrutas.length }
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
