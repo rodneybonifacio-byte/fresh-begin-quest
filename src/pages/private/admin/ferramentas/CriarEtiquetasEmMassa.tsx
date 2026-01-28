@@ -76,6 +76,24 @@ export default function CriarEtiquetasEmMassa() {
     return stripCpf(novoCpf);
   };
 
+  // Função para formatar erros da API em string legível
+  const formatarErroApi = (error: any): string => {
+    // Se for um array de objetos com message
+    if (Array.isArray(error)) {
+      return error.map((e: any) => e.message || JSON.stringify(e)).join('; ');
+    }
+    // Se for um objeto com message
+    if (error && typeof error === 'object' && error.message) {
+      return error.message;
+    }
+    // Se já for string
+    if (typeof error === 'string') {
+      return error;
+    }
+    // Fallback: stringify
+    return JSON.stringify(error);
+  };
+
   const consultarCep = async (cep: string): Promise<{ bairro: string; cidade: string; estado: string } | null> => {
     try {
       const cepLimpo = cep.replace(/[^\d]/g, "");
@@ -203,12 +221,29 @@ export default function CriarEtiquetasEmMassa() {
         throw new Error("Usuário não autenticado - faça login novamente");
       }
 
-      const clienteId = (userData as any).clienteId || userData.id;
+      // Tentar extrair clienteId de diferentes claims do token
+      const clienteId = (userData as any).clienteId || (userData as any).sub || userData.id;
       if (!clienteId) {
-        throw new Error("Cliente ID não encontrado no token");
+        console.error("Token decodificado:", userData);
+        throw new Error("Cliente ID não encontrado no token - claims disponíveis: " + Object.keys(userData).join(", "));
+      }
+
+      // Validar que é um UUID válido
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(clienteId)) {
+        console.error("Cliente ID não é um UUID válido:", clienteId);
+        throw new Error(`Cliente ID inválido (não é UUID): ${clienteId}`);
       }
 
       addLog(`🔑 Cliente ID: ${clienteId}`, "info");
+
+      // Verificar se o token está no localStorage
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error("Token não encontrado no localStorage - faça login novamente");
+      }
+      
+      addLog(`🔐 Token válido encontrado`, "info");
 
       // Usar supabase com autenticação customizada
       const supabase = getSupabaseWithAuth();
@@ -438,7 +473,7 @@ export default function CriarEtiquetasEmMassa() {
             if (enviosProcessados[idx]) {
               etiquetasComErro.push({
                 envio: enviosProcessados[idx],
-                motivo: item.erro || item.mensagem || "Falha na geração da etiqueta pela API",
+                motivo: formatarErroApi(item.erro) || item.mensagem || "Falha na geração da etiqueta pela API",
                 linhaOriginal: idx + 1
               });
             }
@@ -477,7 +512,7 @@ export default function CriarEtiquetasEmMassa() {
       if (enviosProcessados && enviosProcessados.length > 0) {
         const todosComErro: EtiquetaComErro[] = enviosProcessados.map((envio, idx) => ({
           envio,
-          motivo: error.response?.data?.error || error.message || "Erro crítico na importação",
+          motivo: formatarErroApi(error.response?.data?.error) || error.message || "Erro crítico na importação",
           linhaOriginal: idx + 1
         }));
         
