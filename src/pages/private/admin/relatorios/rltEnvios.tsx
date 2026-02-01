@@ -329,14 +329,23 @@ const RltEnvios = () => {
             const remetenteId = searchParams.get('remetenteId') || undefined;
             const transportadora = searchParams.get('transportadora') || undefined;
 
-            // Buscar TODOS os registros em lotes de 50 para evitar timeout
-            const batchSize = 50;
-            let offset = 0;
-            let allData: IEmissao[] = [];
-            let hasMore = true;
-            let batchCount = 0;
+            // Observação: a API está retornando 500 quando enviamos MUITOS status no mesmo parâmetro.
+            // Para garantir a exportação completa, vamos:
+            // 1) Quando houver múltiplos status (separados por vírgula), buscar um por vez e concatenar.
+            // 2) Se a API falhar com lote 50, reduzir automaticamente (30 -> 20 -> 10).
 
-            while (hasMore) {
+            const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+            const statusesToFetch = (status
+                ? status.split(',').map((s) => s.trim()).filter(Boolean)
+                : []);
+
+            // Fallback: se não veio status em query, usa a aba selecionada.
+            if (statusesToFetch.length === 0 && tab) {
+                statusesToFetch.push(tab);
+            }
+
+            const buildParams = (opts: { limit: number; offset: number; singleStatus?: string }) => {
                 const params: {
                     limit: number;
                     offset: number;
@@ -347,55 +356,102 @@ const RltEnvios = () => {
                     remetenteId?: string;
                     transportadora?: string;
                 } = {
-                    limit: batchSize,
-                    offset: offset,
+                    limit: opts.limit,
+                    offset: opts.offset,
                 };
 
                 if (dataIni) params.dataIni = dataIni;
                 if (dataFim) params.dataFim = dataFim;
-                if (status) params.status = status;
+                if (opts.singleStatus) params.status = opts.singleStatus;
                 if (clienteId) params.clienteId = clienteId;
                 if (remetenteId) params.remetenteId = remetenteId;
                 if (transportadora) params.transportadora = transportadora;
 
-                try {
-                    const response = await service.getAll(params, 'admin');
-                    
-                    if (response?.data && response.data.length > 0) {
-                        allData = [...allData, ...response.data];
+                return params;
+            };
+
+            const fetchAllPagedForStatus = async (singleStatus?: string): Promise<IEmissao[]> => {
+                let batchSize = 50;
+                let offset = 0;
+                let hasMore = true;
+                let batchCount = 0;
+                const result: IEmissao[] = [];
+
+                const statusLabel = singleStatus ? `(${singleStatus})` : '';
+
+                while (hasMore) {
+                    const params = buildParams({ limit: batchSize, offset, singleStatus });
+
+                    try {
+                        const response = await service.getAll(params, 'admin');
+                        const batch = response?.data || [];
+
+                        if (batch.length === 0) break;
+
+                        result.push(...batch);
                         offset += batchSize;
                         batchCount++;
-                        
-                        // Atualizar progresso a cada 3 lotes
+
                         if (batchCount % 3 === 0) {
-                            toast.info(`Carregando... ${allData.length} registros`);
+                            toast.info(`Carregando ${statusLabel}... ${result.length} registros`);
                         }
-                        
-                        // Se retornou menos que o batchSize, não há mais dados
-                        if (response.data.length < batchSize) {
+
+                        if (batch.length < batchSize) {
                             hasMore = false;
                         }
-                        
-                        // Pequena pausa entre requisições para não sobrecarregar a API
-                        await new Promise(resolve => setTimeout(resolve, 200));
-                    } else {
-                        hasMore = false;
-                    }
-                } catch (batchError) {
-                    console.error(`Erro no lote ${batchCount + 1}:`, batchError);
-                    // Se já temos alguns dados, exportar o que temos
-                    if (allData.length > 0) {
-                        toast.warning(`Exportando ${allData.length} registros (alguns lotes falharam)`);
-                        hasMore = false;
-                    } else {
-                        throw batchError;
+
+                        await sleep(250);
+                    } catch (err) {
+                        console.error(`Erro no lote ${batchCount + 1} ${statusLabel}:`, err);
+
+                        // Tenta reduzir o lote antes de desistir
+                        if (batchSize > 10) {
+                            batchSize = batchSize === 50 ? 30 : batchSize === 30 ? 20 : 10;
+                            toast.warning(`API instável ${statusLabel}. Reduzindo lote para ${batchSize} e tentando novamente...`);
+                            await sleep(800);
+                            continue;
+                        }
+
+                        throw err;
                     }
                 }
+
+                return result;
+            };
+
+            const allData: IEmissao[] = [];
+            const errors: string[] = [];
+
+            if (statusesToFetch.length > 1) {
+                toast.info(`Exportando por status (${statusesToFetch.length})...`);
             }
-            
-            if (allData.length > 0) {
-                exportEmissoesToExcel(allData, `relatorio-envios-${dataIni || 'todos'}-${dataFim || 'todos'}`);
-                toast.success(`Exportação concluída: ${allData.length} registros`);
+
+            for (const st of statusesToFetch) {
+                try {
+                    const partial = await fetchAllPagedForStatus(st);
+                    allData.push(...partial);
+                    await sleep(400);
+                } catch (e) {
+                    errors.push(st);
+                }
+            }
+
+            // Remover duplicados (quando status podem se sobrepor no backend)
+            const dedup = new Map<string, IEmissao>();
+            for (const emissao of allData) {
+                const key = String((emissao as any)?.id ?? emissao.codigoObjeto ?? JSON.stringify(emissao));
+                if (!dedup.has(key)) dedup.set(key, emissao);
+            }
+
+            const finalData = Array.from(dedup.values());
+
+            if (finalData.length > 0) {
+                exportEmissoesToExcel(finalData, `relatorio-envios-${dataIni || 'todos'}-${dataFim || 'todos'}`);
+                if (errors.length > 0) {
+                    toast.warning(`Exportação concluída com avisos: falhou em ${errors.length} status (${errors.join(', ')})`);
+                } else {
+                    toast.success(`Exportação concluída: ${finalData.length} registros`);
+                }
             } else {
                 toast.error('Nenhum dado encontrado para exportar. Verifique os filtros aplicados.');
             }
