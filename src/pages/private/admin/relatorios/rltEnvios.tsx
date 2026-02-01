@@ -315,73 +315,20 @@ const RltEnvios = () => {
         }
     };
 
-    const handleExportToExcel = async () => {
+    const handleExportToExcel = () => {
         try {
-            setIsLoading(true);
-            
-            // Buscar filtros - status vazio significa exportar TODOS os status
-            const dataIni = searchParams.get('dataIni') || undefined;
-            const dataFim = searchParams.get('dataFim') || undefined;
-            const statusParam = searchParams.get('status');
-            const status = statusParam && statusParam.length > 0 ? statusParam : undefined;
-            const clienteId = searchParams.get('clienteId') || undefined;
-            const remetenteId = searchParams.get('remetenteId') || undefined;
-            const transportadora = searchParams.get('transportadora') || undefined;
-
-            // Buscar TODOS os registros em lotes
-            const batchSize = 100;
-            let offset = 0;
-            let allData: IEmissao[] = [];
-            let hasMore = true;
-
-            while (hasMore) {
-                const params: {
-                    limit: number;
-                    offset: number;
-                    dataIni?: string;
-                    dataFim?: string;
-                    status?: string;
-                    clienteId?: string;
-                    remetenteId?: string;
-                    transportadora?: string;
-                } = {
-                    limit: batchSize,
-                    offset: offset,
-                };
-
-                if (dataIni) params.dataIni = dataIni;
-                if (dataFim) params.dataFim = dataFim;
-                if (status) params.status = status;
-                if (clienteId) params.clienteId = clienteId;
-                if (remetenteId) params.remetenteId = remetenteId;
-                if (transportadora) params.transportadora = transportadora;
-
-                const response = await service.getAll(params, 'admin');
-                
-                if (response?.data && response.data.length > 0) {
-                    allData = [...allData, ...response.data];
-                    offset += batchSize;
-                    
-                    // Se retornou menos que o batchSize, significa que não há mais dados
-                    if (response.data.length < batchSize) {
-                        hasMore = false;
-                    }
-                } else {
-                    hasMore = false;
-                }
-            }
-            
-            if (allData.length > 0) {
-                exportEmissoesToExcel(allData, `relatorio-envios-${dataIni || 'todos'}-${dataFim || 'todos'}`);
-                toast.success(`Exportação concluída: ${allData.length} registros`);
+            // Usar os dados já carregados/filtrados na tela
+            if (data && data.length > 0) {
+                const dataIni = searchParams.get('dataIni') || 'todos';
+                const dataFim = searchParams.get('dataFim') || 'todos';
+                exportEmissoesToExcel(data, `relatorio-envios-${dataIni}-${dataFim}`);
+                toast.success(`Exportação concluída: ${data.length} registros`);
             } else {
                 toast.error('Nenhum dado encontrado para exportar. Verifique os filtros aplicados.');
             }
         } catch (error) {
             console.error('Erro ao exportar:', error);
             toast.error('Erro ao exportar dados. Tente novamente.');
-        } finally {
-            setIsLoading(false);
         }
     };
 
