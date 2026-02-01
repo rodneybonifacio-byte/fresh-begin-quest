@@ -44,7 +44,7 @@ const AdminSidebar = observer(({
         {
             icon: FileBarChart,
             label: 'Acompanhamento',
-            active: ['/admin/relatorios/envios', '/admin/acompanhamento/ordem-coleta'].some(path => isPathActive(path)),
+            active: ['/admin/relatorios/envios', '/admin/acompanhamento/ordem-coleta', '/admin/relatorios/correcao-etiquetas'].some(path => isPathActive(path)),
             submenu: [
                 {
                     icon: Package,
@@ -57,6 +57,12 @@ const AdminSidebar = observer(({
                     label: 'Coletas',
                     to: '/admin/acompanhamento/ordem-coleta',
                     active: isPathActive('/admin/acompanhamento/ordem-coleta')
+                },
+                {
+                    icon: Calculator,
+                    label: 'Correção de Etiquetas',
+                    to: '/admin/relatorios/correcao-etiquetas',
+                    active: isPathActive('/admin/relatorios/correcao-etiquetas')
                 }
             ]
         },
