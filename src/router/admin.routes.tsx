@@ -12,6 +12,11 @@ export const adminRoutesConfig: ProtectedRouteItem[] = [
         component: () => import('../pages/private/admin/relatorios/rltEnvios'),
     },
     {
+        path: 'relatorios/correcao-etiquetas',
+        permission: 'relatorios_envios_gerenciar',
+        component: () => import('../pages/admin/relatorios/CorrecaoEtiquetas'),
+    },
+    {
         path: 'planos',
         permission: 'planos_gerenciar',
         component: () => import('../pages/private/admin/planos'),
