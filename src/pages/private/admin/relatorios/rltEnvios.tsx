@@ -315,20 +315,95 @@ const RltEnvios = () => {
         }
     };
 
-    const handleExportToExcel = () => {
+    const handleExportToExcel = async () => {
         try {
-            // Usar os dados já carregados/filtrados na tela
-            if (data && data.length > 0) {
-                const dataIni = searchParams.get('dataIni') || 'todos';
-                const dataFim = searchParams.get('dataFim') || 'todos';
-                exportEmissoesToExcel(data, `relatorio-envios-${dataIni}-${dataFim}`);
-                toast.success(`Exportação concluída: ${data.length} registros`);
+            setIsLoading(true);
+            toast.info('Iniciando exportação... Aguarde.');
+            
+            // Buscar filtros da URL
+            const dataIni = searchParams.get('dataIni') || undefined;
+            const dataFim = searchParams.get('dataFim') || undefined;
+            const statusParam = searchParams.get('status');
+            const status = statusParam && statusParam.length > 0 ? statusParam : undefined;
+            const clienteId = searchParams.get('clienteId') || undefined;
+            const remetenteId = searchParams.get('remetenteId') || undefined;
+            const transportadora = searchParams.get('transportadora') || undefined;
+
+            // Buscar TODOS os registros em lotes de 50 para evitar timeout
+            const batchSize = 50;
+            let offset = 0;
+            let allData: IEmissao[] = [];
+            let hasMore = true;
+            let batchCount = 0;
+
+            while (hasMore) {
+                const params: {
+                    limit: number;
+                    offset: number;
+                    dataIni?: string;
+                    dataFim?: string;
+                    status?: string;
+                    clienteId?: string;
+                    remetenteId?: string;
+                    transportadora?: string;
+                } = {
+                    limit: batchSize,
+                    offset: offset,
+                };
+
+                if (dataIni) params.dataIni = dataIni;
+                if (dataFim) params.dataFim = dataFim;
+                if (status) params.status = status;
+                if (clienteId) params.clienteId = clienteId;
+                if (remetenteId) params.remetenteId = remetenteId;
+                if (transportadora) params.transportadora = transportadora;
+
+                try {
+                    const response = await service.getAll(params, 'admin');
+                    
+                    if (response?.data && response.data.length > 0) {
+                        allData = [...allData, ...response.data];
+                        offset += batchSize;
+                        batchCount++;
+                        
+                        // Atualizar progresso a cada 3 lotes
+                        if (batchCount % 3 === 0) {
+                            toast.info(`Carregando... ${allData.length} registros`);
+                        }
+                        
+                        // Se retornou menos que o batchSize, não há mais dados
+                        if (response.data.length < batchSize) {
+                            hasMore = false;
+                        }
+                        
+                        // Pequena pausa entre requisições para não sobrecarregar a API
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                    } else {
+                        hasMore = false;
+                    }
+                } catch (batchError) {
+                    console.error(`Erro no lote ${batchCount + 1}:`, batchError);
+                    // Se já temos alguns dados, exportar o que temos
+                    if (allData.length > 0) {
+                        toast.warning(`Exportando ${allData.length} registros (alguns lotes falharam)`);
+                        hasMore = false;
+                    } else {
+                        throw batchError;
+                    }
+                }
+            }
+            
+            if (allData.length > 0) {
+                exportEmissoesToExcel(allData, `relatorio-envios-${dataIni || 'todos'}-${dataFim || 'todos'}`);
+                toast.success(`Exportação concluída: ${allData.length} registros`);
             } else {
                 toast.error('Nenhum dado encontrado para exportar. Verifique os filtros aplicados.');
             }
         } catch (error) {
             console.error('Erro ao exportar:', error);
             toast.error('Erro ao exportar dados. Tente novamente.');
+        } finally {
+            setIsLoading(false);
         }
     };
 
