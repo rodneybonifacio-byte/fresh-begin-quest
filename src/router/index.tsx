@@ -45,7 +45,7 @@ const RootRedirect = () => {
     const isConectaSubdomain = hostname.startsWith('conecta.') || hostname === 'conecta.brhubenvios.com.br';
     
     if (isConectaSubdomain) {
-        return <Navigate to="/home" replace />;
+        return <Navigate to="/conecta" replace />;
     }
     
     if (authStore.isLoggedIn()) {
