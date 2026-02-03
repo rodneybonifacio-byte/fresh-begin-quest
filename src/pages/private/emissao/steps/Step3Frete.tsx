@@ -51,6 +51,15 @@ export const Step3Frete = ({
     return !nomeServico.includes('rodonaves') && !imagem.includes('rodonaves');
   };
 
+  // Função para verificar se é Rodonaves (exige nota fiscal)
+  const isRodonaves = (cotacao?: ICotacaoMinimaResponse) => {
+    if (!cotacao) return false;
+    const nomeServico = cotacao.nomeServico?.toLowerCase() || '';
+    const imagem = cotacao.imagem?.toLowerCase() || '';
+    const transportadora = cotacao.transportadora?.toLowerCase() || '';
+    return nomeServico.includes('rodonaves') || imagem.includes('rodonaves') || transportadora.includes('rodonaves');
+  };
+
   // Handler para seleção com validação de multi-volume
   const handleSelectCotacao = (cotacao: ICotacaoMinimaResponse) => {
     if (isMultiVolume && isCorreios(cotacao)) {
@@ -112,7 +121,7 @@ export const Step3Frete = ({
   }, [cotacoes]);
 
   // Verificar se frete selecionado exige nota fiscal (Rodonaves)
-  const requiresNotaFiscal = cotacaoSelecionado?.isNotaFiscal === true;
+  const requiresNotaFiscal = cotacaoSelecionado?.isNotaFiscal === true || isRodonaves(cotacaoSelecionado);
 
   const handleValorNotaFiscalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const valor = formatCurrency(e.target.value);
