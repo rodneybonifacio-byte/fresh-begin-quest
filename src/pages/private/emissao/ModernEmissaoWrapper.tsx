@@ -43,6 +43,7 @@ const createValidationSchema = () => {
         cotacao: yup.object().shape({
             codigoServico: yup.string().required('Selecione um serviço de frete'),
         }),
+        valorNotaFiscal: yup.string().optional(),
     });
 };
 
@@ -119,6 +120,7 @@ export const ModernEmissaoWrapper = () => {
             cotacao: {
                 codigoServico: '',
             },
+            valorNotaFiscal: '',
         },
     });
 
