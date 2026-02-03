@@ -1,5 +1,5 @@
-import { Truck, BadgePercent, AlertTriangle } from 'lucide-react';
-import { useEffect } from 'react';
+import { Truck, BadgePercent, AlertTriangle, Receipt } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { FormCard } from '../../../../components/FormCard';
 import { ButtonComponent } from '../../../../components/button';
@@ -7,6 +7,7 @@ import { ListaFretesDisponiveis } from '../ListaFretesDisponiveis';
 import { useCotacao } from '../../../../hooks/useCotacao';
 import type { ICotacaoMinimaResponse } from '../../../../types/ICotacao';
 import { toast } from 'sonner';
+import { formatCurrency } from '../../../../utils/formatCurrency';
 
 interface Step3FreteProps {
   onNext: () => void;
@@ -30,6 +31,9 @@ export const Step3Frete = ({
     trigger,
     getValues
   } = useFormContext();
+  
+  // Estado local para valor da nota fiscal
+  const [valorNotaFiscal, setValorNotaFiscal] = useState<string>('');
   const {
     onGetCotacaoCorreios,
     cotacoes,
@@ -106,7 +110,33 @@ export const Step3Frete = ({
       });
     }
   }, [cotacoes]);
+
+  // Verificar se frete selecionado exige nota fiscal (Rodonaves)
+  const requiresNotaFiscal = cotacaoSelecionado?.isNotaFiscal === true;
+
+  const handleValorNotaFiscalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const valor = formatCurrency(e.target.value);
+    setValorNotaFiscal(valor);
+    setValue('valorNotaFiscal', valor);
+    
+    // Limpa erro se preencheu
+    if (valor && valor.trim() !== '' && valor !== 'R$ 0,00') {
+      clearErrors('valorNotaFiscal');
+    }
+  };
+
   const handleNext = async () => {
+    // Validar nota fiscal se Rodonaves
+    if (requiresNotaFiscal) {
+      const valorAtual = valorNotaFiscal || getValues('valorNotaFiscal') || '';
+      const valorNumerico = valorAtual.replace(/[^\d,]/g, '').replace(',', '.');
+      
+      if (!valorAtual || valorAtual.trim() === '' || parseFloat(valorNumerico) <= 0) {
+        toast.error('Informe o valor da nota fiscal para continuar com Rodonaves.');
+        return;
+      }
+    }
+    
     const isValid = await trigger(['cotacao']);
     if (isValid && cotacaoSelecionado) onNext();
   };
@@ -154,6 +184,38 @@ export const Step3Frete = ({
         {cotacoes && cotacoes.length === 0 && !isLoadingCotacao && <div className="text-center py-8 text-muted-foreground">
             Nenhum frete disponível para esta rota. Verifique os dados informados.
           </div>}
+
+        {/* Campo de Valor da Nota Fiscal - Apenas para Rodonaves */}
+        {requiresNotaFiscal && cotacaoSelecionado && (
+          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border-2 border-blue-200 dark:border-blue-700 space-y-3 animate-fade-in">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-800/50 rounded-lg">
+                <Receipt className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="font-semibold text-blue-800 dark:text-blue-200">
+                  Rodonaves exige Nota Fiscal
+                </p>
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  Informe o valor da nota fiscal para emitir a etiqueta.
+                </p>
+              </div>
+            </div>
+            
+            <div className="relative">
+              <label className="block text-sm font-medium text-blue-700 dark:text-blue-300 mb-1">
+                Valor da Nota Fiscal *
+              </label>
+              <input
+                type="text"
+                value={valorNotaFiscal}
+                onChange={handleValorNotaFiscalChange}
+                placeholder="R$ 0,00"
+                className="w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-800 border-2 border-blue-300 dark:border-blue-600 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-4 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-500 transition-all duration-300"
+              />
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-border">
           <ButtonComponent type="button" variant="primary" border="outline" onClick={onBack} className="flex-1 h-12">
