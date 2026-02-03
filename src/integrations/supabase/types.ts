@@ -303,6 +303,90 @@ export type Database = {
         }
         Relationships: []
       }
+      emissoes_externas: {
+        Row: {
+          cliente_id: string
+          codigo_objeto: string
+          contrato: string | null
+          created_at: string
+          destinatario_bairro: string | null
+          destinatario_cep: string | null
+          destinatario_cidade: string | null
+          destinatario_logradouro: string | null
+          destinatario_nome: string
+          destinatario_numero: string | null
+          destinatario_uf: string | null
+          id: string
+          observacao: string | null
+          origem: string | null
+          remetente_id: string | null
+          servico: string | null
+          status: string | null
+          updated_at: string
+          valor_custo: number
+          valor_venda: number
+        }
+        Insert: {
+          cliente_id: string
+          codigo_objeto: string
+          contrato?: string | null
+          created_at?: string
+          destinatario_bairro?: string | null
+          destinatario_cep?: string | null
+          destinatario_cidade?: string | null
+          destinatario_logradouro?: string | null
+          destinatario_nome: string
+          destinatario_numero?: string | null
+          destinatario_uf?: string | null
+          id?: string
+          observacao?: string | null
+          origem?: string | null
+          remetente_id?: string | null
+          servico?: string | null
+          status?: string | null
+          updated_at?: string
+          valor_custo?: number
+          valor_venda?: number
+        }
+        Update: {
+          cliente_id?: string
+          codigo_objeto?: string
+          contrato?: string | null
+          created_at?: string
+          destinatario_bairro?: string | null
+          destinatario_cep?: string | null
+          destinatario_cidade?: string | null
+          destinatario_logradouro?: string | null
+          destinatario_nome?: string
+          destinatario_numero?: string | null
+          destinatario_uf?: string | null
+          id?: string
+          observacao?: string | null
+          origem?: string | null
+          remetente_id?: string | null
+          servico?: string | null
+          status?: string | null
+          updated_at?: string
+          valor_custo?: number
+          valor_venda?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "emissoes_externas_remetente_id_fkey"
+            columns: ["remetente_id"]
+            isOneToOne: false
+            referencedRelation: "remetentes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emissoes_externas_remetente_id_fkey"
+            columns: ["remetente_id"]
+            isOneToOne: false
+            referencedRelation: "remetentes_masked"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       etiquetas_pendentes_correcao: {
         Row: {
           altura: number | null
