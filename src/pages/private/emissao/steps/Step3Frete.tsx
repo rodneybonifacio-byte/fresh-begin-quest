@@ -7,7 +7,7 @@ import { ListaFretesDisponiveis } from '../ListaFretesDisponiveis';
 import { useCotacao } from '../../../../hooks/useCotacao';
 import type { ICotacaoMinimaResponse } from '../../../../types/ICotacao';
 import { toast } from 'sonner';
-import { formatCurrency } from '../../../../utils/formatCurrency';
+
 
 interface Step3FreteProps {
   onNext: () => void;
@@ -124,12 +124,25 @@ export const Step3Frete = ({
   const requiresNotaFiscal = cotacaoSelecionado?.isNotaFiscal === true || isRodonaves(cotacaoSelecionado);
 
   const handleValorNotaFiscalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const valor = formatCurrency(e.target.value);
-    setValorNotaFiscal(valor);
-    setValue('valorNotaFiscal', valor);
+    // Remove tudo que não é número
+    const digits = e.target.value.replace(/\D/g, '');
     
-    // Limpa erro se preencheu
-    if (valor && valor.trim() !== '' && valor !== 'R$ 0,00') {
+    // Converte para valor monetário (divide por 100 para considerar centavos)
+    const numericValue = Number(digits) / 100;
+    
+    // Formata com R$ e separadores BR
+    const formatted = numericValue.toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    
+    setValorNotaFiscal(formatted);
+    setValue('valorNotaFiscal', formatted);
+    
+    // Limpa erro se preencheu valor maior que zero
+    if (numericValue > 0) {
       clearErrors('valorNotaFiscal');
     }
   };
