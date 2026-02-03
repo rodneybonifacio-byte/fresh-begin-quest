@@ -82,17 +82,68 @@ export class FreteService extends BaseService<any> {
             userToken, // Token do usuário para a edge function
         };
         
-        const { data, error } = await supabase.functions.invoke('emitir-etiqueta', {
+        const { data, error, response } = await supabase.functions.invoke('emitir-etiqueta', {
             body: payload
         });
 
         if (error) {
             console.error('❌ Erro na edge function emitir-etiqueta:', error);
-            // Tentar extrair detalhes do erro se disponível
-            const emissaoError = new Error(error.message || 'Erro ao emitir etiqueta') as any;
+
+            // Tentar extrair o body real de erro da Response (FunctionsHttpError mantém o Response em error.context)
+            const httpResponse: Response | undefined = (response as any) || (error?.context as any);
+            const status = (httpResponse as any)?.status;
+            const contentType = (httpResponse as any)?.headers?.get?.('Content-Type') as string | null | undefined;
+
+            let responseText: string | undefined;
+            let responseJson: any | undefined;
+
+            if (httpResponse?.clone) {
+                try {
+                    responseText = await httpResponse.clone().text();
+                    const isJson = (contentType || '').toLowerCase().includes('application/json');
+                    if (isJson) {
+                        try {
+                            responseJson = JSON.parse(responseText);
+                        } catch {
+                            // mantém responseText
+                        }
+                    } else {
+                        // Mesmo sem content-type JSON, alguns backends retornam JSON como texto
+                        if (responseText?.trim().startsWith('{') || responseText?.trim().startsWith('[')) {
+                            try {
+                                responseJson = JSON.parse(responseText);
+                            } catch {
+                                // mantém responseText
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.warn('⚠️ Não foi possível ler o body da resposta de erro:', e);
+                }
+            }
+
+            // Heurística para pegar a melhor mensagem possível
+            const bodyMsg =
+                responseJson?.msg ??
+                (Array.isArray(responseJson?.msgs) ? responseJson.msgs.join('\n') : undefined) ??
+                responseJson?.error ??
+                responseJson?.message ??
+                (typeof responseJson === 'string' ? responseJson : undefined) ??
+                responseText;
+
+            // Tentar capturar mensagem de validação do Correios/transportadora que vem em formatos variados
+            const candidate = `${bodyMsg ?? ''}`.trim();
+            const friendlyMessage = candidate || error.message || 'Erro ao emitir etiqueta';
+
+            const emissaoError = new Error(friendlyMessage) as any;
             emissaoError.code = 'EDGE_FUNCTION_ERROR';
-            emissaoError.status = 500;
-            emissaoError.details = error;
+            emissaoError.status = typeof status === 'number' ? status : 500;
+            emissaoError.details = {
+                name: error?.name,
+                message: error?.message,
+                status: typeof status === 'number' ? status : undefined,
+                body: responseJson ?? responseText,
+            };
             throw emissaoError;
         }
 
