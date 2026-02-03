@@ -1,4 +1,4 @@
-import { AlertTriangle, Copy, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { AlertTriangle, Copy, X, ChevronDown, ChevronUp, Package } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -15,6 +15,47 @@ interface EmissaoErrorAlertProps {
   onDismiss?: () => void;
   onFieldClick?: (fieldPath: string) => void;
 }
+
+// Detectar se é um erro de dimensões/limites físicos
+const isDimensionError = (error: string, details?: any): { isDimension: boolean; friendlyMessage?: string; dimension?: string; value?: number; limit?: number } => {
+  const errorLower = error.toLowerCase();
+  const detailsStr = typeof details === 'string' ? details.toLowerCase() : JSON.stringify(details || '').toLowerCase();
+  const combined = `${errorLower} ${detailsStr}`;
+  
+  // Padrões de erro de dimensão dos Correios
+  const dimensionPatterns = [
+    { pattern: /comprimento.*(\d+).*deve ser entre.*(\d+).*e.*(\d+)/i, dimension: 'comprimento', extract: true },
+    { pattern: /largura.*(\d+).*deve ser entre.*(\d+).*e.*(\d+)/i, dimension: 'largura', extract: true },
+    { pattern: /altura.*(\d+).*deve ser entre.*(\d+).*e.*(\d+)/i, dimension: 'altura', extract: true },
+    { pattern: /peso.*(\d+).*deve ser entre.*(\d+).*e.*(\d+)/i, dimension: 'peso', extract: true },
+    { pattern: /ppn-054/i, dimension: 'dimensão', extract: false },
+    { pattern: /dimensões? (inválid|excede|fora)/i, dimension: 'dimensão', extract: false },
+    { pattern: /tamanho (máximo|excede|inválid)/i, dimension: 'dimensão', extract: false },
+    { pattern: /limite.*(comprimento|largura|altura|peso)/i, dimension: 'dimensão', extract: false },
+  ];
+  
+  for (const { pattern, dimension, extract } of dimensionPatterns) {
+    const match = combined.match(pattern);
+    if (match) {
+      let friendlyMessage = '';
+      let value: number | undefined;
+      let limit: number | undefined;
+      
+      if (extract && match.length >= 4) {
+        value = parseInt(match[1]);
+        limit = parseInt(match[3]);
+        const unit = dimension === 'peso' ? 'g' : 'cm';
+        friendlyMessage = `O ${dimension} informado (${value}${unit}) excede o limite máximo permitido (${limit}${unit}) para este serviço.`;
+      } else {
+        friendlyMessage = `As dimensões do pacote excedem os limites permitidos pela transportadora selecionada.`;
+      }
+      
+      return { isDimension: true, friendlyMessage, dimension, value, limit };
+    }
+  }
+  
+  return { isDimension: false };
+};
 
 // Mapear mensagens de erro para campos do formulário
 const mapErrorToField = (errorMessage: string, details?: any): Record<string, string> => {
@@ -80,6 +121,7 @@ const mapErrorToField = (errorMessage: string, details?: any): Record<string, st
 export const EmissaoErrorAlert = ({ error, onDismiss, onFieldClick }: EmissaoErrorAlertProps) => {
   const [showDetails, setShowDetails] = useState(false);
   
+  const dimensionCheck = isDimensionError(error.error, error.details);
   const fieldErrors = error.fieldErrors || mapErrorToField(error.error, error.details);
   const hasFieldErrors = Object.keys(fieldErrors).length > 0;
   
@@ -116,28 +158,45 @@ export const EmissaoErrorAlert = ({ error, onDismiss, onFieldClick }: EmissaoErr
   };
   
   return (
-    <div className="bg-destructive/10 border-2 border-destructive/50 rounded-xl p-5 mb-6 animate-in fade-in slide-in-from-top-2 duration-300">
+    <div className={`${dimensionCheck.isDimension ? 'bg-amber-500/10 border-amber-500/50' : 'bg-destructive/10 border-destructive/50'} border-2 rounded-xl p-5 mb-6 animate-in fade-in slide-in-from-top-2 duration-300`}>
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3">
-          <div className="p-2 bg-destructive/20 rounded-lg shrink-0">
-            <AlertTriangle className="h-5 w-5 text-destructive" />
+          <div className={`p-2 ${dimensionCheck.isDimension ? 'bg-amber-500/20' : 'bg-destructive/20'} rounded-lg shrink-0`}>
+            {dimensionCheck.isDimension ? (
+              <Package className="h-5 w-5 text-amber-600" />
+            ) : (
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+            )}
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-destructive text-base">
-              Erro ao emitir etiqueta
+            <h3 className={`font-semibold text-base ${dimensionCheck.isDimension ? 'text-amber-700 dark:text-amber-500' : 'text-destructive'}`}>
+              {dimensionCheck.isDimension ? 'Dimensões do pacote inválidas' : 'Erro ao emitir etiqueta'}
             </h3>
             <p className="text-sm text-foreground/80 mt-1 break-words">
-              {error.error}
+              {dimensionCheck.isDimension ? dimensionCheck.friendlyMessage : error.error}
             </p>
+            
+            {/* Dica para erro de dimensão */}
+            {dimensionCheck.isDimension && (
+              <div className="mt-3 p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                <p className="text-xs font-medium text-amber-700 dark:text-amber-400 mb-1">
+                  💡 Dica
+                </p>
+                <p className="text-xs text-foreground/70">
+                  Verifique as dimensões do pacote e ajuste para dentro dos limites da transportadora. 
+                  Os Correios (PAC/SEDEX) aceitam no máximo <strong>100cm</strong> de comprimento e <strong>30kg</strong> de peso.
+                </p>
+              </div>
+            )}
           </div>
         </div>
         {onDismiss && (
           <button
             onClick={onDismiss}
-            className="p-1.5 hover:bg-destructive/20 rounded-lg transition-colors shrink-0"
+            className={`p-1.5 ${dimensionCheck.isDimension ? 'hover:bg-amber-500/20' : 'hover:bg-destructive/20'} rounded-lg transition-colors shrink-0`}
           >
-            <X className="h-4 w-4 text-destructive" />
+            <X className={`h-4 w-4 ${dimensionCheck.isDimension ? 'text-amber-600' : 'text-destructive'}`} />
           </button>
         )}
       </div>
