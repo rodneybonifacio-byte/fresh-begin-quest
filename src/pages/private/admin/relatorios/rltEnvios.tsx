@@ -1,4 +1,4 @@
-import { DollarSign, Filter, PackageCheck, Printer, ReceiptText, ShoppingCart, Users, Wallet, Download, Bell, RefreshCw, Map as MapIcon, RotateCw } from 'lucide-react';
+import { DollarSign, Filter, PackageCheck, Printer, ReceiptText, ShoppingCart, Users, Wallet, Download, Bell, RefreshCw, Map as MapIcon, RotateCw, Bug, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { LoadSpinner } from '../../../../components/loading';
@@ -48,6 +48,8 @@ const RltEnvios = () => {
     const [isModalUpdatePrecos, setIsModalUpdatePrecos] = useState<{ isOpen: boolean; emissao: IEmissao }>({ isOpen: false, emissao: {} as IEmissao });
     const [showMap, setShowMap] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 768);
     const [isModalManifesto, setIsModalManifesto] = useState(false);
+    const [isModalDebugPrecos, setIsModalDebugPrecos] = useState(false);
+    const [debugData, setDebugData] = useState<{loading: boolean; data: any[]}>({ loading: false, data: [] });
 
     const [searchParams] = useSearchParams();
     const filtros = Object.fromEntries(searchParams.entries());
@@ -315,6 +317,79 @@ const RltEnvios = () => {
         }
     };
 
+    // Handler para debug de preços - verifica dados brutos
+    const handleDebugPrecos = async () => {
+        setIsModalDebugPrecos(true);
+        setDebugData({ loading: true, data: [] });
+        
+        try {
+            const dataIni = searchParams.get('dataIni') || undefined;
+            const dataFim = searchParams.get('dataFim') || undefined;
+            
+            // Buscar dados sem paginação para análise
+            const allData: IEmissao[] = [];
+            let offset = 0;
+            const batchSize = 100;
+            let hasMore = true;
+            
+            while (hasMore && allData.length < 500) {
+                const params: Record<string, string | number> = {
+                    limit: batchSize,
+                    offset: offset,
+                };
+                if (dataIni) params.dataIni = dataIni;
+                if (dataFim) params.dataFim = dataFim;
+                
+                const response = await service.getAll(params, 'admin');
+                const batch = response?.data || [];
+                allData.push(...batch);
+                
+                if (batch.length < batchSize) {
+                    hasMore = false;
+                } else {
+                    offset += batchSize;
+                }
+            }
+            
+            // Calcular totais para comparação
+            const totaisCalculados = allData.reduce((acc, e) => {
+                const venda = Number(e.valor) || 0;
+                const custo = Number(e.valorPostagem) || 0;
+                return {
+                    totalVendas: acc.totalVendas + venda,
+                    totalCusto: acc.totalCusto + custo,
+                    countSemVenda: acc.countSemVenda + (venda === 0 ? 1 : 0),
+                    countSemCusto: acc.countSemCusto + (custo === 0 ? 1 : 0),
+                };
+            }, { totalVendas: 0, totalCusto: 0, countSemVenda: 0, countSemCusto: 0 });
+            
+            console.log('🔍 DEBUG PREÇOS:', {
+                dashboardAPI: {
+                    totalVendas: dashboard?.totalVendas,
+                    totalCusto: dashboard?.totalCusto,
+                    lucro: Number(dashboard?.totalVendas) - Number(dashboard?.totalCusto),
+                },
+                calculadoLocal: {
+                    ...totaisCalculados,
+                    lucro: totaisCalculados.totalVendas - totaisCalculados.totalCusto,
+                },
+                totalRegistros: allData.length,
+                amostra: allData.slice(0, 10).map(e => ({
+                    codigo: e.codigoObjeto,
+                    valor: e.valor,
+                    valorPostagem: e.valorPostagem,
+                    lucro: (Number(e.valor) || 0) - (Number(e.valorPostagem) || 0),
+                })),
+            });
+            
+            setDebugData({ loading: false, data: allData });
+        } catch (error) {
+            console.error('Erro no debug:', error);
+            toast.error('Erro ao carregar dados de debug');
+            setDebugData({ loading: false, data: [] });
+        }
+    };
+
     const handleExportToExcel = async () => {
         try {
             setIsLoading(true);
@@ -523,6 +598,12 @@ const RltEnvios = () => {
                     onClick: handleExportToExcel,
                     icon: <Download size={22} />,
                     bgColor: 'bg-green-600',
+                },
+                {
+                    label: 'Debug Preços',
+                    onClick: handleDebugPrecos,
+                    icon: <Bug size={22} />,
+                    bgColor: 'bg-yellow-600',
                 },
                 {
                     label: 'Filtrar',
@@ -905,6 +986,117 @@ const RltEnvios = () => {
                 isOpen={isModalManifesto}
                 onClose={() => setIsModalManifesto(false)}
             />
+            
+            {/* Modal Debug Preços */}
+            {isModalDebugPrecos && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-slate-700">
+                            <h2 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                <Bug className="text-yellow-600" size={20} />
+                                Debug de Preços (Venda vs Custo)
+                            </h2>
+                            <button
+                                onClick={() => setIsModalDebugPrecos(false)}
+                                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                        
+                        <div className="p-4 overflow-auto flex-1">
+                            {debugData.loading ? (
+                                <div className="text-center py-8">
+                                    <LoadSpinner mensagem="Carregando dados para análise..." />
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Resumo comparativo */}
+                                    <div className="grid grid-cols-2 gap-4 mb-6">
+                                        <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-4">
+                                            <h3 className="font-semibold text-blue-900 dark:text-blue-200 mb-2">Dashboard API</h3>
+                                            <div className="space-y-1 text-sm">
+                                                <p>Vendas: <span className="font-bold">{formatMoedaDecimal(dashboard?.totalVendas || 0)}</span></p>
+                                                <p>Custo: <span className="font-bold">{formatMoedaDecimal(dashboard?.totalCusto || 0)}</span></p>
+                                                <p className="text-green-600 dark:text-green-400">Lucro: <span className="font-bold">{calcularLucro(Number(dashboard?.totalVendas), Number(dashboard?.totalCusto))}</span></p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="bg-purple-50 dark:bg-purple-900/30 rounded-lg p-4">
+                                            <h3 className="font-semibold text-purple-900 dark:text-purple-200 mb-2">Calculado Local ({debugData.data.length} registros)</h3>
+                                            {(() => {
+                                                const totais = debugData.data.reduce((acc, e) => ({
+                                                    vendas: acc.vendas + (Number(e.valor) || 0),
+                                                    custo: acc.custo + (Number(e.valorPostagem) || 0),
+                                                    semVenda: acc.semVenda + (Number(e.valor) === 0 ? 1 : 0),
+                                                    semCusto: acc.semCusto + (Number(e.valorPostagem) === 0 ? 1 : 0),
+                                                }), { vendas: 0, custo: 0, semVenda: 0, semCusto: 0 });
+                                                return (
+                                                    <div className="space-y-1 text-sm">
+                                                        <p>Vendas: <span className="font-bold">{formatMoedaDecimal(totais.vendas)}</span></p>
+                                                        <p>Custo: <span className="font-bold">{formatMoedaDecimal(totais.custo)}</span></p>
+                                                        <p className="text-green-600 dark:text-green-400">Lucro: <span className="font-bold">{calcularLucro(totais.vendas, totais.custo)}</span></p>
+                                                        <hr className="my-2 border-purple-200 dark:border-purple-700" />
+                                                        <p className="text-orange-600">Sem valor venda: <span className="font-bold">{totais.semVenda}</span></p>
+                                                        <p className="text-red-600">Sem valor custo: <span className="font-bold">{totais.semCusto}</span></p>
+                                                    </div>
+                                                );
+                                            })()}
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Tabela de etiquetas */}
+                                    <div className="border rounded-lg overflow-hidden">
+                                        <table className="w-full text-sm">
+                                            <thead className="bg-gray-100 dark:bg-slate-700">
+                                                <tr>
+                                                    <th className="px-3 py-2 text-left">Código</th>
+                                                    <th className="px-3 py-2 text-left">Cliente</th>
+                                                    <th className="px-3 py-2 text-right">Venda (valor)</th>
+                                                    <th className="px-3 py-2 text-right">Custo (valorPostagem)</th>
+                                                    <th className="px-3 py-2 text-right">Lucro</th>
+                                                    <th className="px-3 py-2 text-left">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
+                                                {debugData.data.slice(0, 100).map((e, idx) => {
+                                                    const venda = Number(e.valor) || 0;
+                                                    const custo = Number(e.valorPostagem) || 0;
+                                                    const lucro = venda - custo;
+                                                    const isProblema = venda === 0 || custo === 0 || lucro < 0;
+                                                    return (
+                                                        <tr key={e.id || idx} className={isProblema ? 'bg-red-50 dark:bg-red-900/20' : ''}>
+                                                            <td className="px-3 py-2 font-mono text-xs">{e.codigoObjeto || '-'}</td>
+                                                            <td className="px-3 py-2 truncate max-w-[150px]">{e.cliente?.nome || '-'}</td>
+                                                            <td className={`px-3 py-2 text-right ${venda === 0 ? 'text-red-600 font-bold' : ''}`}>
+                                                                R$ {venda.toFixed(2)}
+                                                            </td>
+                                                            <td className={`px-3 py-2 text-right ${custo === 0 ? 'text-orange-600 font-bold' : ''}`}>
+                                                                R$ {custo.toFixed(2)}
+                                                            </td>
+                                                            <td className={`px-3 py-2 text-right font-semibold ${lucro < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                                                R$ {lucro.toFixed(2)}
+                                                            </td>
+                                                            <td className="px-3 py-2">
+                                                                <span className="text-xs">{e.status}</span>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                        {debugData.data.length > 100 && (
+                                            <div className="bg-gray-50 dark:bg-slate-800 px-3 py-2 text-sm text-gray-500">
+                                                Mostrando 100 de {debugData.data.length} registros. Veja console para dados completos.
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </Content>
     );
 };
