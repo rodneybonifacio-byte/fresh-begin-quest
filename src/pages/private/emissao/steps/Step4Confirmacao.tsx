@@ -7,7 +7,7 @@ import { useEmissao } from '../../../../hooks/useEmissao';
 import { useImprimirEtiquetaPDF } from '../../../../hooks/useImprimirEtiquetaPDF';
 import type { IEmissao } from '../../../../types/IEmissao';
 import type { IEmbalagem } from '../../../../types/IEmbalagem';
-import { formatNumberString } from '../../../../utils/formatCurrency';
+
 import { toast } from 'sonner';
 import { getTransportadoraImage, getTransportadoraAltText } from '../../../../utils/imageHelper';
 import { CreditoService } from '../../../../services/CreditoService';
@@ -160,14 +160,24 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
         },
       };
 
+      // Converte valorNotaFiscal de "R$ 1.234,56" para número 1234.56
+      const parseValorNotaFiscal = (valor: string | undefined): number => {
+        if (!valor) return 0;
+        // Remove tudo exceto dígitos e vírgula
+        const digitsAndComma = valor.replace(/[^\d,]/g, '');
+        // Substitui vírgula por ponto e converte
+        const numericValue = parseFloat(digitsAndComma.replace(',', '.'));
+        return isNaN(numericValue) ? 0 : numericValue;
+      };
+
       const emissao: IEmissao = {
         remetenteId: data.remetenteId,
         cienteObjetoNaoProibido: true,
         embalagem: embalagem,
         cotacao: cotacaoEnriquecida,
         logisticaReversa: isLogisticaReversa ? 'S' : 'N',
-        valorDeclarado: Number(formatNumberString('0')),
-        valorNotaFiscal: Number(formatNumberString(data.valorNotaFiscal || '0')),
+        valorDeclarado: 0,
+        valorNotaFiscal: parseValorNotaFiscal(data.valorNotaFiscal),
         itensDeclaracaoConteudo: [],
         destinatario: data.destinatario,
         quantidadeVolumes: embalagem.quantidadeVolumes || 1,
