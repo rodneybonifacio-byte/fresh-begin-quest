@@ -140,9 +140,46 @@ const FinanceiroFaturasAReceber = () => {
 
     const handleCancelarBoleto = async (fatura: IFatura) => {
         const fechamento = verificarFechamentoExistente(fatura.id);
-        
-        if (!fechamento?.boletoInfo?.nossoNumero) {
-            toast.error('Boleto não encontrado para esta fatura');
+
+        if (!fechamento) {
+            toast.error('Nenhum fechamento encontrado para esta fatura');
+            return;
+        }
+
+        const rawNossoNumero = fechamento?.boletoInfo?.nossoNumero;
+        const nossoNumero = rawNossoNumero != null ? String(rawNossoNumero).trim() : '';
+        const nossoNumeroValido = /^\d+$/.test(nossoNumero);
+
+        // Se não existe nossoNúmero válido (ex.: registros antigos/manuais), apenas limpar o fechamento
+        if (!nossoNumeroValido) {
+            const confirmarLimpeza = window.confirm(
+                `Este fechamento não possui um Nosso Número válido do Banco Inter.\n\nDeseja apenas limpar o registro desta fatura (${fatura.codigo})?`
+            );
+            if (!confirmarLimpeza) return;
+
+            try {
+                setIsLoading(true);
+
+                localStorage.removeItem(`fechamento_${fatura.id}`);
+                setFechamentosMap(prev => {
+                    const novo = { ...prev };
+                    delete novo[fatura.id];
+                    return novo;
+                });
+
+                const supabaseAuth = getSupabaseWithAuth();
+                await supabaseAuth
+                    .from('fechamentos_fatura')
+                    .delete()
+                    .or(`fatura_id.eq.${fatura.id},subfatura_id.eq.${fatura.id}`);
+
+                toast.success('Fechamento inválido removido com sucesso!');
+            } catch (error: any) {
+                console.error('Erro ao limpar fechamento inválido:', error);
+                toast.error(error.message || 'Erro ao limpar fechamento');
+            } finally {
+                setIsLoading(false);
+            }
             return;
         }
 
@@ -155,8 +192,8 @@ const FinanceiroFaturasAReceber = () => {
         try {
             setIsLoading(true);
             const boletoService = new BoletoService();
-            await boletoService.cancelar(fechamento.boletoInfo.nossoNumero, 'OUTROS');
-            
+            await boletoService.cancelar(nossoNumero, 'OUTROS');
+
             // Remover dados do fechamento do localStorage e do estado
             localStorage.removeItem(`fechamento_${fatura.id}`);
             setFechamentosMap(prev => {
@@ -164,16 +201,16 @@ const FinanceiroFaturasAReceber = () => {
                 delete novo[fatura.id];
                 return novo;
             });
-            
+
             // Remover também do Supabase (por fatura_id ou subfatura_id) usando cliente autenticado
             const supabaseAuth = getSupabaseWithAuth();
             await supabaseAuth
                 .from('fechamentos_fatura')
                 .delete()
                 .or(`fatura_id.eq.${fatura.id},subfatura_id.eq.${fatura.id}`);
-            
+
             toast.success('Boleto cancelado com sucesso!');
-            
+
             // Recarregar dados
             window.location.reload();
         } catch (error: any) {
@@ -454,31 +491,30 @@ const FinanceiroFaturasAReceber = () => {
             
             const fechamentos = result?.fechamentos || [];
             console.log('✅ Fechamentos encontrados:', fechamentos.length, fechamentos);
-            
-            if (fechamentos.length > 0) {
-                const novoMap: Record<string, any> = {};
-                
-                fechamentos.forEach((f: any) => {
-                    const fechamentoData = {
-                        faturaPdf: f.fatura_pdf,
-                        boletoPdf: f.boleto_pdf,
-                        codigoFatura: f.codigo_fatura,
-                        nomeCliente: f.nome_cliente,
-                        boletoInfo: { nossoNumero: f.boleto_id },
-                        timestamp: f.created_at
-                    };
-                    // Para subfaturas, usar o subfatura_id como chave
-                    const keyId = f.subfatura_id || f.fatura_id;
-                    novoMap[keyId] = fechamentoData;
-                    // NÃO salvar PDFs no localStorage - causa "quota exceeded"
-                    console.log(`📋 Fechamento mapeado para ID: ${keyId}`);
-                });
-                
-                setFechamentosMap(prev => ({ ...prev, ...novoMap }));
-                toast.success(`${fechamentos.length} fechamento(s) carregado(s)`);
-            } else {
-                toast.info('Nenhum fechamento encontrado');
-            }
+
+            // Recriar o mapa sempre (evita manter fechamentos antigos/deletados)
+            const novoMap: Record<string, any> = {};
+
+            fechamentos.forEach((f: any) => {
+                const nossoNumero = f.nosso_numero || f.nossoNumero || f.boleto_id;
+
+                const fechamentoData = {
+                    faturaPdf: f.fatura_pdf,
+                    boletoPdf: f.boleto_pdf,
+                    codigoFatura: f.codigo_fatura,
+                    nomeCliente: f.nome_cliente,
+                    boletoInfo: { nossoNumero },
+                    timestamp: f.created_at,
+                };
+
+                // Para subfaturas, usar o subfatura_id como chave
+                const keyId = f.subfatura_id || f.fatura_id;
+                novoMap[keyId] = fechamentoData;
+                // NÃO salvar PDFs no localStorage - causa "quota exceeded"
+                console.log(`📋 Fechamento mapeado para ID: ${keyId}`);
+            });
+
+            setFechamentosMap(novoMap);
         } catch (err) {
             console.error('❌ Erro ao carregar fechamentos:', err);
             toast.error('Erro ao carregar fechamentos');
