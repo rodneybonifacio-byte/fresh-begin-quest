@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Fatura LOOK POWER - R$ 379,33</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: 'Segoe UI', Arial, sans-serif; 
+      padding: 40px; 
+      background: #fff;
+      color: #333;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 40px;
+      padding-bottom: 20px;
+      border-bottom: 3px solid #F2541B;
+    }
+    .logo-section h1 {
+      font-size: 28px;
+      color: #F2541B;
+      font-weight: 700;
+    }
+    .logo-section p {
+      color: #666;
+      font-size: 14px;
+    }
+    .invoice-info {
+      text-align: right;
+    }
+    .invoice-info h2 {
+      font-size: 24px;
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .invoice-info p {
+      font-size: 14px;
+      color: #666;
+      margin: 4px 0;
+    }
+    .client-section {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 30px;
+    }
+    .client-section h3 {
+      color: #F2541B;
+      margin-bottom: 15px;
+      font-size: 16px;
+    }
+    .client-info {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .client-info p {
+      font-size: 14px;
+    }
+    .client-info strong {
+      color: #333;
+    }
+    .items-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 30px;
+    }
+    .items-table th {
+      background: #F2541B;
+      color: white;
+      padding: 12px 15px;
+      text-align: left;
+      font-size: 14px;
+    }
+    .items-table th:last-child {
+      text-align: right;
+    }
+    .items-table td {
+      padding: 12px 15px;
+      border-bottom: 1px solid #eee;
+      font-size: 14px;
+    }
+    .items-table td:last-child {
+      text-align: right;
+      font-weight: 600;
+    }
+    .items-table tr:nth-child(even) {
+      background: #f9f9f9;
+    }
+    .total-section {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+    .total-box {
+      background: linear-gradient(135deg, #F2541B 0%, #ff7043 100%);
+      color: white;
+      padding: 20px 40px;
+      border-radius: 8px;
+      text-align: right;
+    }
+    .total-box p {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+    .total-box h2 {
+      font-size: 32px;
+      font-weight: 700;
+    }
+    .payment-info {
+      margin-top: 30px;
+      padding: 20px;
+      background: #fff3e0;
+      border-radius: 8px;
+      border-left: 4px solid #F2541B;
+    }
+    .payment-info h4 {
+      color: #F2541B;
+      margin-bottom: 10px;
+    }
+    .payment-info p {
+      font-size: 13px;
+      color: #666;
+      margin: 5px 0;
+    }
+    .footer {
+      margin-top: 50px;
+      padding-top: 20px;
+      border-top: 1px solid #eee;
+      text-align: center;
+      color: #999;
+      font-size: 12px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .badge-pending {
+      background: #fff3e0;
+      color: #F2541B;
+    }
+    .download-btn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #F2541B;
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      box-shadow: 0 4px 15px rgba(242, 84, 27, 0.4);
+      z-index: 1000;
+    }
+    .download-btn:hover {
+      background: #d94516;
+    }
+    .boleto-section {
+      margin-top: 40px;
+      padding: 30px;
+      background: #f0f4f8;
+      border-radius: 12px;
+      text-align: center;
+    }
+    .boleto-section h3 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+    .linha-digitavel {
+      font-family: monospace;
+      font-size: 14px;
+      background: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      border: 2px dashed #F2541B;
+      word-break: break-all;
+      margin-bottom: 20px;
+    }
+    .copy-btn {
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-right: 10px;
+    }
+    .copy-btn:hover {
+      background: #218838;
+    }
+    @media print {
+      .download-btn, .copy-btn { display: none; }
+      body { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="fatura-content">
+    <div class="header">
+      <div class="logo-section">
+        <h1>🚚 BRHUB ENVIOS</h1>
+        <p>Sistema de Gestão de Envios</p>
+      </div>
+      <div class="invoice-info">
+        <h2>FATURA</h2>
+        <p><strong>Nº:</strong> FAT-LOOKPOWER-001</p>
+        <p><strong>Emissão:</strong> 08/02/2026</p>
+        <p><strong>Vencimento:</strong> 10/02/2026</p>
+        <p><span class="badge badge-pending">PENDENTE</span></p>
+      </div>
+    </div>
+
+    <div class="client-section">
+      <h3>📋 DADOS DO CLIENTE</h3>
+      <div class="client-info">
+        <p><strong>Razão Social:</strong> LOOK POWER</p>
+        <p><strong>CNPJ:</strong> 75.928.339/0001-51</p>
+        <p><strong>Endereço:</strong> Rua Maria Marcolina, 369</p>
+        <p><strong>CEP:</strong> 03011-001</p>
+      </div>
+    </div>
+
+    <h3 style="color: #333; margin-bottom: 15px; font-size: 16px;">📦 ITENS DA FATURA</h3>
+    <table class="items-table">
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Destinatário</th>
+          <th>Valor</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>55747233</td>
+          <td>JORGE FORTES FIRMINO</td>
+          <td>R$ 146,18</td>
+        </tr>
+        <tr>
+          <td>AN552802377BR</td>
+          <td>ELISEU ARNDT ALVES</td>
+          <td>R$ 130,00</td>
+        </tr>
+        <tr>
+          <td>AB991469904BR</td>
+          <td>THIAGO SILVA BRANDIDO DOS SANTOS</td>
+          <td>R$ 29,35</td>
+        </tr>
+        <tr>
+          <td>AN559441695BR</td>
+          <td>ADILSON ALVES DA SILVA</td>
+          <td>R$ 73,80</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="total-section">
+      <div class="total-box">
+        <p>TOTAL A PAGAR</p>
+        <h2>R$ 379,33</h2>
+      </div>
+    </div>
+
+    <div class="payment-info">
+      <h4>⚠️ INFORMAÇÕES DE PAGAMENTO</h4>
+      <p><strong>Multa após vencimento:</strong> 10%</p>
+      <p><strong>Juros após vencimento:</strong> 1% ao mês</p>
+      <p>Realize o pagamento até a data de vencimento para evitar encargos.</p>
+    </div>
+
+    <div class="boleto-section">
+      <h3>🏦 DADOS DO BOLETO - BANCO INTER</h3>
+      <p style="margin-bottom: 15px;"><strong>Nosso Número:</strong> 2d5bc667-4914-4038-a4cb-14666f3a17cc</p>
+      <p style="margin-bottom: 15px;"><strong>Valor:</strong> R$ 379,33</p>
+      <p style="margin-bottom: 15px;"><strong>Vencimento:</strong> 10/02/2026</p>
+      <p style="color: #666; font-size: 12px;">O boleto foi gerado com sucesso no Banco Inter.<br>Use o nosso número para consultar ou pagar.</p>
+    </div>
+
+    <div class="footer">
+      <p>BRHUB Envios - Sistema de Gestão de Envios</p>
+      <p>Este documento foi gerado automaticamente em 08/02/2026</p>
+    </div>
+  </div>
+
+  <button class="download-btn" onclick="baixarPDF()">📥 Baixar PDF</button>
+
+  <script>
+    function baixarPDF() {
+      const element = document.getElementById('fatura-content');
+      const opt = {
+        margin: 10,
+        filename: 'FATURA_LOOK_POWER_379.33.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+      html2pdf().set(opt).from(element).save();
+    }
+  </script>
+</body>
+</html>
