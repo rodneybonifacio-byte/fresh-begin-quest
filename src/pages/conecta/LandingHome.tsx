@@ -348,7 +348,7 @@ export const LandingHome = () => {
       <footer className="py-10 px-4 sm:px-6 border-t border-gray-100 bg-white">
         <div className="container mx-auto max-w-6xl">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <img src={logoBrhub} alt="BRHUB ENVIOS" className="h-12 w-auto" />
+            <img src={logoBrhub} alt="BRHUB ENVIOS" className="h-10 w-auto" />
             <div className="flex items-center gap-6 text-sm text-gray-500">
               <button onClick={() => navigate('/apidocs')} className="hover:text-gray-900 transition-colors">
                 API
