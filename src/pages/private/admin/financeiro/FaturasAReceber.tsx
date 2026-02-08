@@ -24,6 +24,7 @@ import { toast } from 'sonner';
 import { BoletoService } from '../../../../services/BoletoService';
 import { getSupabaseWithAuth } from '../../../../integrations/supabase/custom-auth';
 import { RefreshCw } from 'lucide-react';
+import { useFaturasOverride } from '../../../../hooks/useFaturasOverride';
 
 const FinanceiroFaturasAReceber = () => {
     const { setIsLoading } = useLoadingSpinner();
@@ -121,11 +122,17 @@ const FinanceiroFaturasAReceber = () => {
         return await service.getWithParams(params, 'admin');
     });
 
+    // Hook para buscar overrides de faturas
+    const faturaIds = (faturas?.data || []).map(f => f.id);
+    const { aplicarOverride } = useFaturasOverride(faturaIds);
+
     useEffect(() => {
         if (faturas?.data) {
-            setData(faturas.data);
+            // Aplicar overrides nas faturas
+            const faturasComOverride = faturas.data.map(f => aplicarOverride(f));
+            setData(faturasComOverride);
         }
-    }, [faturas]);
+    }, [faturas, aplicarOverride]);
 
     const handlePageChange = async (pageNumber: number) => {
         setPage(pageNumber);
