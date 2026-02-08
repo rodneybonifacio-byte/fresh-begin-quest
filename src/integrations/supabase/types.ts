@@ -477,6 +477,39 @@ export type Database = {
         }
         Relationships: []
       }
+      faturas_override: {
+        Row: {
+          created_at: string
+          fatura_id: string
+          id: string
+          observacao: string | null
+          updated_at: string
+          valor_custo: number | null
+          valor_lucro: number | null
+          valor_venda: number | null
+        }
+        Insert: {
+          created_at?: string
+          fatura_id: string
+          id?: string
+          observacao?: string | null
+          updated_at?: string
+          valor_custo?: number | null
+          valor_lucro?: number | null
+          valor_venda?: number | null
+        }
+        Update: {
+          created_at?: string
+          fatura_id?: string
+          id?: string
+          observacao?: string | null
+          updated_at?: string
+          valor_custo?: number | null
+          valor_lucro?: number | null
+          valor_venda?: number | null
+        }
+        Relationships: []
+      }
       fechamentos_fatura: {
         Row: {
           boleto_id: string | null
