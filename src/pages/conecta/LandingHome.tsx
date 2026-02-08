@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { ArrowRight, Package, Search, Truck, MapPin, Clock, Shield, Users, Globe, CheckCircle } from 'lucide-react';
+import logoBrhub from '@/assets/logo-brhub.png';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 
@@ -29,21 +30,7 @@ export const LandingHome = () => {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-100">
         <div className="container mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           {/* Logo */}
-          <div className="flex items-center gap-3">
-            {/* Símbolo geométrico */}
-            <div className="w-10 h-10 relative flex items-center justify-center">
-              <div className="absolute inset-0 border-2 border-[#F37021] rounded-lg transform rotate-45" />
-              <div className="w-3 h-3 bg-[#F37021] rounded-full" />
-            </div>
-            <div className="flex items-baseline">
-              <span className="text-2xl font-black tracking-tight text-gray-900" style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 900 }}>
-                BRHUB
-              </span>
-              <span className="text-2xl font-light tracking-tight text-gray-900 ml-1" style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 300 }}>
-                ENVIOS
-              </span>
-            </div>
-          </div>
+          <img src={logoBrhub} alt="BRHUB ENVIOS" className="h-10 w-auto" />
           
           <div className="hidden md:flex items-center gap-8">
             <button onClick={() => navigate('/login')} className="text-gray-600 hover:text-gray-900 transition-colors text-sm font-medium">
@@ -361,15 +348,7 @@ export const LandingHome = () => {
       <footer className="py-10 px-4 sm:px-6 border-t border-gray-100 bg-white">
         <div className="container mx-auto max-w-6xl">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              {/* Logo */}
-              <div className="w-8 h-8 relative flex items-center justify-center">
-                <div className="absolute inset-0 border-2 border-[#F37021] rounded-md transform rotate-45" />
-                <div className="w-2 h-2 bg-[#F37021] rounded-full" />
-              </div>
-              <span className="font-black text-gray-900">BRHUB</span>
-              <span className="font-light text-gray-900">ENVIOS</span>
-            </div>
+            <img src={logoBrhub} alt="BRHUB ENVIOS" className="h-8 w-auto" />
             <div className="flex items-center gap-6 text-sm text-gray-500">
               <button onClick={() => navigate('/apidocs')} className="hover:text-gray-900 transition-colors">
                 API
