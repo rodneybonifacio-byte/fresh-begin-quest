@@ -5,7 +5,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 // Função para gerar PDF de fatura personalizado - LAYOUT PROFISSIONAL
@@ -851,15 +851,20 @@ serve(async (req) => {
       cep: cep
     });
     
+    // Adicionar timeout de 60 segundos para evitar trava
+    const boletoController = new AbortController();
+    const boletoTimeout = setTimeout(() => boletoController.abort(), 60000);
+    
     const boletoResponse = await fetch(`${supabaseUrl}/functions/v1/banco-inter-create-boleto`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': authHeader,
       },
+      signal: boletoController.signal,
       body: JSON.stringify({
         faturaId: fatura.id,
-        codigoFatura: codigo_fatura, // IMPORTANTE: Passar código da fatura para usar como seuNumero
+        codigoFatura: codigo_fatura,
         valorCobrado: valorBoleto,
         pagadorNome: clienteData.nome,
         pagadorCpfCnpj: cpfCnpj,
@@ -875,14 +880,16 @@ serve(async (req) => {
         mensagem: `Fatura ${codigo_fatura} - BRHUB Envios`,
         multa: {
           tipo: 'PERCENTUAL',
-          valor: 10, // 10% de multa após vencimento
+          valor: 10,
         },
         juros: {
           tipo: 'PERCENTUAL_DIA',
-          valor: 0.033, // 1% ao mês = 0.033% ao dia
+          valor: 0.033,
         },
       }),
     });
+    
+    clearTimeout(boletoTimeout);
 
     console.log('📡 Resposta do banco-inter-create-boleto - Status:', boletoResponse.status);
 
@@ -943,7 +950,21 @@ serve(async (req) => {
 
     // ✅ Salvar fechamento no banco ANTES de responder (garante persistência entre dispositivos)
     try {
-      await supabaseAdmin.from('fechamentos_fatura').upsert({
+      // Verificar se já existe registro para este fechamento
+      const existQuery = supabaseAdmin
+        .from('fechamentos_fatura')
+        .select('id')
+        .eq('codigo_fatura', codigo_fatura);
+      
+      if (subfatura_id) {
+        existQuery.eq('subfatura_id', subfatura_id);
+      } else {
+        existQuery.is('subfatura_id', null);
+      }
+      
+      const { data: existente } = await existQuery.maybeSingle();
+      
+      const fechamentoPayload = {
         fatura_id: fatura_id,
         subfatura_id: subfatura_id || null,
         codigo_fatura: codigo_fatura,
@@ -954,15 +975,22 @@ serve(async (req) => {
         fatura_pdf: faturaPdfBase64,
         boleto_pdf: boletoPdfBase64,
         status_pagamento: 'PENDENTE',
-      }, {
-        onConflict: 'codigo_fatura,subfatura_id',
-        ignoreDuplicates: false,
-      });
-      console.log('✅ Fechamento salvo no banco - nossoNumero:', boletoData.nossoNumero);
+      };
+      
+      if (existente) {
+        await supabaseAdmin
+          .from('fechamentos_fatura')
+          .update(fechamentoPayload)
+          .eq('id', existente.id);
+        console.log('✅ Fechamento atualizado no banco - nossoNumero:', boletoData.nossoNumero);
+      } else {
+        await supabaseAdmin
+          .from('fechamentos_fatura')
+          .insert(fechamentoPayload);
+        console.log('✅ Fechamento inserido no banco - nossoNumero:', boletoData.nossoNumero);
+      }
     } catch (saveError) {
       console.error('❌ Erro ao salvar fechamento no banco:', saveError);
-      // Mantemos a resposta de sucesso do fechamento, mas avisamos que não persistiu
-      // (o frontend ainda tem o PDF no retorno)
     }
 
     return new Response(
