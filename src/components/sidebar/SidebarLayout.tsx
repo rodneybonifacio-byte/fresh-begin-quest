@@ -1,4 +1,5 @@
 import { ArrowRightLeft, ChevronFirst, ChevronLast, LogOut, Settings, Shield, UserPlus } from 'lucide-react';
+import logoBrhub from '@/assets/logo-brhub-new.png';
 import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -55,7 +56,7 @@ export const SidebarLayout: React.FC<Props> = ({ navItems, isOpen, onClose, onNa
                 <div className="flex flex-col h-full bg-sidebar">
                     <div className="flex items-center justify-between p-6 min-h-[72px] border-b border-sidebar-border bg-gradient-to-r from-primary/5 to-primary/10 backdrop-blur-none">
                         <div className={`flex items-center space-x-2 ${isSidebarOpen ? 'lg:block' : 'lg:hidden'}`}>
-                            <div className="text-primary font-bold text-2xl tracking-tight">BRHUB</div>
+                            <img src={logoBrhub} alt="BRHUB Envios" className="h-10 w-auto" />
                         </div>
 
                         <button
