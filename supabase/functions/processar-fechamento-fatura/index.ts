@@ -594,15 +594,25 @@ serve(async (req) => {
     });
 
     // ✅ ETAPA 3: Extrair cadastro completo do cliente/pagador
-    // Para subfaturas E faturas normais: o PAGADOR é sempre o CLIENTE da fatura
-    // O remetente é usado apenas para filtrar envios da subfatura, NÃO como pagador
+    // Para subfaturas: usar dados do remetente buscado via API como pagador
+    // Para faturas normais: usar dados do cliente da fatura
     console.log('👤 Etapa 3: Validando dados do pagador...');
     
     let clienteData;
     
-    // O pagador é SEMPRE o cliente da fatura (quem paga)
-    console.log('📋 Usando dados do CLIENTE da fatura como pagador');
-    clienteData = fatura.cliente;
+    if (isSubfatura && remetenteData) {
+      // Subfatura: pagador é o remetente buscado via API
+      console.log('📋 Usando dados do REMETENTE (buscado via API) como pagador');
+      clienteData = remetenteData;
+    } else if (isSubfatura && fatura.remetente) {
+      // Subfatura: pagador é o remetente da fatura
+      console.log('📋 Usando dados do REMETENTE da fatura como pagador');
+      clienteData = fatura.remetente;
+    } else {
+      // Fatura normal: pagador é o cliente da fatura
+      console.log('📋 Usando dados do CLIENTE da fatura como pagador');
+      clienteData = fatura.cliente;
+    }
     
     // Log completo do objeto cliente/pagador para debug
     console.log('🔍 DEBUG - Estrutura completa do pagador:', JSON.stringify(clienteData, null, 2));
