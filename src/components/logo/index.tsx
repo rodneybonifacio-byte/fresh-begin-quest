@@ -1,5 +1,6 @@
 import { ComponentProps } from "react";
 import { tv, VariantProps } from "tailwind-variants";
+import logoBrhub from "@/assets/logo-brhub-new.png";
 
 const logoAppVariants = tv({
     base: '',
@@ -29,8 +30,7 @@ interface LogoAppProps extends ComponentProps<'img'>, VariantProps<typeof logoAp
 
 
 export const LogoApp = ({ size, display, light, rotate, ...rest }: LogoAppProps) => {
-    const logoSrc = light ? '/logolight.svg' : '/logodark.svg';
     return (
-        <img src={logoSrc} alt="BRHUB Envios" className={logoAppVariants({ size, display, rotate })} {...rest} />
+        <img src={logoBrhub} alt="BRHUB Envios" className={logoAppVariants({ size, display, rotate })} {...rest} />
     );
 };
