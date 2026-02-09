@@ -28,8 +28,9 @@ interface LogoAppProps extends ComponentProps<'img'>, VariantProps<typeof logoAp
  }
 
 
-export const LogoApp = ({ size, display, light, rotate }: LogoAppProps) => {
+export const LogoApp = ({ size, display, light, rotate, ...rest }: LogoAppProps) => {
+    const logoSrc = light ? '/logolight.svg' : '/logodark.svg';
     return (
-        <img src={light ? '/logolight.svg' : '/logodark.svg'} alt="meu-app" className={logoAppVariants({ size, display, rotate })} />
+        <img src={logoSrc} alt="BRHUB Envios" className={logoAppVariants({ size, display, rotate })} {...rest} />
     );
 };

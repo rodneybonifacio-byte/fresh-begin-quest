@@ -14,6 +14,11 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['"Plus Jakarta Sans"', '"Inter"', 'sans-serif'],
+        display: ['"Plus Jakarta Sans"', 'sans-serif'],
+        body: ['"Inter"', 'sans-serif'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
