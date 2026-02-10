@@ -22,35 +22,35 @@ export const LandingHome = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white text-foreground overflow-hidden font-sans">
+    <div className="min-h-screen bg-white text-foreground overflow-hidden font-body">
       {/* Navbar - Dark */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-[#121212] border-b border-white/10">
         <div className="container mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
           <img alt="BRHUB ENVIOS" className="h-12 w-auto" src={logoBrhub} />
 
           <div className="hidden md:flex items-center gap-8">
-            <button onClick={() => scrollTo('services')} className="text-white/70 hover:text-white transition-colors text-sm font-medium">
+            <button onClick={() => scrollTo('services')} className="text-white/70 hover:text-white transition-colors text-sm font-semibold font-display tracking-wide">
               Serviços
             </button>
-            <button onClick={() => scrollTo('pricing')} className="text-white/70 hover:text-white transition-colors text-sm font-medium">
+            <button onClick={() => scrollTo('pricing')} className="text-white/70 hover:text-white transition-colors text-sm font-semibold font-display tracking-wide">
               Preços
             </button>
-            <button onClick={() => scrollTo('coverage')} className="text-white/70 hover:text-white transition-colors text-sm font-medium">
+            <button onClick={() => scrollTo('coverage')} className="text-white/70 hover:text-white transition-colors text-sm font-semibold font-display tracking-wide">
               Cobertura
             </button>
-            <button onClick={() => navigate('/conecta')} className="text-white/70 hover:text-white transition-colors text-sm font-medium">
+            <button onClick={() => navigate('/conecta')} className="text-white/70 hover:text-white transition-colors text-sm font-semibold font-display tracking-wide">
               Conecta+
             </button>
-            <button onClick={() => navigate('/apidocs')} className="text-white/70 hover:text-white transition-colors text-sm font-medium">
+            <button onClick={() => navigate('/apidocs')} className="text-white/70 hover:text-white transition-colors text-sm font-semibold font-display tracking-wide">
               API
             </button>
           </div>
 
           <div className="hidden md:flex items-center gap-3">
-            <button onClick={() => navigate('/login')} className="px-5 py-2 text-sm font-semibold text-[#121212] bg-white hover:bg-gray-100 rounded-lg transition-all">
+            <button onClick={() => navigate('/login')} className="px-5 py-2 text-sm font-bold font-display text-[#121212] bg-white hover:bg-gray-100 rounded-lg transition-all tracking-wide">
               Login
             </button>
-            <button onClick={() => navigate('/cadastro-cliente')} className="px-5 py-2 bg-primary hover:bg-primary/90 rounded-lg text-sm font-semibold text-primary-foreground transition-all">
+            <button onClick={() => navigate('/cadastro-cliente')} className="px-5 py-2 bg-primary hover:bg-primary/90 rounded-lg text-sm font-bold font-display text-primary-foreground transition-all tracking-wide">
               Criar Conta
             </button>
           </div>
@@ -103,7 +103,7 @@ export const LandingHome = () => {
             <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-6">
               <div className="flex items-center gap-2 mb-4">
                 <Search className="w-5 h-5 text-primary" />
-                <span className="font-bold text-foreground text-lg">Rastreie sua encomenda</span>
+                <span className="font-black font-display text-foreground text-lg tracking-tight">Rastreie sua encomenda</span>
               </div>
               <div className="flex gap-3">
                 <input
@@ -116,7 +116,7 @@ export const LandingHome = () => {
                 />
                 <button
                   onClick={handleTrack}
-                  className="px-8 py-3 bg-primary hover:bg-primary/90 rounded-xl font-bold text-primary-foreground transition-all shadow-lg shadow-primary/30"
+                  className="px-8 py-3 bg-primary hover:bg-primary/90 rounded-xl font-black font-display text-primary-foreground transition-all shadow-lg shadow-primary/30 tracking-wide"
                 >
                   Rastrear
                 </button>
@@ -135,10 +135,10 @@ export const LandingHome = () => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-3xl sm:text-4xl font-black text-foreground mb-3">
+            <h2 className="text-3xl sm:text-4xl font-black font-display text-foreground mb-3 tracking-tight">
               Nossos Serviços
             </h2>
-            <p className="text-muted-foreground max-w-lg mx-auto">
+            <p className="text-muted-foreground max-w-lg mx-auto font-body">
               Automatize sua logística com tecnologia B2B minimalista e eficiente.
             </p>
           </motion.div>
@@ -172,11 +172,11 @@ export const LandingHome = () => {
                 <div className="w-16 h-16 rounded-2xl bg-primary/10 group-hover:bg-primary flex items-center justify-center mb-6 transition-colors duration-300">
                   <item.icon className="w-8 h-8 text-primary group-hover:text-primary-foreground transition-colors duration-300" />
                 </div>
-                <h3 className="font-bold text-xl mb-3 text-foreground">{item.title}</h3>
-                <p className="text-muted-foreground mb-6 leading-relaxed">{item.desc}</p>
+                <h3 className="font-bold font-display text-xl mb-3 text-foreground tracking-tight">{item.title}</h3>
+                <p className="text-muted-foreground mb-6 leading-relaxed font-body">{item.desc}</p>
                 <button
                   onClick={() => navigate('/cadastro-cliente')}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 rounded-lg text-sm font-semibold text-primary-foreground transition-all"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 rounded-lg text-sm font-bold font-display text-primary-foreground transition-all tracking-wide"
                 >
                   Começar agora
                 </button>
@@ -195,10 +195,10 @@ export const LandingHome = () => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-3xl sm:text-4xl font-black text-foreground mb-3">
+            <h2 className="text-3xl sm:text-4xl font-black font-display text-foreground mb-3 tracking-tight">
               Créditos para Enviar
             </h2>
-            <p className="text-muted-foreground max-w-lg mx-auto">
+            <p className="text-muted-foreground max-w-lg mx-auto font-body">
               Recarregue seus créditos e comece a economizar imediatamente.
             </p>
           </motion.div>
@@ -226,13 +226,13 @@ export const LandingHome = () => {
                     POPULAR
                   </div>
                 )}
-                <h3 className={`font-bold text-lg mb-1 ${item.popular ? 'text-white' : 'text-foreground'}`}>
+                <h3 className={`font-bold font-display text-lg mb-1 tracking-tight ${item.popular ? 'text-white' : 'text-foreground'}`}>
                   {item.label}
                 </h3>
-                <p className={`text-sm mb-4 ${item.popular ? 'text-white/60' : 'text-muted-foreground'}`}>
+                <p className={`text-sm mb-4 font-body ${item.popular ? 'text-white/60' : 'text-muted-foreground'}`}>
                   {item.desc}
                 </p>
-                <div className={`text-4xl font-black mb-1 ${item.popular ? 'text-white' : 'text-foreground'}`}>
+                <div className={`text-4xl font-black font-display mb-1 tracking-tight ${item.popular ? 'text-white' : 'text-foreground'}`}>
                   {item.value}
                 </div>
                 {item.bonus && (
@@ -264,10 +264,10 @@ export const LandingHome = () => {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
             >
-              <h2 className="text-3xl sm:text-4xl font-black mb-6">
+              <h2 className="text-3xl sm:text-4xl font-black font-display mb-6 tracking-tight">
                 Cobertura <span className="text-primary">Nacional</span>
               </h2>
-              <p className="text-white/70 mb-8 leading-relaxed">
+              <p className="text-white/70 mb-8 leading-relaxed font-body">
                 Nossa plataforma oferece cobertura completa em todo território nacional, com múltiplas transportadoras e os melhores preços do mercado.
               </p>
               <ul className="space-y-4 mb-8">
@@ -322,15 +322,15 @@ export const LandingHome = () => {
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-3xl sm:text-4xl font-black mb-4 text-primary-foreground">
+            <h2 className="text-3xl sm:text-4xl font-black font-display mb-4 text-primary-foreground tracking-tight">
               Pronto para economizar?
             </h2>
-            <p className="text-primary-foreground/80 mb-8 max-w-lg mx-auto">
+            <p className="text-primary-foreground/80 mb-8 max-w-lg mx-auto font-body">
               Junte-se a milhares de lojistas que já economizam com a BRHUB Envios.
             </p>
             <button
               onClick={() => navigate('/cadastro-cliente')}
-              className="group px-8 py-4 bg-[#121212] hover:bg-[#1a1a1a] rounded-xl text-lg font-bold text-white transition-all inline-flex items-center gap-3 shadow-xl"
+              className="group px-8 py-4 bg-[#121212] hover:bg-[#1a1a1a] rounded-xl text-lg font-black font-display text-white transition-all inline-flex items-center gap-3 shadow-xl tracking-wide"
             >
               Criar conta gratuita
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
