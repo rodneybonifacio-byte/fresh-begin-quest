@@ -21,30 +21,30 @@ export const LandingHome = () => {
   };
   return <div className="min-h-screen bg-white text-foreground overflow-hidden font-body">
       {/* Navbar - Dark */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#121212] border-b border-white/10">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
         <div className="container mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
           <img alt="BRHUB ENVIOS" className="h-12 w-auto" src="/lovable-uploads/63129796-efc6-4fd4-b9a1-15057e1abe21.png" />
 
           <div className="hidden md:flex items-center gap-8">
-            <button onClick={() => scrollTo('services')} className="text-white/70 hover:text-white transition-colors text-sm font-semibold font-display tracking-wide">
+            <button onClick={() => scrollTo('services')} className="text-purple-700/70 hover:text-purple-900 transition-colors text-sm font-semibold font-display tracking-wide">
               Serviços
             </button>
-            <button onClick={() => scrollTo('pricing')} className="text-white/70 hover:text-white transition-colors text-sm font-semibold font-display tracking-wide">
+            <button onClick={() => scrollTo('pricing')} className="text-purple-700/70 hover:text-purple-900 transition-colors text-sm font-semibold font-display tracking-wide">
               Preços
             </button>
-            <button onClick={() => scrollTo('coverage')} className="text-white/70 hover:text-white transition-colors text-sm font-semibold font-display tracking-wide">
+            <button onClick={() => scrollTo('coverage')} className="text-purple-700/70 hover:text-purple-900 transition-colors text-sm font-semibold font-display tracking-wide">
               Cobertura
             </button>
-            <button onClick={() => navigate('/conecta')} className="text-white/70 hover:text-white transition-colors text-sm font-semibold font-display tracking-wide">
+            <button onClick={() => navigate('/conecta')} className="text-purple-700/70 hover:text-purple-900 transition-colors text-sm font-semibold font-display tracking-wide">
               Conecta+
             </button>
-            <button onClick={() => navigate('/apidocs')} className="text-white/70 hover:text-white transition-colors text-sm font-semibold font-display tracking-wide">
+            <button onClick={() => navigate('/apidocs')} className="text-purple-700/70 hover:text-purple-900 transition-colors text-sm font-semibold font-display tracking-wide">
               API
             </button>
           </div>
 
           <div className="hidden md:flex items-center gap-3">
-            <button onClick={() => navigate('/login')} className="px-5 py-2 text-sm font-bold font-display text-[#121212] bg-white hover:bg-gray-100 rounded-lg transition-all tracking-wide">
+            <button onClick={() => navigate('/login')} className="px-5 py-2 text-sm font-bold font-display text-purple-800 bg-purple-50 hover:bg-purple-100 rounded-lg transition-all tracking-wide border border-purple-200">
               Login
             </button>
             <button onClick={() => navigate('/cadastro-cliente')} className="px-5 py-2 bg-primary hover:bg-primary/90 rounded-lg text-sm font-bold font-display text-primary-foreground transition-all tracking-wide">
@@ -53,7 +53,7 @@ export const LandingHome = () => {
           </div>
 
           {/* Mobile menu button */}
-          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden text-white p-2">
+          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden text-purple-800 p-2">
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
@@ -65,15 +65,15 @@ export const LandingHome = () => {
       }} animate={{
         opacity: 1,
         y: 0
-      }} className="md:hidden bg-[#121212] border-t border-white/10 px-4 pb-4">
+      }} className="md:hidden bg-white border-t border-gray-200 px-4 pb-4">
             <div className="flex flex-col gap-3 py-3">
-              <button onClick={() => scrollTo('services')} className="text-white/70 hover:text-white text-left py-2 text-sm font-medium">Serviços</button>
-              <button onClick={() => scrollTo('pricing')} className="text-white/70 hover:text-white text-left py-2 text-sm font-medium">Preços</button>
-              <button onClick={() => scrollTo('coverage')} className="text-white/70 hover:text-white text-left py-2 text-sm font-medium">Cobertura</button>
-              <button onClick={() => navigate('/conecta')} className="text-white/70 hover:text-white text-left py-2 text-sm font-medium">Conecta+</button>
-              <button onClick={() => navigate('/apidocs')} className="text-white/70 hover:text-white text-left py-2 text-sm font-medium">API</button>
-              <div className="flex gap-3 pt-3 border-t border-white/10">
-                <button onClick={() => navigate('/login')} className="flex-1 px-4 py-2.5 text-sm font-semibold text-[#121212] bg-white rounded-lg">Login</button>
+              <button onClick={() => scrollTo('services')} className="text-purple-700/70 hover:text-purple-900 text-left py-2 text-sm font-medium">Serviços</button>
+              <button onClick={() => scrollTo('pricing')} className="text-purple-700/70 hover:text-purple-900 text-left py-2 text-sm font-medium">Preços</button>
+              <button onClick={() => scrollTo('coverage')} className="text-purple-700/70 hover:text-purple-900 text-left py-2 text-sm font-medium">Cobertura</button>
+              <button onClick={() => navigate('/conecta')} className="text-purple-700/70 hover:text-purple-900 text-left py-2 text-sm font-medium">Conecta+</button>
+              <button onClick={() => navigate('/apidocs')} className="text-purple-700/70 hover:text-purple-900 text-left py-2 text-sm font-medium">API</button>
+              <div className="flex gap-3 pt-3 border-t border-gray-200">
+                <button onClick={() => navigate('/login')} className="flex-1 px-4 py-2.5 text-sm font-semibold text-purple-800 bg-purple-50 rounded-lg border border-purple-200">Login</button>
                 <button onClick={() => navigate('/cadastro-cliente')} className="flex-1 px-4 py-2.5 bg-primary rounded-lg text-sm font-semibold text-primary-foreground">Criar Conta</button>
               </div>
             </div>
