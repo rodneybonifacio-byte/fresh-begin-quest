@@ -173,7 +173,7 @@ export const Login = () => {
                 {/* Logo Section */}
                 <div className="flex flex-col items-center gap-3 mb-6">
                     <div className="p-4">
-                        <LogoApp light />
+                        <LogoApp light className="w-auto h-24" />
                     </div>
                     <div className="text-center">
                         <h1 className="text-2xl font-bold text-foreground mb-2">Bem-vindo de volta</h1>
