@@ -172,7 +172,7 @@ export const Login = () => {
             <div className="w-full max-w-md relative z-10 animate-fade-in">
                 {/* Logo Section */}
                 <div className="flex flex-col items-center gap-3 mb-6">
-                    <div className="p-4 bg-primary/10 rounded-2xl">
+                    <div className="p-4">
                         <LogoApp light />
                     </div>
                     <div className="text-center">
