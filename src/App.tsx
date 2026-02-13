@@ -7,6 +7,30 @@ import { InstallButton } from '../install-button';
 import { useEffect } from 'react';
 import Clarity from '@microsoft/clarity';
 
+// Auto-reload on chunk load failure (stale PWA cache)
+window.addEventListener('error', (event) => {
+    if (
+        event.message?.includes('Failed to fetch dynamically imported module') ||
+        event.message?.includes('Importing a module script failed')
+    ) {
+        const reloaded = sessionStorage.getItem('chunk-reload');
+        if (!reloaded) {
+            sessionStorage.setItem('chunk-reload', '1');
+            window.location.reload();
+        }
+    }
+});
+window.addEventListener('unhandledrejection', (event) => {
+    const msg = event.reason?.message || '';
+    if (msg.includes('Failed to fetch dynamically imported module') || msg.includes('Importing a module script failed')) {
+        const reloaded = sessionStorage.getItem('chunk-reload');
+        if (!reloaded) {
+            sessionStorage.setItem('chunk-reload', '1');
+            window.location.reload();
+        }
+    }
+});
+
 
 export default function App() {
 
