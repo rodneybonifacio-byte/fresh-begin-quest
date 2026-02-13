@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useGlobalConfig } from '../../../../providers/GlobalConfigContext';
 import { useFetchQuery } from '../../../../hooks/useFetchQuery';
 import { Content } from '../../Content';
@@ -123,16 +123,18 @@ const FinanceiroFaturasAReceber = () => {
     });
 
     // Hook para buscar overrides de faturas
-    const faturaIds = (faturas?.data || []).map(f => f.id);
+    const faturaIds = useMemo(() => (faturas?.data || []).map(f => f.id), [faturas?.data]);
     const { aplicarOverride } = useFaturasOverride(faturaIds);
+
+    // Chave estável para detectar mudança real de faturas
+    const faturasKey = useMemo(() => faturaIds.join(','), [faturaIds]);
 
     useEffect(() => {
         if (faturas?.data) {
-            // Aplicar overrides nas faturas
             const faturasComOverride = faturas.data.map(f => aplicarOverride(f));
             setData(faturasComOverride);
         }
-    }, [faturas, aplicarOverride]);
+    }, [faturasKey, aplicarOverride]);
 
     const handlePageChange = async (pageNumber: number) => {
         setPage(pageNumber);
@@ -456,76 +458,71 @@ const FinanceiroFaturasAReceber = () => {
 
     // Estado para controlar carregamento de fechamentos (automático)
     const [carregandoFechamentos, setCarregandoFechamentos] = useState(false);
+    const lastFetchedKey = useRef<string>('');
 
-    // Função para carregar fechamentos via edge function
-    const carregarFechamentos = useCallback(async () => {
+    // Carregar fechamentos existentes quando a lista de faturas muda (com dedup via ref)
+    useEffect(() => {
         if (!data || data.length === 0) return;
         
-        // Coletar todos os IDs de faturas e subfaturas
-        const faturaIds: string[] = [];
+        // Chave estável baseada nos IDs reais
+        const allIds: string[] = [];
         data.forEach(fatura => {
-            faturaIds.push(fatura.id);
+            allIds.push(fatura.id);
             if (fatura.faturas && fatura.faturas.length > 0) {
-                fatura.faturas.forEach(sub => {
-                    faturaIds.push(sub.id);
-                });
+                fatura.faturas.forEach(sub => allIds.push(sub.id));
             }
         });
+        const key = allIds.sort().join(',');
         
-        if (faturaIds.length === 0) return;
+        // Se já buscou para esses mesmos IDs, não buscar de novo
+        if (key === lastFetchedKey.current) return;
+        lastFetchedKey.current = key;
         
-        try {
-            setCarregandoFechamentos(true);
-            console.log('🔍 Buscando fechamentos para IDs:', faturaIds);
-            
-            // Usar edge function com service role para acessar tabela com RLS restritivo
-            const supabaseAuth = getSupabaseWithAuth();
-            const { data: result, error } = await supabaseAuth.functions.invoke('buscar-fechamentos', {
-                body: { faturaIds }
-            });
-            
-            if (error) {
-                console.error('❌ Erro ao buscar fechamentos:', error);
-                return;
+        if (allIds.length === 0) return;
+
+        const fetchFechamentos = async () => {
+            try {
+                setCarregandoFechamentos(true);
+                console.log('🔍 Buscando fechamentos para IDs:', allIds);
+                
+                const supabaseAuth = getSupabaseWithAuth();
+                const { data: result, error } = await supabaseAuth.functions.invoke('buscar-fechamentos', {
+                    body: { faturaIds: allIds }
+                });
+                
+                if (error) {
+                    console.error('❌ Erro ao buscar fechamentos:', error);
+                    return;
+                }
+                
+                const fechamentos = result?.fechamentos || [];
+                console.log('✅ Fechamentos encontrados:', fechamentos.length);
+
+                const novoMap: Record<string, any> = {};
+                fechamentos.forEach((f: any) => {
+                    const nossoNumero = f.nosso_numero || f.nossoNumero || f.boleto_id;
+                    const fechamentoData = {
+                        faturaPdf: f.fatura_pdf,
+                        boletoPdf: f.boleto_pdf,
+                        codigoFatura: f.codigo_fatura,
+                        nomeCliente: f.nome_cliente,
+                        boletoInfo: { nossoNumero },
+                        timestamp: f.created_at,
+                    };
+                    const keyId = f.subfatura_id || f.fatura_id;
+                    novoMap[keyId] = fechamentoData;
+                });
+
+                setFechamentosMap(novoMap);
+            } catch (err) {
+                console.error('❌ Erro ao carregar fechamentos:', err);
+                toast.error('Erro ao carregar fechamentos');
+            } finally {
+                setCarregandoFechamentos(false);
             }
-            
-            const fechamentos = result?.fechamentos || [];
-            console.log('✅ Fechamentos encontrados:', fechamentos.length, fechamentos);
+        };
 
-            // Recriar o mapa sempre (evita manter fechamentos antigos/deletados)
-            const novoMap: Record<string, any> = {};
-
-            fechamentos.forEach((f: any) => {
-                const nossoNumero = f.nosso_numero || f.nossoNumero || f.boleto_id;
-
-                const fechamentoData = {
-                    faturaPdf: f.fatura_pdf,
-                    boletoPdf: f.boleto_pdf,
-                    codigoFatura: f.codigo_fatura,
-                    nomeCliente: f.nome_cliente,
-                    boletoInfo: { nossoNumero },
-                    timestamp: f.created_at,
-                };
-
-                // Para subfaturas, usar o subfatura_id como chave
-                const keyId = f.subfatura_id || f.fatura_id;
-                novoMap[keyId] = fechamentoData;
-                // NÃO salvar PDFs no localStorage - causa "quota exceeded"
-                console.log(`📋 Fechamento mapeado para ID: ${keyId}`);
-            });
-
-            setFechamentosMap(novoMap);
-        } catch (err) {
-            console.error('❌ Erro ao carregar fechamentos:', err);
-            toast.error('Erro ao carregar fechamentos');
-        } finally {
-            setCarregandoFechamentos(false);
-        }
-    }, [data]);
-
-    // Carregar fechamentos existentes quando a lista de faturas muda
-    useEffect(() => {
-        carregarFechamentos();
+        fetchFechamentos();
     }, [data]);
 
     const handleVisualizarFechamento = async (fatura: IFatura) => {
