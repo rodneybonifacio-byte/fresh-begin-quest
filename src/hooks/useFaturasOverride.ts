@@ -57,7 +57,7 @@ export function useFaturasOverride(faturaIds: string[]) {
 
   const getOverride = (faturaId: string): FaturaOverride | null => overrides[faturaId] || null;
 
-  const aplicarOverride = <T extends { id: string; totalFaturado?: string; totalCusto?: string }>(fatura: T): T & { _lucroOverride?: number; _hasOverride?: boolean } => {
+  const aplicarOverride = useCallback(<T extends { id: string; totalFaturado?: string; totalCusto?: string }>(fatura: T): T & { _lucroOverride?: number; _hasOverride?: boolean } => {
     const override = overrides[fatura.id];
     if (override && override.valor_venda !== null) {
       return {
@@ -69,7 +69,7 @@ export function useFaturasOverride(faturaIds: string[]) {
       };
     }
     return fatura;
-  };
+  }, [overrides]);
 
   return {
     overrides,
