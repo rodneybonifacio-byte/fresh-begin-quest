@@ -41,6 +41,17 @@ const formatBRL = (value: number) => {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 };
 
+const formatDate = (dateStr: string): string => {
+  if (!dateStr) return '-';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '-';
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  } catch {
+    return '-';
+  }
+};
+
 const parseValorBR = (valor: string): number => {
   if (!valor) return 0;
   const cleaned = valor.toString().replace(/[R$\s]/g, '').replace(/\./g, '').replace(',', '.');
@@ -189,7 +200,7 @@ export default function AtualizarPrecosPlanilha() {
     const wsData = resultados.map(r => ({
       'Código Objeto': r.codigoObjeto,
       'Remetente': r.remetenteNome,
-      'Data Postagem': r.dataPostagem ? new Date(r.dataPostagem).toLocaleDateString('pt-BR') : '-',
+      'Data Postagem': formatDate(r.dataPostagem),
       'Custo Planilha': r.valorCustoPlanilha,
       'Custo Sistema': r.valorCustoSistema,
       'Venda Atual': r.valorVendaAtual,
@@ -394,7 +405,7 @@ export default function AtualizarPrecosPlanilha() {
                       </td>
                       <td className="px-3 py-2 font-mono text-xs">{r.codigoObjeto}</td>
                       <td className="px-3 py-2 text-xs truncate max-w-[150px]" title={r.remetenteNome}>{r.remetenteNome}</td>
-                      <td className="px-3 py-2 text-xs">{r.dataPostagem ? new Date(r.dataPostagem).toLocaleDateString('pt-BR') : '-'}</td>
+                      <td className="px-3 py-2 text-xs">{formatDate(r.dataPostagem)}</td>
                       <td className="px-3 py-2 text-right">{formatBRL(r.valorCustoPlanilha)}</td>
                       <td className="px-3 py-2 text-right">{formatBRL(r.valorCustoSistema)}</td>
                       <td className="px-3 py-2 text-right">{formatBRL(r.valorVendaAtual)}</td>
