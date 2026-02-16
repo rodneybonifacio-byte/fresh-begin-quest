@@ -8,6 +8,7 @@ import { Calendar, Wifi } from 'lucide-react';
 export default function RealizarFechamento() {
     const [dataInicio, setDataInicio] = useState('');
     const [dataFim, setDataFim] = useState('');
+    const [dataVencimento, setDataVencimento] = useState('');
     const [loading, setLoading] = useState(false);
     const [testingConnection, setTestingConnection] = useState(false);
 
@@ -55,6 +56,7 @@ export default function RealizarFechamento() {
                 body: {
                     dataInicio,
                     dataFim,
+                    ...(dataVencimento ? { dataVencimento } : {}),
                 }
             });
 
@@ -77,7 +79,7 @@ export default function RealizarFechamento() {
         >
             <div className="bg-card rounded-lg shadow-sm border border-border p-6 max-w-2xl">
                 <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-foreground mb-2">
                                 Data Início
@@ -106,6 +108,22 @@ export default function RealizarFechamento() {
                                 />
                                 <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
                             </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-foreground mb-2">
+                                Data Vencimento (Boleto)
+                            </label>
+                            <div className="relative">
+                                <input
+                                    type="date"
+                                    value={dataVencimento}
+                                    onChange={(e) => setDataVencimento(e.target.value)}
+                                    className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                />
+                                <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">Opcional. Se vazio, será D+1.</p>
                         </div>
                     </div>
 
