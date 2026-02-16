@@ -5,7 +5,6 @@ import { supabase } from '../../../../integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface EtiquetaPlanilha {
-  dataPostagem: string;
   codigoObjeto: string;
   valorCustoPlanilha: number;
 }
@@ -13,6 +12,7 @@ interface EtiquetaPlanilha {
 interface ResultadoAnalise {
   codigoObjeto: string;
   dataPostagem: string;
+  remetenteNome: string;
   emissaoId: string | null;
   valorCustoPlanilha: number;
   valorCustoSistema: number;
@@ -73,15 +73,14 @@ export default function AtualizarPrecosPlanilha() {
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
 
-        // Skip header row, parse: DATA POSTAGEM | ETIQUETA | VALOR SERVICO
+        // Skip header row, parse: ETIQUETA | VALOR SERVICO (2 columns)
         const etiquetas: EtiquetaPlanilha[] = [];
         for (let i = 1; i < jsonData.length; i++) {
           const row = jsonData[i];
-          if (!row || row.length < 3) continue;
+          if (!row || row.length < 2) continue;
 
-          const dataPostagem = row[0]?.toString()?.trim() || '';
-          const codigoObjeto = row[1]?.toString()?.trim()?.toUpperCase() || '';
-          const valorRaw = row[2];
+          const codigoObjeto = row[0]?.toString()?.trim()?.toUpperCase() || '';
+          const valorRaw = row[1];
 
           if (!codigoObjeto) continue;
 
@@ -93,7 +92,7 @@ export default function AtualizarPrecosPlanilha() {
           }
 
           if (valorCusto > 0) {
-            etiquetas.push({ dataPostagem, codigoObjeto, valorCustoPlanilha: valorCusto });
+            etiquetas.push({ codigoObjeto, valorCustoPlanilha: valorCusto });
           }
         }
 
@@ -189,7 +188,8 @@ export default function AtualizarPrecosPlanilha() {
   const exportarResultados = () => {
     const wsData = resultados.map(r => ({
       'Código Objeto': r.codigoObjeto,
-      'Data Postagem': r.dataPostagem,
+      'Remetente': r.remetenteNome,
+      'Data Postagem': r.dataPostagem ? new Date(r.dataPostagem).toLocaleDateString('pt-BR') : '-',
       'Custo Planilha': r.valorCustoPlanilha,
       'Custo Sistema': r.valorCustoSistema,
       'Venda Atual': r.valorVendaAtual,
@@ -243,7 +243,7 @@ export default function AtualizarPrecosPlanilha() {
             <FileSpreadsheet className="w-16 h-16 text-primary mx-auto mb-4" />
             <h2 className="text-lg font-semibold mb-2">Importar Planilha Excel</h2>
             <p className="text-sm text-muted-foreground mb-6">
-              Formato esperado: <strong>Data Postagem | Etiqueta | Valor Serviço</strong>
+              Formato esperado: <strong>Etiqueta | Valor Serviço</strong> (2 colunas)
             </p>
 
             <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all">
@@ -301,9 +301,8 @@ export default function AtualizarPrecosPlanilha() {
           <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
-                <tr>
+               <tr>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">#</th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Data Postagem</th>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Etiqueta</th>
                   <th className="text-right px-4 py-3 font-medium text-muted-foreground">Valor Custo</th>
                 </tr>
@@ -312,7 +311,6 @@ export default function AtualizarPrecosPlanilha() {
                 {dadosPlanilha.map((item, i) => (
                   <tr key={i} className="hover:bg-muted/30">
                     <td className="px-4 py-2 text-muted-foreground">{i + 1}</td>
-                    <td className="px-4 py-2">{item.dataPostagem}</td>
                     <td className="px-4 py-2 font-mono text-xs">{item.codigoObjeto}</td>
                     <td className="px-4 py-2 text-right">{formatBRL(item.valorCustoPlanilha)}</td>
                   </tr>
@@ -370,6 +368,7 @@ export default function AtualizarPrecosPlanilha() {
                   <tr>
                     <th className="text-left px-3 py-3 font-medium text-muted-foreground">Status</th>
                     <th className="text-left px-3 py-3 font-medium text-muted-foreground">Etiqueta</th>
+                    <th className="text-left px-3 py-3 font-medium text-muted-foreground">Remetente</th>
                     <th className="text-left px-3 py-3 font-medium text-muted-foreground">Data</th>
                     <th className="text-right px-3 py-3 font-medium text-muted-foreground">Custo Planilha</th>
                     <th className="text-right px-3 py-3 font-medium text-muted-foreground">Custo Sistema</th>
@@ -394,7 +393,8 @@ export default function AtualizarPrecosPlanilha() {
                         {r.cenario === 'CUSTO_MENOR' && <span className="inline-flex items-center gap-1 text-blue-600 text-xs font-medium"><Info className="w-3.5 h-3.5" /> Info</span>}
                       </td>
                       <td className="px-3 py-2 font-mono text-xs">{r.codigoObjeto}</td>
-                      <td className="px-3 py-2 text-xs">{r.dataPostagem}</td>
+                      <td className="px-3 py-2 text-xs truncate max-w-[150px]" title={r.remetenteNome}>{r.remetenteNome}</td>
+                      <td className="px-3 py-2 text-xs">{r.dataPostagem ? new Date(r.dataPostagem).toLocaleDateString('pt-BR') : '-'}</td>
                       <td className="px-3 py-2 text-right">{formatBRL(r.valorCustoPlanilha)}</td>
                       <td className="px-3 py-2 text-right">{formatBRL(r.valorCustoSistema)}</td>
                       <td className="px-3 py-2 text-right">{formatBRL(r.valorVendaAtual)}</td>

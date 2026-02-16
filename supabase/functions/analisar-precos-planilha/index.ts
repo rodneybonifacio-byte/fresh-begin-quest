@@ -8,7 +8,6 @@ const corsHeaders = {
 };
 
 interface EtiquetaPlanilha {
-  dataPostagem: string;
   codigoObjeto: string;
   valorCustoPlanilha: number;
 }
@@ -16,6 +15,7 @@ interface EtiquetaPlanilha {
 interface ResultadoAnalise {
   codigoObjeto: string;
   dataPostagem: string;
+  remetenteNome: string;
   emissaoId: string | null;
   valorCustoPlanilha: number;
   valorCustoSistema: number;
@@ -121,6 +121,8 @@ serve(async (req: Request) => {
       const valorVendaAtual = parseFloat(emissao.valor || emissao.valorPostagem || '0');
       const valorCustoSistema = parseFloat(emissao.valorPostagem || emissao.valorCusto || '0');
       const valorCustoPlanilha = etiqueta.valorCustoPlanilha;
+      const remetenteNome = emissao.remetenteNome || emissao.remetente?.nome || emissao.nomeRemetente || 'N/A';
+      const dataPostagem = emissao.dataPostagem || emissao.createdAt || emissao.created_at || '';
 
       // Calculate current margin based on spreadsheet cost
       const margemAtual = valorVendaAtual > 0 && valorCustoPlanilha > 0
@@ -157,7 +159,8 @@ serve(async (req: Request) => {
 
       resultados.push({
         codigoObjeto: etiqueta.codigoObjeto,
-        dataPostagem: etiqueta.dataPostagem,
+        dataPostagem,
+        remetenteNome,
         emissaoId: emissao.id,
         valorCustoPlanilha,
         valorCustoSistema,
