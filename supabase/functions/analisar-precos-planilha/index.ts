@@ -72,6 +72,7 @@ async function buscarEmissaoPorCodigo(codigoObjeto: string, token: string): Prom
   }
 
   const data = await response.json();
+  if (!data) return null;
   const emissoes = data.data || data;
   
   if (Array.isArray(emissoes) && emissoes.length > 0) {
