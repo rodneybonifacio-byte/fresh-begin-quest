@@ -170,3 +170,6 @@ verify_jwt = false
 
 [functions.api-cotacao-widget]
 verify_jwt = false
+
+[functions.analisar-precos-planilha]
+verify_jwt = false
