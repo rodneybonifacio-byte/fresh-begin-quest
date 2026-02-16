@@ -543,9 +543,68 @@ export default function AtualizarPrecosPlanilha() {
             <SummaryCard label="Não encontradas" value={resumo.naoEncontradas} color="bg-muted" />
           </div>
 
+          {/* Tabela detalhada das atualizadas */}
+          {resultadoExecucao.atualizados.length > 0 && (
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+              <div className="p-4 border-b border-border">
+                <h3 className="text-sm font-semibold text-green-600 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" /> Etiquetas Atualizadas ({resultadoExecucao.atualizados.length})
+                </h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/50">
+                      <th className="text-left p-3 font-medium text-muted-foreground">Etiqueta</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Remetente</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Data</th>
+                      <th className="text-right p-3 font-medium text-muted-foreground">Custo Planilha</th>
+                      <th className="text-right p-3 font-medium text-muted-foreground">Venda Anterior</th>
+                      <th className="text-right p-3 font-medium text-muted-foreground">Nova Venda</th>
+                      <th className="text-right p-3 font-medium text-muted-foreground">Margem Anterior</th>
+                      <th className="text-right p-3 font-medium text-muted-foreground">Nova Margem</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {resultados
+                      .filter(r => resultadoExecucao.atualizados.includes(r.codigoObjeto))
+                      .map((r, i) => {
+                        const novoValor = valoresEditados[r.codigoObjeto] ?? r.novoValorVenda ?? r.valorVendaAtual;
+                        const novaMargem = r.valorCustoPlanilha > 0 ? ((novoValor - r.valorCustoPlanilha) / r.valorCustoPlanilha) * 100 : 0;
+                        return (
+                          <tr key={i} className="border-b border-border/50 hover:bg-muted/30">
+                            <td className="p-3 font-mono text-xs">{r.codigoObjeto}</td>
+                            <td className="p-3 text-xs">{r.remetenteNome}</td>
+                            <td className="p-3 text-xs">{formatDate(r.dataPostagem)}</td>
+                            <td className="p-3 text-right text-xs">R$ {r.valorCustoPlanilha.toFixed(2)}</td>
+                            <td className="p-3 text-right text-xs text-muted-foreground line-through">R$ {r.valorVendaAtual.toFixed(2)}</td>
+                            <td className="p-3 text-right text-xs font-semibold text-green-600">R$ {novoValor.toFixed(2)}</td>
+                            <td className="p-3 text-right text-xs text-muted-foreground">{r.margemAtual.toFixed(1)}%</td>
+                            <td className="p-3 text-right text-xs font-semibold text-green-600">{novaMargem.toFixed(1)}%</td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Etiquetas não encontradas */}
+          {naoEncontradas.length > 0 && (
+            <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl p-4">
+              <h3 className="text-sm font-semibold text-yellow-600 mb-2">Não encontradas no sistema ({naoEncontradas.length})</h3>
+              <div className="flex flex-wrap gap-2">
+                {naoEncontradas.map((cod, i) => (
+                  <span key={i} className="text-xs font-mono bg-yellow-500/10 px-2 py-1 rounded">{cod}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {resultadoExecucao.erros.length > 0 && (
             <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4">
-              <h3 className="text-sm font-semibold text-red-600 mb-2">Erros</h3>
+              <h3 className="text-sm font-semibold text-red-600 mb-2">Erros ({resultadoExecucao.erros.length})</h3>
               {resultadoExecucao.erros.map((err, i) => (
                 <div key={i} className="text-xs py-1">
                   <span className="font-mono">{err.codigoObjeto}</span>: {err.erro}
