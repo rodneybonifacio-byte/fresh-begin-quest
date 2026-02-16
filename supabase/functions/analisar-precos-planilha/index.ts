@@ -10,6 +10,7 @@ const corsHeaders = {
 interface EtiquetaPlanilha {
   codigoObjeto: string;
   valorCustoPlanilha: number;
+  novoValorVendaOverride?: number;
 }
 
 interface ResultadoAnalise {
@@ -193,7 +194,15 @@ serve(async (req: Request) => {
       const atualizados: string[] = [];
       const erros: { codigoObjeto: string; erro: string }[] = [];
 
-      const paraAtualizar = resultados.filter(r => r.novoValorVenda !== null && r.emissaoId);
+      // Use override values from frontend when available
+      const overrideMap = new Map(etiquetas.map(e => [e.codigoObjeto, e.novoValorVendaOverride]));
+      const paraAtualizar = resultados
+        .filter(r => r.emissaoId)
+        .map(r => ({
+          ...r,
+          novoValorVenda: overrideMap.get(r.codigoObjeto) ?? r.novoValorVenda,
+        }))
+        .filter(r => r.novoValorVenda !== null && r.novoValorVenda > 0);
 
       for (const item of paraAtualizar) {
         try {

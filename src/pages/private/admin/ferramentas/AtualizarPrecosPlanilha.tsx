@@ -69,6 +69,8 @@ export default function AtualizarPrecosPlanilha() {
   const [fileName, setFileName] = useState('');
   const [filtroAtivo, setFiltroAtivo] = useState<'TODOS' | 'OK' | 'MARGEM_BAIXA' | 'CUSTO_MENOR'>('TODOS');
   const [resultadoExecucao, setResultadoExecucao] = useState<{ atualizados: string[]; erros: { codigoObjeto: string; erro: string }[] } | null>(null);
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [valoresEditados, setValoresEditados] = useState<Record<string, number>>({});
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -134,9 +136,21 @@ export default function AtualizarPrecosPlanilha() {
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || 'Erro na análise');
 
-      setResultados(data.resultados);
+      const res = data.resultados as ResultadoAnalise[];
+      setResultados(res);
       setResumo(data.resumo);
       setNaoEncontradas(data.naoEncontradas || []);
+      // Auto-select items that need updating
+      const autoSelect = new Set<string>();
+      const autoValues: Record<string, number> = {};
+      res.forEach((r: ResultadoAnalise) => {
+        if (r.novoValorVenda !== null) {
+          autoSelect.add(r.codigoObjeto);
+          autoValues[r.codigoObjeto] = r.novoValorVenda;
+        }
+      });
+      setSelecionados(autoSelect);
+      setValoresEditados(autoValues);
       setEtapa('analise');
       toast.success(`Análise concluída: ${data.resumo.total} etiquetas processadas`);
     } catch (err: any) {
@@ -148,9 +162,21 @@ export default function AtualizarPrecosPlanilha() {
   };
 
   const handleExecutar = async () => {
-    const paraAtualizar = resultados.filter(r => r.novoValorVenda !== null);
+    if (selecionados.size === 0) {
+      toast.info('Selecione pelo menos uma etiqueta para atualizar');
+      return;
+    }
+
+    const paraAtualizar = resultados
+      .filter(r => selecionados.has(r.codigoObjeto) && r.emissaoId)
+      .map(r => ({
+        ...r,
+        novoValorVenda: valoresEditados[r.codigoObjeto] ?? r.novoValorVenda,
+      }))
+      .filter(r => r.novoValorVenda !== null && r.novoValorVenda > 0);
+
     if (paraAtualizar.length === 0) {
-      toast.info('Nenhuma etiqueta para atualizar');
+      toast.info('Nenhuma etiqueta válida para atualizar. Informe os valores.');
       return;
     }
 
@@ -161,8 +187,15 @@ export default function AtualizarPrecosPlanilha() {
 
     setCarregando(true);
     try {
+      // Build etiquetas payload with overridden values
+      const etiquetasParaEnviar = paraAtualizar.map(r => ({
+        codigoObjeto: r.codigoObjeto,
+        valorCustoPlanilha: r.valorCustoPlanilha,
+        novoValorVendaOverride: r.novoValorVenda,
+      }));
+
       const { data, error } = await supabase.functions.invoke('analisar-precos-planilha', {
-        body: { etiquetas: dadosPlanilha, margemMinima, executar: true },
+        body: { etiquetas: etiquetasParaEnviar, margemMinima, executar: true },
       });
 
       if (error) throw error;
@@ -181,6 +214,27 @@ export default function AtualizarPrecosPlanilha() {
     }
   };
 
+  const toggleSelecionado = (codigo: string) => {
+    setSelecionados(prev => {
+      const next = new Set(prev);
+      if (next.has(codigo)) next.delete(codigo);
+      else next.add(codigo);
+      return next;
+    });
+  };
+
+  const toggleTodos = () => {
+    if (selecionados.size === resultadosFiltrados.length) {
+      setSelecionados(new Set());
+    } else {
+      setSelecionados(new Set(resultadosFiltrados.map(r => r.codigoObjeto)));
+    }
+  };
+
+  const handleValorEditado = (codigo: string, valor: number) => {
+    setValoresEditados(prev => ({ ...prev, [codigo]: valor }));
+  };
+
   const handleReset = () => {
     setEtapa('upload');
     setDadosPlanilha([]);
@@ -189,6 +243,8 @@ export default function AtualizarPrecosPlanilha() {
     setNaoEncontradas([]);
     setFileName('');
     setResultadoExecucao(null);
+    setSelecionados(new Set());
+    setValoresEditados({});
     setFiltroAtivo('TODOS');
   };
 
@@ -346,10 +402,10 @@ export default function AtualizarPrecosPlanilha() {
 
           {/* Actions */}
           <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              {resumo.paraAtualizar > 0
-                ? `${resumo.paraAtualizar} etiqueta(s) serão atualizadas`
-                : 'Nenhuma etiqueta precisa de atualização'}
+              <p className="text-sm text-muted-foreground">
+              {selecionados.size > 0
+                ? `${selecionados.size} etiqueta(s) selecionadas para atualização`
+                : 'Selecione as etiquetas que deseja atualizar'}
             </p>
             <div className="flex gap-2">
               <button onClick={handleReset} className="px-4 py-2 text-sm border border-border rounded-lg hover:bg-muted transition-colors">
@@ -358,14 +414,14 @@ export default function AtualizarPrecosPlanilha() {
               <button onClick={exportarResultados} className="flex items-center gap-2 px-4 py-2 text-sm border border-border rounded-lg hover:bg-muted transition-colors">
                 <Download className="w-4 h-4" /> Exportar
               </button>
-              {resumo.paraAtualizar > 0 && (
+              {selecionados.size > 0 && (
                 <button
                   onClick={handleExecutar}
                   disabled={carregando}
                   className="flex items-center gap-2 px-6 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
                 >
                   {carregando ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                  Executar Atualizações ({resumo.paraAtualizar})
+                  Executar Atualizações ({selecionados.size})
                 </button>
               )}
             </div>
@@ -377,6 +433,14 @@ export default function AtualizarPrecosPlanilha() {
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
                   <tr>
+                    <th className="px-3 py-3 w-10">
+                      <input
+                        type="checkbox"
+                        checked={selecionados.size > 0 && selecionados.size === resultadosFiltrados.length}
+                        onChange={toggleTodos}
+                        className="rounded border-border"
+                      />
+                    </th>
                     <th className="text-left px-3 py-3 font-medium text-muted-foreground">Status</th>
                     <th className="text-left px-3 py-3 font-medium text-muted-foreground">Etiqueta</th>
                     <th className="text-left px-3 py-3 font-medium text-muted-foreground">Remetente</th>
@@ -389,15 +453,26 @@ export default function AtualizarPrecosPlanilha() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {resultadosFiltrados.map((r, i) => (
+                  {resultadosFiltrados.map((r, i) => {
+                    const isSelected = selecionados.has(r.codigoObjeto);
+                    const valorEditado = valoresEditados[r.codigoObjeto];
+                    return (
                     <tr
                       key={i}
                       className={`hover:bg-muted/30 ${
-                        r.cenario === 'OK' ? '' :
+                        isSelected ? 'bg-primary/5' :
                         r.cenario === 'MARGEM_BAIXA' ? 'bg-yellow-500/5' :
-                        'bg-blue-500/5'
+                        r.cenario === 'CUSTO_MENOR' ? 'bg-blue-500/5' : ''
                       }`}
                     >
+                      <td className="px-3 py-2">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelecionado(r.codigoObjeto)}
+                          className="rounded border-border"
+                        />
+                      </td>
                       <td className="px-3 py-2">
                         {r.cenario === 'OK' && <span className="inline-flex items-center gap-1 text-green-600 text-xs font-medium"><CheckCircle2 className="w-3.5 h-3.5" /> OK</span>}
                         {r.cenario === 'MARGEM_BAIXA' && <span className="inline-flex items-center gap-1 text-yellow-600 text-xs font-medium"><AlertTriangle className="w-3.5 h-3.5" /> Ajustar</span>}
@@ -416,15 +491,20 @@ export default function AtualizarPrecosPlanilha() {
                       }`}>
                         {r.margemAtual.toFixed(1)}%
                       </td>
-                      <td className="px-3 py-2 text-right font-medium">
-                        {r.novoValorVenda ? (
-                          <span className="text-primary">{formatBRL(r.novoValorVenda)}</span>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
+                      <td className="px-3 py-2 text-right">
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={valorEditado ?? r.novoValorVenda ?? ''}
+                          onChange={(e) => handleValorEditado(r.codigoObjeto, parseFloat(e.target.value) || 0)}
+                          placeholder="-"
+                          className="w-24 text-right px-2 py-1 text-xs bg-background border border-border rounded text-foreground"
+                        />
                       </td>
                     </tr>
-                  ))}
+                  );
+                  })}
                 </tbody>
               </table>
             </div>
