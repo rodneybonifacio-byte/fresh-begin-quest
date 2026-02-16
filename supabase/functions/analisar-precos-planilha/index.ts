@@ -121,8 +121,8 @@ serve(async (req: Request) => {
       const valorVendaAtual = parseFloat(emissao.valor || emissao.valorPostagem || '0');
       const valorCustoSistema = parseFloat(emissao.valorPostagem || emissao.valorCusto || '0');
       const valorCustoPlanilha = etiqueta.valorCustoPlanilha;
-      const remetenteNome = emissao.remetenteNome || emissao.remetente?.nome || emissao.nomeRemetente || 'N/A';
-      const dataPostagem = emissao.dataPostagem || emissao.createdAt || emissao.created_at || '';
+      const remetenteNome = emissao.remetenteNome || emissao.remetente?.nome || 'N/A';
+      const dataPostagem = emissao.criadoEm || emissao.dataPostagem || emissao.createdAt || '';
 
       // Calculate current margin based on spreadsheet cost
       const margemAtual = valorVendaAtual > 0 && valorCustoPlanilha > 0
