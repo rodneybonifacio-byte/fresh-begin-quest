@@ -196,7 +196,7 @@ serve(async (req) => {
           senha_hash: senhaHash,
           chave_pix: chavePix || null,
           codigo_parceiro: codigoParceiro,
-          link_indicacao: `https://envios.brhubb.com.br/cadastro-cliente?ref=${codigoParceiro}`,
+          link_indicacao: `https://www.brhubenvios.com.br/cadastro-cliente?ref=${codigoParceiro}`,
           status: 'pendente'
         })
         .select()
