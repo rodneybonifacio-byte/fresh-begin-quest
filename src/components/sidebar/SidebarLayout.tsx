@@ -54,7 +54,7 @@ export const SidebarLayout: React.FC<Props> = ({ navItems, isOpen, onClose, onNa
                 style={{ backgroundColor: 'hsl(var(--sidebar-background))' }}
             >
                 <div className="flex flex-col h-full bg-sidebar">
-                    <div className="flex items-center justify-between p-6 min-h-[72px] border-b border-sidebar-border bg-gradient-to-r from-primary/5 to-primary/10 backdrop-blur-none">
+                    <div className="flex items-center justify-between p-6 min-h-[72px] border-b border-sidebar-border">
                         <div className={`flex items-center space-x-2 ${isSidebarOpen ? 'lg:block' : 'lg:hidden'}`}>
                             <img src={logoBrhub} alt="BRHUB Envios" style={{ width: '100px', height: '100px' }} />
                         </div>
