@@ -174,6 +174,10 @@ export const adminRoutesConfig: ProtectedRouteItem[] = [
         path: 'ferramentas/estrategia-primeira-etiqueta',
         component: () => import('../pages/private/admin/ferramentas/EstrategiaFirstLabel'),
     },
+    {
+        path: 'conecta/parceiros',
+        component: () => import('../pages/private/admin/conecta/ParceirosConecta'),
+    },
 ];
 
 export const AdminRoutes = generateProtectedRoutes(adminRoutesConfig);
