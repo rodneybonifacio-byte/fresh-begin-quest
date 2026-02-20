@@ -10,11 +10,13 @@ import { supabase } from "../../integrations/supabase/client";
 import logoBrhub from "../../assets/logo-brhub-new.png";
 import logoSuperfrete from "../../assets/logo-superfrete.png";
 import logoMelhorEnvio from "../../assets/logo-melhorenvio.png";
+import logoSedex from "../../assets/logo-sedex.png";
+import logoPac from "../../assets/logo-pac.png";
 
 // ── Constantes ───────────────────────────────────────────────────────────────
-// A API já retorna o preço BRHUB com desconto negociado (conta financeiro@brhubb.com.br).
-// NÃO aplicar desconto adicional — o valor da API já é o preço real do cliente.
-// Superfrete: BRHUB + 6% | Melhor Envio: BRHUB + 40%
+// A API retorna o preço de tabela. BRHUB aplica 29% de desconto negociado.
+// Superfrete: BRHUB × 1,06 | Melhor Envio: BRHUB × 1,40
+const DESCONTO_BRHUB = 0.29;
 const MARKUP_SUPERFRETE = 1.06;
 const MARKUP_MELHOR_ENVIO = 1.40;
 
@@ -104,14 +106,14 @@ export const ConectaOportunidade = () => {
           return SERVICOS_ACEITOS.some(s => nome === s || nome.startsWith(s + " ") || nome === s);
         })
         .map((o: any) => {
-          // A API já retorna o preço com desconto negociado BRHUB (conta financeiro)
-          // NÃO aplicar desconto adicional
-          const brhub = parseFloat(String(o.preco).replace(",", "."));
-          if (isNaN(brhub) || brhub <= 0) return null;
+          // API retorna preço de tabela. BRHUB aplica 29% de desconto negociado.
+          const precoTabela = parseFloat(String(o.preco).replace(",", "."));
+          if (isNaN(precoTabela) || precoTabela <= 0) return null;
+          const brhub = precoTabela * (1 - DESCONTO_BRHUB);
           return {
             servico: (o.nomeServico || o.servico || "Serviço").toUpperCase().trim(),
             prazo: Number(o.prazo) || 0,
-            precoTabela: brhub,
+            precoTabela,
             brhub,
             superfrete: brhub * MARKUP_SUPERFRETE,
             melhorEnvio: brhub * MARKUP_MELHOR_ENVIO,
@@ -449,12 +451,16 @@ export const ConectaOportunidade = () => {
                             </span>
                           )}
 
-                          {/* Nome do serviço + prazo */}
+                          {/* Logo do serviço + prazo */}
                           <div className="flex items-center justify-between mb-3">
                             <div>
-                              <p className="text-base font-black text-gray-900">{opcao.servico}</p>
+                              <img
+                                src={isSedex ? logoSedex : logoPac}
+                                alt={opcao.servico}
+                                className="h-8 object-contain mb-1"
+                              />
                               {opcao.prazo > 0 && (
-                                <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                                <p className="text-xs text-gray-500 flex items-center gap-1">
                                   <Clock className="h-3 w-3" />
                                   {opcao.prazo} {opcao.prazo === 1 ? 'dia útil' : 'dias úteis'}
                                 </p>
