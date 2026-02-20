@@ -114,7 +114,7 @@ export const ConectaOportunidade = ({ referralCode }: ConectaOportunidadeProps =
       const opcoesCalculadas: OpcaoServico[] = (opcoesBrutos)
         .filter((o: any) => {
           const s = (o.nomeServico || o.servico || "").toUpperCase();
-          return s.includes("PAC") || s.includes("SEDEX");
+          return (s.includes("PAC") || s === "SEDEX") && !s.includes("HOJE") && !s.includes("RODONAVES");
         })
         .map((o: any) => {
           const precoTabela = Number(o.preco || o.valor || 0);
@@ -359,8 +359,8 @@ export const ConectaOportunidade = ({ referralCode }: ConectaOportunidadeProps =
                             {/* Superfrete */}
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
-                                <div className="bg-white border border-gray-200 rounded-lg px-2 py-1 flex items-center justify-center w-[90px] h-8 shadow-sm">
-                                  <img src={logoSuperfrete} alt="Superfrete" className="max-h-5 max-w-[80px] w-auto object-contain" />
+                                <div className="bg-white border border-gray-200 rounded-lg px-2 py-1 flex items-center justify-center w-[110px] h-10 shadow-sm">
+                                  <img src={logoSuperfrete} alt="Superfrete" className="max-h-8 max-w-[100px] w-auto object-contain" />
                                 </div>
                               </div>
                               <div className="text-right">
@@ -372,8 +372,8 @@ export const ConectaOportunidade = ({ referralCode }: ConectaOportunidadeProps =
                             {/* Melhor Envio */}
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
-                                <div className="bg-white border border-gray-200 rounded-lg px-2 py-1 flex items-center justify-center w-[90px] h-8 shadow-sm">
-                                  <img src={logoMelhorEnvio} alt="Melhor Envio" className="max-h-5 max-w-[80px] w-auto object-contain" />
+                                <div className="bg-white border border-gray-200 rounded-lg px-2 py-1 flex items-center justify-center w-[110px] h-10 shadow-sm">
+                                  <img src={logoMelhorEnvio} alt="Melhor Envio" className="max-h-8 max-w-[100px] w-auto object-contain" />
                                 </div>
                               </div>
                               <div className="text-right">
