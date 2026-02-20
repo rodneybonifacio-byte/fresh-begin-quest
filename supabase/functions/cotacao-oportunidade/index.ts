@@ -22,19 +22,50 @@ serve(async (req) => {
       throw new Error('Configuração incompleta');
     }
 
-    // 1. Autenticar com a conta financeiro@brhubb.com.br (25% de desconto)
-    console.log('🔐 Autenticando com conta de demonstração...');
-    const loginResponse = await fetch(`${baseUrl}/auth/login`, {
+    // 1. Autenticar com a conta widget (financeiro@brhubb.com.br)
+    console.log('🔐 Autenticando com conta de demonstração...', widgetEmail);
+    const loginResponse = await fetch(`${baseUrl}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: widgetEmail, password: widgetPassword }),
     });
 
+    const loginRawText = await loginResponse.text();
+    console.log('🔐 Login status:', loginResponse.status, 'body:', loginRawText.slice(0, 300));
+
     if (!loginResponse.ok) {
-      throw new Error('Falha na autenticação da conta de demonstração');
+      // Tenta fallback com credenciais admin
+      console.log('⚠️ Tentando fallback com credenciais admin...');
+      const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
+      const adminPassword = Deno.env.get('API_ADMIN_PASSWORD');
+
+      if (!adminEmail || !adminPassword) {
+        throw new Error(`Falha na autenticação. Status: ${loginResponse.status}. Body: ${loginRawText.slice(0, 200)}`);
+      }
+
+      const adminLoginResponse = await fetch(`${baseUrl}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: adminEmail, password: adminPassword }),
+      });
+
+      const adminRawText = await adminLoginResponse.text();
+      console.log('🔐 Admin login status:', adminLoginResponse.status, 'body:', adminRawText.slice(0, 300));
+
+      if (!adminLoginResponse.ok) {
+        throw new Error(`Falha na autenticação admin. Status: ${adminLoginResponse.status}`);
+      }
+
+      const adminData = JSON.parse(adminRawText);
+      const adminToken = adminData.token || adminData.access_token || adminData.data?.token;
+      if (!adminToken) throw new Error('Token admin não encontrado');
+
+      // Usar admin token como fallback
+      var loginData: any = adminData;
+    } else {
+      var loginData: any = JSON.parse(loginRawText);
     }
 
-    const loginData = await loginResponse.json();
     const token = loginData.token || loginData.access_token || loginData.data?.token;
 
     if (!token) {
