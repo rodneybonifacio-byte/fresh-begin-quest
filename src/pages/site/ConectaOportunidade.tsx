@@ -118,6 +118,9 @@ export const ConectaOportunidade = () => {
   const [cepOrigem, setCepOrigem] = useState("");
   const [cepDestino, setCepDestino] = useState("");
   const [peso, setPeso] = useState("");
+  const [altura, setAltura] = useState("2");
+  const [largura, setLargura] = useState("11");
+  const [comprimento, setComprimento] = useState("16");
   const [loading, setLoading] = useState(false);
   const [resultado, setResultado] = useState<SimulacaoResult | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -147,6 +150,9 @@ export const ConectaOportunidade = () => {
           cepOrigem: cepO,
           cepDestino: cepD,
           peso: Number(peso),
+          altura: Number(altura) || 2,
+          largura: Number(largura) || 11,
+          comprimento: Number(comprimento) || 16,
         },
       });
 
@@ -257,9 +263,6 @@ export const ConectaOportunidade = () => {
         <div className="container mx-auto max-w-4xl">
           <div className="text-center mb-6">
             <h2 className="text-xl font-bold text-white/80">Referência de mercado (exemplo real)</h2>
-            <p className="text-sm text-white/40 mt-1">
-              Baseado em frete exemplo — custo de operação BRHUB: {formatBRL(CUSTO_BRHUB)}
-            </p>
           </div>
 
           <div className="grid grid-cols-3 gap-4">
@@ -405,6 +408,48 @@ export const ConectaOportunidade = () => {
                 />
               </div>
 
+              {/* Dimensões */}
+              <div>
+                <label className="block text-xs text-white/50 uppercase tracking-wide mb-2 font-semibold">
+                  Dimensões do Pacote (cm)
+                </label>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <input
+                      type="number"
+                      value={altura}
+                      onChange={(e) => setAltura(e.target.value)}
+                      placeholder="Altura"
+                      min="1"
+                      className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2.5 text-white placeholder-white/30 focus:outline-none focus:border-[#F37021] focus:ring-1 focus:ring-[#F37021] transition-all text-sm"
+                    />
+                    <p className="text-[10px] text-white/30 mt-1 text-center">Altura</p>
+                  </div>
+                  <div>
+                    <input
+                      type="number"
+                      value={largura}
+                      onChange={(e) => setLargura(e.target.value)}
+                      placeholder="Largura"
+                      min="1"
+                      className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2.5 text-white placeholder-white/30 focus:outline-none focus:border-[#F37021] focus:ring-1 focus:ring-[#F37021] transition-all text-sm"
+                    />
+                    <p className="text-[10px] text-white/30 mt-1 text-center">Largura</p>
+                  </div>
+                  <div>
+                    <input
+                      type="number"
+                      value={comprimento}
+                      onChange={(e) => setComprimento(e.target.value)}
+                      placeholder="Compr."
+                      min="1"
+                      className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2.5 text-white placeholder-white/30 focus:outline-none focus:border-[#F37021] focus:ring-1 focus:ring-[#F37021] transition-all text-sm"
+                    />
+                    <p className="text-[10px] text-white/30 mt-1 text-center">Comprimento</p>
+                  </div>
+                </div>
+              </div>
+
               {erro && (
                 <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-400 text-sm">
                   {erro}
@@ -522,49 +567,6 @@ export const ConectaOportunidade = () => {
         </div>
       </section>
 
-      {/* ── Por que o Superfrete é mais caro que parece ── */}
-      <section className="py-12 px-4">
-        <div className="container mx-auto max-w-4xl">
-          <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-3xl p-6 sm:p-8">
-            <div className="flex items-start gap-4 mb-6">
-              <AlertTriangle className="h-8 w-8 text-yellow-400 flex-shrink-0 mt-1" />
-              <div>
-                <h3 className="text-xl font-black text-yellow-300 mb-1">
-                  Por que o Superfrete é um risco?
-                </h3>
-                <p className="text-sm text-white/50">
-                  O preço baixo deles é uma estratégia de aquisição não sustentável.
-                </p>
-              </div>
-            </div>
-            <div className="grid sm:grid-cols-3 gap-4">
-              {[
-                {
-                  titulo: "Prejuízo por etiqueta",
-                  valor: "R$ 4,37",
-                  desc: "Cada etiqueta vendida gera perda — custo R$ 18,90 vs cobrança R$ 14,53",
-                },
-                {
-                  titulo: "Desconto artificial",
-                  valor: "-23,1%",
-                  desc: "Eles operam abaixo do custo para capturar clientes e depois aumentar preços",
-                },
-                {
-                  titulo: "Risco para o lojista",
-                  valor: "Alto",
-                  desc: "Quando aumentarem os preços (e vão aumentar), você fica refém sem alternativa",
-                },
-              ].map((item, i) => (
-                <div key={i} className="bg-yellow-500/5 border border-yellow-500/10 rounded-xl p-4">
-                  <p className="text-2xl font-black text-yellow-300 mb-1">{item.valor}</p>
-                  <p className="text-xs font-bold text-yellow-300/70 mb-2">{item.titulo}</p>
-                  <p className="text-xs text-white/40">{item.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* ── Benefícios BRHUB ── */}
       <section className="py-16 px-4">

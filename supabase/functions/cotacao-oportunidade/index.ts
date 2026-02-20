@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { cepOrigem, cepDestino, peso } = await req.json();
+    const { cepOrigem, cepDestino, peso, altura, largura, comprimento } = await req.json();
 
     const baseUrl = Deno.env.get('BASE_API_URL');
     const widgetEmail = Deno.env.get('WIDGET_CLIENT_EMAIL');
@@ -58,10 +58,10 @@ serve(async (req) => {
 
     // 3. Montar embalagem padrão baseada no peso
     const embalagem = {
-      peso: pesoGramas.toString(),
-      altura: "2",
-      largura: "11",
-      comprimento: "16",
+      peso: (Number(peso) || 300).toString(),
+      altura: (Number(altura) || 2).toString(),
+      largura: (Number(largura) || 11).toString(),
+      comprimento: (Number(comprimento) || 16).toString(),
       diametro: "0",
     };
 
