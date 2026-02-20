@@ -2,7 +2,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { LoaderProvider } from './providers/LoadingSpinnerContext';
 import { GlobalConfigProvider } from './providers/GlobalConfigContext';
 import { RouterBase } from './router';
-import { IdleProvider } from './providers/IdleProvider';
+
 import { InstallButton } from '../install-button';
 import { useEffect } from 'react';
 import Clarity from '@microsoft/clarity';
@@ -45,10 +45,8 @@ export default function App() {
         <BrowserRouter basename={locationPath}>
             <LoaderProvider>
                 <GlobalConfigProvider>
-                    <IdleProvider>
-                        <RouterBase />
-                        <InstallButton />
-                    </IdleProvider>
+                    <RouterBase />
+                    <InstallButton />
                 </GlobalConfigProvider>
             </LoaderProvider>
         </BrowserRouter>

@@ -1,6 +1,7 @@
 import { LayoutBase } from '../layout';
 import { LayoutProvider } from '../providers/LayoutContext';
 import { AuthProvider } from '../providers/AuthContext';
+import { IdleProvider } from '../providers/IdleProvider';
 import { useSyncUserData } from '../hooks/useSyncUserData';
 import { usePresenceTracking } from '../hooks/usePresenceTracking';
 import { useEffect, useState } from 'react';
@@ -92,7 +93,9 @@ export const AppLayout = () => {
     return (
         <AuthProvider>
             <LayoutProvider>
-                <AppLayoutContent />
+                <IdleProvider>
+                    <AppLayoutContent />
+                </IdleProvider>
             </LayoutProvider>
         </AuthProvider>
     );
