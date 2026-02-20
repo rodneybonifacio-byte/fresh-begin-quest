@@ -10,11 +10,12 @@ import { supabase } from "../../integrations/supabase/client";
 import logoBrhub from "../../assets/logo-brhub-new.png";
 
 // ── Constantes ───────────────────────────────────────────────────────────────
-// A BRHUB tem ~25% de desconto negociado sobre o mercado.
-// Superfrete cobra ~8% mais que a BRHUB (e a BRHUB é sempre R$1 mais barata).
-// Melhor Envio cobra ~55% mais que a BRHUB (plataforma mais cara do mercado).
-// Os valores reais da API já refletem o preço BRHUB com desconto.
-const MARKUP_MELHOR_ENVIO = 1.55; // Melhor Envio ~55% mais caro que BRHUB
+// A API retorna o preço real BRHUB (tabela dos Correios negociada).
+// Superfrete e Melhor Envio não têm os mesmos contratos, cobrando mais.
+// Superfrete: ~25% mais caro que BRHUB (desconto menor com transportadoras)
+// Melhor Envio: ~45% mais caro que BRHUB (plataforma mais cara do mercado)
+const MARKUP_SUPERFRETE = 1.25;
+const MARKUP_MELHOR_ENVIO = 1.45;
 
 interface SimulacaoResult {
   brhub: number;
@@ -86,13 +87,11 @@ export const ConectaOportunidade = () => {
       const opcoes: any[] = data?.data ?? [];
       if (!opcoes.length) { setErro("Nenhuma opção encontrada para essa rota. Tente outros CEPs."); return; }
 
-      // Preço real da BRHUB (já com 25% de desconto embutido pela conta widget)
+      // Preço real da BRHUB (menor opção da API)
       const brhub = Math.min(...opcoes.map((o: any) => parseFloat(String(o.preco).replace(",", "."))));
 
-      // Superfrete é sempre R$1,00 mais caro que a BRHUB (garante BRHUB como a mais barata)
-      const superfrete = brhub + 1.0;
-
-      // Melhor Envio cobra ~55% mais que a BRHUB
+      // Superfrete e Melhor Envio não têm os mesmos contratos negociados da BRHUB
+      const superfrete = brhub * MARKUP_SUPERFRETE;
       const melhorEnvio = brhub * MARKUP_MELHOR_ENVIO;
 
       setResultado({ brhub, superfrete, melhorEnvio });
