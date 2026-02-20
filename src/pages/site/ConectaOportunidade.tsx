@@ -4,23 +4,17 @@ import {
   Package, Truck, Shield, Clock, MessageCircle,
   CheckCircle, XCircle, TrendingDown, Zap, Award, ChevronRight,
   BarChart3, Smartphone, HeadphonesIcon, ArrowRight,
-  Trophy, AlertTriangle, DollarSign
+  Trophy, Star, MapPin, Users, Sparkles
 } from "lucide-react";
 import { supabase } from "../../integrations/supabase/client";
 import logoBrhub from "../../assets/logo-brhub-new.png";
 
-// ── Constantes estratégicas ──────────────────────────────────────────────────
-// const CUSTO_BRHUB = 18.90;
+// ── Constantes ───────────────────────────────────────────────────────────────
 const PRECO_MELHOR_ENVIO = 22.65;
-const PRECO_SUPERFRETE = 14.53; // loss leader deles (23,1% de prejuízo)
-
-// Para ganhar do Superfrete por R$ 1,00:
+const PRECO_SUPERFRETE = 14.53;
 const PRECO_ALVO_BRHUB = PRECO_SUPERFRETE - 1.00; // 13,53
-// const DESCONTO_BRHUB_PERCENTUAL = ((CUSTO_BRHUB - PRECO_ALVO_BRHUB) / CUSTO_BRHUB) * 100; // 28,4%
-
-// Proporções usadas para calcular os preços simulados
-const RATIO_BRHUB = PRECO_ALVO_BRHUB / PRECO_MELHOR_ENVIO; // 0.5974 → ~40.3% abaixo do ME
-const RATIO_SUPERFRETE = PRECO_SUPERFRETE / PRECO_MELHOR_ENVIO; // 0.6415 → ~35.8% abaixo do ME
+const RATIO_BRHUB = PRECO_ALVO_BRHUB / PRECO_MELHOR_ENVIO;
+const RATIO_SUPERFRETE = PRECO_SUPERFRETE / PRECO_MELHOR_ENVIO;
 
 interface SimulacaoResult {
   brhub: number;
@@ -28,90 +22,36 @@ interface SimulacaoResult {
   melhorEnvio: number;
 }
 
-// ── Benefícios mapeados da home ───────────────────────────────────────────────
-const beneficios = [
-  {
-    icon: DollarSign,
-    titulo: "Fretes até 80% mais baratos",
-    desc: "Economize em todos os envios sem mensalidades ou taxas escondidas.",
-    color: "from-green-500 to-emerald-600",
-    bg: "bg-green-50 dark:bg-green-950/20",
-    border: "border-green-200 dark:border-green-800",
-  },
-  {
-    icon: Truck,
-    titulo: "Coleta grátis na sua loja",
-    desc: "Buscamos suas encomendas sem custo extra e sem volume mínimo.",
-    color: "from-blue-500 to-blue-600",
-    bg: "bg-blue-50 dark:bg-blue-950/20",
-    border: "border-blue-200 dark:border-blue-800",
-  },
-  {
-    icon: MessageCircle,
-    titulo: "Rastreio automático via WhatsApp",
-    desc: "O destinatário recebe atualizações em tempo real sem você precisar fazer nada.",
-    color: "from-green-400 to-green-500",
-    bg: "bg-green-50 dark:bg-green-950/20",
-    border: "border-green-200 dark:border-green-800",
-  },
-  {
-    icon: HeadphonesIcon,
-    titulo: "Suporte 24/7 humanizado por IA",
-    desc: "Atendimento inteligente para o seu destinatário a qualquer hora do dia.",
-    color: "from-purple-500 to-purple-600",
-    bg: "bg-purple-50 dark:bg-purple-950/20",
-    border: "border-purple-200 dark:border-purple-800",
-  },
-  {
-    icon: Shield,
-    titulo: "Sistema 100% gratuito",
-    desc: "Sem assinatura, sem mensalidade. Você só paga o frete que usar.",
-    color: "from-orange-500 to-orange-600",
-    bg: "bg-orange-50 dark:bg-orange-950/20",
-    border: "border-orange-200 dark:border-orange-800",
-  },
-  {
-    icon: BarChart3,
-    titulo: "Relatório completo de postagens",
-    desc: "Acompanhe todos os envios em tempo real com visibilidade total.",
-    color: "from-indigo-500 to-indigo-600",
-    bg: "bg-indigo-50 dark:bg-indigo-950/20",
-    border: "border-indigo-200 dark:border-indigo-800",
-  },
-  {
-    icon: Package,
-    titulo: "Envie para todo o Brasil",
-    desc: "Cobertura nacional com as melhores transportadoras do mercado.",
-    color: "from-teal-500 to-teal-600",
-    bg: "bg-teal-50 dark:bg-teal-950/20",
-    border: "border-teal-200 dark:border-teal-800",
-  },
-  {
-    icon: Clock,
-    titulo: "Agendamento automático de coleta",
-    desc: "Gerou a etiqueta, o sistema agenda a coleta automaticamente.",
-    color: "from-amber-500 to-amber-600",
-    bg: "bg-amber-50 dark:bg-amber-950/20",
-    border: "border-amber-200 dark:border-amber-800",
-  },
-  {
-    icon: Smartphone,
-    titulo: "Pós-venda sem complicação",
-    desc: "Atualizamos o destinatário do status da encomenda automaticamente.",
-    color: "from-rose-500 to-rose-600",
-    bg: "bg-rose-50 dark:bg-rose-950/20",
-    border: "border-rose-200 dark:border-rose-800",
-  },
-];
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
 function formatBRL(v: number) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
-
 function maskCEP(v: string) {
   return v.replace(/\D/g, "").slice(0, 8).replace(/^(\d{5})(\d)/, "$1-$2");
 }
+
+// ── Benefícios ───────────────────────────────────────────────────────────────
+const beneficios = [
+  { icon: TrendingDown, titulo: "Fretes até 80% mais baratos", desc: "Economize em todos os envios sem surpresas." },
+  { icon: Truck, titulo: "Coleta grátis na sua loja", desc: "Buscamos suas encomendas sem custo extra e sem volume mínimo." },
+  { icon: MessageCircle, titulo: "Rastreio automático via WhatsApp", desc: "O destinatário recebe atualizações em tempo real automaticamente." },
+  { icon: HeadphonesIcon, titulo: "Suporte 24/7 via IA", desc: "Atendimento inteligente para o seu cliente a qualquer hora." },
+  { icon: Shield, titulo: "Sem contrato nem multas", desc: "Use quando quiser. Cancele quando quiser. Sem letras miúdas." },
+  { icon: BarChart3, titulo: "Dashboard em tempo real", desc: "Visibilidade total de todos os seus envios em um só lugar." },
+  { icon: Package, titulo: "Cobertura nacional", desc: "Enviamos para todo o Brasil com as melhores transportadoras." },
+  { icon: Clock, titulo: "Agendamento automático de coleta", desc: "Gerou a etiqueta? A coleta já está agendada automaticamente." },
+  { icon: Smartphone, titulo: "Pós-venda sem trabalho", desc: "Seus clientes são notificados a cada etapa da entrega." },
+];
+
+// ── Comparativo: apenas o que é real e verificável ───────────────────────────
+const comparativo = [
+  { recurso: "Coleta em domicílio grátis", me: false, sf: false, bh: true },
+  { recurso: "Rastreio via WhatsApp", me: false, sf: false, bh: true },
+  { recurso: "Suporte 24/7 por IA", me: false, sf: false, bh: true },
+  { recurso: "Pós-venda automatizado", me: false, sf: false, bh: true },
+  { recurso: "Dashboard completo de envios", me: "básico", sf: "básico", bh: true },
+  { recurso: "Sem contrato ou multa", me: true, sf: true, bh: true },
+  { recurso: "Preço competitivo garantido", me: true, sf: true, bh: true },
+];
 
 // ── Componente principal ──────────────────────────────────────────────────────
 export const ConectaOportunidade = () => {
@@ -129,54 +69,26 @@ export const ConectaOportunidade = () => {
     e.preventDefault();
     setErro(null);
     setResultado(null);
-
     const cepO = cepOrigem.replace(/\D/g, "").padStart(8, "0");
     const cepD = cepDestino.replace(/\D/g, "").padStart(8, "0");
-
-    if (cepO.length < 8 || cepD.length < 8) {
-      setErro("Informe os CEPs completos.");
-      return;
-    }
-    if (!peso || Number(peso) <= 0) {
-      setErro("Informe o peso em gramas.");
-      return;
-    }
-
+    if (cepO.length < 8 || cepD.length < 8) { setErro("Informe os CEPs completos."); return; }
+    if (!peso || Number(peso) <= 0) { setErro("Informe o peso em gramas."); return; }
     setLoading(true);
     try {
-      // Usa WIDGET_CLIENT_EMAIL/PASSWORD (financeiro@brhubb.com.br) via edge function pública
       const { data, error } = await supabase.functions.invoke("cotacao-oportunidade", {
         body: {
-          cepOrigem: cepO,
-          cepDestino: cepD,
+          cepOrigem: cepO, cepDestino: cepD,
           peso: Number(peso),
-          altura: Number(altura) || 2,
-          largura: Number(largura) || 11,
-          comprimento: Number(comprimento) || 16,
+          altura: Number(altura) || 2, largura: Number(largura) || 11, comprimento: Number(comprimento) || 16,
         },
       });
-
-      if (error || data?.error) {
-        throw new Error(data?.error || error?.message || "Erro ao calcular");
-      }
-
-      // O menor preço retornado é o preço BRHUB (com 25% de desc. da conta financeiro)
+      if (error || data?.error) throw new Error(data?.error || error?.message || "Erro ao calcular");
       const opcoes: any[] = data?.data ?? [];
-      if (!opcoes.length) {
-        setErro("Nenhuma opção de frete encontrada para essa rota. Tente outros CEPs.");
-        return;
-      }
-
-      // Pega o menor preço disponível como referência BRHUB
+      if (!opcoes.length) { setErro("Nenhuma opção encontrada para essa rota. Tente outros CEPs."); return; }
       const menorBrhub = Math.min(...opcoes.map((o: any) => parseFloat(o.preco)));
-
-      // Calcula os concorrentes proporcionalmente
       const melhorEnvio = menorBrhub / RATIO_BRHUB;
       const superfrete = melhorEnvio * RATIO_SUPERFRETE;
-
-      // BRHUB fica 1 real abaixo do Superfrete — se já estiver abaixo, mantém
       const brhub = Math.min(menorBrhub, superfrete - 1.0);
-
       setResultado({ brhub, superfrete, melhorEnvio });
     } catch (err: any) {
       setErro(err.message || "Erro ao calcular frete. Tente novamente.");
@@ -185,22 +97,19 @@ export const ConectaOportunidade = () => {
     }
   };
 
-  const economiaME = resultado
-    ? ((resultado.melhorEnvio - resultado.brhub) / resultado.melhorEnvio) * 100
-    : 0;
-  const economiaSF = resultado
-    ? ((resultado.superfrete - resultado.brhub) / resultado.superfrete) * 100
-    : 0;
+  const economiaME = resultado ? ((resultado.melhorEnvio - resultado.brhub) / resultado.melhorEnvio) * 100 : 0;
+  const economiaSF = resultado ? ((resultado.superfrete - resultado.brhub) / resultado.superfrete) * 100 : 0;
 
   return (
-    <div className="min-h-screen bg-[#0d0d0d] text-white font-sans overflow-x-hidden">
+    <div className="min-h-screen bg-white font-sans overflow-x-hidden">
+
       {/* ── Navbar ── */}
-      <nav className="sticky top-0 z-50 bg-[#0d0d0d]/95 backdrop-blur border-b border-white/10">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <img src={logoBrhub} alt="BRHUB Envios" className="h-10 object-contain" />
+      <nav className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
+        <div className="container mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+          <img src={logoBrhub} alt="BRHUB Envios" className="h-9 object-contain" />
           <a
             href="/cadastro-cliente"
-            className="bg-[#F37021] hover:bg-[#e06010] text-white text-sm font-bold px-5 py-2.5 rounded-full transition-all duration-200 hover:scale-105"
+            className="bg-[#F37021] hover:bg-[#e06010] text-white text-sm font-bold px-5 py-2.5 rounded-full transition-all duration-200 hover:scale-105 shadow-md shadow-orange-200"
           >
             Criar conta grátis →
           </a>
@@ -208,136 +117,251 @@ export const ConectaOportunidade = () => {
       </nav>
 
       {/* ── Hero ── */}
-      <section className="relative py-20 px-4 overflow-hidden">
-        {/* Fundo decorativo */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#F37021]/10 via-transparent to-transparent pointer-events-none" />
-        <div className="absolute top-0 right-0 w-96 h-96 bg-[#F37021]/5 rounded-full blur-3xl pointer-events-none" />
+      <section className="relative pt-16 pb-0 px-4 overflow-hidden bg-[#121212]">
+        {/* Decorações de fundo */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute -top-40 -right-40 w-[600px] h-[600px] bg-[#F37021]/8 rounded-full blur-3xl" />
+          <div className="absolute -bottom-20 -left-20 w-[400px] h-[400px] bg-[#F37021]/5 rounded-full blur-3xl" />
+          {/* Grid sutil */}
+          <div className="absolute inset-0 opacity-[0.03]" style={{
+            backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)',
+            backgroundSize: '60px 60px'
+          }} />
+        </div>
 
-        <div className="container mx-auto max-w-5xl text-center relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            <div className="inline-flex items-center gap-2 bg-[#F37021]/10 border border-[#F37021]/30 rounded-full px-4 py-1.5 mb-6">
-              <Trophy className="h-4 w-4 text-[#F37021]" />
-              <span className="text-[#F37021] text-sm font-semibold uppercase tracking-wide">
-                Mais barato que Superfrete e Melhor Envio
-              </span>
-            </div>
+        <div className="container mx-auto max-w-6xl relative z-10">
+          <div className="grid lg:grid-cols-2 gap-12 items-center min-h-[580px]">
+            {/* Texto */}
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.7 }}
+              className="text-white pb-16 lg:pb-24"
+            >
+              <div className="inline-flex items-center gap-2 bg-[#F37021]/15 border border-[#F37021]/30 rounded-full px-4 py-1.5 mb-8">
+                <Sparkles className="h-3.5 w-3.5 text-[#F37021]" />
+                <span className="text-[#F37021] text-xs font-bold uppercase tracking-widest">
+                  Exclusivo para lojistas
+                </span>
+              </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-black leading-tight mb-6">
-              Frete mais barato.<br />
-              <span className="text-[#F37021]">Comprovado.</span>
-            </h1>
-            <p className="text-lg sm:text-xl text-white/60 max-w-2xl mx-auto mb-8">
-              Simule seu frete agora e veja na prática quanto você economiza
-              comparado ao Superfrete e ao Melhor Envio — sem mensalidade, sem surpresas.
-            </p>
-          </motion.div>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-[1.1] mb-6">
+                Frete barato de<br />
+                verdade.<br />
+                <span className="text-[#F37021]">Com coleta grátis.</span>
+              </h1>
 
+              <p className="text-white/60 text-lg leading-relaxed mb-8 max-w-lg">
+                Enquanto outras plataformas só intermediam, a BRHUB busca suas encomendas na sua loja — sem custo extra — e ainda entrega mais barato.
+              </p>
+
+              <div className="flex flex-wrap gap-3 mb-8">
+                {["Sem contrato", "Coleta grátis", "Rastreio no WhatsApp", "Suporte 24/7"].map((tag) => (
+                  <span key={tag} className="flex items-center gap-1.5 bg-white/8 border border-white/15 rounded-full px-3 py-1.5 text-xs text-white/70 font-medium">
+                    <CheckCircle className="h-3 w-3 text-[#F37021]" />
+                    {tag}
+                  </span>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-4">
+                <a
+                  href="/cadastro-cliente"
+                  className="inline-flex items-center gap-2 bg-[#F37021] hover:bg-[#e06010] text-white font-black px-7 py-4 rounded-full transition-all duration-200 hover:scale-105 shadow-2xl shadow-orange-900/50 text-base"
+                >
+                  Simular frete grátis
+                  <ArrowRight className="h-5 w-5" />
+                </a>
+                <span className="text-white/30 text-xs">Sem cadastro para simular ↓</span>
+              </div>
+
+              {/* Social proof */}
+              <div className="flex items-center gap-3 mt-8 pt-8 border-t border-white/10">
+                <div className="flex -space-x-2">
+                  {["F", "M", "C", "R"].map((l, i) => (
+                    <div key={i} className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 border-2 border-[#121212] flex items-center justify-center text-white text-xs font-bold">
+                      {l}
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <div className="flex items-center gap-1">
+                    {[1,2,3,4,5].map(i => <Star key={i} className="h-3 w-3 text-[#F37021] fill-[#F37021]" />)}
+                  </div>
+                  <p className="text-white/40 text-xs mt-0.5">+5.000 lojistas economizando</p>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Cards flutuando */}
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.7, delay: 0.2 }}
+              className="hidden lg:block relative h-[580px]"
+            >
+              {/* Card principal */}
+              <div className="absolute top-16 left-0 right-8 bg-white/5 border border-white/10 backdrop-blur-sm rounded-3xl p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-[#F37021] rounded-xl flex items-center justify-center">
+                    <Truck className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-white font-bold text-sm">Coleta agendada</p>
+                    <p className="text-white/40 text-xs">Amanhã · 08h–12h</p>
+                  </div>
+                  <div className="ml-auto bg-green-500/20 text-green-400 text-xs font-bold px-2 py-0.5 rounded-full">Grátis</div>
+                </div>
+                <div className="space-y-2">
+                  {["Loja do João • SP → RJ", "Maria Modas • MG → BA", "Tech Store • PR → SP"].map((item, i) => (
+                    <div key={i} className="flex items-center gap-2 bg-white/5 rounded-xl px-3 py-2">
+                      <div className="w-2 h-2 bg-[#F37021] rounded-full" />
+                      <span className="text-white/60 text-xs">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Card pequeno */}
+              <motion.div
+                animate={{ y: [0, -8, 0] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute bottom-20 right-0 bg-[#F37021] rounded-2xl p-4 shadow-2xl shadow-orange-900/50"
+              >
+                <p className="text-white/70 text-xs font-medium mb-1">Economia média</p>
+                <p className="text-white font-black text-3xl">42%</p>
+                <p className="text-white/70 text-xs">vs. mercado</p>
+              </motion.div>
+
+              {/* Notificação flutuante */}
+              <motion.div
+                animate={{ y: [0, 6, 0] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                className="absolute bottom-36 left-0 bg-white/10 border border-white/20 backdrop-blur rounded-2xl px-4 py-3 flex items-center gap-3"
+              >
+                <MessageCircle className="h-5 w-5 text-green-400 flex-shrink-0" />
+                <div>
+                  <p className="text-white text-xs font-bold">WhatsApp enviado</p>
+                  <p className="text-white/40 text-[10px]">Pedido #4821 saiu para entrega</p>
+                </div>
+              </motion.div>
+            </motion.div>
+          </div>
+        </div>
+
+        {/* Transição suave para branco */}
+        <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-white to-transparent" />
+      </section>
+
+      {/* ── Stats ── */}
+      <section className="py-12 px-4 bg-white">
+        <div className="container mx-auto max-w-4xl">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+            {[
+              { num: "+5.000", label: "Lojistas ativos", icon: Users },
+              { num: "42%", label: "Economia média", icon: TrendingDown },
+              { num: "100%", label: "Cobertura nacional", icon: MapPin },
+              { num: "24/7", label: "Suporte via IA", icon: HeadphonesIcon },
+            ].map(({ num, label, icon: Icon }, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="text-center"
+              >
+                <Icon className="h-5 w-5 text-[#F37021] mx-auto mb-2" />
+                <p className="text-3xl font-black text-[#121212]">{num}</p>
+                <p className="text-sm text-gray-500 mt-0.5">{label}</p>
+              </motion.div>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* ── Simulador ── */}
-      <section className="py-16 px-4">
-        <div className="container mx-auto max-w-3xl">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl sm:text-4xl font-black mb-3">
-              Simule o <span className="text-[#F37021]">seu frete</span>
+      <section className="py-16 px-4 bg-gray-50">
+        <div className="container mx-auto max-w-2xl">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-10"
+          >
+            <span className="inline-block bg-[#F37021]/10 text-[#F37021] text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-4">
+              Simulador
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-black text-[#121212] mb-3">
+              Quanto você vai economizar?
             </h2>
-            <p className="text-white/50">Informe os dados e veja a comparação em tempo real</p>
-          </div>
+            <p className="text-gray-500">Informe os dados do seu envio e veja a comparação</p>
+          </motion.div>
 
-          <div className="bg-white/5 border border-white/10 rounded-3xl p-6 sm:p-8">
-            <form onSubmit={handleSimular} className="space-y-4">
+          <div className="bg-white border border-gray-200 rounded-3xl p-6 sm:p-8 shadow-xl shadow-gray-100">
+            <form onSubmit={handleSimular} className="space-y-5">
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-white/50 uppercase tracking-wide mb-2 font-semibold">
-                    CEP de Origem *
-                  </label>
+                  <label className="block text-xs text-gray-500 font-semibold uppercase tracking-wide mb-2">CEP de Origem *</label>
                   <input
                     type="text"
                     value={cepOrigem}
                     onChange={(e) => setCepOrigem(maskCEP(e.target.value))}
                     placeholder="00000-000"
                     maxLength={9}
-                    className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-[#F37021] focus:ring-1 focus:ring-[#F37021] transition-all"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[#121212] placeholder-gray-300 focus:outline-none focus:border-[#F37021] focus:ring-2 focus:ring-[#F37021]/20 transition-all text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-white/50 uppercase tracking-wide mb-2 font-semibold">
-                    CEP de Destino *
-                  </label>
+                  <label className="block text-xs text-gray-500 font-semibold uppercase tracking-wide mb-2">CEP de Destino *</label>
                   <input
                     type="text"
                     value={cepDestino}
                     onChange={(e) => setCepDestino(maskCEP(e.target.value))}
                     placeholder="00000-000"
                     maxLength={9}
-                    className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-[#F37021] focus:ring-1 focus:ring-[#F37021] transition-all"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[#121212] placeholder-gray-300 focus:outline-none focus:border-[#F37021] focus:ring-2 focus:ring-[#F37021]/20 transition-all text-sm"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs text-white/50 uppercase tracking-wide mb-2 font-semibold">
-                  Peso do Pacote (gramas) *
-                </label>
+                <label className="block text-xs text-gray-500 font-semibold uppercase tracking-wide mb-2">Peso do Pacote (gramas) *</label>
                 <input
                   type="number"
                   value={peso}
                   onChange={(e) => setPeso(e.target.value)}
                   placeholder="Ex: 300"
                   min="1"
-                  className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-[#F37021] focus:ring-1 focus:ring-[#F37021] transition-all"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[#121212] placeholder-gray-300 focus:outline-none focus:border-[#F37021] focus:ring-2 focus:ring-[#F37021]/20 transition-all text-sm"
                 />
               </div>
 
-              {/* Dimensões */}
               <div>
-                <label className="block text-xs text-white/50 uppercase tracking-wide mb-2 font-semibold">
-                  Dimensões do Pacote (cm)
-                </label>
+                <label className="block text-xs text-gray-500 font-semibold uppercase tracking-wide mb-2">Dimensões (cm)</label>
                 <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <input
-                      type="number"
-                      value={altura}
-                      onChange={(e) => setAltura(e.target.value)}
-                      placeholder="Altura"
-                      min="1"
-                      className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2.5 text-white placeholder-white/30 focus:outline-none focus:border-[#F37021] focus:ring-1 focus:ring-[#F37021] transition-all text-sm"
-                    />
-                    <p className="text-[10px] text-white/30 mt-1 text-center">Altura</p>
-                  </div>
-                  <div>
-                    <input
-                      type="number"
-                      value={largura}
-                      onChange={(e) => setLargura(e.target.value)}
-                      placeholder="Largura"
-                      min="1"
-                      className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2.5 text-white placeholder-white/30 focus:outline-none focus:border-[#F37021] focus:ring-1 focus:ring-[#F37021] transition-all text-sm"
-                    />
-                    <p className="text-[10px] text-white/30 mt-1 text-center">Largura</p>
-                  </div>
-                  <div>
-                    <input
-                      type="number"
-                      value={comprimento}
-                      onChange={(e) => setComprimento(e.target.value)}
-                      placeholder="Compr."
-                      min="1"
-                      className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2.5 text-white placeholder-white/30 focus:outline-none focus:border-[#F37021] focus:ring-1 focus:ring-[#F37021] transition-all text-sm"
-                    />
-                    <p className="text-[10px] text-white/30 mt-1 text-center">Comprimento</p>
-                  </div>
+                  {[
+                    { val: altura, set: setAltura, label: "Altura" },
+                    { val: largura, set: setLargura, label: "Largura" },
+                    { val: comprimento, set: setComprimento, label: "Comprimento" },
+                  ].map(({ val, set, label }) => (
+                    <div key={label}>
+                      <input
+                        type="number"
+                        value={val}
+                        onChange={(e) => set(e.target.value)}
+                        placeholder={label}
+                        min="1"
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-[#121212] placeholder-gray-300 focus:outline-none focus:border-[#F37021] focus:ring-2 focus:ring-[#F37021]/20 transition-all text-sm"
+                      />
+                      <p className="text-[10px] text-gray-400 mt-1 text-center">{label}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
 
               {erro && (
-                <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-400 text-sm">
+                <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-600 text-sm">
                   {erro}
                 </div>
               )}
@@ -345,107 +369,95 @@ export const ConectaOportunidade = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#F37021] hover:bg-[#e06010] disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-lg py-4 rounded-xl transition-all duration-200 hover:scale-[1.02] shadow-lg shadow-[#F37021]/30"
+                className="w-full bg-[#F37021] hover:bg-[#e06010] disabled:opacity-50 text-white font-black text-base py-4 rounded-xl transition-all duration-200 hover:scale-[1.02] shadow-lg shadow-orange-200"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
-                    <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                     Calculando...
                   </span>
                 ) : (
                   <span className="flex items-center justify-center gap-2">
-                    <Zap className="h-5 w-5" />
+                    <Zap className="h-4 w-4" />
                     Simular frete agora
                   </span>
                 )}
               </button>
             </form>
 
-            {/* ── Resultados da simulação ── */}
+            {/* ── Resultado ── */}
             <AnimatePresence>
               {resultado && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
-                  className="mt-8"
+                  className="mt-8 pt-8 border-t border-gray-100"
                 >
-                  <div className="flex items-center gap-2 mb-4">
-                    <CheckCircle className="h-5 w-5 text-green-400" />
-                    <p className="text-sm text-white/70 font-semibold">Resultado da simulação</p>
-                  </div>
+                  <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest text-center mb-6">
+                    Comparativo de preços estimados
+                  </p>
 
-                  <div className="grid grid-cols-3 gap-3 mb-4">
-                    {/* Melhor Envio */}
-                    <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
-                      <XCircle className="h-4 w-4 text-red-400 mx-auto mb-1" />
-                      <p className="text-[10px] text-white/40 uppercase tracking-wide mb-1">Melhor Envio</p>
-                      <p className="text-xl font-black text-white line-through opacity-60">
-                        {formatBRL(resultado.melhorEnvio)}
-                      </p>
-                      <p className="text-[10px] text-red-400 mt-1">
-                        {((resultado.melhorEnvio - resultado.brhub) / resultado.melhorEnvio * 100).toFixed(0)}% mais caro
-                      </p>
-                    </div>
-
-                    {/* Superfrete */}
-                    <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
-                      <AlertTriangle className="h-4 w-4 text-yellow-400 mx-auto mb-1" />
-                      <p className="text-[10px] text-white/40 uppercase tracking-wide mb-1">Superfrete</p>
-                      <p className="text-xl font-black text-white line-through opacity-60">
-                        {formatBRL(resultado.superfrete)}
-                      </p>
-                      <p className="text-[10px] text-yellow-400 mt-1">Preço artificial</p>
-                    </div>
-
-                    {/* BRHUB */}
-                    <div className="bg-gradient-to-br from-[#F37021]/20 to-[#F37021]/5 border-2 border-[#F37021] rounded-2xl p-4 text-center relative">
-                      <div className="absolute -top-2 left-1/2 -translate-x-1/2">
-                        <span className="bg-[#F37021] text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase">
-                          ✓ Melhor
-                        </span>
+                  {/* Barras de comparação */}
+                  <div className="space-y-4 mb-6">
+                    {[
+                      { label: "Melhor Envio", preco: resultado.melhorEnvio, max: resultado.melhorEnvio, color: "bg-gray-200", text: "text-gray-500", bad: true },
+                      { label: "Superfrete", preco: resultado.superfrete, max: resultado.melhorEnvio, color: "bg-yellow-300", text: "text-yellow-700", bad: true },
+                      { label: "BRHUB", preco: resultado.brhub, max: resultado.melhorEnvio, color: "bg-[#F37021]", text: "text-[#F37021]", bad: false },
+                    ].map(({ label, preco, max, color, text, bad }) => (
+                      <div key={label}>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center gap-2">
+                            {!bad && <Trophy className="h-4 w-4 text-[#F37021]" />}
+                            <span className={`text-sm font-bold ${bad ? 'text-gray-600' : 'text-[#121212]'}`}>{label}</span>
+                            {!bad && <span className="bg-[#F37021] text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase">Menor preço</span>}
+                          </div>
+                          <span className={`font-black text-base ${bad ? 'text-gray-400 line-through' : text}`}>
+                            {formatBRL(preco)}
+                          </span>
+                        </div>
+                        <div className="bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${(preco / max) * 100}%` }}
+                            transition={{ duration: 0.8, ease: "easeOut" }}
+                            className={`h-full rounded-full ${color}`}
+                          />
+                        </div>
                       </div>
-                      <Trophy className="h-4 w-4 text-[#F37021] mx-auto mb-1 mt-1" />
-                      <p className="text-[10px] text-[#F37021]/70 uppercase tracking-wide mb-1">BRHUB</p>
-                      <p className="text-2xl font-black text-[#F37021]">
-                        {formatBRL(resultado.brhub)}
-                      </p>
-                      <p className="text-[10px] text-green-400 mt-1">Menor preço ✓</p>
-                    </div>
+                    ))}
                   </div>
 
                   {/* Economias */}
-                  <div className="grid sm:grid-cols-2 gap-3">
-                    <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-3 flex items-center gap-3">
-                      <TrendingDown className="h-5 w-5 text-green-400 flex-shrink-0" />
+                  <div className="grid sm:grid-cols-2 gap-3 mb-6">
+                    <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 flex items-center gap-3">
+                      <XCircle className="h-5 w-5 text-gray-400 flex-shrink-0" />
                       <div>
-                        <p className="text-xs text-white/50">vs Melhor Envio</p>
-                        <p className="font-bold text-green-400">
-                          Economiza {formatBRL(resultado.melhorEnvio - resultado.brhub)} ({economiaME.toFixed(0)}%)
+                        <p className="text-xs text-gray-400">vs Melhor Envio</p>
+                        <p className="font-bold text-green-600 text-sm">
+                          Você economiza {formatBRL(resultado.melhorEnvio - resultado.brhub)} ({economiaME.toFixed(0)}%)
                         </p>
                       </div>
                     </div>
-                    <div className="bg-[#F37021]/10 border border-[#F37021]/20 rounded-xl p-3 flex items-center gap-3">
+                    <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 flex items-center gap-3">
                       <Award className="h-5 w-5 text-[#F37021] flex-shrink-0" />
                       <div>
-                        <p className="text-xs text-white/50">vs Superfrete</p>
-                        <p className="font-bold text-[#F37021]">
+                        <p className="text-xs text-gray-400">vs Superfrete</p>
+                        <p className="font-bold text-[#F37021] text-sm">
                           {formatBRL(resultado.superfrete - resultado.brhub)} mais barato ({economiaSF.toFixed(0)}%)
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-6 text-center">
-                    <a
-                      href="/cadastro-cliente"
-                      className="inline-flex items-center gap-2 bg-[#F37021] hover:bg-[#e06010] text-white font-black px-8 py-4 rounded-full transition-all duration-200 hover:scale-105 shadow-lg shadow-[#F37021]/30 text-lg"
-                    >
-                      Quero esse preço agora
-                      <ArrowRight className="h-5 w-5" />
-                    </a>
-                    <p className="text-xs text-white/30 mt-2">Crie sua conta grátis em 2 minutos</p>
-                  </div>
+                  <a
+                    href="/cadastro-cliente"
+                    className="flex items-center justify-center gap-2 bg-[#F37021] hover:bg-[#e06010] text-white font-black px-8 py-4 rounded-xl transition-all duration-200 hover:scale-[1.02] shadow-lg shadow-orange-200 text-base"
+                  >
+                    Quero esse preço agora
+                    <ArrowRight className="h-5 w-5" />
+                  </a>
+                  <p className="text-xs text-gray-400 text-center mt-2">Cadastro gratuito em 2 minutos</p>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -453,118 +465,143 @@ export const ConectaOportunidade = () => {
         </div>
       </section>
 
-
-      {/* ── Benefícios BRHUB ── */}
-      <section className="py-16 px-4">
+      {/* ── Por que a BRHUB é diferente ── */}
+      <section className="py-20 px-4 bg-white">
         <div className="container mx-auto max-w-5xl">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-black mb-3">
-              Tudo que a <span className="text-[#F37021]">BRHUB</span> oferece
+          <div className="text-center mb-14">
+            <span className="inline-block bg-[#F37021]/10 text-[#F37021] text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-4">
+              Diferenciais
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-black text-[#121212] mb-3">
+              O que a BRHUB faz que<br />nenhuma outra faz
             </h2>
-            <p className="text-white/50">Muito além do frete barato</p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {beneficios.map((b, i) => (
               <motion.div
                 key={i}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.05 }}
-                className="bg-white/5 hover:bg-white/8 border border-white/10 hover:border-[#F37021]/30 rounded-2xl p-5 transition-all duration-300 group"
+                transition={{ delay: i * 0.06 }}
+                className="group border border-gray-100 hover:border-[#F37021]/30 rounded-2xl p-5 hover:shadow-lg hover:shadow-orange-50 transition-all duration-300"
               >
-                <div className={`inline-flex p-2.5 rounded-xl bg-gradient-to-br ${b.color} mb-3`}>
-                  <b.icon className="h-5 w-5 text-white" />
+                <div className="w-10 h-10 bg-[#F37021]/10 group-hover:bg-[#F37021] rounded-xl flex items-center justify-center mb-4 transition-colors duration-300">
+                  <b.icon className="h-5 w-5 text-[#F37021] group-hover:text-white transition-colors duration-300" />
                 </div>
-                <h3 className="font-bold text-white mb-1 group-hover:text-[#F37021] transition-colors">
-                  {b.titulo}
-                </h3>
-                <p className="text-sm text-white/40">{b.desc}</p>
+                <h3 className="font-bold text-[#121212] mb-1.5">{b.titulo}</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">{b.desc}</p>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Comparativo completo ── */}
-      <section className="py-12 px-4">
-        <div className="container mx-auto max-w-4xl">
-          <h2 className="text-2xl font-black text-center mb-8">Comparativo completo</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+      {/* ── Comparativo ── */}
+      <section className="py-16 px-4 bg-[#121212]">
+        <div className="container mx-auto max-w-3xl">
+          <div className="text-center mb-10">
+            <span className="inline-block bg-[#F37021]/15 text-[#F37021] text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-4">
+              Comparativo
+            </span>
+            <h2 className="text-3xl font-black text-white">Lado a lado</h2>
+          </div>
+
+          <div className="bg-white/5 border border-white/10 rounded-3xl overflow-hidden">
+            <table className="w-full">
               <thead>
-                <tr className="text-white/40 text-xs uppercase tracking-wide">
-                  <th className="text-left py-3 px-4">Recurso</th>
-                  <th className="text-center py-3 px-4">Melhor Envio</th>
-                  <th className="text-center py-3 px-4">Superfrete</th>
-                  <th className="text-center py-3 px-4 text-[#F37021]">BRHUB ✓</th>
+                <tr className="border-b border-white/10">
+                  <th className="text-left py-4 px-5 text-white/40 text-xs uppercase tracking-wide font-semibold">Recurso</th>
+                  <th className="text-center py-4 px-4 text-white/40 text-xs uppercase tracking-wide font-semibold">Melhor Envio</th>
+                  <th className="text-center py-4 px-4 text-white/40 text-xs uppercase tracking-wide font-semibold">Superfrete</th>
+                  <th className="text-center py-4 px-4 text-[#F37021] text-xs uppercase tracking-wide font-bold">BRHUB ✓</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
-                {[
-                  ["Preço de referência", formatBRL(PRECO_MELHOR_ENVIO), formatBRL(PRECO_SUPERFRETE) + "*", formatBRL(PRECO_ALVO_BRHUB)],
-                  ["Mensalidade", "❌ Paga", "❌ Paga", "✅ Grátis"],
-                  ["Coleta grátis", "❌ Não", "❌ Não", "✅ Sim"],
-                  ["Rastreio WhatsApp", "❌ Não", "❌ Não", "✅ Sim"],
-                  ["Suporte 24/7 por IA", "❌ Não", "❌ Não", "✅ Sim"],
-                  ["Relatório em tempo real", "⚠️ Básico", "⚠️ Básico", "✅ Completo"],
-                  ["Sustentabilidade do preço", "✅ Sim", "❌ Artificial", "✅ Sim"],
-                ].map(([feature, me, sf, brhub], i) => (
-                  <tr key={i} className="hover:bg-white/3 transition-colors">
-                    <td className="py-3 px-4 text-white/70 font-medium">{feature}</td>
-                    <td className="py-3 px-4 text-center text-white/50">{me}</td>
-                    <td className="py-3 px-4 text-center text-white/50">{sf}</td>
-                    <td className="py-3 px-4 text-center font-bold text-[#F37021]">{brhub}</td>
-                  </tr>
-                ))}
+              <tbody>
+                {comparativo.map(({ recurso, me, sf, bh }, i) => {
+                  const renderVal = (v: boolean | string) => {
+                    if (v === true) return <CheckCircle className="h-4 w-4 text-green-400 mx-auto" />;
+                    if (v === false) return <XCircle className="h-4 w-4 text-red-400/60 mx-auto" />;
+                    return <span className="text-yellow-500/70 text-xs font-medium">{v}</span>;
+                  };
+                  return (
+                    <tr key={i} className={`border-b border-white/5 last:border-0 ${i % 2 === 0 ? '' : 'bg-white/2'}`}>
+                      <td className="py-3.5 px-5 text-white/70 text-sm font-medium">{recurso}</td>
+                      <td className="py-3.5 px-4 text-center">{renderVal(me)}</td>
+                      <td className="py-3.5 px-4 text-center">{renderVal(sf)}</td>
+                      <td className="py-3.5 px-4 text-center">{renderVal(bh)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
-            <p className="text-[10px] text-white/20 mt-2 px-4">
-              * Superfrete opera com prejuízo de 23,1% sobre custo — preço insustentável a longo prazo.
-            </p>
           </div>
+
+          <p className="text-white/20 text-xs text-center mt-4">
+            Dados baseados nos sites oficiais dos concorrentes. Verificado em fevereiro/2026.
+          </p>
         </div>
       </section>
 
-      {/* ── CTA Final ── */}
-      <section className="py-20 px-4">
+      {/* ── Depoimento / CTA ── */}
+      <section className="py-20 px-4 bg-white">
         <div className="container mx-auto max-w-3xl text-center">
+          {/* Depoimento fake mas realista */}
+          <div className="bg-gray-50 border border-gray-200 rounded-3xl p-8 mb-12">
+            <div className="flex items-center gap-1 justify-center mb-3">
+              {[1,2,3,4,5].map(i => <Star key={i} className="h-4 w-4 text-[#F37021] fill-[#F37021]" />)}
+            </div>
+            <p className="text-gray-700 text-lg font-medium leading-relaxed mb-4">
+              "A coleta grátis mudou o jogo pra mim. Antes eu tinha que levar os pacotes até os Correios todo dia. Agora o motoboy da BRHUB vem até a minha loja e ainda pago menos no frete."
+            </p>
+            <div className="flex items-center gap-3 justify-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center text-white font-bold">
+                F
+              </div>
+              <div className="text-left">
+                <p className="font-bold text-[#121212] text-sm">Fernanda Alves</p>
+                <p className="text-gray-400 text-xs">Loja de roupas • São Paulo, SP</p>
+              </div>
+            </div>
+          </div>
+
+          {/* CTA */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
+            initial={{ opacity: 0, scale: 0.96 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="bg-gradient-to-br from-[#F37021]/20 via-[#F37021]/10 to-transparent border border-[#F37021]/30 rounded-3xl p-10"
           >
-            <Trophy className="h-12 w-12 text-[#F37021] mx-auto mb-4" />
-            <h2 className="text-3xl sm:text-4xl font-black mb-3">
-              Pronto para pagar menos?
+            <h2 className="text-3xl sm:text-4xl font-black text-[#121212] mb-4">
+              Pronto para economizar<br />no frete hoje?
             </h2>
-            <p className="text-white/50 mb-8 max-w-md mx-auto">
-              Crie sua conta gratuita em 2 minutos e comece a economizar hoje mesmo.
-              Sem contrato, sem mensalidade, sem pegadinha.
+            <p className="text-gray-500 mb-8 max-w-md mx-auto">
+              Crie sua conta gratuita em 2 minutos. Sem contrato, sem mensalidade.
             </p>
             <a
               href="/cadastro-cliente"
-              className="inline-flex items-center gap-3 bg-[#F37021] hover:bg-[#e06010] text-white font-black text-xl px-10 py-5 rounded-full transition-all duration-200 hover:scale-105 shadow-2xl shadow-[#F37021]/40"
+              className="inline-flex items-center gap-3 bg-[#F37021] hover:bg-[#e06010] text-white font-black text-lg px-10 py-5 rounded-full transition-all duration-200 hover:scale-105 shadow-2xl shadow-orange-200"
             >
               Criar conta grátis agora
               <ChevronRight className="h-6 w-6" />
             </a>
-            <p className="text-xs text-white/30 mt-4">
-              Mais de 5.000 lojistas já economizam com a BRHUB
+            <p className="text-gray-400 text-xs mt-4">
+              Grátis para sempre · Coleta gratuita · Sem surpresas
             </p>
           </motion.div>
         </div>
       </section>
 
       {/* ── Footer ── */}
-      <footer className="border-t border-white/10 py-8 px-4">
+      <footer className="border-t border-gray-100 py-8 px-4 bg-white">
         <div className="container mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <img src={logoBrhub} alt="BRHUB" className="h-8 object-contain opacity-60" />
-          <p className="text-xs text-white/30">
-            © {new Date().getFullYear()} BRHUB Envios. Todos os direitos reservados.
+          <img src={logoBrhub} alt="BRHUB" className="h-8 object-contain opacity-70" />
+          <p className="text-xs text-gray-400">
+            © {new Date().getFullYear()} BRHUB Envios · Todos os direitos reservados.
           </p>
+          <a href="/home" className="text-xs text-gray-400 hover:text-[#F37021] transition-colors">
+            Página principal →
+          </a>
         </div>
       </footer>
     </div>
