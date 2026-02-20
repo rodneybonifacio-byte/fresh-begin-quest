@@ -502,13 +502,13 @@ export const ConectaOportunidade = () => {
                 <tr className="border-b border-white/10 bg-white/5">
                    <th className="text-left py-4 px-5 text-white/40 text-xs uppercase tracking-wide font-semibold">Recurso</th>
                    <th className="text-center py-4 px-4">
-                     <img src={logoMelhorEnvio} alt="Melhor Envio" className="h-6 object-contain mx-auto" style={{ filter: 'brightness(0) invert(1)', opacity: 0.5 }} />
+                     <img src={logoMelhorEnvio} alt="Melhor Envio" className="h-7 object-contain mx-auto" style={{ mixBlendMode: 'screen', opacity: 0.85 }} />
                    </th>
                    <th className="text-center py-4 px-4">
-                     <img src={logoSuperfrete} alt="Superfrete" className="h-5 object-contain mx-auto" style={{ filter: 'brightness(0) invert(1)', opacity: 0.5 }} />
+                     <img src={logoSuperfrete} alt="Superfrete" className="h-6 object-contain mx-auto" style={{ mixBlendMode: 'screen', opacity: 0.85 }} />
                    </th>
                    <th className="text-center py-4 px-4 bg-[#F37021]/10 rounded-t-xl">
-                     <img src={logoBrhub} alt="BRHUB" className="h-7 object-contain mx-auto" style={{ filter: 'brightness(0) invert(1)' }} />
+                     <img src={logoBrhub} alt="BRHUB" className="h-8 object-contain mx-auto" style={{ mixBlendMode: 'screen' }} />
                    </th>
                 </tr>
               </thead>
