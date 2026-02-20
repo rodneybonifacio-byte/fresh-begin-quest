@@ -355,7 +355,9 @@ export const ConectaOportunidade = ({ referralCode }: ConectaOportunidadeProps =
                             {/* Superfrete */}
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
-                                <img src={logoSuperfrete} alt="Superfrete" className="h-4 object-contain opacity-50 grayscale" />
+                                <div className="bg-gray-100 rounded-lg px-2 py-1 flex items-center justify-center min-w-[80px] h-7">
+                                  <img src={logoSuperfrete} alt="Superfrete" className="h-5 w-auto object-contain opacity-60 grayscale" />
+                                </div>
                               </div>
                               <div className="text-right">
                                 <span className="text-sm line-through text-gray-400">{formatBRL(opcao.superfrete)}</span>
@@ -366,7 +368,9 @@ export const ConectaOportunidade = ({ referralCode }: ConectaOportunidadeProps =
                             {/* Melhor Envio */}
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
-                                <img src={logoMelhorEnvio} alt="Melhor Envio" className="h-4 object-contain opacity-50 grayscale" />
+                                <div className="bg-gray-100 rounded-lg px-2 py-1 flex items-center justify-center min-w-[80px] h-7">
+                                  <img src={logoMelhorEnvio} alt="Melhor Envio" className="h-5 w-auto object-contain opacity-60 grayscale" />
+                                </div>
                               </div>
                               <div className="text-right">
                                 <span className="text-sm line-through text-gray-400">{formatBRL(opcao.melhorEnvio)}</span>
