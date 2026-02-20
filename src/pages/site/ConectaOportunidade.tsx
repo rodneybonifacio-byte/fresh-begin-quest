@@ -14,11 +14,9 @@ import logoSedex from "../../assets/logo-sedex.png";
 import logoPac from "../../assets/logo-pac.png";
 
 // ── Constantes ───────────────────────────────────────────────────────────────
-// A API retorna preço da conta de demonstração (ex: SEDEX R$22,46).
-// BRHUB cobra ~15,85% menos que esse valor (ex: SEDEX real = R$18,90).
-// Calibrado com: 1 - (18,90 / 22,46) = 0,1585
+// A API (conta financeiro@brhubb.com.br) já retorna o preço real da BRHUB.
+// Sem desconto adicional — o preço da API É o preço final cobrado ao cliente.
 // Superfrete cobra ~6% a mais que a BRHUB | Melhor Envio cobra ~68,9% a mais
-const DESCONTO_BRHUB = 0.1585;
 const MARKUP_SUPERFRETE = 1.06;
 const MARKUP_MELHOR_ENVIO = 1.689;
 
@@ -108,14 +106,13 @@ export const ConectaOportunidade = () => {
           return SERVICOS_ACEITOS.includes(nome);
         })
         .map((o: any) => {
-          // A API retorna preço de tabela — BRHUB aplica 29% de desconto negociado.
-          const precoTabela = parseFloat(String(o.preco).replace(",", "."));
-          if (isNaN(precoTabela) || precoTabela <= 0) return null;
-          const brhub = precoTabela * (1 - DESCONTO_BRHUB);
+          // A API já retorna o preço real da BRHUB (conta financeiro@brhubb.com.br)
+          const brhub = parseFloat(String(o.preco).replace(",", "."));
+          if (isNaN(brhub) || brhub <= 0) return null;
           return {
             servico: (o.nomeServico || o.servico || "Serviço").toUpperCase().trim(),
             prazo: Number(o.prazo) || 0,
-            precoTabela,
+            precoTabela: brhub,
             brhub,
             superfrete: brhub * MARKUP_SUPERFRETE,
             melhorEnvio: brhub * MARKUP_MELHOR_ENVIO,
