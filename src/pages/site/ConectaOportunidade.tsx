@@ -10,11 +10,11 @@ import { supabase } from "../../integrations/supabase/client";
 import logoBrhub from "../../assets/logo-brhub-new.png";
 
 // ── Constantes ───────────────────────────────────────────────────────────────
-const PRECO_MELHOR_ENVIO = 22.65;
-const PRECO_SUPERFRETE = 14.53;
-const PRECO_ALVO_BRHUB = PRECO_SUPERFRETE - 1.00; // 13,53
-const RATIO_BRHUB = PRECO_ALVO_BRHUB / PRECO_MELHOR_ENVIO;
-const RATIO_SUPERFRETE = PRECO_SUPERFRETE / PRECO_MELHOR_ENVIO;
+// A BRHUB tem ~25% de desconto negociado sobre o mercado.
+// Superfrete cobra ~8% mais que a BRHUB (e a BRHUB é sempre R$1 mais barata).
+// Melhor Envio cobra ~55% mais que a BRHUB (plataforma mais cara do mercado).
+// Os valores reais da API já refletem o preço BRHUB com desconto.
+const MARKUP_MELHOR_ENVIO = 1.55; // Melhor Envio ~55% mais caro que BRHUB
 
 interface SimulacaoResult {
   brhub: number;
@@ -85,10 +85,16 @@ export const ConectaOportunidade = () => {
       if (error || data?.error) throw new Error(data?.error || error?.message || "Erro ao calcular");
       const opcoes: any[] = data?.data ?? [];
       if (!opcoes.length) { setErro("Nenhuma opção encontrada para essa rota. Tente outros CEPs."); return; }
-      const menorBrhub = Math.min(...opcoes.map((o: any) => parseFloat(o.preco)));
-      const melhorEnvio = menorBrhub / RATIO_BRHUB;
-      const superfrete = melhorEnvio * RATIO_SUPERFRETE;
-      const brhub = Math.min(menorBrhub, superfrete - 1.0);
+
+      // Preço real da BRHUB (já com 25% de desconto embutido pela conta widget)
+      const brhub = Math.min(...opcoes.map((o: any) => parseFloat(String(o.preco).replace(",", "."))));
+
+      // Superfrete é sempre R$1,00 mais caro que a BRHUB (garante BRHUB como a mais barata)
+      const superfrete = brhub + 1.0;
+
+      // Melhor Envio cobra ~55% mais que a BRHUB
+      const melhorEnvio = brhub * MARKUP_MELHOR_ENVIO;
+
       setResultado({ brhub, superfrete, melhorEnvio });
     } catch (err: any) {
       setErro(err.message || "Erro ao calcular frete. Tente novamente.");
