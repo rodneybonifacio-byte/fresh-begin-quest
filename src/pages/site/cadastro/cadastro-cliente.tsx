@@ -82,11 +82,7 @@ export const CadastroCliente = () => {
     setValidandoParceiro(true);
     try {
       const { data, error } = await supabase
-        .from('parceiros')
-        .select('nome, codigo_parceiro, status')
-        .eq('codigo_parceiro', codigo.toUpperCase())
-        .eq('status', 'aprovado')
-        .maybeSingle();
+        .rpc('validar_codigo_parceiro', { p_codigo: codigo.toUpperCase() });
       
       if (error) {
         console.error('Erro ao validar parceiro:', error);
@@ -94,9 +90,8 @@ export const CadastroCliente = () => {
         return;
       }
       
-      if (data) {
-        setParceiroValidado({ valido: true, nome: data.nome });
-        console.log('✅ Parceiro validado:', data.nome);
+      if (data && data.length > 0) {
+        setParceiroValidado({ valido: true, nome: data[0].nome });
       } else {
         setParceiroValidado({ valido: false, nome: null });
       }
