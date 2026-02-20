@@ -170,6 +170,10 @@ export const adminRoutesConfig: ProtectedRouteItem[] = [
         path: 'ferramentas/atualizar-precos-planilha',
         component: () => import('../pages/private/admin/ferramentas/AtualizarPrecosPlanilha'),
     },
+    {
+        path: 'ferramentas/estrategia-primeira-etiqueta',
+        component: () => import('../pages/private/admin/ferramentas/EstrategiaFirstLabel'),
+    },
 ];
 
 export const AdminRoutes = generateProtectedRoutes(adminRoutesConfig);
