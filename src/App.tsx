@@ -3,7 +3,7 @@ import { LoaderProvider } from './providers/LoadingSpinnerContext';
 import { GlobalConfigProvider } from './providers/GlobalConfigContext';
 import { RouterBase } from './router';
 
-import { InstallButton } from '../install-button';
+import { InstallButton } from './components/InstallButton';
 import { useEffect } from 'react';
 import Clarity from '@microsoft/clarity';
 
