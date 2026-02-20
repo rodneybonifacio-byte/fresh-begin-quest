@@ -185,14 +185,16 @@ serve(async (req: Request) => {
     }
 
     // Atualizar transportadoraConfiguracoes com os IDs dinâmicos
+    // CORREIOS: 10.7% para competir com Superfrete (que cobra ~54,56 no PAC)
+    // Com custo ~48,76, preço de venda ~53,98 → R$0,58 abaixo do Superfrete
     clienteData.transportadoraConfiguracoes = [
       {
         transportadora: 'correios',
         transportadoraId: correiosId,
         ativo: true,
         tipoAcrescimo: 'PERCENTUAL',
-        valorAcrescimo: 15,
-        porcentagem: 15,
+        valorAcrescimo: 10.7,
+        porcentagem: 10.7,
         alturaMaxima: 100,
         larguraMaxima: 100,
         comprimentoMaximo: 100,
