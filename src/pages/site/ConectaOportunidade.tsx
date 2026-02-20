@@ -26,7 +26,8 @@ interface SimulacaoResult {
   melhorEnvio: number;
 }
 
-function formatBRL(v: number) {
+function formatBRL(v: number | undefined | null) {
+  if (v == null || isNaN(v)) return "R$ --";
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 function maskCEP(v: string) {
