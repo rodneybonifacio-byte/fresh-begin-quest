@@ -3,18 +3,9 @@
 
 <head>
     <base href="%BASE_URL%" />
-    <!-- Force SW cache bust: 20260220-v3 -->
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon.png?v=20250115" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    
-    <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#3b82f6" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="BRHUB" />
-    <link rel="apple-touch-icon" href="/pwa-192x192.png?v=20250115" />
-    <link rel="manifest" href="/manifest.webmanifest" />
     
     <title>BRHUB - ENVIOS</title>
 
@@ -37,7 +28,7 @@
     <meta property="twitter:description"
         content="Gerencie e envie com os Correios de forma prática. Cotações, etiquetas, rastreamento e muito mais!">
     <meta property="twitter:image" content="https://envios.brhubb.com.br/capaOpenGraph.png">
-    <title>BRHUB - ENVIOS</title>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -55,24 +46,6 @@
 <body class="bg-[#f3f4f6]">
     <div id="root"></div>
     <div id="portal-root"></div>
-
-    <!-- SW recovery: se o SW servir conteúdo antigo e o app não inicializar, limpa e recarrega -->
-    <script>
-        (function () {
-            var SW_CLEAN_KEY = 'sw-clean-20260220v3';
-            if (!sessionStorage.getItem(SW_CLEAN_KEY) && 'serviceWorker' in navigator) {
-                // Marca como já tentou limpar nesta sessão
-                sessionStorage.setItem(SW_CLEAN_KEY, '1');
-                navigator.serviceWorker.getRegistrations().then(function (registrations) {
-                    if (registrations.length > 0) {
-                        // Força update em todos os SWs registrados
-                        registrations.forEach(function (reg) { reg.update(); });
-                    }
-                });
-            }
-        })();
-    </script>
-
     <script type="module" src="/src/main.tsx"></script>
 </body>
 
