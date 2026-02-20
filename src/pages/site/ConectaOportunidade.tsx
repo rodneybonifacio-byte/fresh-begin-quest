@@ -42,7 +42,6 @@ const beneficios = [
   { icon: BarChart3, titulo: "Relatórios detalhados", desc: "Acompanhe gastos, prazos e performance de cada transportadora." },
   { icon: CheckCircle, titulo: "Seguro automático incluso", desc: "Proteção para suas encomendas sem custo adicional." },
   { icon: Users, titulo: "Multi-usuário", desc: "Adicione sua equipe e controle acessos por perfil." },
-  { icon: Truck, titulo: "Múltiplas transportadoras", desc: "Correios, Rodonaves e mais. Sempre o melhor preço para cada rota." },
   { icon: MessageCircle, titulo: "Notificação de atraso proativa", desc: "Alertamos seu cliente antes mesmo de reclamar." },
 ];
 
