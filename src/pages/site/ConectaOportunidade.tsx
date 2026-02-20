@@ -10,13 +10,13 @@ import { supabase } from "../../integrations/supabase/client";
 import logoBrhub from "../../assets/logo-brhub-new.png";
 
 // ── Constantes estratégicas ──────────────────────────────────────────────────
-const CUSTO_BRHUB = 18.90;
+// const CUSTO_BRHUB = 18.90;
 const PRECO_MELHOR_ENVIO = 22.65;
 const PRECO_SUPERFRETE = 14.53; // loss leader deles (23,1% de prejuízo)
 
 // Para ganhar do Superfrete por R$ 1,00:
 const PRECO_ALVO_BRHUB = PRECO_SUPERFRETE - 1.00; // 13,53
-const DESCONTO_BRHUB_PERCENTUAL = ((CUSTO_BRHUB - PRECO_ALVO_BRHUB) / CUSTO_BRHUB) * 100; // 28,4%
+// const DESCONTO_BRHUB_PERCENTUAL = ((CUSTO_BRHUB - PRECO_ALVO_BRHUB) / CUSTO_BRHUB) * 100; // 28,4%
 
 // Proporções usadas para calcular os preços simulados
 const RATIO_BRHUB = PRECO_ALVO_BRHUB / PRECO_MELHOR_ENVIO; // 0.5974 → ~40.3% abaixo do ME
@@ -236,120 +236,6 @@ export const ConectaOportunidade = () => {
             </p>
           </motion.div>
 
-          {/* ── Stats rápidos ── */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="grid grid-cols-3 gap-4 max-w-lg mx-auto mb-12"
-          >
-            {[
-              { label: "vs Melhor Envio", value: "40%", sub: "mais barato" },
-              { label: "vs Superfrete", value: "R$ 1", sub: "mais barato" },
-              { label: "Mensalidade", value: "R$ 0", sub: "gratuito" },
-            ].map((s, i) => (
-              <div key={i} className="bg-white/5 border border-white/10 rounded-2xl p-3">
-                <p className="text-2xl font-black text-[#F37021]">{s.value}</p>
-                <p className="text-xs text-white/50">{s.sub}</p>
-                <p className="text-[10px] text-white/30 mt-1">{s.label}</p>
-              </div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ── Comparativo fixo de referência ── */}
-      <section className="py-8 px-4">
-        <div className="container mx-auto max-w-4xl">
-          <div className="text-center mb-6">
-            <h2 className="text-xl font-bold text-white/80">Referência de mercado (exemplo real)</h2>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            {/* Melhor Envio */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="bg-white/5 border border-white/10 rounded-2xl p-5 text-center relative"
-            >
-              <XCircle className="h-5 w-5 text-red-400 mx-auto mb-2" />
-              <p className="text-xs text-white/40 uppercase tracking-wide font-semibold mb-1">Melhor Envio</p>
-              <p className="text-3xl font-black text-white">{formatBRL(PRECO_MELHOR_ENVIO)}</p>
-              <div className="mt-3 inline-flex items-center gap-1 bg-red-500/10 border border-red-500/20 rounded-full px-2 py-0.5">
-                <span className="text-red-400 text-xs font-semibold">
-                  {((PRECO_MELHOR_ENVIO - PRECO_ALVO_BRHUB) / PRECO_MELHOR_ENVIO * 100).toFixed(0)}% mais caro
-                </span>
-              </div>
-            </motion.div>
-
-            {/* Superfrete */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="bg-white/5 border border-white/10 rounded-2xl p-5 text-center relative"
-            >
-              <AlertTriangle className="h-5 w-5 text-yellow-400 mx-auto mb-2" />
-              <p className="text-xs text-white/40 uppercase tracking-wide font-semibold mb-1">Superfrete</p>
-              <p className="text-3xl font-black text-white">{formatBRL(PRECO_SUPERFRETE)}</p>
-              <div className="mt-2">
-                <div className="inline-flex items-center gap-1 bg-yellow-500/10 border border-yellow-500/20 rounded-full px-2 py-0.5 mb-1">
-                  <span className="text-yellow-400 text-xs font-semibold">Prejuízo artificial</span>
-                </div>
-                <p className="text-[10px] text-white/30">Operam com -23,1% de perda. Insustentável.</p>
-              </div>
-            </motion.div>
-
-            {/* BRHUB */}
-            <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ delay: 0.3 }}
-              className="bg-gradient-to-br from-[#F37021]/20 to-[#F37021]/5 border-2 border-[#F37021] rounded-2xl p-5 text-center relative overflow-hidden"
-            >
-              <div className="absolute top-2 right-2">
-                <div className="bg-[#F37021] text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide">
-                  ✓ Melhor preço
-                </div>
-              </div>
-              <Trophy className="h-5 w-5 text-[#F37021] mx-auto mb-2" />
-              <p className="text-xs text-[#F37021]/80 uppercase tracking-wide font-semibold mb-1">BRHUB Envios</p>
-              <p className="text-3xl font-black text-[#F37021]">{formatBRL(PRECO_ALVO_BRHUB)}</p>
-              <div className="mt-3 space-y-1">
-                <div className="inline-flex items-center gap-1 bg-[#F37021]/20 border border-[#F37021]/40 rounded-full px-2 py-0.5">
-                  <span className="text-[#F37021] text-xs font-bold">
-                    R$ 1,00 abaixo do Superfrete
-                  </span>
-                </div>
-                <p className="text-[10px] text-white/40">Desconto sustentável de {DESCONTO_BRHUB_PERCENTUAL.toFixed(1)}% sobre custo</p>
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Barra visual de comparação */}
-          <div className="mt-6 bg-white/5 border border-white/10 rounded-2xl p-5">
-            <p className="text-xs text-white/40 uppercase tracking-wide mb-4 font-semibold">Comparativo visual</p>
-            {[
-              { label: "Melhor Envio", value: PRECO_MELHOR_ENVIO, max: PRECO_MELHOR_ENVIO, color: "bg-red-400" },
-              { label: "Superfrete", value: PRECO_SUPERFRETE, max: PRECO_MELHOR_ENVIO, color: "bg-yellow-400" },
-              { label: "BRHUB ✓", value: PRECO_ALVO_BRHUB, max: PRECO_MELHOR_ENVIO, color: "bg-[#F37021]" },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center gap-3 mb-2">
-                <span className="text-xs text-white/60 w-28 text-right">{item.label}</span>
-                <div className="flex-1 bg-white/10 rounded-full h-5 overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${(item.value / item.max) * 100}%` }}
-                    transition={{ delay: 0.5 + i * 0.1, duration: 0.8 }}
-                    className={`h-full ${item.color} rounded-full flex items-center justify-end pr-2`}
-                  >
-                    <span className="text-[10px] font-bold text-white/90">{formatBRL(item.value)}</span>
-                  </motion.div>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
