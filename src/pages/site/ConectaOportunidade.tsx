@@ -14,9 +14,9 @@ import logoSedex from "../../assets/logo-sedex.png";
 import logoPac from "../../assets/logo-pac.png";
 
 // ── Constantes ───────────────────────────────────────────────────────────────
-// A API (conta financeiro@brhubb.com.br) já retorna o preço real da BRHUB.
-// Sem desconto adicional — o preço da API É o preço final cobrado ao cliente.
-// Superfrete cobra ~6% a mais que a BRHUB | Melhor Envio cobra ~68,9% a mais
+// API retorna preço base → BRHUB = preço API - 29%
+// Superfrete = BRHUB × 1,06 | Melhor Envio = BRHUB × 1,689
+const DESCONTO_BRHUB = 0.29;
 const MARKUP_SUPERFRETE = 1.06;
 const MARKUP_MELHOR_ENVIO = 1.689;
 
@@ -106,13 +106,13 @@ export const ConectaOportunidade = () => {
           return SERVICOS_ACEITOS.includes(nome);
         })
         .map((o: any) => {
-          // A API já retorna o preço real da BRHUB (conta financeiro@brhubb.com.br)
-          const brhub = parseFloat(String(o.preco).replace(",", "."));
-          if (isNaN(brhub) || brhub <= 0) return null;
+          const precoApi = parseFloat(String(o.preco).replace(",", "."));
+          if (isNaN(precoApi) || precoApi <= 0) return null;
+          const brhub = precoApi * (1 - DESCONTO_BRHUB);
           return {
             servico: (o.nomeServico || o.servico || "Serviço").toUpperCase().trim(),
             prazo: Number(o.prazo) || 0,
-            precoTabela: brhub,
+            precoTabela: precoApi,
             brhub,
             superfrete: brhub * MARKUP_SUPERFRETE,
             melhorEnvio: brhub * MARKUP_MELHOR_ENVIO,
