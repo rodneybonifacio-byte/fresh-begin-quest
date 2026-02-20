@@ -493,7 +493,7 @@ export const ConectaOportunidade = () => {
             <span className="inline-block bg-[#F37021]/15 text-[#F37021] text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-widest mb-4 border border-[#F37021]/25">
               Comparativo
             </span>
-            <h2 className="text-3xl font-black text-gray-900">Lado a lado</h2>
+            
           </div>
 
           <div className="overflow-x-auto rounded-2xl border border-gray-200 shadow-sm">
