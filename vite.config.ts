@@ -84,26 +84,24 @@ export default defineConfig(({ mode }) => ({
                 assetFileNames: 'assets/[name]-[hash][extname]',
                 chunkFileNames: 'assets/[name]-[hash].js',
                 entryFileNames: 'assets/[name]-[hash].js',
-                manualChunks: {
-                    // React core
-                    'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-                    // Forms e validação
-                    'forms-vendor': ['react-hook-form', 'yup', '@hookform/resolvers'],
-                    // UI Libraries
-                    'ui-vendor': ['@heroui/react', '@heroui/system', '@heroui/tabs', '@heroui/theme', 'framer-motion'],
-                    // Charts
-                    'charts-vendor': ['apexcharts', 'react-apexcharts'],
-                    // Utils
-                    'utils-vendor': ['axios', 'date-fns', 'date-fns-tz', 'decimal.js', 'moment-timezone'],
-                    // Icons
-                    'icons-vendor': ['lucide-react'],
-                    // PDF
-                    'pdf-vendor': ['jspdf', 'html2canvas', 'react-pdf'],
-                    // Supabase
-                    'supabase-vendor': ['@supabase/supabase-js'],
-                    // Outras libs
-                    'misc-vendor': ['sonner', 'clsx', 'jwt-decode', 'mobx', 'mobx-react-lite', '@tanstack/react-query'],
-                },
+                    manualChunks: {
+                        // React + UI juntos para evitar erro de createContext (cross-chunk dependency)
+                        'react-ui-vendor': ['react', 'react-dom', 'react-router-dom', '@heroui/react', '@heroui/system', '@heroui/tabs', '@heroui/theme', 'framer-motion'],
+                        // Forms e validação
+                        'forms-vendor': ['react-hook-form', 'yup', '@hookform/resolvers'],
+                        // Charts
+                        'charts-vendor': ['apexcharts', 'react-apexcharts'],
+                        // Utils
+                        'utils-vendor': ['axios', 'date-fns', 'date-fns-tz', 'decimal.js', 'moment-timezone'],
+                        // Icons
+                        'icons-vendor': ['lucide-react'],
+                        // PDF
+                        'pdf-vendor': ['jspdf', 'html2canvas', 'react-pdf'],
+                        // Supabase
+                        'supabase-vendor': ['@supabase/supabase-js'],
+                        // Outras libs
+                        'misc-vendor': ['sonner', 'clsx', 'jwt-decode', 'mobx', 'mobx-react-lite', '@tanstack/react-query'],
+                    },
             },
         },
         chunkSizeWarningLimit: 600,
