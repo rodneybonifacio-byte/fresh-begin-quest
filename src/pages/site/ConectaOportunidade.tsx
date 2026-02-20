@@ -52,7 +52,14 @@ const stats = [
 { num: "24/7", label: "Suporte disponível", icon: Clock }];
 
 
-export const ConectaOportunidade = () => {
+interface ConectaOportunidadeProps {
+  referralCode?: string;
+}
+
+export const ConectaOportunidade = ({ referralCode }: ConectaOportunidadeProps = {}) => {
+  const cadastroUrl = referralCode
+    ? `/cadastro-cliente?ref=${referralCode}`
+    : '/cadastro-cliente';
   const [cepOrigem, setCepOrigem] = useState("");
   const [cepDestino, setCepDestino] = useState("");
   const [peso, setPeso] = useState("");
@@ -137,7 +144,7 @@ export const ConectaOportunidade = () => {
         <div className="container mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
           <img src={logoBrhub} alt="BRHUB Envios" className="h-9 object-contain" />
           <a
-            href="/cadastro-cliente"
+            href={cadastroUrl}
             className="bg-[#F37021] hover:bg-[#e06010] text-white text-sm font-bold px-5 py-2.5 rounded-full transition-all duration-200 hover:scale-105 shadow-md shadow-orange-200">
 
             Criar conta grátis →
@@ -366,7 +373,7 @@ export const ConectaOportunidade = () => {
                   </div>
 
                   <a
-                  href="/cadastro-cliente"
+                  href={cadastroUrl}
                   className="flex items-center justify-center gap-2 bg-[#F37021] hover:bg-[#e06010] text-white font-black px-8 py-4 rounded-xl transition-all duration-200 hover:scale-[1.02] shadow-lg shadow-orange-200 text-base">
 
                     Quero esse preço agora →
@@ -537,7 +544,7 @@ export const ConectaOportunidade = () => {
 
           <div className="text-center mt-10">
             <a
-              href="/cadastro-cliente"
+              href={cadastroUrl}
               className="inline-flex items-center gap-2 bg-[#F37021] hover:bg-[#e06010] text-white font-black px-8 py-4 rounded-xl transition-all duration-200 hover:scale-[1.02] shadow-lg shadow-orange-900/40 text-base">
               Criar conta grátis →
             </a>
