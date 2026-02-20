@@ -11,11 +11,13 @@ import {
   BarChart3,
   FileText,
   Wallet,
-  Calendar
+  Calendar,
+  Zap
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '../../../integrations/supabase/client';
+import { ConectaOportunidade } from '../../site/ConectaOportunidade';
 
 interface ParceiroData {
   id: string;
@@ -44,7 +46,7 @@ export const DashboardParceiro = () => {
   const [clientes, setClientes] = useState<ClienteIndicado[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<'link' | 'codigo' | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'clientes' | 'comissoes' | 'config'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'clientes' | 'comissoes' | 'simulador' | 'config'>('overview');
 
   useEffect(() => {
     // Obter token do parceiro do localStorage
@@ -248,6 +250,7 @@ export const DashboardParceiro = () => {
             { id: 'overview', label: 'Visão Geral', icon: BarChart3 },
             { id: 'clientes', label: 'Clientes', icon: Users },
             { id: 'comissoes', label: 'Comissões', icon: FileText },
+            { id: 'simulador', label: 'Simulador', icon: Zap },
             { id: 'config', label: 'Configurações', icon: Settings }
           ].map((tab) => (
             <button
@@ -426,6 +429,16 @@ export const DashboardParceiro = () => {
                 </div>
               </div>
             </div>
+          </motion.div>
+        )}
+
+        {activeTab === 'simulador' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="-mx-4 sm:-mx-6 -mb-8"
+          >
+            <ConectaOportunidade referralCode={parceiro.codigo_parceiro} />
           </motion.div>
         )}
       </main>

@@ -63,7 +63,8 @@ export const RouterBase = () => {
                     {/* Público */}
                     <Route index element={<RootRedirect />} />
                     <Route path="/home" element={<LandingHome />} />
-                    <Route path="/conectaoportunidade" element={<ConectaOportunidade />} />
+                    <Route path="/oportunidade" element={<ConectaOportunidade />} />
+                    <Route path="/conectaoportunidade" element={<Navigate to="/oportunidade" replace />} />
                     <Route path="/error" element={<ErrorPage id={404} />} />
                     <Route path="*" element={<ErrorPage id={404} />} />
                     <Route path="/relatorio-desempenho" element={<RelatorioDesempenho />} />
