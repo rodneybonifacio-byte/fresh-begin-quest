@@ -14,7 +14,8 @@ import logoSedex from "../../assets/logo-sedex.png";
 import logoPac from "../../assets/logo-pac.png";
 
 // ── Constantes ───────────────────────────────────────────────────────────────
-// A API retorna o preço de tabela. BRHUB aplica 29% de desconto negociado.
+// A API retorna o preço já negociado da conta financeiro@brhubb.com.br (ex: 18,90).
+// BRHUB exibe: API - 29%  →  ex: 18,90 * 0,71 = 13,41
 // Superfrete: BRHUB × 1,06 | Melhor Envio: BRHUB × 1,40
 const DESCONTO_BRHUB = 0.29;
 const MARKUP_SUPERFRETE = 1.06;
