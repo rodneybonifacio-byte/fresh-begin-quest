@@ -53,9 +53,12 @@ serve(async (req) => {
       console.log('🔄 Logística reversa ativa - enviando logisticaReversa: "S" para API');
     }
     
+    // Normalizar CEPs para 8 dígitos com zero à esquerda
+    const normalizeCep = (cep: string) => cep?.replace(/\D/g, '').padStart(8, '0') || '';
+
     const cotacaoPayload = {
-      cepOrigem: requestData.cepOrigem,
-      cepDestino: requestData.cepDestino,
+      cepOrigem: normalizeCep(requestData.cepOrigem),
+      cepDestino: normalizeCep(requestData.cepDestino),
       embalagem: requestData.embalagem,
       valorDeclarado: requestData.valorDeclarado || 0,
       clienteId, // CRÍTICO: Sempre enviar para aplicar regras do cliente
