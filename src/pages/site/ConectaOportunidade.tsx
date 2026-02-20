@@ -293,7 +293,7 @@ export const ConectaOportunidade = () => {
         <div className="container mx-auto max-w-4xl">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
             {[
-              { num: "+5.000", label: "Lojistas ativos", icon: Users },
+              { num: "+20.000", label: "Pacotes enviados", icon: Users },
               { num: "42%", label: "Economia média", icon: TrendingDown },
               { num: "100%", label: "Cobertura nacional", icon: MapPin },
               { num: "24/7", label: "Suporte via IA", icon: HeadphonesIcon },
