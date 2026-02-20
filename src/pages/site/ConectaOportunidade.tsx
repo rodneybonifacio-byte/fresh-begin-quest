@@ -93,7 +93,7 @@ export const ConectaOportunidade = ({ referralCode }: ConectaOportunidadeProps =
     const cepD = normCep(cepDestino);
 
     try {
-      const { data, error } = await supabase.functions.invoke("calcular-frete-publico", {
+      const { data, error } = await supabase.functions.invoke("cotacao-oportunidade", {
         body: {
           cepOrigem: cepO,
           cepDestino: cepD,
