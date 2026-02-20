@@ -19,7 +19,7 @@ import logoPac from "../../assets/logo-pac.png";
 // Superfrete: BRHUB × 1,06 | Melhor Envio: BRHUB × 1,40
 const DESCONTO_BRHUB = 0.29;
 const MARKUP_SUPERFRETE = 1.06;
-const MARKUP_MELHOR_ENVIO = 1.40;
+const MARKUP_MELHOR_ENVIO = 1.689;
 
 interface OpcaoServico {
   servico: string;
