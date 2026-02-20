@@ -55,6 +55,24 @@
 <body class="bg-[#f3f4f6]">
     <div id="root"></div>
     <div id="portal-root"></div>
+
+    <!-- SW recovery: se o SW servir conteúdo antigo e o app não inicializar, limpa e recarrega -->
+    <script>
+        (function () {
+            var SW_CLEAN_KEY = 'sw-clean-20260220v3';
+            if (!sessionStorage.getItem(SW_CLEAN_KEY) && 'serviceWorker' in navigator) {
+                // Marca como já tentou limpar nesta sessão
+                sessionStorage.setItem(SW_CLEAN_KEY, '1');
+                navigator.serviceWorker.getRegistrations().then(function (registrations) {
+                    if (registrations.length > 0) {
+                        // Força update em todos os SWs registrados
+                        registrations.forEach(function (reg) { reg.update(); });
+                    }
+                });
+            }
+        })();
+    </script>
+
     <script type="module" src="/src/main.tsx"></script>
 </body>
 
