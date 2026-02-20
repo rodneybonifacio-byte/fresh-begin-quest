@@ -487,28 +487,28 @@ export const ConectaOportunidade = () => {
       </section>
 
       {/* ── Comparativo ── */}
-      <section className="py-20 px-4 bg-[#121212]">
+      <section className="py-20 px-4 bg-white">
         <div className="container mx-auto max-w-4xl">
           <div className="text-center mb-10">
             <span className="inline-block bg-[#F37021]/15 text-[#F37021] text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-widest mb-4 border border-[#F37021]/25">
               Comparativo
             </span>
-            <h2 className="text-3xl font-black text-white">Lado a lado</h2>
+            <h2 className="text-3xl font-black text-gray-900">Lado a lado</h2>
           </div>
 
-          <div className="overflow-x-auto rounded-2xl border border-white/10">
+          <div className="overflow-x-auto rounded-2xl border border-gray-200 shadow-sm">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-white/10 bg-white/5">
-                   <th className="text-left py-4 px-5 text-white/40 text-xs uppercase tracking-wide font-semibold">Recurso</th>
+                <tr className="border-b border-gray-200 bg-gray-50">
+                   <th className="text-left py-4 px-5 text-gray-400 text-xs uppercase tracking-wide font-semibold">Recurso</th>
                    <th className="text-center py-4 px-4">
-                     <img src={logoMelhorEnvio} alt="Melhor Envio" className="h-7 object-contain mx-auto" style={{ mixBlendMode: 'screen', opacity: 0.85 }} />
+                     <img src={logoMelhorEnvio} alt="Melhor Envio" className="h-7 object-contain mx-auto" style={{ opacity: 0.85 }} />
                    </th>
                    <th className="text-center py-4 px-4">
                      <img src={logoSuperfrete} alt="Superfrete" className="h-8 object-contain mx-auto" style={{ opacity: 0.85 }} />
                    </th>
                    <th className="text-center py-4 px-4 bg-[#F37021]/10 rounded-t-xl">
-                     <span className="text-white font-black text-xl tracking-widest">BRHUB</span>
+                     <span className="text-[#F37021] font-black text-xl tracking-widest">BRHUB</span>
                    </th>
                 </tr>
               </thead>
@@ -524,11 +524,11 @@ export const ConectaOportunidade = () => {
                 ["Notificação proativa de atraso", "✗", "✗", "✓"],
                 ["Multi-usuário", "✗", "✓", "✓"]].
                 map(([recurso, me, sf, brhub], i) =>
-                <tr key={i} className={`border-b border-white/5 ${i % 2 === 0 ? '' : 'bg-white/[0.02]'}`}>
-                    <td className="py-3.5 px-5 text-white/70 text-sm">{recurso}</td>
-                    <td className="py-3.5 px-4 text-center text-lg">{me === "✓" ? <span className="text-green-400">✓</span> : <span className="text-red-400/60">✗</span>}</td>
-                    <td className="py-3.5 px-4 text-center text-lg">{sf === "✓" ? <span className="text-green-400">✓</span> : <span className="text-red-400/60">✗</span>}</td>
-                    <td className="py-3.5 px-4 text-center text-lg bg-[#F37021]/5">{brhub === "✓" ? <span className="text-[#F37021] font-black">✓</span> : <span className="text-red-400/60">✗</span>}</td>
+                <tr key={i} className={`border-b border-gray-100 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
+                    <td className="py-3.5 px-5 text-gray-600 text-sm">{recurso}</td>
+                    <td className="py-3.5 px-4 text-center text-lg">{me === "✓" ? <span className="text-green-500">✓</span> : <span className="text-red-400">✗</span>}</td>
+                    <td className="py-3.5 px-4 text-center text-lg">{sf === "✓" ? <span className="text-green-500">✓</span> : <span className="text-red-400">✗</span>}</td>
+                    <td className="py-3.5 px-4 text-center text-lg bg-[#F37021]/5">{brhub === "✓" ? <span className="text-[#F37021] font-black">✓</span> : <span className="text-red-400">✗</span>}</td>
                   </tr>
                 )}
               </tbody>
@@ -539,10 +539,9 @@ export const ConectaOportunidade = () => {
             <a
               href="/cadastro-cliente"
               className="inline-flex items-center gap-2 bg-[#F37021] hover:bg-[#e06010] text-white font-black px-8 py-4 rounded-xl transition-all duration-200 hover:scale-[1.02] shadow-lg shadow-orange-900/40 text-base">
-
               Criar conta grátis →
             </a>
-            <p className="text-white/20 text-xs text-center mt-4">
+            <p className="text-gray-400 text-xs text-center mt-4">
               Dados baseados nos sites oficiais dos concorrentes. Verificado em fevereiro/2026.
             </p>
           </div>
