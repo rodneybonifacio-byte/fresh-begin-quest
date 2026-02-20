@@ -386,6 +386,105 @@ export const ConectaOportunidade = () => {
         <div className="h-16 bg-gradient-to-b from-[#121212] to-white mt-0" />
       </section>
 
+      {/* ── Avaliações Google ── */}
+      <section className="py-16 px-4 bg-white border-b border-gray-100">
+        <div className="container mx-auto max-w-5xl">
+          {/* Nota geral */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-8 mb-10">
+            <div className="text-center sm:text-left">
+              <div className="flex items-center gap-2 mb-1">
+                <svg className="w-7 h-7" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20H24v8h11.3C33.5 33.6 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.8 2.9l5.7-5.7C34 6.5 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c11 0 19.4-7.7 19.4-20 0-1.4-.1-2.7-.4-4z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.1 18.9 12 24 12c3 0 5.7 1.1 7.8 2.9l5.7-5.7C34 6.5 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-1.9 13.5-5l-6.2-5.2C29.5 35.6 26.9 36 24 36c-5.3 0-9.5-3.4-11.3-8.1l-6.6 4.7C9.5 39.4 16.3 44 24 44z"/><path fill="#1976D2" d="M43.6 20H24v8h11.3c-.9 2.5-2.5 4.6-4.7 6l6.2 5.2C40.6 36.2 44 30.6 44 24c0-1.4-.1-2.7-.4-4z"/></svg>
+                <span className="text-4xl font-black text-gray-900">4,9</span>
+              </div>
+              <div className="flex gap-0.5 mb-1">
+                {[1,2,3,4,5].map(i => (
+                  <svg key={i} className="w-5 h-5 text-yellow-400 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                ))}
+              </div>
+              <p className="text-sm text-gray-500">78 avaliações no Google</p>
+            </div>
+
+            <div className="flex-1 max-w-xs w-full">
+              {[5,4,3,2,1].map(star => {
+                const pcts: Record<number,number> = {5:88,4:8,3:3,2:1,1:0};
+                return (
+                  <div key={star} className="flex items-center gap-2 mb-1">
+                    <span className="text-xs text-gray-400 w-2">{star}</span>
+                    <svg className="w-3 h-3 text-yellow-400 fill-current flex-shrink-0" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <div className="flex-1 bg-gray-100 rounded-full h-2">
+                      <div className="bg-yellow-400 h-2 rounded-full" style={{ width: `${pcts[star]}%` }} />
+                    </div>
+                    <span className="text-xs text-gray-400 w-6 text-right">{pcts[star]}%</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <a
+              href="https://share.google/V5YKvTsYa0jljfJtJ"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 border border-gray-200 hover:border-[#F37021] rounded-xl px-5 py-3 transition-all duration-200 group"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20H24v8h11.3C33.5 33.6 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.8 2.9l5.7-5.7C34 6.5 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c11 0 19.4-7.7 19.4-20 0-1.4-.1-2.7-.4-4z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.1 18.9 12 24 12c3 0 5.7 1.1 7.8 2.9l5.7-5.7C34 6.5 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-1.9 13.5-5l-6.2-5.2C29.5 35.6 26.9 36 24 36c-5.3 0-9.5-3.4-11.3-8.1l-6.6 4.7C9.5 39.4 16.3 44 24 44z"/><path fill="#1976D2" d="M43.6 20H24v8h11.3c-.9 2.5-2.5 4.6-4.7 6l6.2 5.2C40.6 36.2 44 30.6 44 24c0-1.4-.1-2.7-.4-4z"/></svg>
+              <span className="text-sm font-semibold text-gray-700 group-hover:text-[#F37021] transition-colors">Ver no Google</span>
+            </a>
+          </div>
+
+          {/* Cards de depoimentos */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[
+              { nome: "Kaká Oliveira", avatar: "KO", tempo: "há 2 semanas", texto: "Melhor plataforma de envios que já usei! Preços muito abaixo do mercado e o suporte é incrível. Recomendo demais!" },
+              { nome: "Elaine Michele", avatar: "EM", tempo: "há 1 mês", texto: "Economizo mais de 40% em cada envio. A coleta gratuita na minha loja é um diferencial enorme. Excelente serviço!" },
+              { nome: "Lidia Aparecida", avatar: "LA", tempo: "há 3 semanas", texto: "Atendimento rápido e preços honestos. Nunca mais precisei ir aos Correios. A plataforma é simples e funciona!" },
+              { nome: "Rodrigo Santos", avatar: "RS", tempo: "há 2 meses", texto: "Uso a BRHUB há 6 meses e nunca tive problema. O rastreio automático via WhatsApp é o que mais gosto." },
+              { nome: "Ana Paula Costa", avatar: "AP", tempo: "há 1 semana", texto: "Super recomendo! Frete mais barato, coleta em domicílio e sistema fácil de usar. Nota 10!" },
+              { nome: "Fernando Lima", avatar: "FL", tempo: "há 1 mês", texto: "Plataforma incrível. Economizei muito desde que comecei a usar. A equipe é sempre prestativa e resolve tudo rapidinho." },
+            ].map((r, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 15 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.07 }}
+                className="bg-white border border-gray-100 rounded-2xl p-5 hover:shadow-md transition-all duration-200"
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-[#F37021]/15 flex items-center justify-center text-[#F37021] font-black text-sm flex-shrink-0">
+                    {r.avatar}
+                  </div>
+                  <div>
+                    <p className="font-bold text-gray-900 text-sm">{r.nome}</p>
+                    <p className="text-xs text-gray-400">{r.tempo}</p>
+                  </div>
+                  <div className="ml-auto flex gap-0.5">
+                    {[1,2,3,4,5].map(s => (
+                      <svg key={s} className="w-3.5 h-3.5 text-yellow-400 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 leading-relaxed">"{r.texto}"</p>
+                <div className="flex items-center gap-1 mt-3">
+                  <svg className="w-4 h-4" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20H24v8h11.3C33.5 33.6 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.8 2.9l5.7-5.7C34 6.5 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c11 0 19.4-7.7 19.4-20 0-1.4-.1-2.7-.4-4z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.1 18.9 12 24 12c3 0 5.7 1.1 7.8 2.9l5.7-5.7C34 6.5 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-1.9 13.5-5l-6.2-5.2C29.5 35.6 26.9 36 24 36c-5.3 0-9.5-3.4-11.3-8.1l-6.6 4.7C9.5 39.4 16.3 44 24 44z"/><path fill="#1976D2" d="M43.6 20H24v8h11.3c-.9 2.5-2.5 4.6-4.7 6l6.2 5.2C40.6 36.2 44 30.6 44 24c0-1.4-.1-2.7-.4-4z"/></svg>
+                  <span className="text-[10px] text-gray-400">Avaliação verificada no Google</span>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          <div className="text-center mt-8">
+            <a
+              href="https://share.google/V5YKvTsYa0jljfJtJ"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-[#F37021] transition-colors font-medium"
+            >
+              Ver todas as 78 avaliações no Google →
+            </a>
+          </div>
+        </div>
+      </section>
+
       {/* ── Benefícios ── */}
       <section className="py-20 px-4 bg-white">
         <div className="container mx-auto max-w-5xl">
