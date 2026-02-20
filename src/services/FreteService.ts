@@ -27,13 +27,30 @@ export class FreteService extends BaseService<any> {
             userToken, // Enviar token do usuário para a edge function
         };
         
-        const { data, error } = await supabase.functions.invoke('cotacao-frete', {
+        const { data, error, response } = await supabase.functions.invoke('cotacao-frete', {
             body: payload
         });
 
         if (error) {
             console.error('❌ Erro na edge function:', error);
-            throw new Error(error.message || 'Erro ao calcular frete');
+            // Tentar extrair mensagem real do corpo da resposta
+            let realMessage = error.message;
+            try {
+                if (response?.clone) {
+                    const bodyText = await response.clone().text();
+                    const bodyJson = JSON.parse(bodyText);
+                    if (bodyJson?.error) {
+                        // Extrair mensagem interna se for JSON stringificado
+                        try {
+                            const inner = JSON.parse(bodyJson.error.replace('Erro na cotação: ', ''));
+                            realMessage = inner.error || bodyJson.error;
+                        } catch {
+                            realMessage = bodyJson.error;
+                        }
+                    }
+                }
+            } catch { /* mantém realMessage original */ }
+            throw new Error(realMessage || 'Erro ao calcular frete');
         }
 
         console.log('✅ Cotação recebida:', data);

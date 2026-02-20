@@ -44,25 +44,33 @@ export const useCotacao = () => {
         onError: (error: any) => {
             setIsLoading(false);
             console.error('❌ Erro na requisição de cotação:', error);
-            console.error('❌ Detalhes do erro:', {
-                message: error?.message,
-                response: error?.response?.data,
-                status: error?.response?.status
-            });
             
-            // Detectar erro de dimensões/peso excedendo limites
             const errorMessage = error?.message?.toLowerCase() || '';
+            
             const isLimitError = errorMessage.includes('nenhum provedor') || 
                                  errorMessage.includes('cotação válida') ||
-                                 errorMessage.includes('no freight');
+                                 errorMessage.includes('no freight') ||
+                                 errorMessage.includes('non-2xx');
             
-            if (isLimitError) {
-                toast.error('As dimensões ou peso informados excedem os limites permitidos pelas transportadoras. Verifique: Correios aceita até 100cm por lado e 30kg. Rodonaves aceita até 200cm e 200kg.', {
+            const isDimensionError = errorMessage.includes('comprimento') ||
+                                     errorMessage.includes('largura') ||
+                                     errorMessage.includes('altura') ||
+                                     errorMessage.includes('peso') ||
+                                     errorMessage.includes('dimensão') ||
+                                     errorMessage.includes('excede');
+
+            if (isDimensionError) {
+                toast.error('As dimensões ou peso informados excedem os limites das transportadoras. Correios: máx. 100cm e 30kg. Rodonaves: máx. 200cm e 200kg.', {
+                    duration: 8000,
+                    position: "top-center"
+                });
+            } else if (isLimitError) {
+                toast.warning('Nenhuma transportadora disponível para esta rota com os dados informados. Verifique o CEP de origem/destino, peso e dimensões.', {
                     duration: 8000,
                     position: "top-center"
                 });
             } else {
-                toast.error(`Erro ao calcular frete: ${error?.message || 'Tente novamente'}`, {
+                toast.error(`Não foi possível calcular o frete. Verifique os dados e tente novamente.`, {
                     duration: 5000,
                     position: "top-center"
                 });
