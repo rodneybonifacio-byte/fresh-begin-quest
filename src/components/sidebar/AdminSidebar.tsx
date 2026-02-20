@@ -1,4 +1,4 @@
-import { Activity, Archive, Calculator, ClipboardList, Clock, FileBarChart, FilePen, FileStack, Home, Package, Settings, Truck, UsersRound, Wallet, Tags, FileUp, Gift, FileText, UserCog, Receipt, ExternalLink, DollarSign } from 'lucide-react';
+import { Activity, Archive, Calculator, ClipboardList, Clock, FileBarChart, FilePen, FileStack, Home, Package, Settings, Truck, UsersRound, Wallet, Tags, FileUp, Gift, FileText, UserCog, Receipt, ExternalLink, DollarSign, Handshake } from 'lucide-react';
 import { observer } from 'mobx-react-lite';
 import { useLocation } from 'react-router-dom';
 import { SidebarLayout } from './SidebarLayout';
@@ -204,6 +204,19 @@ const AdminSidebar = observer(({
                     label: 'Estratégia 1ª Etiqueta',
                     to: '/admin/ferramentas/estrategia-primeira-etiqueta',
                     active: isPathActive('/admin/ferramentas/estrategia-primeira-etiqueta')
+                }
+            ]
+        },
+        {
+            icon: Handshake,
+            label: 'Conecta+',
+            active: isPathActive('/admin/conecta'),
+            submenu: [
+                {
+                    icon: UsersRound,
+                    label: 'Parceiros',
+                    to: '/admin/conecta/parceiros',
+                    active: isPathActive('/admin/conecta/parceiros')
                 }
             ]
         }
