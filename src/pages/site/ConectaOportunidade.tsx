@@ -102,8 +102,8 @@ export const ConectaOportunidade = () => {
       const SERVICOS_ACEITOS = ["PAC", "SEDEX"];
       const opcoesCalculadas: OpcaoServico[] = opcoes
         .filter((o: any) => {
-          const nome: string = (o.nomeServico || o.servico || "").toUpperCase();
-          return SERVICOS_ACEITOS.some(s => nome === s || nome.startsWith(s + " ") || nome === s);
+          const nome: string = (o.nomeServico || o.servico || "").toUpperCase().trim();
+          return SERVICOS_ACEITOS.includes(nome);
         })
         .map((o: any) => {
           // API retorna preço de tabela. BRHUB aplica 29% de desconto negociado.
