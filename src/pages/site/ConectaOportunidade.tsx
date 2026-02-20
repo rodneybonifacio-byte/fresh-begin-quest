@@ -12,18 +12,22 @@ import logoSuperfrete from "../../assets/logo-superfrete.png";
 import logoMelhorEnvio from "../../assets/logo-melhorenvio.png";
 
 // ── Constantes ───────────────────────────────────────────────────────────────
-// A API retorna o preço de tabela. BRHUB aplica 28,5% de desconto negociado.
-// Superfrete: BRHUB + 6% (contrato menos vantajoso)
-// Melhor Envio: BRHUB + 40% (plataforma mais cara do mercado)
-const DESCONTO_BRHUB = 0.30;    // 30% de desconto sobre o preço de tabela
-const MARKUP_SUPERFRETE = 1.06; // +6% em relação ao BRHUB
-const MARKUP_MELHOR_ENVIO = 1.40; // +40% em relação ao BRHUB
+// A API retorna o preço de tabela. BRHUB aplica 29% de desconto negociado.
+// Superfrete: BRHUB + 6% | Melhor Envio: BRHUB + 40%
+const DESCONTO_BRHUB = 0.29;
+const MARKUP_SUPERFRETE = 1.06;
+const MARKUP_MELHOR_ENVIO = 1.40;
 
-interface SimulacaoResult {
+interface OpcaoServico {
+  servico: string;         // "PAC" | "SEDEX" | etc
   precoTabela: number;
   brhub: number;
   superfrete: number;
   melhorEnvio: number;
+}
+
+interface SimulacaoResult {
+  opcoes: OpcaoServico[];
 }
 
 function formatBRL(v: number | undefined | null) {
@@ -91,24 +95,31 @@ export const ConectaOportunidade = () => {
       const opcoes: any[] = data?.data ?? [];
       if (!opcoes.length) { setErro("Nenhuma opção encontrada para essa rota. Tente outros CEPs."); return; }
 
-      // Preço de tabela da API → aplica desconto negociado BRHUB de 28,5%
-      const precoTabela = Math.min(...opcoes.map((o: any) => parseFloat(String(o.preco).replace(",", "."))));
-      const brhub = precoTabela * (1 - DESCONTO_BRHUB);
+      // Mapeia cada serviço retornado (PAC, SEDEX, etc.) com os cálculos
+      const opcoesCalculadas: OpcaoServico[] = opcoes
+        .map((o: any) => {
+          const precoTabela = parseFloat(String(o.preco).replace(",", "."));
+          if (isNaN(precoTabela) || precoTabela <= 0) return null;
+          const brhub = precoTabela * (1 - DESCONTO_BRHUB);
+          return {
+            servico: o.nomeServico || o.servico || "Serviço",
+            precoTabela,
+            brhub,
+            superfrete: brhub * MARKUP_SUPERFRETE,
+            melhorEnvio: brhub * MARKUP_MELHOR_ENVIO,
+          };
+        })
+        .filter(Boolean) as OpcaoServico[];
 
-      // Superfrete e Melhor Envio não têm os mesmos contratos negociados da BRHUB
-      const superfrete = brhub * MARKUP_SUPERFRETE;
-      const melhorEnvio = brhub * MARKUP_MELHOR_ENVIO;
+      if (!opcoesCalculadas.length) { setErro("Não foi possível calcular os preços. Tente novamente."); return; }
 
-      setResultado({ precoTabela, brhub, superfrete, melhorEnvio });
+      setResultado({ opcoes: opcoesCalculadas });
     } catch (err: any) {
       setErro(err.message || "Erro ao calcular frete. Tente novamente.");
     } finally {
       setLoading(false);
     }
   };
-
-  const economiaME = resultado ? ((resultado.melhorEnvio - resultado.brhub) / resultado.melhorEnvio) * 100 : 0;
-  const economiaSF = resultado ? ((resultado.superfrete - resultado.brhub) / resultado.superfrete) * 100 : 0;
 
   return (
     <div className="min-h-screen bg-white font-sans overflow-x-hidden">
@@ -402,70 +413,73 @@ export const ConectaOportunidade = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
-                  className="mt-8 pt-8 border-t border-gray-100"
+                  className="mt-8 pt-8 border-t border-gray-100 space-y-8"
                 >
-                  <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest text-center mb-4">
-                    Comparativo de preços estimados
+                  <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest text-center">
+                    Comparativo de preços estimados (com desconto BRHUB 29%)
                   </p>
-                  {/* Valor real da API */}
-                  <div className="flex items-center justify-center gap-2 mb-6 bg-gray-50 border border-gray-200 rounded-xl py-2 px-4">
-                    <span className="text-xs text-gray-400">Preço de tabela (API):</span>
-                    <span className="text-xs font-bold text-gray-600">{formatBRL(resultado.precoTabela)}</span>
-                    <span className="text-xs text-gray-400">→ com desconto BRHUB (30%):</span>
-                    <span className="text-xs font-black text-[#F37021]">{formatBRL(resultado.brhub)}</span>
-                  </div>
 
-                  {/* Barras de comparação */}
-                  <div className="space-y-4 mb-6">
-                    {[
-                      { label: "Melhor Envio", logo: logoMelhorEnvio, preco: resultado.melhorEnvio, max: resultado.melhorEnvio, color: "bg-gray-200", text: "text-gray-500", bad: true },
-                      { label: "Superfrete", logo: logoSuperfrete, preco: resultado.superfrete, max: resultado.melhorEnvio, color: "bg-yellow-300", text: "text-yellow-700", bad: true },
-                      { label: "BRHUB", logo: logoBrhub, preco: resultado.brhub, max: resultado.melhorEnvio, color: "bg-[#F37021]", text: "text-[#F37021]", bad: false },
-                    ].map(({ label, logo, preco, max, color, text, bad }) => (
-                      <div key={label}>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <div className="flex items-center gap-2">
-                            {!bad && <Trophy className="h-4 w-4 text-[#F37021]" />}
-                            <img src={logo} alt={label} className="h-5 object-contain max-w-[90px]" style={{ filter: bad ? 'grayscale(30%)' : 'none', opacity: bad ? 0.7 : 1 }} />
-                            {!bad && <span className="bg-[#F37021] text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase">Menor preço</span>}
+                  {resultado.opcoes.map((opcao) => {
+                    const economiaME = ((opcao.melhorEnvio - opcao.brhub) / opcao.melhorEnvio) * 100;
+                    const economiaSF = ((opcao.superfrete - opcao.brhub) / opcao.superfrete) * 100;
+                    return (
+                      <div key={opcao.servico} className="border border-gray-100 rounded-2xl p-5 bg-gray-50/50">
+                        {/* Cabeçalho do serviço */}
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="text-sm font-black text-gray-700 uppercase tracking-wide">{opcao.servico}</span>
+                          <span className="text-xs text-gray-400">Tabela: <span className="font-semibold text-gray-500">{formatBRL(opcao.precoTabela)}</span></span>
+                        </div>
+
+                        {/* Barras de comparação */}
+                        <div className="space-y-3 mb-4">
+                          {[
+                            { label: "Melhor Envio", logo: logoMelhorEnvio, preco: opcao.melhorEnvio, max: opcao.melhorEnvio, color: "bg-gray-200", bad: true },
+                            { label: "Superfrete", logo: logoSuperfrete, preco: opcao.superfrete, max: opcao.melhorEnvio, color: "bg-yellow-300", bad: true },
+                            { label: "BRHUB", logo: logoBrhub, preco: opcao.brhub, max: opcao.melhorEnvio, color: "bg-[#F37021]", bad: false },
+                          ].map(({ label, logo, preco, max, color, bad }) => (
+                            <div key={label}>
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="flex items-center gap-2">
+                                  {!bad && <Trophy className="h-3.5 w-3.5 text-[#F37021]" />}
+                                  <img src={logo} alt={label} className="h-4 object-contain max-w-[80px]" style={{ filter: bad ? 'grayscale(40%)' : 'none', opacity: bad ? 0.6 : 1 }} />
+                                  {!bad && <span className="bg-[#F37021] text-white text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase">Menor preço</span>}
+                                </div>
+                                <span className={`font-black text-sm ${bad ? 'text-gray-400 line-through' : 'text-[#F37021]'}`}>
+                                  {formatBRL(preco)}
+                                </span>
+                              </div>
+                              <div className="bg-gray-100 rounded-full h-2 overflow-hidden">
+                                <motion.div
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${(preco / max) * 100}%` }}
+                                  transition={{ duration: 0.8, ease: "easeOut" }}
+                                  className={`h-full rounded-full ${color}`}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Economias */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="bg-white border border-gray-200 rounded-xl p-3 flex items-center gap-2">
+                            <XCircle className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                            <div>
+                              <p className="text-[10px] text-gray-400">vs Melhor Envio</p>
+                              <p className="font-bold text-green-600 text-xs">Economiza {formatBRL(opcao.melhorEnvio - opcao.brhub)} ({economiaME.toFixed(0)}%)</p>
+                            </div>
                           </div>
-                          <span className={`font-black text-base ${bad ? 'text-gray-400 line-through' : text}`}>
-                            {formatBRL(preco)}
-                          </span>
-                        </div>
-                        <div className="bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${(preco / max) * 100}%` }}
-                            transition={{ duration: 0.8, ease: "easeOut" }}
-                            className={`h-full rounded-full ${color}`}
-                          />
+                          <div className="bg-orange-50 border border-orange-100 rounded-xl p-3 flex items-center gap-2">
+                            <Award className="h-4 w-4 text-[#F37021] flex-shrink-0" />
+                            <div>
+                              <p className="text-[10px] text-gray-400">vs Superfrete</p>
+                              <p className="font-bold text-[#F37021] text-xs">{formatBRL(opcao.superfrete - opcao.brhub)} mais barato ({economiaSF.toFixed(0)}%)</p>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-
-                  {/* Economias */}
-                  <div className="grid sm:grid-cols-2 gap-3 mb-6">
-                    <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 flex items-center gap-3">
-                      <XCircle className="h-5 w-5 text-gray-400 flex-shrink-0" />
-                      <div>
-                        <p className="text-xs text-gray-400">vs Melhor Envio</p>
-                        <p className="font-bold text-green-600 text-sm">
-                          Você economiza {formatBRL(resultado.melhorEnvio - resultado.brhub)} ({economiaME.toFixed(0)}%)
-                        </p>
-                      </div>
-                    </div>
-                    <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 flex items-center gap-3">
-                      <Award className="h-5 w-5 text-[#F37021] flex-shrink-0" />
-                      <div>
-                        <p className="text-xs text-gray-400">vs Superfrete</p>
-                        <p className="font-bold text-[#F37021] text-sm">
-                          {formatBRL(resultado.superfrete - resultado.brhub)} mais barato ({economiaSF.toFixed(0)}%)
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  })}
 
                   <a
                     href="/cadastro-cliente"
@@ -474,7 +488,7 @@ export const ConectaOportunidade = () => {
                     Quero esse preço agora
                     <ArrowRight className="h-5 w-5" />
                   </a>
-                  <p className="text-xs text-gray-400 text-center mt-2">Cadastro gratuito em 2 minutos</p>
+                  <p className="text-xs text-gray-400 text-center -mt-4">Cadastro gratuito em 2 minutos</p>
                 </motion.div>
               )}
             </AnimatePresence>
