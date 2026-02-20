@@ -15,7 +15,7 @@ import logoMelhorEnvio from "../../assets/logo-melhorenvio.png";
 // A API retorna o preço de tabela. BRHUB aplica 28,5% de desconto negociado.
 // Superfrete: BRHUB + 6% (contrato menos vantajoso)
 // Melhor Envio: BRHUB + 40% (plataforma mais cara do mercado)
-const DESCONTO_BRHUB = 0.285;   // 28,5% de desconto sobre o preço de tabela
+const DESCONTO_BRHUB = 0.30;    // 30% de desconto sobre o preço de tabela
 const MARKUP_SUPERFRETE = 1.06; // +6% em relação ao BRHUB
 const MARKUP_MELHOR_ENVIO = 1.40; // +40% em relação ao BRHUB
 
