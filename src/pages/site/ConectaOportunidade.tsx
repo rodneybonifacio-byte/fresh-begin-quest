@@ -20,6 +20,7 @@ const MARKUP_SUPERFRETE = 1.06; // +6% em relação ao BRHUB
 const MARKUP_MELHOR_ENVIO = 1.40; // +40% em relação ao BRHUB
 
 interface SimulacaoResult {
+  precoTabela: number;
   brhub: number;
   superfrete: number;
   melhorEnvio: number;
@@ -97,7 +98,7 @@ export const ConectaOportunidade = () => {
       const superfrete = brhub * MARKUP_SUPERFRETE;
       const melhorEnvio = brhub * MARKUP_MELHOR_ENVIO;
 
-      setResultado({ brhub, superfrete, melhorEnvio });
+      setResultado({ precoTabela, brhub, superfrete, melhorEnvio });
     } catch (err: any) {
       setErro(err.message || "Erro ao calcular frete. Tente novamente.");
     } finally {
@@ -402,9 +403,16 @@ export const ConectaOportunidade = () => {
                   exit={{ opacity: 0 }}
                   className="mt-8 pt-8 border-t border-gray-100"
                 >
-                  <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest text-center mb-6">
+                  <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest text-center mb-4">
                     Comparativo de preços estimados
                   </p>
+                  {/* Valor real da API */}
+                  <div className="flex items-center justify-center gap-2 mb-6 bg-gray-50 border border-gray-200 rounded-xl py-2 px-4">
+                    <span className="text-xs text-gray-400">Preço de tabela (API):</span>
+                    <span className="text-xs font-bold text-gray-600">{formatBRL(resultado.precoTabela)}</span>
+                    <span className="text-xs text-gray-400">→ com desconto BRHUB (30%):</span>
+                    <span className="text-xs font-black text-[#F37021]">{formatBRL(resultado.brhub)}</span>
+                  </div>
 
                   {/* Barras de comparação */}
                   <div className="space-y-4 mb-6">
