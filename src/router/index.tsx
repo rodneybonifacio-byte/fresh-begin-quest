@@ -25,6 +25,7 @@ const VisualizarPdf = lazy(() => import('../pages/site/VisualizarPdf'));
 const CadastroCliente = lazy(() => import('../pages/site/cadastro/cadastro-cliente').then(module => ({ default: module.CadastroCliente })));
 const CadastroRemetente = lazy(() => import('../pages/site/cadastro/cadastro-remetente').then(module => ({ default: module.CadastroRemetente })));
 const WidgetDocs = lazy(() => import('../pages/site/widget-docs/WidgetDocs'));
+const ConectaOportunidade = lazy(() => import('../pages/site/ConectaOportunidade').then(m => ({ default: m.ConectaOportunidade })));
 // Conecta+ Pages
 const LandingHome = lazy(() => import('../pages/conecta/LandingHome'));
 const LandingConecta = lazy(() => import('../pages/conecta/LandingConecta'));
@@ -62,6 +63,7 @@ export const RouterBase = () => {
                     {/* Público */}
                     <Route index element={<RootRedirect />} />
                     <Route path="/home" element={<LandingHome />} />
+                    <Route path="/conectaoportunidade" element={<ConectaOportunidade />} />
                     <Route path="/error" element={<ErrorPage id={404} />} />
                     <Route path="*" element={<ErrorPage id={404} />} />
                     <Route path="/relatorio-desempenho" element={<RelatorioDesempenho />} />
