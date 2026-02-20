@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 import { supabase } from "../../integrations/supabase/client";
 import logoBrhub from "../../assets/logo-brhub-new.png";
+import logoSuperfrete from "../../assets/logo-superfrete.png";
+import logoMelhorEnvio from "../../assets/logo-melhorenvio.png";
 
 // ── Constantes ───────────────────────────────────────────────────────────────
 // A API retorna o preço real BRHUB (tabela dos Correios negociada).
@@ -406,15 +408,15 @@ export const ConectaOportunidade = () => {
                   {/* Barras de comparação */}
                   <div className="space-y-4 mb-6">
                     {[
-                      { label: "Melhor Envio", preco: resultado.melhorEnvio, max: resultado.melhorEnvio, color: "bg-gray-200", text: "text-gray-500", bad: true },
-                      { label: "Superfrete", preco: resultado.superfrete, max: resultado.melhorEnvio, color: "bg-yellow-300", text: "text-yellow-700", bad: true },
-                      { label: "BRHUB", preco: resultado.brhub, max: resultado.melhorEnvio, color: "bg-[#F37021]", text: "text-[#F37021]", bad: false },
-                    ].map(({ label, preco, max, color, text, bad }) => (
+                      { label: "Melhor Envio", logo: logoMelhorEnvio, preco: resultado.melhorEnvio, max: resultado.melhorEnvio, color: "bg-gray-200", text: "text-gray-500", bad: true },
+                      { label: "Superfrete", logo: logoSuperfrete, preco: resultado.superfrete, max: resultado.melhorEnvio, color: "bg-yellow-300", text: "text-yellow-700", bad: true },
+                      { label: "BRHUB", logo: logoBrhub, preco: resultado.brhub, max: resultado.melhorEnvio, color: "bg-[#F37021]", text: "text-[#F37021]", bad: false },
+                    ].map(({ label, logo, preco, max, color, text, bad }) => (
                       <div key={label}>
                         <div className="flex items-center justify-between mb-1.5">
                           <div className="flex items-center gap-2">
                             {!bad && <Trophy className="h-4 w-4 text-[#F37021]" />}
-                            <span className={`text-sm font-bold ${bad ? 'text-gray-600' : 'text-[#121212]'}`}>{label}</span>
+                            <img src={logo} alt={label} className="h-5 object-contain max-w-[90px]" style={{ filter: bad ? 'grayscale(30%)' : 'none', opacity: bad ? 0.7 : 1 }} />
                             {!bad && <span className="bg-[#F37021] text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase">Menor preço</span>}
                           </div>
                           <span className={`font-black text-base ${bad ? 'text-gray-400 line-through' : text}`}>
@@ -516,12 +518,18 @@ export const ConectaOportunidade = () => {
           <div className="bg-white/5 border border-white/10 rounded-3xl overflow-hidden">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-white/10">
-                  <th className="text-left py-4 px-5 text-white/40 text-xs uppercase tracking-wide font-semibold">Recurso</th>
-                  <th className="text-center py-4 px-4 text-white/40 text-xs uppercase tracking-wide font-semibold">Melhor Envio</th>
-                  <th className="text-center py-4 px-4 text-white/40 text-xs uppercase tracking-wide font-semibold">Superfrete</th>
-                  <th className="text-center py-4 px-4 text-[#F37021] text-xs uppercase tracking-wide font-bold">BRHUB ✓</th>
-                </tr>
+               <tr className="border-b border-white/10">
+                   <th className="text-left py-4 px-5 text-white/40 text-xs uppercase tracking-wide font-semibold">Recurso</th>
+                   <th className="text-center py-4 px-4">
+                     <img src={logoMelhorEnvio} alt="Melhor Envio" className="h-6 object-contain mx-auto" style={{ filter: 'brightness(0) invert(1)', opacity: 0.5 }} />
+                   </th>
+                   <th className="text-center py-4 px-4">
+                     <img src={logoSuperfrete} alt="Superfrete" className="h-5 object-contain mx-auto" style={{ filter: 'brightness(0) invert(1)', opacity: 0.5 }} />
+                   </th>
+                   <th className="text-center py-4 px-4">
+                     <img src={logoBrhub} alt="BRHUB" className="h-6 object-contain mx-auto" style={{ filter: 'brightness(0) saturate(100%) invert(50%) sepia(100%) saturate(500%) hue-rotate(360deg)', opacity: 1 }} />
+                   </th>
+                 </tr>
               </thead>
               <tbody>
                 {comparativo.map(({ recurso, me, sf, bh }, i) => {
