@@ -350,13 +350,13 @@ export const ConectaOportunidade = ({ referralCode }: ConectaOportunidadeProps =
 
                           {/* Concorrentes */}
                           <div className="bg-white px-4 py-3 space-y-2.5">
-                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Você pagaria em outras plataformas</p>
+                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Outras plataformas cobrariam</p>
 
                             {/* Superfrete */}
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
-                                <div className="bg-gray-100 rounded-lg px-2 py-1 flex items-center justify-center min-w-[80px] h-7">
-                                  <img src={logoSuperfrete} alt="Superfrete" className="h-5 w-auto object-contain opacity-60 grayscale" />
+                                <div className="bg-white border border-gray-200 rounded-lg px-2 py-1 flex items-center justify-center w-[90px] h-8 shadow-sm">
+                                  <img src={logoSuperfrete} alt="Superfrete" className="max-h-5 max-w-[80px] w-auto object-contain" />
                                 </div>
                               </div>
                               <div className="text-right">
@@ -368,8 +368,8 @@ export const ConectaOportunidade = ({ referralCode }: ConectaOportunidadeProps =
                             {/* Melhor Envio */}
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
-                                <div className="bg-gray-100 rounded-lg px-2 py-1 flex items-center justify-center min-w-[80px] h-7">
-                                  <img src={logoMelhorEnvio} alt="Melhor Envio" className="h-5 w-auto object-contain opacity-60 grayscale" />
+                                <div className="bg-white border border-gray-200 rounded-lg px-2 py-1 flex items-center justify-center w-[90px] h-8 shadow-sm">
+                                  <img src={logoMelhorEnvio} alt="Melhor Envio" className="max-h-5 max-w-[80px] w-auto object-contain" />
                                 </div>
                               </div>
                               <div className="text-right">
@@ -511,7 +511,7 @@ export const ConectaOportunidade = ({ referralCode }: ConectaOportunidadeProps =
           <div className="text-center mb-6">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Comparativo honesto</p>
             <h2 className="text-2xl sm:text-3xl font-black text-[#121212]">
-              BRHUB vs <span className="text-[#F37021]">concorrentes</span>
+              BRHUB vs <span className="text-[#F37021]">Outras Plataformas</span>
             </h2>
           </div>
 
