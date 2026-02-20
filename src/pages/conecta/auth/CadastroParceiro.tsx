@@ -147,7 +147,6 @@ export const CadastroParceiro = () => {
     setLoading(true);
 
     try {
-      // Chamar edge function para registrar parceiro
       const { data, error } = await supabase.functions.invoke('registrar-parceiro', {
         body: {
           nome: formData.nome,
@@ -159,10 +158,24 @@ export const CadastroParceiro = () => {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        // Tentar extrair mensagem real do body da resposta de erro
+        let mensagem = 'Erro ao cadastrar. Tente novamente.';
+        try {
+          const context = (error as any)?.context;
+          if (context?.clone) {
+            const text = await context.clone().text();
+            const json = JSON.parse(text);
+            if (json?.error) mensagem = json.error;
+          }
+        } catch { /* usa mensagem padrão */ }
+        toast.error(mensagem);
+        setLoading(false);
+        return;
+      }
 
-      if (!data.success) {
-        toast.error(data.error || 'Erro ao cadastrar');
+      if (!data || !data.success) {
+        toast.error(data?.error || 'Erro ao cadastrar. Tente novamente.');
         setLoading(false);
         return;
       }
@@ -171,7 +184,7 @@ export const CadastroParceiro = () => {
       toast.success('Cadastro realizado com sucesso!');
     } catch (error: any) {
       console.error('Erro no cadastro:', error);
-      toast.error('Erro ao cadastrar. Tente novamente.');
+      toast.error(error?.message || 'Erro ao cadastrar. Tente novamente.');
     } finally {
       setLoading(false);
     }
