@@ -14,10 +14,11 @@ import logoSedex from "../../assets/logo-sedex.png";
 import logoPac from "../../assets/logo-pac.png";
 
 // ── Constantes ───────────────────────────────────────────────────────────────
-// A API retorna preço de tabela da conta de demonstração.
-// BRHUB aplica 29% de desconto negociado sobre esse valor.
+// A API retorna preço da conta de demonstração (ex: SEDEX R$22,46).
+// BRHUB cobra ~15,85% menos que esse valor (ex: SEDEX real = R$18,90).
+// Calibrado com: 1 - (18,90 / 22,46) = 0,1585
 // Superfrete cobra ~6% a mais que a BRHUB | Melhor Envio cobra ~68,9% a mais
-const DESCONTO_BRHUB = 0.29;
+const DESCONTO_BRHUB = 0.1585;
 const MARKUP_SUPERFRETE = 1.06;
 const MARKUP_MELHOR_ENVIO = 1.689;
 
