@@ -198,6 +198,12 @@ const AdminSidebar = observer(({
                     label: 'Atualizar Preços Planilha',
                     to: '/admin/ferramentas/atualizar-precos-planilha',
                     active: isPathActive('/admin/ferramentas/atualizar-precos-planilha')
+                },
+                {
+                    icon: Activity,
+                    label: 'Estratégia 1ª Etiqueta',
+                    to: '/admin/ferramentas/estrategia-primeira-etiqueta',
+                    active: isPathActive('/admin/ferramentas/estrategia-primeira-etiqueta')
                 }
             ]
         }
