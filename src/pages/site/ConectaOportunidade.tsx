@@ -505,7 +505,7 @@ export const ConectaOportunidade = () => {
                      <img src={logoMelhorEnvio} alt="Melhor Envio" className="h-7 object-contain mx-auto" style={{ mixBlendMode: 'screen', opacity: 0.85 }} />
                    </th>
                    <th className="text-center py-4 px-4">
-                     <img src={logoSuperfrete} alt="Superfrete" className="h-6 object-contain mx-auto" style={{ mixBlendMode: 'screen', opacity: 0.85 }} />
+                     <img src={logoSuperfrete} alt="Superfrete" className="h-8 object-contain mx-auto" style={{ opacity: 0.85 }} />
                    </th>
                    <th className="text-center py-4 px-4 bg-[#F37021]/10 rounded-t-xl">
                      <img src={logoBrhub} alt="BRHUB" className="h-8 object-contain mx-auto" style={{ mixBlendMode: 'screen' }} />
