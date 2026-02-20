@@ -105,18 +105,22 @@ export const ConectaOportunidade = ({ referralCode }: ConectaOportunidadeProps =
       });
 
       if (error) throw new Error(error.message);
-      if (!data?.success) throw new Error(data?.error || "Erro ao calcular");
+      if (error) throw new Error(error.message || "Erro ao calcular");
+      
+      // cotacao-oportunidade retorna { data: [...] }
+      const opcoesBrutos = data?.data || data?.opcoes || [];
+      if (!opcoesBrutos.length) throw new Error(data?.error || "Nenhuma opção encontrada");
 
-      const opcoesCalculadas: OpcaoServico[] = (data.opcoes || [])
+      const opcoesCalculadas: OpcaoServico[] = (opcoesBrutos)
         .filter((o: any) => {
-          const s = (o.servico || "").toUpperCase();
-          return (s === "PAC" || s === "SEDEX") && !s.includes("HOJE") && !s.includes("12") && !s.includes("10");
+          const s = (o.nomeServico || o.servico || "").toUpperCase();
+          return s.includes("PAC") || s.includes("SEDEX");
         })
         .map((o: any) => {
           const precoTabela = Number(o.preco || o.valor || 0);
           const brhub = precoTabela * (1 - DESCONTO_BRHUB);
           return {
-            servico: (o.servico || "").toUpperCase(),
+            servico: (o.nomeServico || o.servico || "").toUpperCase(),
             prazo: Number(o.prazo || 0),
             precoTabela,
             brhub,
