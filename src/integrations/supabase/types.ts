@@ -1360,6 +1360,14 @@ export type Database = {
         Args: { p_credenciais: Json; p_integracao_id: string }
         Returns: boolean
       }
+      validar_codigo_parceiro: {
+        Args: { p_codigo: string }
+        Returns: {
+          codigo_parceiro: string
+          nome: string
+          valido: boolean
+        }[]
+      }
       verificar_e_cobrar_etiqueta: {
         Args: {
           p_cliente_id: string
