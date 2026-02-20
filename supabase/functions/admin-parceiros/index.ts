@@ -18,6 +18,7 @@ Deno.serve(async (req) => {
   );
 
   const method = req.method;
+  const url = new URL(req.url);
 
   try {
     // GET - listar todos os parceiros
@@ -29,6 +30,51 @@ Deno.serve(async (req) => {
 
       if (error) throw error;
       return new Response(JSON.stringify({ data }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // POST - gerar token de acesso para parceiro (impersonation pelo admin)
+    if (method === 'POST') {
+      const { parceiroId } = await req.json();
+
+      if (!parceiroId) {
+        return new Response(JSON.stringify({ error: 'parceiroId obrigatório' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { data: parceiro, error: findError } = await supabase
+        .from('parceiros')
+        .select('id, nome, email, codigo_parceiro, link_indicacao, status')
+        .eq('id', parceiroId)
+        .single();
+
+      if (findError || !parceiro) {
+        return new Response(JSON.stringify({ error: 'Parceiro não encontrado' }), {
+          status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Gerar JWT para o parceiro (mesmo formato do parceiro-auth)
+      const header = { alg: 'HS256', typ: 'JWT' };
+      const now = Math.floor(Date.now() / 1000);
+      const payload = {
+        parceiroId: parceiro.id,
+        email: parceiro.email,
+        nome: parceiro.nome,
+        role: 'parceiro',
+        iat: now,
+        exp: now + (2 * 60 * 60), // 2 horas
+      };
+
+      const base64Header = btoa(JSON.stringify(header));
+      const base64Payload = btoa(JSON.stringify(payload));
+      const secret = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+      const signature = btoa(secret.slice(0, 32) + base64Payload);
+      const token = `${base64Header}.${base64Payload}.${signature}`;
+
+      return new Response(JSON.stringify({ token, parceiro }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

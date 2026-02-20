@@ -52,6 +52,25 @@ export const ParceirosConecta = () => {
         },
     });
 
+    const logarComoParceiro = async (parceiro: Parceiro) => {
+        try {
+            const { data, error } = await supabase.functions.invoke('admin-parceiros', {
+                method: 'POST',
+                body: { parceiroId: parceiro.id },
+            });
+            if (error) throw error;
+            // Salva no localStorage como se fosse um login normal
+            localStorage.setItem('parceiro_token', data.token);
+            localStorage.setItem('parceiro_data', JSON.stringify(data.parceiro));
+            // Abre o dashboard do Conecta+ em nova aba
+            window.open(`${window.location.origin}/conecta/dashboard`, '_blank');
+            toast.success(`Abrindo dashboard de ${parceiro.nome}`);
+        } catch {
+            toast.error('Erro ao gerar acesso como parceiro');
+        }
+    };
+
+
     const atualizarStatus = async (id: string, status: string) => {
         try {
             const { error } = await supabase.functions.invoke('admin-parceiros', {
@@ -152,36 +171,42 @@ export const ParceirosConecta = () => {
                                         <td className="px-4 py-3 text-sm text-gray-500">
                                             {format(new Date(p.created_at), 'dd/MM/yyyy')}
                                         </td>
-                                        <td className="px-4 py-3 text-right">
-                                            <TableDropdown
-                                                dropdownKey={p.id}
-                                                items={[
-                                                    ...(p.status !== 'aprovado' ? [{
-                                                        id: 'aprovar',
-                                                        label: '✅ Aprovar',
-                                                        type: 'button' as const,
-                                                        onClick: () => atualizarStatus(p.id, 'aprovado'),
-                                                    }] : []),
-                                                    ...(p.status !== 'suspenso' ? [{
-                                                        id: 'suspender',
-                                                        label: '⏸️ Suspender',
-                                                        type: 'button' as const,
-                                                        onClick: () => atualizarStatus(p.id, 'suspenso'),
-                                                    }] : []),
-                                                    ...(p.status !== 'cancelado' ? [{
-                                                        id: 'cancelar',
-                                                        label: '🚫 Cancelar',
-                                                        type: 'button' as const,
-                                                        onClick: () => atualizarStatus(p.id, 'cancelado'),
-                                                    }] : []),
-                                                    {
-                                                        id: 'excluir',
-                                                        label: '🗑️ Excluir',
-                                                        type: 'button' as const,
-                                                        onClick: () => deletarParceiro(p),
-                                                    },
-                                                ]}
-                                            />
+                                         <td className="px-4 py-3 text-right">
+                                             <TableDropdown
+                                                 dropdownKey={p.id}
+                                                 items={[
+                                                     {
+                                                         id: 'logar',
+                                                         label: '🔑 Logar como parceiro',
+                                                         type: 'button' as const,
+                                                         onClick: () => logarComoParceiro(p),
+                                                     },
+                                                     ...(p.status !== 'aprovado' ? [{
+                                                         id: 'aprovar',
+                                                         label: '✅ Aprovar',
+                                                         type: 'button' as const,
+                                                         onClick: () => atualizarStatus(p.id, 'aprovado'),
+                                                     }] : []),
+                                                     ...(p.status !== 'suspenso' ? [{
+                                                         id: 'suspender',
+                                                         label: '⏸️ Suspender',
+                                                         type: 'button' as const,
+                                                         onClick: () => atualizarStatus(p.id, 'suspenso'),
+                                                     }] : []),
+                                                     ...(p.status !== 'cancelado' ? [{
+                                                         id: 'cancelar',
+                                                         label: '🚫 Cancelar',
+                                                         type: 'button' as const,
+                                                         onClick: () => atualizarStatus(p.id, 'cancelado'),
+                                                     }] : []),
+                                                     {
+                                                         id: 'excluir',
+                                                         label: '🗑️ Excluir',
+                                                         type: 'button' as const,
+                                                         onClick: () => deletarParceiro(p),
+                                                     },
+                                                 ]}
+                                             />
                                         </td>
                                     </tr>
                                 ))}
