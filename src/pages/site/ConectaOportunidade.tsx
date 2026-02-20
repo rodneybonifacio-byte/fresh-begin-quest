@@ -317,12 +317,9 @@ export const ConectaOportunidade = () => {
                           )}
 
                           {/* Cabeçalho */}
-                          <div className={`flex items-center justify-between px-4 pt-7 pb-3 ${isSedex ? 'bg-orange-50' : 'bg-gray-50'}`}>
-                            <div className="flex items-center gap-2">
-                              <img src={isSedex ? logoSedex : logoPac} alt={opcao.servico} className="h-8 object-contain" />
-                              <span className="text-xs text-gray-400">{opcao.prazo} {opcao.prazo === 1 ? 'dia útil' : 'dias úteis'}</span>
-                            </div>
-                            <img src={logoBrhub} alt="BRHUB" className="h-5 object-contain" />
+                          <div className={`flex items-center gap-2 px-4 pt-7 pb-3 ${isSedex ? 'bg-orange-50' : 'bg-gray-50'}`}>
+                            <img src={isSedex ? logoSedex : logoPac} alt={opcao.servico} className="h-8 object-contain" />
+                            <span className="text-xs text-gray-400">{opcao.prazo} {opcao.prazo === 1 ? 'dia útil' : 'dias úteis'}</span>
                           </div>
 
                           {/* Preço BRHUB campeão */}
@@ -343,7 +340,7 @@ export const ConectaOportunidade = () => {
                             <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Você pagaria em outras plataformas</p>
 
                             <div className="flex items-center justify-between gap-2 bg-red-50 rounded-xl px-3 py-2.5">
-                              <img src={logoSuperfrete} alt="Superfrete" className="h-4 object-contain max-w-[65px]" style={{ filter: 'grayscale(40%)', opacity: 0.7 }} />
+                              <img src={logoSuperfrete} alt="Superfrete" className="h-7 object-contain max-w-[90px]" style={{ filter: 'grayscale(30%)', opacity: 0.8 }} />
                               <div className="text-right">
                                 <p className="text-2xl font-black text-red-500 line-through decoration-red-400">{formatBRL(opcao.superfrete)}</p>
                                 <p className="text-[10px] text-red-400 font-bold">+{economiaSF.toFixed(0)}% mais caro</p>
@@ -351,7 +348,7 @@ export const ConectaOportunidade = () => {
                             </div>
 
                             <div className="flex items-center justify-between gap-2 bg-red-50 rounded-xl px-3 py-2.5">
-                              <img src={logoMelhorEnvio} alt="Melhor Envio" className="h-4 object-contain max-w-[75px]" style={{ filter: 'grayscale(40%)', opacity: 0.7 }} />
+                              <img src={logoMelhorEnvio} alt="Melhor Envio" className="h-7 object-contain max-w-[100px]" style={{ filter: 'grayscale(30%)', opacity: 0.8 }} />
                               <div className="text-right">
                                 <p className="text-2xl font-black text-red-500 line-through decoration-red-400">{formatBRL(opcao.melhorEnvio)}</p>
                                 <p className="text-[10px] text-red-400 font-bold">+{economiaME.toFixed(0)}% mais caro</p>
