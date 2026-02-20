@@ -562,7 +562,7 @@ export const ConectaOportunidade = ({ referralCode }: ConectaOportunidadeProps =
             Pronto para enviar mais barato?
           </h2>
           <p className="text-gray-400 text-sm mb-6">
-            Junte-se a milhares de lojistas que já economizam com a BRHUB.
+            Junte-se a centenas de lojistas que já economizam com a BRHUB.
           </p>
           <a
             href={cadastroUrl}
