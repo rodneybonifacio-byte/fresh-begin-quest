@@ -24,6 +24,10 @@ export default defineConfig(({ mode }) => ({
                 skipWaiting: true,
                 // Claim clients - assume controle imediato
                 clientsClaim: true,
+                // Versão para forçar atualização do SW
+                additionalManifestEntries: [
+                    { url: '/', revision: '20260220-v2' }
+                ],
                 // Cache de navegação
                 navigateFallback: 'index.html',
                 // Não cachear chamadas de API
