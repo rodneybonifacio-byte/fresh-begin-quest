@@ -221,6 +221,39 @@ export const DashboardParceiro = () => {
                 {copied === 'codigo' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                 {copied === 'codigo' ? 'Copiado' : 'Copiar'}
               </button>
+
+            {/* Botão compartilhar simulador */}
+            <div className="mt-3 pt-3 border-t border-white/10">
+              <p className="text-[10px] text-gray-500 mb-2 uppercase tracking-wide font-bold">Compartilhar simulador de frete</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    const url = `${window.location.origin}/oportunidade?ref=${parceiro.codigo_parceiro}`;
+                    handleCopy('link', url);
+                  }}
+                  className="flex-1 flex items-center justify-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold py-2.5 rounded-xl transition-colors"
+                >
+                  {copied === 'link' ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copied === 'link' ? 'Link copiado!' : 'Copiar link'}
+                </button>
+                <button
+                  onClick={() => {
+                    const url = `${window.location.origin}/oportunidade?ref=${parceiro.codigo_parceiro}`;
+                    const texto = `Simule agora o quanto você economiza em frete com a BRHUB! 🚀\n\n${url}`;
+                    if (navigator.share) {
+                      navigator.share({ url, title: 'Simulador BRHUB Envios', text: texto });
+                    } else {
+                      navigator.clipboard.writeText(texto);
+                      toast.success('Texto copiado para compartilhar!');
+                    }
+                  }}
+                  className="flex-1 flex items-center justify-center gap-1.5 bg-[#F37021] hover:bg-[#e06010] text-white text-xs font-semibold py-2.5 rounded-xl transition-colors shadow-lg shadow-orange-500/30"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  Compartilhar
+                </button>
+              </div>
+            </div>
             </div>
           </motion.div>
         </div>

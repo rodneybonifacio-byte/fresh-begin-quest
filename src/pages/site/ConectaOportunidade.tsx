@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { TrendingDown, Truck, MessageCircle, Shield, Clock, Package, Star, Zap, BarChart3, Users, CheckCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "../../integrations/supabase/client";
@@ -64,8 +65,10 @@ interface ConectaOportunidadeProps {
 }
 
 export const ConectaOportunidade = ({ referralCode }: ConectaOportunidadeProps = {}) => {
-  const cadastroUrl = referralCode
-    ? `/cadastro-cliente?ref=${referralCode}`
+  const [searchParams] = useSearchParams();
+  const effectiveCode = referralCode || searchParams.get('ref') || undefined;
+  const cadastroUrl = effectiveCode
+    ? `/cadastro-cliente?ref=${effectiveCode}`
     : '/cadastro-cliente';
 
   const [cepOrigem, setCepOrigem] = useState("");
