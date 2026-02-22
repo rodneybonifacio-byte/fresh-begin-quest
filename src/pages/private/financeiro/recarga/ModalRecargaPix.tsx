@@ -16,53 +16,49 @@ interface ModalRecargaPixProps {
 export function ModalRecargaPix({ isOpen, onClose, chargeData, saldoInicial, clienteId, onPaymentConfirmed }: ModalRecargaPixProps) {
   const [copied, setCopied] = useState(false);
 
-  // Polling simples: verifica se o saldo mudou
+  // Realtime: escuta mudanças na tabela recargas_pix ao invés de polling
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !chargeData) return;
 
-    console.log('🔄 Iniciando polling - Saldo inicial:', saldoInicial);
-    
-    const verificarPagamento = async () => {
-      try {
-        console.log('🔍 Verificando saldo...');
-        
-        const { data: saldoAtual, error } = await supabase
-          .rpc('calcular_saldo_cliente', { p_cliente_id: clienteId });
+    console.log('📡 Iniciando monitoramento Realtime - clienteId:', clienteId);
 
-        if (error) {
-          console.error('Erro ao verificar saldo:', error);
-          return;
-        }
-
-        console.log('💰 Saldo atual:', saldoAtual);
-        
-        if (saldoAtual > saldoInicial) {
-          console.log('✅ Saldo aumentou! Pagamento confirmado.');
-          toastSuccess('Pagamento confirmado! Processando sua emissão...');
+    const channel = supabase
+      .channel(`recarga-pix-${clienteId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'recargas_pix',
+          filter: `cliente_id=eq.${clienteId}`,
+        },
+        (payload) => {
+          console.log('💰 Realtime - recarga atualizada:', payload.new);
+          const novoStatus = (payload.new as any).status;
           
-          // Chamar callback antes de fechar
-          if (onPaymentConfirmed) {
-            onPaymentConfirmed();
+          if (novoStatus === 'pago') {
+            console.log('✅ Pagamento confirmado via Realtime!');
+            toastSuccess('Pagamento confirmado! Processando sua emissão...');
+            
+            if (onPaymentConfirmed) {
+              onPaymentConfirmed();
+            }
+            
+            setTimeout(() => {
+              onClose();
+            }, 500);
           }
-          
-          // Aguardar um pouco antes de fechar para o callback executar
-          setTimeout(() => {
-            onClose();
-          }, 500);
         }
-      } catch (error) {
-        console.error('❌ Erro ao verificar pagamento:', error);
-      }
-    };
-
-    // Verificar a cada 3 segundos
-    const interval = setInterval(verificarPagamento, 3000);
+      )
+      .subscribe((status) => {
+        console.log('📡 Realtime status:', status);
+      });
 
     return () => {
-      console.log('🛑 Parando polling');
-      clearInterval(interval);
+      console.log('🛑 Removendo canal Realtime');
+      supabase.removeChannel(channel);
     };
-  }, [isOpen, saldoInicial, clienteId, onClose, onPaymentConfirmed]);
+  }, [isOpen, clienteId, chargeData, onClose, onPaymentConfirmed]);
 
   if (!isOpen || !chargeData) return null;
 

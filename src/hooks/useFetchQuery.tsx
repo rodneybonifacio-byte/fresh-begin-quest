@@ -8,7 +8,6 @@ export const useFetchQuery = <T,>(
     queryKey: [...key],
     queryFn: serviceFn,
     staleTime: 60000 * 3,
-    refetchInterval: 60000 * 2.5,
     retry: false,
     ...options
 })
