@@ -3,7 +3,7 @@ import { supabase } from '../integrations/supabase/client';
 import authStore from '../authentica/authentication.store';
 import type { TokenPayload } from '../types/ITokenPayload';
 
-const HEARTBEAT_INTERVAL = 30000; // 30 segundos
+const HEARTBEAT_INTERVAL = 120000; // 120 segundos (otimizado para reduzir consumo)
 
 export function usePresenceTracking() {
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
