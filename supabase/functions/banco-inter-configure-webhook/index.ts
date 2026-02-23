@@ -115,7 +115,7 @@ async function getAccessToken(): Promise<string> {
   const body = new URLSearchParams({
     client_id: clientId,
     client_secret: clientSecret,
-    scope: 'cob.write cob.read pix.read pix.write webhook.read webhook.write',
+    scope: 'cob.write cob.read pix.read pix.write webhook.read webhook.write boleto-cobranca.read boleto-cobranca.write',
     grant_type: 'client_credentials'
   });
 
