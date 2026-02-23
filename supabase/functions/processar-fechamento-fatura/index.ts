@@ -621,20 +621,57 @@ serve(async (req) => {
     const cpfCnpj = clienteData.cpfCnpj || clienteData.cpf_cnpj;
     const telefone_cliente = clienteData.telefone || '11999999999'; // Default se não vier
     const cep = clienteData.cep;
-    const logradouro = clienteData.logradouro;
-    const numero = clienteData.numero;
+    let logradouro = clienteData.logradouro;
+    let numero = clienteData.numero;
     const complemento = clienteData.complemento || '';
-    const bairro = clienteData.bairro;
-    const localidade = clienteData.localidade || clienteData.cidade;
-    const uf = clienteData.uf || clienteData.estado;
+    let bairro = clienteData.bairro;
+    let localidade = clienteData.localidade || clienteData.cidade;
+    let uf = clienteData.uf || clienteData.estado;
     
     if (!cpfCnpj) {
       console.error('❌ CPF/CNPJ não encontrado no objeto cliente');
       throw new Error('Dados do cliente incompletos: CPF/CNPJ não encontrado');
     }
     
-    if (!cep || !logradouro || !numero || !bairro || !localidade || !uf) {
-      console.error('❌ Dados de endereço incompletos:', {
+    // 🔄 FALLBACK: Se logradouro ou bairro estão vazios, buscar via BrasilAPI/ViaCEP usando o CEP
+    if (cep && (!logradouro || !bairro || !localidade || !uf)) {
+      console.log('🔄 Endereço incompleto, buscando via BrasilAPI com CEP:', cep);
+      const cepLimpo = cep.replace(/\D/g, '');
+      try {
+        const cepResponse = await fetch(`https://brasilapi.com.br/api/cep/v2/${cepLimpo}`);
+        if (cepResponse.ok) {
+          const cepData = await cepResponse.json();
+          console.log('✅ Dados do CEP obtidos:', JSON.stringify(cepData, null, 2));
+          if (!logradouro && cepData.street) logradouro = cepData.street;
+          if (!bairro && cepData.neighborhood) bairro = cepData.neighborhood;
+          if (!localidade && cepData.city) localidade = cepData.city;
+          if (!uf && cepData.state) uf = cepData.state;
+        } else {
+          console.log('⚠️ BrasilAPI falhou, tentando ViaCEP...');
+          const viaCepResponse = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+          if (viaCepResponse.ok) {
+            const viaCepData = await viaCepResponse.json();
+            if (!viaCepData.erro) {
+              console.log('✅ Dados do ViaCEP obtidos:', JSON.stringify(viaCepData, null, 2));
+              if (!logradouro && viaCepData.logradouro) logradouro = viaCepData.logradouro;
+              if (!bairro && viaCepData.bairro) bairro = viaCepData.bairro;
+              if (!localidade && viaCepData.localidade) localidade = viaCepData.localidade;
+              if (!uf && viaCepData.uf) uf = viaCepData.uf;
+            }
+          } else {
+            await viaCepResponse.text(); // consume body
+          }
+        }
+      } catch (cepErr) {
+        console.log('⚠️ Erro ao buscar CEP:', cepErr);
+      }
+    }
+    
+    // Se número ainda estiver vazio, usar S/N
+    if (!numero) numero = 'S/N';
+    
+    if (!cep || !logradouro || !bairro || !localidade || !uf) {
+      console.error('❌ Dados de endereço incompletos mesmo após fallback:', {
         cep: !!cep,
         logradouro: !!logradouro,
         numero: !!numero,
