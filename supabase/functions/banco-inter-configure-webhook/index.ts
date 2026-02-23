@@ -140,30 +140,29 @@ async function getAccessToken(): Promise<string> {
   return data.access_token;
 }
 
-async function configureWebhook(accessToken: string, webhookUrl: string): Promise<any> {
+function createMtlsClient() {
+  const clientCert = Deno.env.get('BANCO_INTER_CLIENT_CERT');
+  const clientKey = Deno.env.get('BANCO_INTER_CLIENT_KEY');
+  const caCert = Deno.env.get('BANCO_INTER_CA_CERT');
+
+  return Deno.createHttpClient({
+    cert: formatPemCert(clientCert!),
+    key: formatPemCert(clientKey!),
+    caCerts: [formatPemCert(caCert!)]
+  });
+}
+
+async function configurePixWebhook(accessToken: string, webhookUrl: string): Promise<any> {
   const chave = Deno.env.get('BANCO_INTER_CHAVE_PIX');
   
   if (!chave) {
     throw new Error('Chave PIX não configurada');
   }
 
-  const clientCert = Deno.env.get('BANCO_INTER_CLIENT_CERT');
-  const clientKey = Deno.env.get('BANCO_INTER_CLIENT_KEY');
-  const caCert = Deno.env.get('BANCO_INTER_CA_CERT');
+  const httpClient = createMtlsClient();
 
-  const formattedClientCert = formatPemCert(clientCert!);
-  const formattedCaCert = formatPemCert(caCert!);
-  const formattedClientKey = formatPemCert(clientKey!);
-
-  // Criar cliente HTTP com mTLS
-  const httpClient = Deno.createHttpClient({
-    cert: formattedClientCert,
-    key: formattedClientKey,
-    caCerts: [formattedCaCert]
-  });
-
-  console.log('Configurando webhook para chave:', chave);
-  console.log('URL do webhook:', webhookUrl);
+  console.log('📌 Configurando webhook PIX para chave:', chave);
+  console.log('URL do webhook PIX:', webhookUrl);
 
   const url = `https://cdpj.partners.bancointer.com.br/banking/v2/pix/v2/webhook/${encodeURIComponent(chave)}`;
   
@@ -173,22 +172,49 @@ async function configureWebhook(accessToken: string, webhookUrl: string): Promis
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      webhookUrl: webhookUrl
-    }),
+    body: JSON.stringify({ webhookUrl }),
     client: httpClient
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('Erro ao configurar webhook:', response.status, errorText);
-    throw new Error(`Falha ao configurar webhook: ${response.status} - ${errorText}`);
+    console.error('❌ Erro ao configurar webhook PIX:', response.status, errorText);
+    throw new Error(`Falha ao configurar webhook PIX: ${response.status} - ${errorText}`);
   }
 
-  const data = await response.json();
-  console.log('Webhook configurado com sucesso:', data);
+  const responseText = await response.text();
+  console.log('✅ Webhook PIX configurado com sucesso');
+  return responseText ? JSON.parse(responseText) : { success: true };
+}
+
+async function configureBoletoWebhook(accessToken: string, webhookUrl: string): Promise<any> {
+  const httpClient = createMtlsClient();
+
+  console.log('📌 Configurando webhook Boleto...');
+  console.log('URL do webhook Boleto:', webhookUrl);
+
+  // API de webhook para cobranças/boletos do Banco Inter
+  const url = `https://cdpj.partners.bancointer.com.br/cobranca/v3/cobrancas/webhook`;
   
-  return data;
+  const response = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ webhookUrl }),
+    client: httpClient
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('❌ Erro ao configurar webhook Boleto:', response.status, errorText);
+    throw new Error(`Falha ao configurar webhook Boleto: ${response.status} - ${errorText}`);
+  }
+
+  const responseText = await response.text();
+  console.log('✅ Webhook Boleto configurado com sucesso');
+  return responseText ? JSON.parse(responseText) : { success: true };
 }
 
 serve(async (req) => {
@@ -218,11 +244,11 @@ serve(async (req) => {
       throw new Error(`Credenciais não configuradas: ${missingEnvs.join(', ')}`);
     }
 
-    // URL do webhook para o Banco Inter
-    const webhookUrl = `${supabaseUrl}/functions/v1/banco-inter-webhook`;
+    // URLs dos webhooks
+    const pixWebhookUrl = `${supabaseUrl}/functions/v1/banco-inter-webhook`;
+    const boletoWebhookUrl = `${supabaseUrl}/functions/v1/banco-inter-webhook-boleto`;
 
-    console.log('Iniciando configuração do webhook...');
-    console.log('Webhook URL:', webhookUrl);
+    console.log('🚀 Iniciando configuração dos webhooks...');
 
     // Obter token de acesso com retry
     const accessToken = await retryWithBackoff(
@@ -231,24 +257,48 @@ serve(async (req) => {
       1000
     );
 
-    // Configurar webhook com retry
-    const result = await retryWithBackoff(
-      () => configureWebhook(accessToken, webhookUrl),
-      3,
-      2000
-    );
+    const results: any = { pix: null, boleto: null };
+    const errors: string[] = [];
 
-    console.log('✓ Webhook configurado com sucesso!');
+    // Configurar webhook PIX
+    try {
+      results.pix = await retryWithBackoff(
+        () => configurePixWebhook(accessToken, pixWebhookUrl),
+        3,
+        2000
+      );
+    } catch (e) {
+      console.error('⚠️ Erro no webhook PIX:', e.message);
+      errors.push(`PIX: ${e.message}`);
+    }
+
+    // Configurar webhook Boleto
+    try {
+      results.boleto = await retryWithBackoff(
+        () => configureBoletoWebhook(accessToken, boletoWebhookUrl),
+        3,
+        2000
+      );
+    } catch (e) {
+      console.error('⚠️ Erro no webhook Boleto:', e.message);
+      errors.push(`Boleto: ${e.message}`);
+    }
+
+    console.log('🏁 Configuração finalizada');
 
     return new Response(
       JSON.stringify({
-        success: true,
-        message: 'Webhook configurado com sucesso',
-        data: result,
-        webhookUrl: webhookUrl
+        success: errors.length === 0,
+        message: errors.length === 0 
+          ? 'Webhooks PIX e Boleto configurados com sucesso' 
+          : `Configurado parcialmente. Erros: ${errors.join('; ')}`,
+        results,
+        errors: errors.length > 0 ? errors : undefined,
+        pixWebhookUrl,
+        boletoWebhookUrl
       }),
       {
-        status: 200,
+        status: errors.length === 0 ? 200 : 207,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
