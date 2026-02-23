@@ -8,12 +8,12 @@ interface ModalRecargaPixProps {
   isOpen: boolean;
   onClose: () => void;
   chargeData?: ICreatePixChargeResponse['data'];
-  saldoInicial: number;
+  saldoInicial?: number;
   clienteId: string;
   onPaymentConfirmed?: () => void;
 }
 
-export function ModalRecargaPix({ isOpen, onClose, chargeData, saldoInicial, clienteId, onPaymentConfirmed }: ModalRecargaPixProps) {
+export function ModalRecargaPix({ isOpen, onClose, chargeData, clienteId, onPaymentConfirmed }: ModalRecargaPixProps) {
   const [copied, setCopied] = useState(false);
 
   // Realtime: escuta mudanças na tabela recargas_pix ao invés de polling
