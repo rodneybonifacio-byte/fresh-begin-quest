@@ -529,15 +529,17 @@ export const ConectaOportunidade = ({ referralCode, hideNavbar }: ConectaOportun
           <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
             {/* Header */}
             <div className="grid grid-cols-4 text-center bg-[#121212]">
-              <div className="py-3 px-2 border-r border-white/10" />
-              <div className="py-3 px-1 border-r border-white/10">
-                <img src={logoSuperfrete} alt="Superfrete" className="h-4 object-contain mx-auto opacity-60 grayscale brightness-200" />
+              <div className="py-4 px-2 border-r border-white/10 flex items-center justify-center">
+                <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Recurso</span>
               </div>
-              <div className="py-3 px-1 border-r border-white/10">
-                <img src={logoMelhorEnvio} alt="Melhor Envio" className="h-4 object-contain mx-auto opacity-60 grayscale brightness-200" />
+              <div className="py-4 px-2 border-r border-white/10 flex items-center justify-center">
+                <img src={logoSuperfrete} alt="Superfrete" className="h-7 w-7 object-contain rounded-full" />
               </div>
-              <div className="py-3 px-1 bg-[#F37021]/20">
-                <img src={logoBrhub} alt="BRHUB" className="h-4 object-contain mx-auto" />
+              <div className="py-4 px-2 border-r border-white/10 flex items-center justify-center">
+                <img src={logoMelhorEnvio} alt="Melhor Envio" className="h-6 object-contain opacity-80 brightness-200" />
+              </div>
+              <div className="py-4 px-2 bg-[#F37021]/20 flex items-center justify-center">
+                <img src={logoBrhub} alt="BRHUB" className="h-5 object-contain" />
               </div>
             </div>
 
