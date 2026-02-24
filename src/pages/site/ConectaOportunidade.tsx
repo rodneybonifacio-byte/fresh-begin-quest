@@ -539,7 +539,7 @@ export const ConectaOportunidade = ({ referralCode, hideNavbar }: ConectaOportun
                 <img src={logoMelhorEnvio} alt="Melhor Envio" className="h-28 w-28 object-contain rounded-lg" />
               </div>
               <div className="py-4 px-2 bg-[#F37021]/20 flex items-center justify-center">
-                <img src={logoBrhub} alt="BRHUB" className="h-10 object-contain" />
+                <span className="text-white font-black text-lg tracking-tight">BRHUB</span>
               </div>
             </div>
 
