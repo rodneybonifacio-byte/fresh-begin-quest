@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 
 const navLinks = [
   { label: 'Programa', path: '/conecta' },
+  { label: 'Benefícios', path: '/conecta/beneficios' },
   { label: 'Simulador', path: '/programa' },
   { label: 'Home BRHUB', path: '/home' },
 ];

@@ -33,6 +33,7 @@ const ProjecaoGanhos = lazy(() => import('../pages/conecta/ProjecaoGanhos'));
 const LoginParceiro = lazy(() => import('../pages/conecta/auth/LoginParceiro'));
 const CadastroParceiro = lazy(() => import('../pages/conecta/auth/CadastroParceiro'));
 const DashboardParceiro = lazy(() => import('../pages/conecta/dashboard/DashboardParceiro'));
+const BeneficiosConecta = lazy(() => import('../pages/conecta/BeneficiosConecta'));
 
 // Loading component
 const LoadingFallback = () => (
@@ -84,6 +85,7 @@ export const RouterBase = () => {
                     <Route path="/programa" element={<ProjecaoGanhos />} />
                     <Route path="/conecta/login" element={<LoginParceiro />} />
                     <Route path="/conecta/cadastro" element={<CadastroParceiro />} />
+                    <Route path="/conecta/beneficios" element={<BeneficiosConecta />} />
                     <Route path="/conecta/dashboard" element={<DashboardParceiro />} />
                     <Route element={<RotaPublica />}>
                         <Route path="/login" element={<Login />} />
