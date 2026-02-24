@@ -9,52 +9,44 @@ import {
   Calculator,
   ChevronUp,
   ChevronDown,
+  ShoppingBag,
+  Package,
+  Layers,
 } from 'lucide-react';
 
-const COMISSAO_PERCENTUAL = 20; // 20% da margem líquida
-const MARGEM_MEDIA_POR_ETIQUETA = 15; // R$ margem média por etiqueta (atacado)
+const COMISSAO = 20;
+const MARGEM_VAREJO = 3.5;
+const MARGEM_ATACADO = 15;
 
-interface Cenario {
+interface CenarioConfig {
   nome: string;
-  clientes: number;
-  etiquetasPorCliente: number;
+  varejoCli: number;
+  varejoEtiq: number;
+  atacadoCli: number;
+  atacadoEtiq: number;
   cor: string;
   bgCor: string;
   borderCor: string;
 }
 
-const cenariosPadrao: Cenario[] = [
-  {
-    nome: 'Conservador',
-    clientes: 5,
-    etiquetasPorCliente: 30,
-    cor: 'text-blue-600',
-    bgCor: 'bg-blue-50',
-    borderCor: 'border-blue-200',
-  },
-  {
-    nome: 'Moderado',
-    clientes: 15,
-    etiquetasPorCliente: 50,
-    cor: 'text-orange-600',
-    bgCor: 'bg-orange-50',
-    borderCor: 'border-orange-200',
-  },
-  {
-    nome: 'Ambicioso',
-    clientes: 30,
-    etiquetasPorCliente: 80,
-    cor: 'text-green-600',
-    bgCor: 'bg-green-50',
-    borderCor: 'border-green-200',
-  },
+const cenarios: CenarioConfig[] = [
+  { nome: 'Conservador', varejoCli: 5, varejoEtiq: 30, atacadoCli: 2, atacadoEtiq: 30, cor: 'text-blue-600', bgCor: 'bg-blue-50', borderCor: 'border-blue-200' },
+  { nome: 'Moderado', varejoCli: 15, varejoEtiq: 50, atacadoCli: 5, atacadoEtiq: 50, cor: 'text-orange-600', bgCor: 'bg-orange-50', borderCor: 'border-orange-200' },
+  { nome: 'Ambicioso', varejoCli: 30, varejoEtiq: 80, atacadoCli: 10, atacadoEtiq: 80, cor: 'text-green-600', bgCor: 'bg-green-50', borderCor: 'border-green-200' },
 ];
+
+const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+const calcCenario = (c: CenarioConfig) => {
+  const v = c.varejoCli * c.varejoEtiq * MARGEM_VAREJO * (COMISSAO / 100);
+  const a = c.atacadoCli * c.atacadoEtiq * MARGEM_ATACADO * (COMISSAO / 100);
+  return { varejo: v, atacado: a, total: v + a, anual: (v + a) * 12 };
+};
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 30 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
 };
-
 const staggerContainer = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.12 } },
@@ -63,32 +55,16 @@ const staggerContainer = {
 export default function ProjecaoGanhos() {
   const navigate = useNavigate();
 
-  // Simulador personalizado
-  const [clientes, setClientes] = useState(10);
-  const [etiquetas, setEtiquetas] = useState(50);
-  const [margemCustom, setMargemCustom] = useState(MARGEM_MEDIA_POR_ETIQUETA);
+  const [varejoCli, setVarejoCli] = useState(8);
+  const [varejoEtiq, setVarejoEtiq] = useState(40);
+  const [atacadoCli, setAtacadoCli] = useState(4);
+  const [atacadoEtiq, setAtacadoEtiq] = useState(50);
 
-  const simulacao = useMemo(() => {
-    const totalEtiquetas = clientes * etiquetas;
-    const margemTotal = totalEtiquetas * margemCustom;
-    const comissaoMensal = margemTotal * (COMISSAO_PERCENTUAL / 100);
-    return {
-      totalEtiquetas,
-      margemTotal,
-      comissaoMensal,
-      comissaoAnual: comissaoMensal * 12,
-    };
-  }, [clientes, etiquetas, margemCustom]);
-
-  const calcularCenario = (c: Cenario) => {
-    const total = c.clientes * c.etiquetasPorCliente;
-    const margem = total * MARGEM_MEDIA_POR_ETIQUETA;
-    const mensal = margem * (COMISSAO_PERCENTUAL / 100);
-    return { total, margem, mensal, anual: mensal * 12 };
-  };
-
-  const formatCurrency = (v: number) =>
-    v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const sim = useMemo(() => {
+    const v = varejoCli * varejoEtiq * MARGEM_VAREJO * (COMISSAO / 100);
+    const a = atacadoCli * atacadoEtiq * MARGEM_ATACADO * (COMISSAO / 100);
+    return { varejo: v, atacado: a, total: v + a, anual: (v + a) * 12 };
+  }, [varejoCli, varejoEtiq, atacadoCli, atacadoEtiq]);
 
   return (
     <div className="min-h-screen bg-white text-gray-900 overflow-hidden">
@@ -96,34 +72,16 @@ export default function ProjecaoGanhos() {
       <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-white/90 border-b border-gray-100 shadow-sm">
         <div className="container mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <button onClick={() => navigate('/conecta')} className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center font-bold text-lg text-white">
-              C+
-            </div>
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center font-bold text-lg text-white">C+</div>
             <span className="text-xl font-bold text-gray-900">Conecta+</span>
           </button>
-
           <div className="hidden md:flex items-center gap-8">
-            <button onClick={() => navigate('/conecta')} className="text-gray-600 hover:text-gray-900 transition-colors">
-              Programa
-            </button>
-            <button onClick={() => navigate('/home')} className="text-gray-600 hover:text-gray-900 transition-colors">
-              Home
-            </button>
+            <button onClick={() => navigate('/conecta')} className="text-gray-600 hover:text-gray-900 transition-colors">Programa</button>
+            <button onClick={() => navigate('/home')} className="text-gray-600 hover:text-gray-900 transition-colors">Home</button>
           </div>
-
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/conecta/login')}
-              className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              Entrar
-            </button>
-            <button
-              onClick={() => navigate('/conecta/cadastro')}
-              className="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-full text-sm font-semibold transition-all shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40"
-            >
-              Quero ser parceiro
-            </button>
+            <button onClick={() => navigate('/conecta/login')} className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">Entrar</button>
+            <button onClick={() => navigate('/conecta/cadastro')} className="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-full text-sm font-semibold transition-all shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40">Quero ser parceiro</button>
           </div>
         </div>
       </nav>
@@ -134,102 +92,86 @@ export default function ProjecaoGanhos() {
           <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-orange-200/30 rounded-full blur-[120px]" />
           <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-orange-100/40 rounded-full blur-[100px]" />
         </div>
-
-        <motion.div
-          className="container mx-auto max-w-4xl relative z-10 text-center"
-          initial="hidden"
-          animate="visible"
-          variants={staggerContainer}
-        >
+        <motion.div className="container mx-auto max-w-4xl relative z-10 text-center" initial="hidden" animate="visible" variants={staggerContainer}>
           <motion.div variants={fadeInUp} className="mb-6">
             <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-100 border border-orange-200 text-orange-600 text-sm font-medium">
-              <Calculator className="w-4 h-4" />
-              Simulador de Ganhos
+              <Calculator className="w-4 h-4" />Simulador de Ganhos
             </span>
           </motion.div>
-
-          <motion.h1
-            variants={fadeInUp}
-            className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight mb-6"
-          >
-            Quanto você pode{' '}
-            <span className="text-orange-500">ganhar?</span>
+          <motion.h1 variants={fadeInUp} className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight mb-6">
+            Quanto você pode <span className="text-orange-500">ganhar?</span>
           </motion.h1>
-
           <motion.p variants={fadeInUp} className="text-xl text-gray-500 max-w-2xl mx-auto mb-4">
-            Veja projeções reais de ganhos como parceiro Conecta+. Comissão de{' '}
-            <strong className="text-orange-500">20% sobre a margem líquida</strong> de cada frete
-            emitido pelos seus indicados.
+            Projeções reais para operações de <strong className="text-sky-500">varejo</strong>, <strong className="text-violet-500">atacado</strong> e <strong className="text-orange-500">híbrida</strong>. Comissão de 20% sobre a margem líquida.
           </motion.p>
         </motion.div>
       </section>
 
-      {/* Cenários pré-definidos */}
+      {/* Margens por segmento */}
+      <section className="py-12 px-4 sm:px-6 bg-white">
+        <div className="container mx-auto max-w-4xl">
+          <div className="grid sm:grid-cols-2 gap-6">
+            <motion.div className="p-6 rounded-2xl bg-sky-50 border border-sky-200 text-center" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+              <ShoppingBag className="w-8 h-8 text-sky-500 mx-auto mb-2" />
+              <h3 className="font-bold text-sky-700 text-lg mb-1">Varejo</h3>
+              <p className="text-3xl font-black text-sky-600 mb-1">{fmt(MARGEM_VAREJO)}</p>
+              <p className="text-sm text-sky-400">margem média por etiqueta</p>
+            </motion.div>
+            <motion.div className="p-6 rounded-2xl bg-violet-50 border border-violet-200 text-center" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }}>
+              <Package className="w-8 h-8 text-violet-500 mx-auto mb-2" />
+              <h3 className="font-bold text-violet-700 text-lg mb-1">Atacado</h3>
+              <p className="text-3xl font-black text-violet-600 mb-1">{fmt(MARGEM_ATACADO)}</p>
+              <p className="text-sm text-violet-400">margem média por etiqueta</p>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Cenários híbridos */}
       <section className="py-16 px-4 sm:px-6 bg-gray-50">
         <div className="container mx-auto max-w-6xl">
-          <motion.div
-            className="text-center mb-12"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
-            <h2 className="text-3xl sm:text-4xl font-bold mb-3 text-gray-900">
-              Cenários de ganhos
-            </h2>
-            <p className="text-gray-500 max-w-xl mx-auto">
-              Baseado em margem média de {formatCurrency(MARGEM_MEDIA_POR_ETIQUETA)} por etiqueta e{' '}
-              {COMISSAO_PERCENTUAL}% de comissão vitalícia.
-            </p>
+          <motion.div className="text-center mb-12" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+            <h2 className="text-3xl sm:text-4xl font-bold mb-3 text-gray-900">Cenários de ganhos — Operação Híbrida</h2>
+            <p className="text-gray-500 max-w-xl mx-auto">Combinando clientes varejo e atacado com {COMISSAO}% de comissão vitalícia.</p>
           </motion.div>
 
           <div className="grid md:grid-cols-3 gap-6">
-            {cenariosPadrao.map((cenario, idx) => {
-              const calc = calcularCenario(cenario);
+            {cenarios.map((c, idx) => {
+              const calc = calcCenario(c);
               return (
-                <motion.div
-                  key={idx}
-                  className={`p-6 rounded-2xl bg-white border ${cenario.borderCor} shadow-sm hover:shadow-lg transition-all`}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: idx * 0.1 }}
-                >
-                  <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${cenario.bgCor} ${cenario.cor} text-sm font-semibold mb-4`}>
-                    <TrendingUp className="w-4 h-4" />
-                    {cenario.nome}
+                <motion.div key={idx} className={`p-6 rounded-2xl bg-white border ${c.borderCor} shadow-sm hover:shadow-lg transition-all`} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: idx * 0.1 }}>
+                  <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${c.bgCor} ${c.cor} text-sm font-semibold mb-4`}>
+                    <TrendingUp className="w-4 h-4" />{c.nome}
                   </div>
 
-                  <div className="space-y-3 mb-6">
-                    <div className="flex items-center gap-3">
-                      <Users className="w-5 h-5 text-gray-400" />
-                      <span className="text-gray-600">
-                        <strong className="text-gray-900">{cenario.clientes}</strong> clientes indicados
-                      </span>
+                  {/* Breakdown */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="p-3 rounded-xl bg-sky-50 border border-sky-100">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <ShoppingBag className="w-3.5 h-3.5 text-sky-500" />
+                        <span className="text-xs font-semibold text-sky-700">Varejo</span>
+                      </div>
+                      <p className="text-sm font-bold text-sky-600">{fmt(calc.varejo)}/mês</p>
+                      <p className="text-xs text-sky-400">{c.varejoCli} cli · {c.varejoEtiq} etiq.</p>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <DollarSign className="w-5 h-5 text-gray-400" />
-                      <span className="text-gray-600">
-                        <strong className="text-gray-900">{cenario.etiquetasPorCliente}</strong> etiquetas/mês por cliente
-                      </span>
+                    <div className="p-3 rounded-xl bg-violet-50 border border-violet-100">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <Package className="w-3.5 h-3.5 text-violet-500" />
+                        <span className="text-xs font-semibold text-violet-700">Atacado</span>
+                      </div>
+                      <p className="text-sm font-bold text-violet-600">{fmt(calc.atacado)}/mês</p>
+                      <p className="text-xs text-violet-400">{c.atacadoCli} cli · {c.atacadoEtiq} etiq.</p>
                     </div>
                   </div>
 
                   <div className="border-t border-gray-100 pt-4 space-y-2">
                     <div className="flex justify-between">
-                      <span className="text-sm text-gray-500">Etiquetas/mês</span>
-                      <span className="font-semibold">{calc.total.toLocaleString('pt-BR')}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-500">Comissão/mês</span>
-                      <span className={`font-bold text-lg ${cenario.cor}`}>
-                        {formatCurrency(calc.mensal)}
-                      </span>
+                      <span className="text-sm text-gray-500 flex items-center gap-1"><Layers className="w-3.5 h-3.5" /> Total/mês</span>
+                      <span className={`font-bold text-lg ${c.cor}`}>{fmt(calc.total)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-500">Projeção anual</span>
-                      <span className="font-bold text-gray-900">
-                        {formatCurrency(calc.anual)}
-                      </span>
+                      <span className="font-bold text-gray-900">{fmt(calc.anual)}</span>
                     </div>
                   </div>
                 </motion.div>
@@ -242,237 +184,148 @@ export default function ProjecaoGanhos() {
       {/* Simulador interativo */}
       <section className="py-16 px-4 sm:px-6 bg-white">
         <div className="container mx-auto max-w-4xl">
-          <motion.div
-            className="text-center mb-12"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
-            <h2 className="text-3xl sm:text-4xl font-bold mb-3 text-gray-900">
-              Simule seus ganhos
-            </h2>
-            <p className="text-gray-500">Ajuste os valores e veja sua projeção personalizada.</p>
+          <motion.div className="text-center mb-12" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+            <h2 className="text-3xl sm:text-4xl font-bold mb-3 text-gray-900">Simule sua operação</h2>
+            <p className="text-gray-500">Ajuste clientes de varejo e atacado separadamente.</p>
           </motion.div>
 
-          <motion.div
-            className="p-8 rounded-3xl bg-gradient-to-br from-gray-50 to-orange-50/30 border border-gray-200 shadow-sm"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
-            <div className="grid sm:grid-cols-3 gap-8 mb-10">
-              {/* Clientes */}
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-2">
-                  Clientes indicados
-                </label>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setClientes(Math.max(1, clientes - 1))}
-                    className="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
-                  >
-                    <ChevronDown className="w-4 h-4" />
-                  </button>
-                  <input
-                    type="number"
-                    min={1}
-                    max={500}
-                    value={clientes}
-                    onChange={(e) => setClientes(Math.max(1, Number(e.target.value)))}
-                    className="flex-1 text-center text-2xl font-bold border border-gray-200 rounded-lg py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
-                  />
-                  <button
-                    onClick={() => setClientes(clientes + 1)}
-                    className="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
-                  >
-                    <ChevronUp className="w-4 h-4" />
-                  </button>
+          <motion.div className="p-8 rounded-3xl bg-gradient-to-br from-gray-50 to-orange-50/30 border border-gray-200 shadow-sm" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+            <div className="grid sm:grid-cols-2 gap-6 mb-8">
+              {/* Varejo */}
+              <div className="p-5 rounded-2xl bg-sky-50/60 border border-sky-200">
+                <div className="flex items-center gap-2 mb-4">
+                  <ShoppingBag className="w-5 h-5 text-sky-500" />
+                  <h3 className="font-bold text-sky-700">Varejo</h3>
+                  <span className="text-xs text-sky-400 ml-auto">margem {fmt(MARGEM_VAREJO)}</span>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Clientes</label>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setVarejoCli(Math.max(0, varejoCli - 1))} className="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-50"><ChevronDown className="w-4 h-4" /></button>
+                      <input type="number" min={0} value={varejoCli} onChange={(e) => setVarejoCli(Math.max(0, Number(e.target.value)))} className="flex-1 text-center text-2xl font-bold border border-gray-200 rounded-lg py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white" />
+                      <button onClick={() => setVarejoCli(varejoCli + 1)} className="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-50"><ChevronUp className="w-4 h-4" /></button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Etiquetas/mês por cliente</label>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setVarejoEtiq(Math.max(1, varejoEtiq - 5))} className="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-50"><ChevronDown className="w-4 h-4" /></button>
+                      <input type="number" min={1} value={varejoEtiq} onChange={(e) => setVarejoEtiq(Math.max(1, Number(e.target.value)))} className="flex-1 text-center text-2xl font-bold border border-gray-200 rounded-lg py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white" />
+                      <button onClick={() => setVarejoEtiq(varejoEtiq + 5)} className="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-50"><ChevronUp className="w-4 h-4" /></button>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Etiquetas por cliente */}
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-2">
-                  Etiquetas/mês por cliente
-                </label>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setEtiquetas(Math.max(1, etiquetas - 5))}
-                    className="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
-                  >
-                    <ChevronDown className="w-4 h-4" />
-                  </button>
-                  <input
-                    type="number"
-                    min={1}
-                    max={5000}
-                    value={etiquetas}
-                    onChange={(e) => setEtiquetas(Math.max(1, Number(e.target.value)))}
-                    className="flex-1 text-center text-2xl font-bold border border-gray-200 rounded-lg py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
-                  />
-                  <button
-                    onClick={() => setEtiquetas(etiquetas + 5)}
-                    className="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
-                  >
-                    <ChevronUp className="w-4 h-4" />
-                  </button>
+              {/* Atacado */}
+              <div className="p-5 rounded-2xl bg-violet-50/60 border border-violet-200">
+                <div className="flex items-center gap-2 mb-4">
+                  <Package className="w-5 h-5 text-violet-500" />
+                  <h3 className="font-bold text-violet-700">Atacado</h3>
+                  <span className="text-xs text-violet-400 ml-auto">margem {fmt(MARGEM_ATACADO)}</span>
                 </div>
-              </div>
-
-              {/* Margem média */}
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-2">
-                  Margem média (R$)
-                </label>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setMargemCustom(Math.max(0.5, +(margemCustom - 0.5).toFixed(2)))}
-                    className="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
-                  >
-                    <ChevronDown className="w-4 h-4" />
-                  </button>
-                  <input
-                    type="number"
-                    min={0.5}
-                    step={0.5}
-                    value={margemCustom}
-                    onChange={(e) => setMargemCustom(Math.max(0.5, Number(e.target.value)))}
-                    className="flex-1 text-center text-2xl font-bold border border-gray-200 rounded-lg py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
-                  />
-                  <button
-                    onClick={() => setMargemCustom(+(margemCustom + 0.5).toFixed(2))}
-                    className="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
-                  >
-                    <ChevronUp className="w-4 h-4" />
-                  </button>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Clientes</label>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setAtacadoCli(Math.max(0, atacadoCli - 1))} className="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-50"><ChevronDown className="w-4 h-4" /></button>
+                      <input type="number" min={0} value={atacadoCli} onChange={(e) => setAtacadoCli(Math.max(0, Number(e.target.value)))} className="flex-1 text-center text-2xl font-bold border border-gray-200 rounded-lg py-2 focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white" />
+                      <button onClick={() => setAtacadoCli(atacadoCli + 1)} className="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-50"><ChevronUp className="w-4 h-4" /></button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Etiquetas/mês por cliente</label>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setAtacadoEtiq(Math.max(1, atacadoEtiq - 5))} className="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-50"><ChevronDown className="w-4 h-4" /></button>
+                      <input type="number" min={1} value={atacadoEtiq} onChange={(e) => setAtacadoEtiq(Math.max(1, Number(e.target.value)))} className="flex-1 text-center text-2xl font-bold border border-gray-200 rounded-lg py-2 focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white" />
+                      <button onClick={() => setAtacadoEtiq(atacadoEtiq + 5)} className="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-50"><ChevronUp className="w-4 h-4" /></button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Resultados */}
-            <div className="grid sm:grid-cols-4 gap-4">
-              <div className="p-4 rounded-xl bg-white border border-gray-100 text-center">
-                <p className="text-xs text-gray-400 mb-1">Etiquetas/mês</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {simulacao.totalEtiquetas.toLocaleString('pt-BR')}
-                </p>
+            <div className="grid sm:grid-cols-2 gap-3 mb-3">
+              <div className="p-4 rounded-xl bg-sky-50 border border-sky-200 text-center">
+                <p className="text-xs text-sky-500 mb-1">Comissão Varejo</p>
+                <p className="text-2xl font-bold text-sky-600">{fmt(sim.varejo)}</p>
               </div>
-              <div className="p-4 rounded-xl bg-white border border-gray-100 text-center">
-                <p className="text-xs text-gray-400 mb-1">Margem total/mês</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {formatCurrency(simulacao.margemTotal)}
-                </p>
+              <div className="p-4 rounded-xl bg-violet-50 border border-violet-200 text-center">
+                <p className="text-xs text-violet-500 mb-1">Comissão Atacado</p>
+                <p className="text-2xl font-bold text-violet-600">{fmt(sim.atacado)}</p>
               </div>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-3">
               <div className="p-4 rounded-xl bg-orange-50 border border-orange-200 text-center">
-                <p className="text-xs text-orange-500 mb-1">Sua comissão/mês</p>
-                <p className="text-2xl font-bold text-orange-600">
-                  {formatCurrency(simulacao.comissaoMensal)}
-                </p>
+                <p className="text-xs text-orange-500 mb-1">Total/mês</p>
+                <p className="text-2xl font-bold text-orange-600">{fmt(sim.total)}</p>
               </div>
               <div className="p-4 rounded-xl bg-green-50 border border-green-200 text-center">
                 <p className="text-xs text-green-600 mb-1">Projeção anual</p>
-                <p className="text-2xl font-bold text-green-700">
-                  {formatCurrency(simulacao.comissaoAnual)}
-                </p>
+                <p className="text-2xl font-bold text-green-700">{fmt(sim.anual)}</p>
               </div>
             </div>
-
-            <p className="text-xs text-gray-400 text-center mt-4">
-              * Valores estimados com base na margem média informada. Resultados reais podem variar.
-            </p>
+            <p className="text-xs text-gray-400 text-center mt-4">* Valores estimados. Resultados reais podem variar.</p>
           </motion.div>
         </div>
       </section>
 
-      {/* Tabela de crescimento */}
+      {/* Tabela de crescimento híbrido */}
       <section className="py-16 px-4 sm:px-6 bg-gray-50">
-        <div className="container mx-auto max-w-4xl">
-          <motion.div
-            className="text-center mb-10"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
-            <h2 className="text-3xl sm:text-4xl font-bold mb-3 text-gray-900">
-              Projeção de crescimento
-            </h2>
-            <p className="text-gray-500">
-              Imagine conquistar 2 novos clientes por mês. Veja como seus ganhos crescem:
-            </p>
+        <div className="container mx-auto max-w-5xl">
+          <motion.div className="text-center mb-10" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+            <h2 className="text-3xl sm:text-4xl font-bold mb-3 text-gray-900">Projeção de crescimento</h2>
+            <p className="text-gray-500">+2 clientes varejo e +1 atacado por mês · 40 etiquetas/cliente</p>
           </motion.div>
 
-          <motion.div
-            className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
+          <motion.div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="px-6 py-4 text-left font-semibold text-gray-600">Mês</th>
-                  <th className="px-6 py-4 text-center font-semibold text-gray-600">Clientes acumulados</th>
-                  <th className="px-6 py-4 text-center font-semibold text-gray-600">Etiquetas/mês</th>
-                  <th className="px-6 py-4 text-right font-semibold text-gray-600">Comissão/mês</th>
-                  <th className="px-6 py-4 text-right font-semibold text-gray-600">Acumulado</th>
+                  <th className="px-5 py-4 text-left font-semibold text-gray-600">Mês</th>
+                  <th className="px-5 py-4 text-center font-semibold text-sky-600"><ShoppingBag className="w-4 h-4 inline mr-1" />Varejo</th>
+                  <th className="px-5 py-4 text-center font-semibold text-violet-600"><Package className="w-4 h-4 inline mr-1" />Atacado</th>
+                  <th className="px-5 py-4 text-right font-semibold text-orange-600"><DollarSign className="w-4 h-4 inline mr-1" />Total/mês</th>
+                  <th className="px-5 py-4 text-right font-semibold text-green-600">Acumulado</th>
                 </tr>
               </thead>
               <tbody>
-                {Array.from({ length: 12 }, (_, i) => {
-                  const mes = i + 1;
-                  const clientesAcumulados = mes * 2;
-                  const etiquetasMes = clientesAcumulados * 40;
-                  const comissaoMes = etiquetasMes * MARGEM_MEDIA_POR_ETIQUETA * (COMISSAO_PERCENTUAL / 100);
-                  const acumulado = Array.from({ length: mes }, (_, j) => {
-                    const c = (j + 1) * 2;
-                    return c * 40 * MARGEM_MEDIA_POR_ETIQUETA * (COMISSAO_PERCENTUAL / 100);
-                  }).reduce((a, b) => a + b, 0);
-
-                  return (
-                    <tr key={mes} className={`border-b border-gray-50 ${mes === 12 ? 'bg-orange-50/50' : 'hover:bg-gray-50'}`}>
-                      <td className="px-6 py-3 font-medium text-gray-900">Mês {mes}</td>
-                      <td className="px-6 py-3 text-center text-gray-700">{clientesAcumulados}</td>
-                      <td className="px-6 py-3 text-center text-gray-700">{etiquetasMes.toLocaleString('pt-BR')}</td>
-                      <td className="px-6 py-3 text-right font-semibold text-orange-600">
-                        {formatCurrency(comissaoMes)}
-                      </td>
-                      <td className="px-6 py-3 text-right font-semibold text-green-700">
-                        {formatCurrency(acumulado)}
-                      </td>
-                    </tr>
-                  );
-                })}
+                {(() => {
+                  let acumulado = 0;
+                  return Array.from({ length: 12 }, (_, i) => {
+                    const mes = i + 1;
+                    const vCom = mes * 2 * 40 * MARGEM_VAREJO * (COMISSAO / 100);
+                    const aCom = mes * 40 * MARGEM_ATACADO * (COMISSAO / 100);
+                    const total = vCom + aCom;
+                    acumulado += total;
+                    return (
+                      <tr key={mes} className={`border-b border-gray-50 ${mes === 12 ? 'bg-orange-50/50 font-semibold' : 'hover:bg-gray-50'}`}>
+                        <td className="px-5 py-3 font-medium text-gray-900">Mês {mes}</td>
+                        <td className="px-5 py-3 text-center text-sky-600">{fmt(vCom)}</td>
+                        <td className="px-5 py-3 text-center text-violet-600">{fmt(aCom)}</td>
+                        <td className="px-5 py-3 text-right text-orange-600 font-semibold">{fmt(total)}</td>
+                        <td className="px-5 py-3 text-right text-green-700 font-semibold">{fmt(acumulado)}</td>
+                      </tr>
+                    );
+                  });
+                })()}
               </tbody>
             </table>
           </motion.div>
-
-          <p className="text-xs text-gray-400 text-center mt-3">
-            * Simulação com 2 novos clientes/mês, 40 etiquetas/cliente e margem de {formatCurrency(MARGEM_MEDIA_POR_ETIQUETA)}/etiqueta.
-          </p>
         </div>
       </section>
 
       {/* CTA Final */}
       <section className="py-20 px-4 sm:px-6 bg-white">
         <div className="container mx-auto max-w-4xl">
-          <motion.div
-            className="relative p-10 sm:p-16 rounded-3xl bg-gradient-to-br from-orange-500 to-orange-600 text-white text-center overflow-hidden"
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-          >
+          <motion.div className="relative p-10 sm:p-16 rounded-3xl bg-gradient-to-br from-orange-500 to-orange-600 text-white text-center overflow-hidden" initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }}>
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.15),transparent_50%)]" />
             <div className="relative z-10">
-              <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-                Comece a ganhar agora!
-              </h2>
-              <p className="text-xl text-white/90 mb-8 max-w-lg mx-auto">
-                Cadastre-se gratuitamente e transforme suas indicações em renda recorrente.
-              </p>
-              <button
-                onClick={() => navigate('/conecta/cadastro')}
-                className="group flex items-center gap-3 px-10 py-5 bg-white text-orange-600 hover:bg-gray-100 rounded-full text-xl font-semibold transition-all shadow-2xl mx-auto"
-              >
+              <h2 className="text-3xl sm:text-4xl font-bold mb-4">Comece a ganhar agora!</h2>
+              <p className="text-xl text-white/90 mb-8 max-w-lg mx-auto">Cadastre-se gratuitamente e transforme suas indicações em renda recorrente.</p>
+              <button onClick={() => navigate('/conecta/cadastro')} className="group flex items-center gap-3 px-10 py-5 bg-white text-orange-600 hover:bg-gray-100 rounded-full text-xl font-semibold transition-all shadow-2xl mx-auto">
                 Quero ser parceiro
                 <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
               </button>
@@ -486,14 +339,10 @@ export default function ProjecaoGanhos() {
         <div className="container mx-auto max-w-6xl">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center font-bold text-sm text-white">
-                C+
-              </div>
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center font-bold text-sm text-white">C+</div>
               <span className="font-semibold text-gray-600">BRHUB Conecta+</span>
             </div>
-            <div className="text-sm text-gray-400">
-              © {new Date().getFullYear()} BRHUB Envios. Todos os direitos reservados.
-            </div>
+            <div className="text-sm text-gray-400">© {new Date().getFullYear()} BRHUB Envios. Todos os direitos reservados.</div>
           </div>
         </div>
       </footer>
