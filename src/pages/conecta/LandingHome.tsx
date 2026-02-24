@@ -4,11 +4,21 @@ import { ConectaBanner } from './components/ConectaBanner';
 import logoBrhub from '@/assets/logo-brhub-new.png';
 
 import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 export const LandingHome = () => {
   const navigate = useNavigate();
   const [trackingCode, setTrackingCode] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const VIDEO_END_TIME = 27; // corta antes do watermark CapCut
+
+  const handleTimeUpdate = useCallback(() => {
+    const video = videoRef.current;
+    if (video && video.currentTime >= VIDEO_END_TIME) {
+      video.currentTime = 0;
+      video.play();
+    }
+  }, []);
   const handleTrack = () => {
     if (trackingCode.trim()) {
       window.open(`/rastreio/encomenda?codigo=${trackingCode.trim()}`, '_blank');
@@ -84,7 +94,7 @@ export const LandingHome = () => {
       {/* Hero Section - Full width image with tracking overlay */}
       <section className="relative pt-[60px]">
         <div className="relative h-[480px] sm:h-[520px] lg:h-[560px] overflow-hidden">
-          <video src="/videos/hero-video.mp4" autoPlay muted loop playsInline className="w-full h-full object-cover object-[center_25%]" />
+          <video ref={videoRef} src="/videos/hero-video.mp4" autoPlay muted loop playsInline onTimeUpdate={handleTimeUpdate} className="w-full h-full object-cover object-[center_20%] scale-110" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10" />
 
           {/* Tracking Bar Overlay */}
