@@ -34,7 +34,7 @@ const beneficios = [
   { icon: Truck, titulo: "Coleta grátis na sua loja", desc: "Buscamos suas encomendas sem custo extra e sem volume mínimo." },
   { icon: MessageCircle, titulo: "Rastreio automático via WhatsApp", desc: "O destinatário recebe atualizações em tempo real automaticamente." },
   { icon: Shield, titulo: "Sem contrato nem multas", desc: "Use quando quiser. Cancele quando quiser. Sem letras miúdas." },
-  { icon: Clock, titulo: "Suporte IA 24/7", desc: "Resolva qualquer problema a qualquer hora, sem fila de atendimento." },
+  { icon: Clock, titulo: "Suporte 24/7", desc: "Resolva qualquer problema a qualquer hora, sem fila de atendimento." },
   { icon: Package, titulo: "Emissão em massa", desc: "Importe planilhas e emita centenas de etiquetas em segundos." },
   { icon: Star, titulo: "Integração com lojas virtuais", desc: "Shopify, Nuvemshop e muito mais. Pedidos importados automaticamente." },
   { icon: Zap, titulo: "Pagamento pós-uso", desc: "Pague só pelo que enviar. Sem mensalidade ou mínimo de envios." },
