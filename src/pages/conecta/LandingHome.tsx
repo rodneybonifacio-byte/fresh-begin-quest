@@ -10,7 +10,7 @@ export const LandingHome = () => {
   const [trackingCode, setTrackingCode] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const VIDEO_END_TIME = 26; // corta 1s antes do final
+  const VIDEO_END_TIME = 56; // roda até 0:56
 
   const handleTimeUpdate = useCallback(() => {
     const video = videoRef.current;
