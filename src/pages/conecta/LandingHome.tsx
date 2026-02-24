@@ -94,8 +94,8 @@ export const LandingHome = () => {
 
       {/* Hero Section - Full width image with tracking overlay */}
       <section className="relative pt-[60px]">
-        <div className="relative aspect-video max-h-[580px] overflow-hidden">
-          <video ref={videoRef} src="/videos/hero-video.mp4" autoPlay loop playsInline muted={isMuted} onTimeUpdate={handleTimeUpdate} className="w-full h-full object-contain bg-black" />
+        <div className="relative h-[480px] sm:h-[540px] lg:h-[580px] overflow-hidden bg-black">
+          <video ref={videoRef} src="/videos/hero-video.mp4" autoPlay loop playsInline muted={isMuted} onTimeUpdate={handleTimeUpdate} className="w-full h-full object-cover object-[center_5%]" style={{ willChange: 'transform' }} />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10" />
           
           {/* Botão Mute */}
