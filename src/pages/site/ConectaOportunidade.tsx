@@ -62,9 +62,10 @@ const comparativo = [
 
 interface ConectaOportunidadeProps {
   referralCode?: string;
+  hideNavbar?: boolean;
 }
 
-export const ConectaOportunidade = ({ referralCode }: ConectaOportunidadeProps = {}) => {
+export const ConectaOportunidade = ({ referralCode, hideNavbar }: ConectaOportunidadeProps = {}) => {
   const [searchParams] = useSearchParams();
   const effectiveCode = referralCode || searchParams.get('ref') || undefined;
   const cadastroUrl = effectiveCode
@@ -147,16 +148,18 @@ export const ConectaOportunidade = ({ referralCode }: ConectaOportunidadeProps =
     <div className="min-h-screen bg-white font-sans overflow-x-hidden">
 
       {/* ── Navbar ── */}
-      <nav className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-          <img src={logoBrhub} alt="BRHUB Envios" className="h-8 object-contain" />
-          <a
-            href={cadastroUrl}
-            className="bg-[#F37021] hover:bg-[#e06010] text-white text-sm font-bold px-4 py-2 rounded-full transition-all duration-200 shadow-md shadow-orange-200 whitespace-nowrap">
-            Criar conta grátis →
-          </a>
-        </div>
-      </nav>
+      {!hideNavbar && (
+        <nav className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
+          <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+            <img src={logoBrhub} alt="BRHUB Envios" className="h-8 object-contain" />
+            <a
+              href={cadastroUrl}
+              className="bg-[#F37021] hover:bg-[#e06010] text-white text-sm font-bold px-4 py-2 rounded-full transition-all duration-200 shadow-md shadow-orange-200 whitespace-nowrap">
+              Criar conta grátis →
+            </a>
+          </div>
+        </nav>
+      )}
 
       {/* ── Hero ── */}
       <section className="relative pt-10 pb-0 px-4 overflow-hidden bg-[#121212]">
