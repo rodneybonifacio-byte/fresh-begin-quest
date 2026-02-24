@@ -535,7 +535,7 @@ export const ConectaOportunidade = ({ referralCode, hideNavbar }: ConectaOportun
             {/* Header */}
             <div className="grid grid-cols-4 text-center bg-[#121212]">
               <div className="py-4 px-2 border-r border-white/10 flex items-center justify-center">
-                <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Recurso</span>
+                <span className="text-xs font-bold text-white/40 uppercase tracking-widest">Recursos</span>
               </div>
               <div className="py-4 px-2 border-r border-white/10 flex items-center justify-center">
                 <img src={logoSuperfrete} alt="Superfrete" className="h-16 w-16 object-contain rounded-full" />
