@@ -208,7 +208,7 @@ export const ConectaOportunidade = ({ referralCode, hideNavbar }: ConectaOportun
             className="bg-white rounded-2xl shadow-2xl p-4 sm:p-6 mb-0">
 
             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-4 text-center">
-              ⚡ Simule agora — veja o quanto você economiza
+              Simule agora — veja o quanto você economiza
             </p>
 
             <form onSubmit={handleSimular} className="space-y-3">
@@ -295,7 +295,7 @@ export const ConectaOportunidade = ({ referralCode, hideNavbar }: ConectaOportun
                 type="submit"
                 disabled={loading}
                 className="w-full bg-[#F37021] hover:bg-[#e06010] disabled:opacity-60 text-white font-black py-3.5 rounded-xl transition-all duration-200 shadow-lg shadow-orange-200 text-base">
-                {loading ? "Calculando..." : "⚡ Simular frete agora"}
+                {loading ? "Calculando..." : "Simular frete agora"}
               </button>
             </form>
 
@@ -316,7 +316,7 @@ export const ConectaOportunidade = ({ referralCode, hideNavbar }: ConectaOportun
                   className="mt-4">
 
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-widest text-center mb-4">
-                    🏆 Resultado da simulação
+                    Resultado da simulação
                   </p>
 
                   <div className="space-y-4">
@@ -332,7 +332,7 @@ export const ConectaOportunidade = ({ referralCode, hideNavbar }: ConectaOportun
 
                           {isSedex && (
                             <div className="bg-[#F37021] px-4 py-1.5 text-center">
-                              <span className="text-white text-[10px] font-black uppercase tracking-widest">🏆 Melhor opção</span>
+                              <span className="text-white text-[10px] font-black uppercase tracking-widest">Melhor opção</span>
                             </div>
                           )}
 

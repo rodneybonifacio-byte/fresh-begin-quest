@@ -374,7 +374,7 @@ export const LandingConecta = () => {
             
             <div className="relative z-10">
               <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-                🔶 Quero ser parceiro Conecta+ agora mesmo!
+                Quero ser parceiro Conecta+ agora mesmo!
               </h2>
               <p className="text-xl text-white/90 mb-8 max-w-lg mx-auto">
                 Ganhe dinheiro indicando. Sem limite. Sem esforço. Sem investimento.
