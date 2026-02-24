@@ -18,6 +18,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { ConectaNavbar } from './components/ConectaNavbar';
 import { ConectaFooter } from './components/ConectaFooter';
+import { ConectaBanner } from './components/ConectaBanner';
 
 export const LandingConecta = () => {
   const navigate = useNavigate();
@@ -256,6 +257,9 @@ export const LandingConecta = () => {
           </motion.div>
         </div>
       </section>
+
+      {/* Banner Conecta+ */}
+      <ConectaBanner variant="conecta" className="py-10 bg-white" />
 
       {/* Why it's worth it */}
       <section className="py-20 px-4 sm:px-6 bg-gray-50">
