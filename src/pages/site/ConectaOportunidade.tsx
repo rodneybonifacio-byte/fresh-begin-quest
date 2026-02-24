@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { TrendingDown, Truck, MessageCircle, Shield, Clock, Package, Star, Zap, BarChart3, Users, CheckCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { ConectaBanner } from "../conecta/components/ConectaBanner";
 import { supabase } from "../../integrations/supabase/client";
 import logoBrhub from "../../assets/logo-brhub-new.png";
 import logoSuperfrete from "../../assets/logo-superfrete.png";
@@ -474,6 +475,9 @@ export const ConectaOportunidade = ({ referralCode, hideNavbar }: ConectaOportun
           </div>
         </div>
       </section>
+
+      {/* ── Banner Conecta+ ── */}
+      <ConectaBanner variant="oportunidade" className="py-8 bg-white" />
 
       {/* ── Benefícios ── */}
       <section className="py-10 px-4 bg-white">

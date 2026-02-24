@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { ConectaNavbar } from './components/ConectaNavbar';
 import { ConectaFooter } from './components/ConectaFooter';
+import { ConectaBanner } from './components/ConectaBanner';
 
 const COMISSAO = 20;
 const MARGEM_VAREJO = 3.5;
@@ -91,6 +92,8 @@ export default function ProjecaoGanhos() {
           </motion.p>
         </motion.div>
       </section>
+      {/* Banner Conecta+ */}
+      <ConectaBanner variant="programa" className="py-10 bg-white" />
 
       {/* Margens por segmento */}
       <section className="py-12 px-4 sm:px-6 bg-white">

@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { ArrowRight, Package, Search, Globe, CheckCircle, Warehouse, Menu, X } from 'lucide-react';
+import { ConectaBanner } from './components/ConectaBanner';
 import logoBrhub from '@/assets/logo-brhub-new.png';
 import heroPort from '@/assets/hero-port.jpg';
 import { useNavigate } from 'react-router-dom';
@@ -241,6 +242,9 @@ export const LandingHome = () => {
           </div>
         </div>
       </section>
+
+      {/* Banner Conecta+ */}
+      <ConectaBanner variant="home" className="py-10 bg-white" />
 
       {/* Global Reach / Coverage Section */}
       <section id="coverage" className="py-20 px-4 sm:px-6 bg-[#121212] text-white">
