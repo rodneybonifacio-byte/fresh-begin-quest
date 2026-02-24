@@ -23,6 +23,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '../../../integrations/supabase/client';
 import { ConectaOportunidade } from '../../site/ConectaOportunidade';
+import { ProjecaoGanhosEmbed } from './ProjecaoGanhosEmbed';
 
 interface ParceiroData {
   id: string;
@@ -45,7 +46,7 @@ interface ClienteIndicado {
   comissao_gerada: number | null;
 }
 
-type TabId = 'overview' | 'clientes' | 'comissoes' | 'simulador' | 'config';
+type TabId = 'overview' | 'clientes' | 'comissoes' | 'projecao' | 'simulador' | 'config';
 
 export const DashboardParceiro = () => {
   const navigate = useNavigate();
@@ -133,6 +134,7 @@ export const DashboardParceiro = () => {
     { id: 'overview' as TabId, label: 'Início', icon: BarChart3 },
     { id: 'clientes' as TabId, label: 'Clientes', icon: Users },
     { id: 'comissoes' as TabId, label: 'Comissões', icon: FileText },
+    { id: 'projecao' as TabId, label: 'Projeção', icon: TrendingUp },
     { id: 'simulador' as TabId, label: 'Simulador', icon: Zap },
     { id: 'config' as TabId, label: 'Config', icon: Settings },
   ];
@@ -548,6 +550,17 @@ export const DashboardParceiro = () => {
                   <LogOut className="w-4 h-4" />
                   Sair da conta
                 </button>
+              </motion.div>
+            )}
+
+            {activeTab === 'projecao' && (
+              <motion.div
+                key="projecao"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+              >
+                <ProjecaoGanhosEmbed />
               </motion.div>
             )}
 
