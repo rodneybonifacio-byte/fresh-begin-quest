@@ -12,6 +12,8 @@ import {
   Package,
   Layers,
 } from 'lucide-react';
+import { ConectaNavbar } from './components/ConectaNavbar';
+import { ConectaFooter } from './components/ConectaFooter';
 
 const COMISSAO = 20;
 const MARGEM_VAREJO = 3.5;
@@ -67,23 +69,7 @@ export default function ProjecaoGanhos() {
 
   return (
     <div className="min-h-screen bg-white text-gray-900 overflow-hidden">
-      {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-white/90 border-b border-gray-100 shadow-sm">
-        <div className="container mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-          <button onClick={() => navigate('/conecta')} className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center font-bold text-lg text-white">C+</div>
-            <span className="text-xl font-bold text-gray-900">Conecta+</span>
-          </button>
-          <div className="hidden md:flex items-center gap-8">
-            <button onClick={() => navigate('/conecta')} className="text-gray-600 hover:text-gray-900 transition-colors">Programa</button>
-            <button onClick={() => navigate('/home')} className="text-gray-600 hover:text-gray-900 transition-colors">Home</button>
-          </div>
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/conecta/login')} className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">Entrar</button>
-            <button onClick={() => navigate('/conecta/cadastro')} className="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-full text-sm font-semibold transition-all shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40">Quero ser parceiro</button>
-          </div>
-        </div>
-      </nav>
+      <ConectaNavbar />
 
       {/* Hero */}
       <section className="relative pt-32 pb-16 px-4 sm:px-6 bg-gradient-to-b from-orange-50/50 to-white">
@@ -333,18 +319,7 @@ export default function ProjecaoGanhos() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-10 px-4 sm:px-6 border-t border-gray-100 bg-white">
-        <div className="container mx-auto max-w-6xl">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center font-bold text-sm text-white">C+</div>
-              <span className="font-semibold text-gray-600">BRHUB Conecta+</span>
-            </div>
-            <div className="text-sm text-gray-400">© {new Date().getFullYear()} BRHUB Envios. Todos os direitos reservados.</div>
-          </div>
-        </div>
-      </footer>
+      <ConectaFooter />
     </div>
   );
 }
