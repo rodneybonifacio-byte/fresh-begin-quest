@@ -93,8 +93,8 @@ export const LandingHome = () => {
 
       {/* Hero Section - Full width image with tracking overlay */}
       <section className="relative pt-[60px]">
-        <div className="relative h-[600px] sm:h-[700px] lg:h-[780px] overflow-hidden">
-          <video ref={videoRef} src="/videos/hero-video.mp4" autoPlay loop playsInline onTimeUpdate={handleTimeUpdate} className="w-full h-full object-cover object-center" />
+        <div className="relative h-[420px] sm:h-[460px] lg:h-[500px] overflow-hidden">
+          <video ref={videoRef} src="/videos/hero-video.mp4" autoPlay loop playsInline onTimeUpdate={handleTimeUpdate} className="w-full h-full object-cover object-[center_10%]" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10" />
 
           {/* Tracking Bar Overlay */}
