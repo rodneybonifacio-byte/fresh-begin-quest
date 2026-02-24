@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { ArrowRight, Package, Search, Globe, CheckCircle, Warehouse, Menu, X } from 'lucide-react';
 import { ConectaBanner } from './components/ConectaBanner';
 import logoBrhub from '@/assets/logo-brhub-new.png';
-import heroPort from '@/assets/hero-port.jpg';
+
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 export const LandingHome = () => {
@@ -84,7 +84,7 @@ export const LandingHome = () => {
       {/* Hero Section - Full width image with tracking overlay */}
       <section className="relative pt-[60px]">
         <div className="relative h-[480px] sm:h-[520px] lg:h-[560px] overflow-hidden">
-          <img src={heroPort} alt="Porto de logística BRHUB" className="w-full h-full object-cover" />
+          <video src="/videos/hero-video.mp4" autoPlay muted loop playsInline className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10" />
 
           {/* Tracking Bar Overlay */}
