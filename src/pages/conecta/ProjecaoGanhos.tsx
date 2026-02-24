@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 
 const COMISSAO_PERCENTUAL = 20; // 20% da margem líquida
-const MARGEM_MEDIA_POR_ETIQUETA = 3.5; // R$ margem média por etiqueta
+const MARGEM_MEDIA_POR_ETIQUETA = 15; // R$ margem média por etiqueta (atacado)
 
 interface Cenario {
   nome: string;
