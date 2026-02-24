@@ -24,7 +24,7 @@ const bannerConfig: Record<BannerVariant, {
   gradientTo: string;
 }> = {
   oportunidade: {
-    badge: '🔥 Programa de Parceiros',
+    badge: 'Programa de Parceiros',
     headline: 'Ganhe dinheiro indicando',
     highlightWord: 'lojistas',
     sub: '20% de comissão vitalícia em cada frete emitido pelos seus indicados. Sem investimento, sem limite.',
@@ -38,7 +38,7 @@ const bannerConfig: Record<BannerVariant, {
     gradientTo: '#F37021',
   },
   conecta: {
-    badge: '⚡ Ferramenta exclusiva',
+    badge: 'Ferramenta exclusiva',
     headline: 'Prove a economia com',
     highlightWord: 'dados reais',
     sub: 'Use nosso simulador de frete ao vivo e mostre ao seu indicado quanto ele economiza com a BRHUB.',
@@ -52,7 +52,7 @@ const bannerConfig: Record<BannerVariant, {
     gradientTo: '#3b82f6',
   },
   beneficios: {
-    badge: '🎯 Dica de parceiro',
+    badge: 'Dica de parceiro',
     headline: 'Compartilhe e ganhe',
     highlightWord: 'comissão',
     sub: 'Envie esta página para potenciais clientes. Cada cadastro via seu link gera comissão vitalícia para você.',
@@ -66,7 +66,7 @@ const bannerConfig: Record<BannerVariant, {
     gradientTo: '#10b981',
   },
   programa: {
-    badge: '🚀 Próximo passo',
+    badge: 'Próximo passo',
     headline: 'Viu o potencial?',
     highlightWord: 'Comece agora',
     sub: 'Cadastro gratuito em 2 minutos. Receba seu link exclusivo e comece a indicar ainda hoje.',
@@ -80,7 +80,7 @@ const bannerConfig: Record<BannerVariant, {
     gradientTo: '#f59e0b',
   },
   home: {
-    badge: '✨ Novidade BRHUB',
+    badge: 'Novidade BRHUB',
     headline: 'Conheça o',
     highlightWord: 'Conecta+',
     sub: 'Nosso programa de parceiros que paga 20% de comissão vitalícia. Indique, acompanhe e ganhe.',
