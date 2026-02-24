@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ArrowRight, Package, Search, Globe, CheckCircle, Warehouse, Menu, X } from 'lucide-react';
+import { ArrowRight, Package, Search, Globe, CheckCircle, Warehouse, Menu, X, Volume2, VolumeX } from 'lucide-react';
 import { ConectaBanner } from './components/ConectaBanner';
 import logoBrhub from '@/assets/logo-brhub-new.png';
 
@@ -9,6 +9,7 @@ export const LandingHome = () => {
   const navigate = useNavigate();
   const [trackingCode, setTrackingCode] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const VIDEO_END_TIME = 56; // roda até 0:56
 
@@ -94,8 +95,20 @@ export const LandingHome = () => {
       {/* Hero Section - Full width image with tracking overlay */}
       <section className="relative pt-[60px]">
         <div className="relative h-[480px] sm:h-[540px] lg:h-[580px] overflow-hidden">
-          <video ref={videoRef} src="/videos/hero-video.mp4" autoPlay loop playsInline onTimeUpdate={handleTimeUpdate} className="w-full h-full object-cover object-top" />
+          <video ref={videoRef} src="/videos/hero-video.mp4" autoPlay loop playsInline muted={isMuted} onTimeUpdate={handleTimeUpdate} className="w-full h-full object-cover object-[center_5%]" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10" />
+          
+          {/* Botão Mute */}
+          <button
+            onClick={() => {
+              setIsMuted(!isMuted);
+              if (videoRef.current) videoRef.current.muted = !isMuted;
+            }}
+            className="absolute top-4 right-4 z-10 p-2.5 rounded-full bg-black/50 hover:bg-black/70 text-white transition-all backdrop-blur-sm"
+            aria-label={isMuted ? 'Ativar som' : 'Mutar'}
+          >
+            {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+          </button>
 
           {/* Tracking Bar Overlay */}
           <motion.div initial={{
