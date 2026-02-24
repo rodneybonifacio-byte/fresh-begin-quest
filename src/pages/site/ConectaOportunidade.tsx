@@ -51,14 +51,18 @@ const stats = [
 ];
 
 const comparativo = [
-  { feature: "Coleta gratuita", superfrete: false, melhorEnvio: false, brhub: true },
-  { feature: "Rastreio via WhatsApp", superfrete: false, melhorEnvio: false, brhub: true },
-  { feature: "Suporte IA 24/7", superfrete: false, melhorEnvio: false, brhub: true },
-  { feature: "Sem contrato", superfrete: true, melhorEnvio: true, brhub: true },
-  { feature: "Integração Shopify / Nuvemshop", superfrete: true, melhorEnvio: true, brhub: true },
-  { feature: "Emissão em massa (planilha)", superfrete: true, melhorEnvio: true, brhub: true },
+  { feature: "Coleta gratuita na loja", superfrete: false, melhorEnvio: false, brhub: true },
+  { feature: "Rastreio automático via WhatsApp", superfrete: false, melhorEnvio: false, brhub: true },
+  { feature: "Suporte com IA 24/7", superfrete: false, melhorEnvio: false, brhub: true },
   { feature: "Notificação proativa de atraso", superfrete: false, melhorEnvio: false, brhub: true },
-  { feature: "Multi-usuário", superfrete: false, melhorEnvio: true, brhub: true },
+  { feature: "Seguro automático incluso", superfrete: false, melhorEnvio: false, brhub: true },
+  { feature: "Pagamento pós-uso (sem mensalidade)", superfrete: false, melhorEnvio: false, brhub: true },
+  { feature: "Relatórios detalhados por transportadora", superfrete: false, melhorEnvio: true, brhub: true },
+  { feature: "Sem contrato ou multa", superfrete: true, melhorEnvio: true, brhub: true },
+  { feature: "Integração Shopify / Nuvemshop", superfrete: true, melhorEnvio: true, brhub: true },
+  { feature: "Emissão em massa via planilha", superfrete: true, melhorEnvio: true, brhub: true },
+  { feature: "Multi-usuário com controle de acesso", superfrete: false, melhorEnvio: true, brhub: true },
+  { feature: "Programa de parceiros com comissão", superfrete: false, melhorEnvio: false, brhub: true },
 ];
 
 interface ConectaOportunidadeProps {
@@ -547,7 +551,7 @@ export const ConectaOportunidade = ({ referralCode, hideNavbar }: ConectaOportun
             {comparativo.map((row, i) => (
               <div key={i} className={`grid grid-cols-4 text-center ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} border-t border-gray-100`}>
                 <div className="py-3 px-2 text-left border-r border-gray-100">
-                  <p className="text-[10px] font-medium text-gray-600 leading-tight">{row.feature}</p>
+                  <p className="text-xs sm:text-sm font-semibold text-gray-700 leading-snug">{row.feature}</p>
                 </div>
                 {[row.superfrete, row.melhorEnvio, row.brhub].map((val, j) => (
                   <div key={j} className={`py-3 flex items-center justify-center ${j === 2 ? 'bg-orange-50/60' : ''} ${j < 2 ? 'border-r border-gray-100' : ''}`}>
