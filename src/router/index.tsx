@@ -29,6 +29,7 @@ const ConectaOportunidade = lazy(() => import('../pages/site/ConectaOportunidade
 // Conecta+ Pages
 const LandingHome = lazy(() => import('../pages/conecta/LandingHome'));
 const LandingConecta = lazy(() => import('../pages/conecta/LandingConecta'));
+const ProjecaoGanhos = lazy(() => import('../pages/conecta/ProjecaoGanhos'));
 const LoginParceiro = lazy(() => import('../pages/conecta/auth/LoginParceiro'));
 const CadastroParceiro = lazy(() => import('../pages/conecta/auth/CadastroParceiro'));
 const DashboardParceiro = lazy(() => import('../pages/conecta/dashboard/DashboardParceiro'));
@@ -80,6 +81,7 @@ export const RouterBase = () => {
 
                     {/* Conecta+ Routes */}
                     <Route path="/conecta" element={<LandingConecta />} />
+                    <Route path="/programa" element={<ProjecaoGanhos />} />
                     <Route path="/conecta/login" element={<LoginParceiro />} />
                     <Route path="/conecta/cadastro" element={<CadastroParceiro />} />
                     <Route path="/conecta/dashboard" element={<DashboardParceiro />} />
