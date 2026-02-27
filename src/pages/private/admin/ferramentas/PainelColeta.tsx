@@ -59,7 +59,7 @@ const PainelColeta: React.FC = () => {
 
     const { data: ordemColeta, isLoading } = useFetchQuery<IResponse<IEmissaoOrdemColeta[]>>(
         ['painelColeta', datas.dataIni, datas.dataFim],
-        async () => await service.getWithParams({ dataIni: datas.dataIni, dataFim: datas.dataFim }),
+        async () => await service.getWithParams({ dataIni: datas.dataIni, dataFim: datas.dataFim, status: 'pre-postado' }),
         { refetchInterval: 60000 * 2 } // auto-refresh 2min
     );
 
