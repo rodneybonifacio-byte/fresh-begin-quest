@@ -117,7 +117,8 @@ export const LandingConecta = () => {
   { icon: Gift, text: 'Promoções para parceiros' },
   { icon: Star, text: 'Comissão dobrada em campanhas "Conecta+ Week"' },
   { icon: Shield, text: 'Zero burocracia' },
-  { icon: Wallet, text: 'Pagamento semanal via PIX' }];
+  { icon: Wallet, text: 'Pagamento semanal via PIX' },
+  { icon: Zap, text: 'Customização do sistema para sua necessidade' }];
 
 
   const testimonials = [
