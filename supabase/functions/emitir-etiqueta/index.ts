@@ -605,7 +605,7 @@ serve(async (req) => {
     const emissaoData = JSON.parse(responseText);
     console.log('✅ Etiqueta emitida com sucesso!');
 
-    // Bloquear créditos do cliente para esta etiqueta
+    // Bloquear créditos e marcar primeira etiqueta no grupo
     try {
       const supabaseClient = createClient(
         Deno.env.get('SUPABASE_URL') ?? '',
@@ -633,6 +633,22 @@ serve(async (req) => {
         }
       } else {
         console.log('⚠️ Dados insuficientes para bloquear créditos:', { emissaoId, clienteId, valorFrete });
+      }
+
+      // Marcar primeira etiqueta emitida no grupo de regras
+      const { error: grupoError } = await supabaseClient
+        .from('grupo_regras_clientes')
+        .update({ 
+          primeira_etiqueta_emitida: true, 
+          data_primeira_emissao: new Date().toISOString() 
+        })
+        .eq('cliente_id', clienteId)
+        .eq('primeira_etiqueta_emitida', false);
+      
+      if (grupoError) {
+        console.log('ℹ️ Nenhum grupo para atualizar ou erro:', grupoError.message);
+      } else {
+        console.log('🎯 Grupo de regras atualizado - primeira etiqueta marcada');
       }
     } catch (creditError) {
       console.error('⚠️ Erro ao processar créditos (não impede emissão):', creditError);

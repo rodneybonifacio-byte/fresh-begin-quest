@@ -14,7 +14,7 @@ export const ChartDashboardHome = ({ comparativoClientes }: Props) => {
         nome.length > 12 ? nome.substring(0, 12) + "..." : nome
     );
 
-    const series: ApexAxisChartSeries = [
+    const series: any[] = [
         {
             name: "Faturado",
             data: comparativoClientes.map(c => Number(c.faturado)),

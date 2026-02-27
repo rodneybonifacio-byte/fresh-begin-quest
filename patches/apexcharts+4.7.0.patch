@@ -1,0 +1,13 @@
+diff --git a/types/apexcharts.d.ts b/types/apexcharts.d.ts
+index 1234567..abcdefg 100644
+--- a/types/apexcharts.d.ts
++++ b/types/apexcharts.d.ts
+@@ -57,7 +57,7 @@
+   }
+ }
+ 
+-declare module ApexCharts {
++declare namespace ApexCharts {
+   export interface ApexOptions {
+     annotations?: ApexAnnotations
+     chart?: ApexChart
