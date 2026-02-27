@@ -564,6 +564,74 @@ export type Database = {
         }
         Relationships: []
       }
+      grupo_regras_clientes: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          data_primeira_emissao: string | null
+          grupo_id: string
+          id: string
+          primeira_etiqueta_emitida: boolean
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          data_primeira_emissao?: string | null
+          grupo_id: string
+          id?: string
+          primeira_etiqueta_emitida?: boolean
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          data_primeira_emissao?: string | null
+          grupo_id?: string
+          id?: string
+          primeira_etiqueta_emitida?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grupo_regras_clientes_grupo_id_fkey"
+            columns: ["grupo_id"]
+            isOneToOne: false
+            referencedRelation: "grupos_regras_precificacao"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      grupos_regras_precificacao: {
+        Row: {
+          aplicar_em_simulacao: boolean
+          ativo: boolean
+          created_at: string
+          id: string
+          multiplicador_primeira_etiqueta: number
+          nome: string
+          percentual_plano_pos_primeira: number
+          updated_at: string
+        }
+        Insert: {
+          aplicar_em_simulacao?: boolean
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          multiplicador_primeira_etiqueta?: number
+          nome: string
+          percentual_plano_pos_primeira?: number
+          updated_at?: string
+        }
+        Update: {
+          aplicar_em_simulacao?: boolean
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          multiplicador_primeira_etiqueta?: number
+          nome?: string
+          percentual_plano_pos_primeira?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       integracoes: {
         Row: {
           ativo: boolean | null
