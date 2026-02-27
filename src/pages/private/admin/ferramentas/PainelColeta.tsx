@@ -17,26 +17,32 @@ const calcularDatasColeta = (): { dataIni: string; dataFim: string; descricaoPer
     const dia = now.getDay(); // 0=Dom, 1=Seg, ..., 5=Sex, 6=Sab
     const hora = now.getHours();
 
-    const formatDate = (d: Date) => d.toISOString().split('T')[0];
-    const hoje = formatDate(now);
+    const formatDateLocal = (d: Date) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const hoje = formatDateLocal(now);
 
     // Sexta após 15h, Sábado ou Domingo
     const isFimDeSemanaOuSextaTarde = dia === 0 || dia === 6 || (dia === 5 && hora >= 15);
 
     if (isFimDeSemanaOuSextaTarde) {
         // Calcular a última sexta-feira
-        let diasAtesSexta: number;
-        if (dia === 5) diasAtesSexta = 0; // é sexta
-        else if (dia === 6) diasAtesSexta = 1; // sábado -> sexta = -1
-        else diasAtesSexta = 2; // domingo -> sexta = -2
+        let diasAteSexta: number;
+        if (dia === 5) diasAteSexta = 0; // é sexta
+        else if (dia === 6) diasAteSexta = 1; // sábado -> sexta
+        else diasAteSexta = 2; // domingo -> sexta
 
         const sexta = new Date(now);
-        sexta.setDate(now.getDate() - diasAtesSexta);
+        sexta.setDate(now.getDate() - diasAteSexta);
 
         return {
-            dataIni: formatDate(sexta),
+            dataIni: formatDateLocal(sexta),
             dataFim: hoje,
-            descricaoPeriodo: `Sexta (${formatDate(sexta)}) até hoje`,
+            descricaoPeriodo: `Sexta (${formatDateLocal(sexta)}) até hoje`,
         };
     }
 
@@ -45,9 +51,9 @@ const calcularDatasColeta = (): { dataIni: string; dataFim: string; descricaoPer
     ontem.setDate(now.getDate() - 1);
 
     return {
-        dataIni: formatDate(ontem),
+        dataIni: formatDateLocal(ontem),
         dataFim: hoje,
-        descricaoPeriodo: `Ontem e Hoje (${formatDate(ontem)} - ${hoje})`,
+        descricaoPeriodo: `Ontem e Hoje (${formatDateLocal(ontem)} - ${hoje})`,
     };
 };
 
@@ -55,26 +61,36 @@ const PainelColeta: React.FC = () => {
     const queryClient = useQueryClient();
     const [isRefreshing, setIsRefreshing] = useState(false);
     const service = new OrdemColetaService();
-    const datas = useMemo(() => calcularDatasColeta(), []);
+    const datas = calcularDatasColeta();
+    const horarioAtualizacao = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
     const { data: ordemColeta, isLoading } = useFetchQuery<IResponse<IEmissaoOrdemColeta[]>>(
         ['painelColeta', datas.dataIni, datas.dataFim],
-        async () => await service.getWithParams({ dataIni: datas.dataIni, dataFim: datas.dataFim, status: 'pre-postado' }),
+        async () => await service.getWithParams({ dataIni: datas.dataIni, dataFim: datas.dataFim, status: 'PRE_POSTADO' }),
         { refetchInterval: 60000 * 2 } // auto-refresh 2min
     );
 
-    const totalObjetos = useMemo(() => {
-        if (!ordemColeta?.data) return 0;
-        return ordemColeta.data.reduce((acc, o) => acc + (parseInt(o.totalObjeto) || 0), 0);
+    const coletas = useMemo(() => {
+        const lista = ordemColeta?.data || [];
+        const temStatusNoPayload = lista.some((item: any) => typeof item?.status === 'string');
+
+        if (!temStatusNoPayload) return lista;
+
+        return lista.filter((item: any) => {
+            const statusNormalizado = String(item?.status || '').toUpperCase().replace('-', '_');
+            return statusNormalizado === 'PRE_POSTADO';
+        });
     }, [ordemColeta]);
+
+    const totalObjetos = useMemo(() => {
+        return coletas.reduce((acc, o) => acc + (parseInt(o.totalObjeto) || 0), 0);
+    }, [coletas]);
 
     const handleRefresh = async () => {
         setIsRefreshing(true);
         await queryClient.invalidateQueries({ queryKey: ['painelColeta'] });
         setTimeout(() => setIsRefreshing(false), 800);
     };
-
-    const coletas = ordemColeta?.data || [];
 
     return (
         <div className="flex flex-col gap-4 pb-8">
@@ -93,6 +109,9 @@ const PainelColeta: React.FC = () => {
                             </h1>
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                                 {datas.descricaoPeriodo}
+                            </p>
+                            <p className="text-[11px] text-gray-400 dark:text-gray-500">
+                                Atualizado às {horarioAtualizacao} • Autoatualização a cada 2 min
                             </p>
                         </div>
                     </div>
