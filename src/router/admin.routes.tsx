@@ -75,6 +75,10 @@ export const adminRoutesConfig: ProtectedRouteItem[] = [
         component: () => import('../pages/private/admin/ferramentas/OrdemColeta'),
     },
     {
+        path: 'painel-coleta',
+        component: () => import('../pages/private/admin/ferramentas/PainelColeta'),
+    },
+    {
         path: 'relatorios/envios/detail/:emissaoId',
         component: () => import('../pages/private/emissao/EmissaoViewDetail'),
     },
