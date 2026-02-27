@@ -31,7 +31,7 @@ export const LandingConecta = () => {
     // Meta Description
     const metaDescription = document.querySelector('meta[name="description"]');
     if (metaDescription) {
-      metaDescription.setAttribute('content', 'Seja parceiro BRHUB Conecta+ e ganhe 20% de comissão vitalícia em cada frete dos seus indicados. Cadastro gratuito, pagamento via PIX todo dia 10.');
+      metaDescription.setAttribute('content', 'Seja parceiro BRHUB Conecta+ e ganhe 20% de comissão vitalícia em cada frete dos seus indicados. Cadastro gratuito, pagamento semanal via PIX.');
     }
 
     // Meta Keywords
@@ -117,7 +117,7 @@ export const LandingConecta = () => {
   { icon: Gift, text: 'Promoções para parceiros' },
   { icon: Star, text: 'Comissão dobrada em campanhas "Conecta+ Week"' },
   { icon: Shield, text: 'Zero burocracia' },
-  { icon: Wallet, text: 'Pagamento via PIX no dia 10 de cada mês' }];
+  { icon: Wallet, text: 'Pagamento semanal via PIX' }];
 
 
   const testimonials = [
