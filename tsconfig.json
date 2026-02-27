@@ -9,6 +9,7 @@
         }
     ],
     "compilerOptions": {
+        "skipLibCheck": true,
         "types": [
             "vite-plugin-pwa/client",
             "vite-plugin-pwa/react"
