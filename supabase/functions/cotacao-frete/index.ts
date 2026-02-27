@@ -1,11 +1,52 @@
 // @ts-nocheck
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Buscar regras de grupo do cliente
+async function getGrupoRegras(clienteId: string) {
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  );
+
+  const { data, error } = await supabase
+    .from('grupo_regras_clientes')
+    .select(`
+      primeira_etiqueta_emitida,
+      grupos_regras_precificacao (
+        multiplicador_primeira_etiqueta,
+        aplicar_em_simulacao,
+        percentual_plano_pos_primeira,
+        ativo
+      )
+    `)
+    .eq('cliente_id', clienteId)
+    .limit(1)
+    .single();
+
+  if (error || !data) {
+    console.log('ℹ️ Cliente não pertence a nenhum grupo de regras');
+    return null;
+  }
+
+  const grupo = data.grupos_regras_precificacao;
+  if (!grupo || !grupo.ativo) {
+    console.log('ℹ️ Grupo do cliente está inativo');
+    return null;
+  }
+
+  return {
+    multiplicador: grupo.multiplicador_primeira_etiqueta,
+    aplicarEmSimulacao: grupo.aplicar_em_simulacao,
+    primeiraEtiquetaEmitida: data.primeira_etiqueta_emitida,
+  };
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -23,7 +64,6 @@ serve(async (req) => {
       throw new Error('BASE_API_URL não configurada');
     }
 
-    // Usar o token do cliente que veio na requisição
     const userToken = requestData.userToken;
     
     if (!userToken) {
@@ -31,7 +71,6 @@ serve(async (req) => {
       throw new Error('Token de autenticação não fornecido');
     }
 
-    // Extrair clienteId do token do usuário
     let clienteId = null;
     try {
       const tokenPayload = JSON.parse(atob(userToken.split('.')[1]));
@@ -46,14 +85,12 @@ serve(async (req) => {
       throw new Error('ClienteId não encontrado no token');
     }
 
-    // Preparar dados da cotação - SEMPRE incluir clienteId para aplicar regras específicas
     const isLogisticaReversa = requestData.logisticaReversa === 'S';
     
     if (isLogisticaReversa) {
-      console.log('🔄 Logística reversa ativa - enviando logisticaReversa: "S" para API');
+      console.log('🔄 Logística reversa ativa');
     }
     
-    // Normalizar CEPs para 8 dígitos com zero à esquerda
     const normalizeCep = (cep: string) => cep?.replace(/\D/g, '').padStart(8, '0') || '';
 
     const cotacaoPayload = {
@@ -61,12 +98,11 @@ serve(async (req) => {
       cepDestino: normalizeCep(requestData.cepDestino),
       embalagem: requestData.embalagem,
       valorDeclarado: requestData.valorDeclarado || 0,
-      clienteId, // CRÍTICO: Sempre enviar para aplicar regras do cliente
-      ...(isLogisticaReversa && { logisticaReversa: 'S' }), // Enviar logisticaReversa: "S" quando ativo
+      clienteId,
+      ...(isLogisticaReversa && { logisticaReversa: 'S' }),
       ...(requestData.cpfCnpjLoja && { cpfCnpjLoja: requestData.cpfCnpjLoja }),
     };
 
-    // Realizar cotação com token do próprio usuário
     console.log('📊 Realizando cotação com clienteId:', clienteId);
     console.log('📦 Payload:', JSON.stringify(cotacaoPayload));
     
@@ -98,6 +134,32 @@ serve(async (req) => {
 
     const cotacaoData = JSON.parse(responseText);
     console.log('✅ Cotação realizada com sucesso:', cotacaoData.data?.length || 0, 'opções');
+
+    // Verificar se o cliente pertence a um grupo de regras
+    const grupoRegras = await getGrupoRegras(clienteId);
+    
+    if (grupoRegras && !grupoRegras.primeiraEtiquetaEmitida && grupoRegras.aplicarEmSimulacao) {
+      console.log('🎯 Aplicando multiplicador do grupo:', grupoRegras.multiplicador);
+      
+      if (cotacaoData.data && Array.isArray(cotacaoData.data)) {
+        cotacaoData.data = cotacaoData.data.map((cotacao: any) => {
+          const valorOriginal = parseFloat(cotacao.valorTotal || cotacao.valor || '0');
+          const valorComMultiplicador = (valorOriginal * grupoRegras.multiplicador).toFixed(2);
+          
+          console.log(`  📦 ${cotacao.nomeServico}: R$ ${valorOriginal} → R$ ${valorComMultiplicador} (×${grupoRegras.multiplicador})`);
+          
+          return {
+            ...cotacao,
+            valorTotal: valorComMultiplicador,
+            valor: valorComMultiplicador,
+            valorOriginalSemGrupo: valorOriginal,
+            grupoRegraAplicada: true,
+          };
+        });
+      }
+    } else if (grupoRegras) {
+      console.log('ℹ️ Cliente já emitiu primeira etiqueta - cotação normal do plano');
+    }
 
     return new Response(
       JSON.stringify(cotacaoData),
