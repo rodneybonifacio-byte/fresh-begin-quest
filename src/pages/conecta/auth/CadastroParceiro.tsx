@@ -63,8 +63,8 @@ const TermosModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
 
             <h3 className="font-semibold text-gray-900">5. Pagamentos</h3>
             <p>
-              Os pagamentos são realizados mensalmente, via PIX, até o dia 10 do mês subsequente 
-              ao período de apuração. O valor mínimo para saque é de R$ 50,00. Valores inferiores 
+              Os pagamentos são realizados semanalmente, via PIX. A apuração de uma semana é paga na 
+              semana seguinte. O valor mínimo para saque é de R$ 50,00. Valores inferiores 
               serão acumulados para o próximo período.
             </p>
 

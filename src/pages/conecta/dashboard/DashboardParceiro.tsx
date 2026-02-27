@@ -487,7 +487,7 @@ export const DashboardParceiro = () => {
                     </div>
                     <div>
                       <p className="font-semibold text-white text-sm">Próximo pagamento</p>
-                      <p className="text-xs text-gray-400">Dia 10 do próximo mês · mín. R$ 50</p>
+                      <p className="text-xs text-gray-400">Pagamento semanal via PIX · mín. R$ 50</p>
                     </div>
                     <ArrowUpRight className="w-4 h-4 text-orange-400 ml-auto" />
                   </div>
