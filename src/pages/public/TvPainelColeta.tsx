@@ -484,13 +484,6 @@ const TvBoard = () => {
     return () => clearInterval(t);
   }, []);
 
-  const { regulares, brhub } = useMemo(() => agruparPorRemetente(data, horariosDb), [data, horariosDb]);
-  const totalObjetos = data.length;
-  const totalClientes = useMemo(() => {
-    const nomes = new Set(data.map(e => (e.remetenteNome || e.remetente?.nome || '').toUpperCase().trim()));
-    return nomes.size;
-  }, [data]);
-
   const horaAtual = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
   const proximoRefresh = useMemo(() => {
@@ -502,7 +495,84 @@ const TvBoard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastUpdate, tick]);
 
-  const horaAtualMinutos = new Date().getHours() * 60 + new Date().getMinutes();
+  // ─── Nomes dos dias da semana ─────────────────────────────────────────
+  const DIAS_SEMANA = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+
+  const now = new Date();
+  const diaAtual = now.getDay();
+  const isFds = diaAtual === 0 || diaAtual === 6;
+
+  const col1 = isFds ? 'Segunda-feira' : DIAS_SEMANA[diaAtual];
+  const col2 = isFds ? null : (diaAtual === 5 ? 'Segunda-feira' : DIAS_SEMANA[diaAtual + 1]);
+
+  // Separar etiquetas por coluna
+  const etiquetasCol1: Etiqueta[] = [];
+  const etiquetasCol2: Etiqueta[] = [];
+
+  for (const et of data) {
+    if (!et.criadoEm) {
+      etiquetasCol1.push(et);
+      continue;
+    }
+    const criadoDate = new Date(et.criadoEm);
+    const criadoDia = criadoDate.getDay();
+    const criadoHora = criadoDate.getHours() * 60 + criadoDate.getMinutes();
+
+    // Etiqueta gerada no sábado ou domingo → sempre Segunda (col1)
+    if (criadoDia === 0 || criadoDia === 6) {
+      etiquetasCol1.push(et);
+      continue;
+    }
+
+    if (isFds) {
+      etiquetasCol1.push(et);
+      continue;
+    }
+
+    // Dia útil: verificar horário de coleta do cliente
+    const nomeRemetente = et.remetenteNome || et.remetente?.nome || '';
+    const horarioColeta = resolverHorario(nomeRemetente, horariosDb);
+    const horarioColetaMin = parseTime(horarioColeta);
+    const isHoje = criadoDate.toDateString() === now.toDateString();
+
+    if (isHoje) {
+      if (criadoHora < horarioColetaMin) {
+        etiquetasCol1.push(et);
+      } else if (col2) {
+        etiquetasCol2.push(et);
+      } else {
+        etiquetasCol1.push(et);
+      }
+    } else {
+      // Gerada em dia anterior que ainda não foi postada
+      if (criadoDia === 5 && criadoHora >= horarioColetaMin) {
+        // Sexta após horário → Segunda
+        etiquetasCol1.push(et);
+      } else {
+        etiquetasCol1.push(et);
+      }
+    }
+  }
+
+  const { regulares: regularesCol1, brhub: brhubCol1 } = agruparPorRemetente(etiquetasCol1, horariosDb);
+  const { regulares: regularesCol2, brhub: brhubCol2 } = agruparPorRemetente(etiquetasCol2, horariosDb);
+
+  const allGroupsCol1: GrupoHorario[] = [...regularesCol1];
+  if (brhubCol1) allGroupsCol1.push(brhubCol1);
+  allGroupsCol1.sort((a, b) => a.sortKey - b.sortKey);
+
+  const allGroupsCol2: GrupoHorario[] = [...regularesCol2];
+  if (brhubCol2) allGroupsCol2.push(brhubCol2);
+  allGroupsCol2.sort((a, b) => a.sortKey - b.sortKey);
+
+  const totalObjetos = data.length;
+  const totalClientes = new Set(data.map(e => (e.remetenteNome || e.remetente?.nome || '').toUpperCase().trim())).size;
+  const totalCol1 = etiquetasCol1.length;
+  const totalCol2 = etiquetasCol2.length;
+  const clientesCol1 = allGroupsCol1.reduce((acc, g) => acc + g.clientes.length, 0);
+  const clientesCol2 = allGroupsCol2.reduce((acc, g) => acc + g.clientes.length, 0);
+  const singleColumn = col2 === null;
+  const hoje = now.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
   if (loading) {
     return (
@@ -511,27 +581,6 @@ const TvBoard = () => {
       </div>
     );
   }
-
-  const allGroups: GrupoHorario[] = [...regulares];
-  if (brhub) allGroups.push(brhub);
-  allGroups.sort((a, b) => a.sortKey - b.sortKey);
-
-  // Separar HOJE vs PRÓXIMO DIA
-  const hojeGroups = allGroups.filter(g => g.sortKey >= 9999 || horaAtualMinutos < (g.sortKey - 60));
-  const proximoDiaGroups = allGroups.filter(g => g.sortKey < 9999 && horaAtualMinutos >= (g.sortKey - 60));
-
-  const now = new Date();
-  const dia = now.getDay();
-  const hora = now.getHours();
-  const isFds = dia === 0 || dia === 6 || (dia === 5 && hora >= 15);
-  const proximoDiaLabel = isFds ? 'Segunda-feira' : 'Amanhã';
-
-  const totalHoje = hojeGroups.reduce((acc, g) => acc + g.totalObjetos, 0);
-  const totalProximo = proximoDiaGroups.reduce((acc, g) => acc + g.totalObjetos, 0);
-  const clientesHoje = hojeGroups.reduce((acc, g) => acc + g.clientes.length, 0);
-  const clientesProximo = proximoDiaGroups.reduce((acc, g) => acc + g.clientes.length, 0);
-
-  const hoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
   return (
     <div className="h-screen bg-[#0a0e17] text-white flex flex-col select-none overflow-hidden">
@@ -577,58 +626,60 @@ const TvBoard = () => {
             <p className="text-lg font-bold uppercase tracking-widest">Nenhuma etiqueta encontrada</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4 h-full overflow-hidden">
-            {/* COLUNA ESQUERDA: HOJE */}
+          <div className={`grid ${singleColumn ? 'grid-cols-1' : 'grid-cols-2'} gap-4 h-full overflow-hidden`}>
+            {/* COLUNA 1 */}
             <div className="flex flex-col gap-2 overflow-hidden">
               <div className="flex items-center gap-2 mb-1">
                 <div className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-emerald-500/20">
                   <Truck className="w-4 h-4 text-emerald-400" />
-                  <span className="font-black text-sm uppercase tracking-wider text-emerald-400">Hoje</span>
+                  <span className="font-black text-sm uppercase tracking-wider text-emerald-400">{col1}</span>
                 </div>
                 <span className="text-gray-500 text-[10px] font-bold uppercase tracking-widest">
-                  {clientesHoje} clientes · {totalHoje} etiq
+                  {clientesCol1} clientes · {totalCol1} etiq
                 </span>
                 <div className="flex-1 h-px bg-emerald-500/10" />
               </div>
-              {hojeGroups.length === 0 ? (
-                <div className="flex flex-col items-center justify-center flex-1 gap-2 opacity-30">
-                  <Package className="w-10 h-10" />
-                  <p className="text-xs font-bold uppercase tracking-widest">Todas as coletas de hoje concluídas</p>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-3 overflow-auto">
-                  {hojeGroups.map((grupo) => (
-                    <GrupoTable key={grupo.label} grupo={grupo} />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* COLUNA DIREITA: PRÓXIMO DIA */}
-            <div className="flex flex-col gap-2 overflow-hidden">
-              <div className="flex items-center gap-2 mb-1">
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-red-500/20">
-                  <CalendarClock className="w-4 h-4 text-red-400" />
-                  <span className="font-black text-sm uppercase tracking-wider text-red-400">{proximoDiaLabel}</span>
-                </div>
-                <span className="text-gray-500 text-[10px] font-bold uppercase tracking-widest">
-                  {clientesProximo} clientes · {totalProximo} etiq
-                </span>
-                <div className="flex-1 h-px bg-red-500/10" />
-              </div>
-              {proximoDiaGroups.length === 0 ? (
+              {allGroupsCol1.length === 0 ? (
                 <div className="flex flex-col items-center justify-center flex-1 gap-2 opacity-30">
                   <Package className="w-10 h-10" />
                   <p className="text-xs font-bold uppercase tracking-widest">Nenhuma coleta pendente</p>
                 </div>
               ) : (
                 <div className="flex flex-col gap-3 overflow-auto">
-                  {proximoDiaGroups.map((grupo) => (
+                  {allGroupsCol1.map((grupo) => (
                     <GrupoTable key={grupo.label} grupo={grupo} />
                   ))}
                 </div>
               )}
             </div>
+
+            {/* COLUNA 2 (se existir) */}
+            {!singleColumn && (
+              <div className="flex flex-col gap-2 overflow-hidden">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-blue-500/20">
+                    <CalendarClock className="w-4 h-4 text-blue-400" />
+                    <span className="font-black text-sm uppercase tracking-wider text-blue-400">{col2}</span>
+                  </div>
+                  <span className="text-gray-500 text-[10px] font-bold uppercase tracking-widest">
+                    {clientesCol2} clientes · {totalCol2} etiq
+                  </span>
+                  <div className="flex-1 h-px bg-blue-500/10" />
+                </div>
+                {allGroupsCol2.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center flex-1 gap-2 opacity-30">
+                    <Package className="w-10 h-10" />
+                    <p className="text-xs font-bold uppercase tracking-widest">Nenhuma coleta pendente</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3 overflow-auto">
+                    {allGroupsCol2.map((grupo) => (
+                      <GrupoTable key={grupo.label} grupo={grupo} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
