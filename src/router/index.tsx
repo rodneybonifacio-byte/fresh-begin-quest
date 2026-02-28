@@ -34,6 +34,7 @@ const LoginParceiro = lazy(() => import('../pages/conecta/auth/LoginParceiro'));
 const CadastroParceiro = lazy(() => import('../pages/conecta/auth/CadastroParceiro'));
 const DashboardParceiro = lazy(() => import('../pages/conecta/dashboard/DashboardParceiro'));
 const BeneficiosConecta = lazy(() => import('../pages/conecta/BeneficiosConecta'));
+const TvPainelColeta = lazy(() => import('../pages/public/TvPainelColeta'));
 
 // Loading component
 const LoadingFallback = () => (
@@ -79,6 +80,7 @@ export const RouterBase = () => {
                     <Route path="/nova-senha" element={<NovaSenhaPage />} />
                     <Route path="/manutencao" element={<Manutencao />} />
                     <Route path="/view/pdf/:pdfId/print" element={<VisualizarPdf />} />
+                    <Route path="/tv-coleta" element={<TvPainelColeta />} />
 
                     {/* Conecta+ Routes */}
                     <Route path="/conecta" element={<LandingConecta />} />
