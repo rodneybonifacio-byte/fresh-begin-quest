@@ -72,13 +72,17 @@ const fmtMinutes = (mins: number) => {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 };
 
-const formatHora = (dateStr: string): string => {
-  if (!dateStr) return '--:--';
+const formatDataHora = (dateStr: string): string => {
+  if (!dateStr) return '--/-- --:--';
   try {
     const d = new Date(dateStr);
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const dia = String(d.getDate()).padStart(2, '0');
+    const mes = String(d.getMonth() + 1).padStart(2, '0');
+    const hora = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    return `${dia}/${mes} ${hora}:${min}`;
   } catch {
-    return '--:--';
+    return '--/-- --:--';
   }
 };
 
@@ -328,18 +332,18 @@ const ClienteRow = ({ cliente, index }: { cliente: ClienteAgrupado; index: numbe
       {expanded && (
         <div className="bg-white/[0.01] border-l-2 border-amber-500/30 ml-6">
           {/* Header */}
-          <div className="grid grid-cols-[1fr_1.2fr_auto_50px] gap-2 px-3 py-1 text-[8px] text-gray-600 uppercase tracking-widest font-bold border-b border-white/5">
+          <div className="grid grid-cols-[1fr_1.2fr_auto_70px] gap-2 px-3 py-1 text-[8px] text-gray-600 uppercase tracking-widest font-bold border-b border-white/5">
             <span>Código</span>
             <span>Destinatário</span>
             <span>Status</span>
-            <span className="text-right">Hora</span>
+            <span>Gerado em</span>
           </div>
           {cliente.etiquetas
             .sort((a, b) => (a.criadoEm || '').localeCompare(b.criadoEm || ''))
             .map((et, i) => (
               <div
                 key={et.id || i}
-                className={`grid grid-cols-[1fr_1.2fr_auto_50px] gap-2 px-3 py-1 items-center ${
+                className={`grid grid-cols-[1fr_1.2fr_auto_70px] gap-2 px-3 py-1 items-center ${
                   i % 2 === 0 ? 'bg-white/[0.01]' : 'bg-white/[0.03]'
                 }`}
               >
@@ -351,7 +355,7 @@ const ClienteRow = ({ cliente, index }: { cliente: ClienteAgrupado; index: numbe
                 </span>
                 <StatusBadge status={et.status} />
                 <span className="text-gray-500 text-[10px] font-mono text-right tabular-nums">
-                  {formatHora(et.criadoEm)}
+                  {formatDataHora(et.criadoEm)}
                 </span>
               </div>
             ))}
@@ -446,8 +450,17 @@ const TvBoard = () => {
       const json = await res.json();
       const lista: Etiqueta[] = json?.data || json || [];
 
-      console.log(`[TV Painel] ${lista.length} etiquetas recebidas`);
-      setData(lista);
+      // Filtrar etiquetas com mais de 4 dias
+      const now = Date.now();
+      const FOUR_DAYS_MS = 4 * 24 * 60 * 60 * 1000;
+      const filtrada = lista.filter(et => {
+        if (!et.criadoEm) return true;
+        const criado = new Date(et.criadoEm).getTime();
+        return (now - criado) <= FOUR_DAYS_MS;
+      });
+
+      console.log(`[TV Painel] ${lista.length} etiquetas recebidas, ${filtrada.length} após filtro de 4 dias`);
+      setData(filtrada);
       setLastUpdate(new Date());
     } catch (err) {
       console.error('[TV Painel] Erro ao buscar dados:', err);
