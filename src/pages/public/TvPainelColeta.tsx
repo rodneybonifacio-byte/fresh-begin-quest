@@ -397,28 +397,14 @@ const ClienteRow = ({ cliente, index, isNew }: { cliente: ClienteAgrupado; index
 
 // ─── Grupo Table ─────────────────────────────────────────────────────────────
 const GrupoTable = ({ grupo, coletaConfirmada, onConfirmarColeta }: { grupo: GrupoHorario; coletaConfirmada?: boolean; onConfirmarColeta?: () => void }) => {
-  const now = new Date();
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  const corteGrupo = grupo.sortKey - 60;
-  const urgente = grupo.sortKey < 9999 && nowMinutes >= corteGrupo && nowMinutes < grupo.sortKey;
-  const jaPassou = grupo.sortKey < 9999 && nowMinutes >= grupo.sortKey;
-
   const headerColor = coletaConfirmada
     ? 'bg-emerald-500/15 border-emerald-500/40'
-    : jaPassou 
-    ? 'bg-red-500/10 border-red-500/30' 
-    : urgente 
-    ? 'bg-orange-500/10 border-orange-500/30' 
     : grupo.isBrhub 
     ? 'bg-cyan-500/10 border-cyan-500/30' 
     : 'bg-white/[0.03] border-white/10';
 
   const textColor = coletaConfirmada
     ? 'text-emerald-400'
-    : jaPassou 
-    ? 'text-red-400' 
-    : urgente 
-    ? 'text-orange-400' 
     : grupo.isBrhub 
     ? 'text-cyan-400' 
     : 'text-orange-400';
@@ -426,16 +412,12 @@ const GrupoTable = ({ grupo, coletaConfirmada, onConfirmarColeta }: { grupo: Gru
   return (
     <div className={`flex flex-col ${coletaConfirmada ? 'opacity-70' : ''}`}>
       {/* Header do grupo */}
-      <div className={`flex items-center justify-between px-3 py-1.5 rounded-t-lg border ${headerColor} ${urgente && !coletaConfirmada ? 'animate-pulse' : ''}`}>
+      <div className={`flex items-center justify-between px-3 py-1.5 rounded-t-lg border ${headerColor}`}>
         <div className="flex items-center gap-2">
           {coletaConfirmada ? (
             <Truck className={`w-3.5 h-3.5 ${textColor}`} />
           ) : grupo.isBrhub ? (
             <Users className={`w-3.5 h-3.5 ${textColor}`} />
-          ) : jaPassou ? (
-            <AlertTriangle className={`w-3.5 h-3.5 ${textColor}`} />
-          ) : urgente ? (
-            <AlertTriangle className={`w-3.5 h-3.5 ${textColor}`} />
           ) : (
             <Clock className={`w-3.5 h-3.5 ${textColor}`} />
           )}
@@ -444,9 +426,6 @@ const GrupoTable = ({ grupo, coletaConfirmada, onConfirmarColeta }: { grupo: Gru
           </span>
           {coletaConfirmada && (
             <span className="text-[8px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded font-bold uppercase">✓ Coletado</span>
-          )}
-          {!coletaConfirmada && jaPassou && (
-            <span className="text-[8px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded font-bold uppercase">Atrasado</span>
           )}
         </div>
         <div className="flex items-center gap-2">
