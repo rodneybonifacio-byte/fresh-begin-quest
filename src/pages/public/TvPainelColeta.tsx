@@ -536,6 +536,38 @@ const AlertBanner = ({ count, onDismiss }: { count: number; onDismiss: () => voi
   );
 };
 
+// ─── New Collection Popup ────────────────────────────────────────────────────
+const NewCollectionPopup = ({ count, onConfirm }: { count: number; onConfirm: () => void }) => {
+  if (count <= 0) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+      <div className="bg-[#0c1222] border-2 border-orange-500/50 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl shadow-orange-500/20 flex flex-col items-center gap-6">
+        <div className="w-16 h-16 rounded-full bg-orange-500/20 border-2 border-orange-500/40 flex items-center justify-center animate-pulse">
+          <Bell className="w-8 h-8 text-orange-400" />
+        </div>
+        <div className="text-center space-y-2">
+          <h2 className="text-2xl font-black text-white uppercase tracking-wide font-display">
+            Nova Coleta Detectada!
+          </h2>
+          <p className="text-orange-400 text-lg font-bold">
+            {count} {count === 1 ? 'nova etiqueta' : 'novas etiquetas'}
+          </p>
+          <p className="text-gray-400 text-sm">
+            Foram detectadas novas etiquetas no painel de coleta.
+          </p>
+        </div>
+        <button
+          onClick={onConfirm}
+          className="w-full py-4 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-black text-lg uppercase tracking-wider shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 hover:scale-[1.02] transition-all active:scale-95"
+        >
+          Confirmar
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // ─── Painel principal ────────────────────────────────────────────────────────
 const TvBoard = () => {
   const [data, setData] = useState<Etiqueta[]>([]);
@@ -790,6 +822,9 @@ const TvBoard = () => {
 
       {/* Alert Banner */}
       <AlertBanner count={newAlertCount} onDismiss={() => setNewAlertCount(0)} />
+
+      {/* Popup de nova coleta */}
+      <NewCollectionPopup count={newAlertCount} onConfirm={() => setNewAlertCount(0)} />
 
       {/* Content */}
       <div className="flex-1 overflow-hidden px-4 py-3">
