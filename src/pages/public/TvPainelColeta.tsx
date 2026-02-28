@@ -396,15 +396,16 @@ const TvBoard = () => {
   const fetchData = useCallback(async () => {
     try {
       const datasAtuais = calcularDatasColeta();
-      const token = localStorage.getItem('token');
-      const baseUrl = import.meta.env.VITE_BASE_API_URL || '';
-      const url = `${baseUrl}/emissoes/ordem-coleta?dataIni=${datasAtuais.dataIni}&dataFim=${datasAtuais.dataFim}&status=PRE_POSTADO`;
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'xikvfybxthvqhpjbrszp';
+      const url = `https://${projectId}.supabase.co/functions/v1/tv-painel-coleta?dataIni=${datasAtuais.dataIni}&dataFim=${datasAtuais.dataFim}&status=PRE_POSTADO`;
 
       const res = await fetch(url, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        headers: {
+          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '',
+        },
       });
 
-      if (!res.ok) throw new Error('Fetch failed');
+      if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
       const json = await res.json();
       const lista: OrdemColeta[] = json?.data || json || [];
 
