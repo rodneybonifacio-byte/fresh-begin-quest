@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Package, Clock, Truck, RefreshCw, Lock, Eye, EyeOff, AlertTriangle, Users } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface OrdemColeta {
@@ -12,63 +13,24 @@ interface OrdemColeta {
   remetenteId?: string;
 }
 
+interface ClienteHorario {
+  nome_cliente: string;
+  horario_inicio: string;
+  horario_fim: string | null;
+  motorista: string | null;
+  grupo: string | null;
+}
+
 // ─── Constantes ──────────────────────────────────────────────────────────────
 const TV_PIN = '7890';
 const REFRESH_INTERVAL = 120_000;
 
-// ─── Horários da planilha (por cliente) ──────────────────────────────────────
 const BRHUB_CLIENTS = ['TG GRIFFES', '7 DAYS', 'CAIRO', 'NEXX', 'ERONIA', 'ATENDENCIA'];
 const BRHUB_HORARIO = '16:00 – 17:00';
-
-// Mapa: nome parcial do cliente → horário fixo da planilha
-const HORARIOS_PLANILHA: { nome: string; horario: string }[] = [
-  // 14:00 – 15:00
-  { nome: 'CARMEN JEANS', horario: '14:00' },
-  { nome: 'OPTIMIST', horario: '14:00' },
-  { nome: 'ALINE CONF', horario: '14:00' },
-  { nome: 'MARIA CHICA', horario: '14:00' },
-  { nome: 'STRANGER', horario: '14:00' },
-  { nome: 'FULL STOP', horario: '14:00' },
-  { nome: 'FIRE', horario: '14:00' },
-  { nome: 'STONEWALL', horario: '14:00' },
-  { nome: 'ETTA', horario: '14:00' },
-  { nome: 'KEROBLUSA', horario: '14:00' },
-  { nome: 'G2K JEANS', horario: '14:00' },
-  { nome: 'UEMTEL', horario: '14:00' },
-  { nome: 'BORAME', horario: '14:00' },
-  { nome: 'SCERA', horario: '14:00' },
-  { nome: 'MIRANTE JEANS', horario: '14:00' },
-  { nome: 'GBY MODAS', horario: '14:00' },
-  { nome: 'BH YOO', horario: '14:00' },
-  { nome: 'SEJA KAYLA', horario: '14:00' },
-  { nome: 'SEXY COOKIE', horario: '14:00' },
-  { nome: 'VOGABOX', horario: '14:00' },
-  { nome: 'LODERRO', horario: '14:00' },
-  { nome: 'LADY MODAS', horario: '14:00' },
-  // 15:00 – 16:00
-  { nome: 'FASHION GIRL', horario: '15:00' },
-  // DIÁRIA (sem horário fixo)
-  { nome: 'LARAS MODA', horario: 'DIARIA' },
-];
 
 const isBrhubClient = (nome: string): boolean => {
   const upper = nome.toUpperCase().trim();
   return BRHUB_CLIENTS.some(c => upper.includes(c));
-};
-
-/** Retorna o horário fixo da planilha para o cliente, ou null se não encontrado */
-const getHorarioPlanilha = (nome: string): string | null => {
-  const upper = nome.toUpperCase().trim();
-  const match = HORARIOS_PLANILHA.find(h => upper.includes(h.nome));
-  return match ? match.horario : null;
-};
-
-/** Resolve o horário efetivo: planilha > API */
-const resolverHorario = (ordem: OrdemColeta): string => {
-  if (isBrhubClient(ordem.cliente)) return '16:00';
-  const planilha = getHorarioPlanilha(ordem.cliente);
-  if (planilha) return planilha;
-  return formatTimeRange(ordem.dataHoraColeta);
 };
 
 // ─── Lógica de datas ─────────────────────────────────────────────────────────
@@ -118,11 +80,44 @@ const formatTimeRange = (time: string): string => {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 };
 
-const getCorteInfo = (coletas: OrdemColeta[]): { horarioCorte: string; primeiroHorario: string } | null => {
+const fmtMinutes = (mins: number) => {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+};
+
+/** Resolve horário: tabela auxiliar > API */
+const resolverHorario = (ordem: OrdemColeta, horariosDb: ClienteHorario[]): string => {
+  if (isBrhubClient(ordem.cliente)) return '16:00';
+  
+  const upper = ordem.cliente.toUpperCase().trim();
+  const match = horariosDb.find(h => upper.includes(h.nome_cliente.toUpperCase().trim()));
+  if (match) {
+    return match.horario_inicio;
+  }
+  
+  return formatTimeRange(ordem.dataHoraColeta);
+};
+
+/** Resolve label do grupo com faixa horária */
+const resolverLabel = (ordem: OrdemColeta, horariosDb: ClienteHorario[]): string => {
+  const upper = ordem.cliente.toUpperCase().trim();
+  const match = horariosDb.find(h => upper.includes(h.nome_cliente.toUpperCase().trim()));
+  if (match && match.horario_fim) {
+    return `${match.horario_inicio} – ${match.horario_fim}`;
+  }
+  if (match) return match.horario_inicio;
+  return formatTimeRange(ordem.dataHoraColeta);
+};
+
+const getCorteInfo = (coletas: OrdemColeta[], horariosDb: ClienteHorario[]): { horarioCorte: string; primeiroHorario: string } | null => {
   if (coletas.length === 0) return null;
 
   const horarios = coletas
-    .map(c => parseTime(c.dataHoraColeta))
+    .map(c => {
+      const resolved = resolverHorario(c, horariosDb);
+      return parseTime(resolved);
+    })
     .filter(h => h < 9999)
     .sort((a, b) => a - b);
 
@@ -130,12 +125,6 @@ const getCorteInfo = (coletas: OrdemColeta[]): { horarioCorte: string; primeiroH
 
   const primeiro = horarios[0];
   const corte = primeiro - 60;
-
-  const fmtMinutes = (mins: number) => {
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-  };
 
   return {
     horarioCorte: fmtMinutes(corte < 0 ? 0 : corte),
@@ -152,7 +141,7 @@ interface GrupoHorario {
   isBrhub?: boolean;
 }
 
-const agruparColetas = (coletas: OrdemColeta[]): { regulares: GrupoHorario[]; brhub: GrupoHorario | null } => {
+const agruparColetas = (coletas: OrdemColeta[], horariosDb: ClienteHorario[]): { regulares: GrupoHorario[]; brhub: GrupoHorario | null } => {
   const brhubColetas: OrdemColeta[] = [];
   const outrasColetas: OrdemColeta[] = [];
 
@@ -164,22 +153,27 @@ const agruparColetas = (coletas: OrdemColeta[]): { regulares: GrupoHorario[]; br
     }
   }
 
-  // Agrupar regulares por horário (usando horário da planilha)
-  const map = new Map<string, OrdemColeta[]>();
+  // Agrupar regulares por horário (usando tabela auxiliar)
+  const map = new Map<string, { coletas: OrdemColeta[]; label: string }>();
   for (const c of outrasColetas) {
-    const time = resolverHorario(c);
-    const key = time === 'Sem horário' ? 'ZZ:ZZ' : time === 'DIARIA' ? 'DIARIA' : time;
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(c);
+    const time = resolverHorario(c, horariosDb);
+    const label = resolverLabel(c, horariosDb);
+    const key = time === 'Sem horário' ? 'ZZ:ZZ' : time;
+    if (!map.has(key)) map.set(key, { coletas: [], label });
+    map.get(key)!.coletas.push(c);
+    // Use the most descriptive label (with range)
+    if (label.includes('–') && !map.get(key)!.label.includes('–')) {
+      map.get(key)!.label = label;
+    }
   }
 
   const regulares: GrupoHorario[] = [];
-  for (const [key, items] of map) {
+  for (const [key, val] of map) {
     regulares.push({
-      label: key === 'ZZ:ZZ' ? 'Sem horário' : key === 'DIARIA' ? 'Diária' : key,
-      sortKey: key === 'ZZ:ZZ' ? 9999 : key === 'DIARIA' ? 9998 : parseTime(key),
-      coletas: items.sort((a, b) => a.cliente.localeCompare(b.cliente)),
-      totalObjetos: items.reduce((acc, o) => acc + (parseInt(o.totalObjeto) || 0), 0),
+      label: key === 'ZZ:ZZ' ? 'Sem horário' : val.label,
+      sortKey: key === 'ZZ:ZZ' ? 9999 : parseTime(key),
+      coletas: val.coletas.sort((a, b) => a.cliente.localeCompare(b.cliente)),
+      totalObjetos: val.coletas.reduce((acc, o) => acc + (parseInt(o.totalObjeto) || 0), 0),
     });
   }
 
@@ -188,7 +182,7 @@ const agruparColetas = (coletas: OrdemColeta[]): { regulares: GrupoHorario[]; br
   const brhub: GrupoHorario | null = brhubColetas.length > 0
     ? {
         label: BRHUB_HORARIO,
-        sortKey: 960, // 16:00
+        sortKey: 960,
         coletas: brhubColetas.sort((a, b) => a.cliente.localeCompare(b.cliente)),
         totalObjetos: brhubColetas.reduce((acc, o) => acc + (parseInt(o.totalObjeto) || 0), 0),
         isBrhub: true,
@@ -269,12 +263,9 @@ const TvLogin = ({ onAuth }: { onAuth: () => void }) => {
 // ─── Componente de Grupo (tabela compacta) ───────────────────────────────────
 const GrupoTable = ({ grupo }: { grupo: GrupoHorario }) => (
   <div className="flex flex-col">
-    {/* Header do grupo */}
     <div className="flex items-center gap-2 mb-1">
       <div className={`flex items-center gap-1.5 px-3 py-1 rounded-md ${
-        grupo.isBrhub
-          ? 'bg-cyan-500/20'
-          : 'bg-amber-500/20'
+        grupo.isBrhub ? 'bg-cyan-500/20' : 'bg-amber-500/20'
       }`}>
         {grupo.isBrhub ? (
           <Users className="w-3.5 h-3.5 text-cyan-400" />
@@ -293,7 +284,6 @@ const GrupoTable = ({ grupo }: { grupo: GrupoHorario }) => (
       <div className="flex-1 h-px bg-white/5" />
     </div>
 
-    {/* Linhas */}
     <div className="rounded-md overflow-hidden border border-white/5">
       {grupo.coletas.map((ordem, i) => (
         <div
@@ -328,11 +318,30 @@ const GrupoTable = ({ grupo }: { grupo: GrupoHorario }) => (
 // ─── Painel principal ────────────────────────────────────────────────────────
 const TvBoard = () => {
   const [data, setData] = useState<OrdemColeta[]>([]);
+  const [horariosDb, setHorariosDb] = useState<ClienteHorario[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [tick, setTick] = useState(0);
 
   const datas = useMemo(() => calcularDatasColeta(), []);
+
+  // Buscar horários da tabela auxiliar
+  const fetchHorarios = useCallback(async () => {
+    try {
+      const { data: rows, error } = await supabase
+        .from('clientes_coleta_horarios')
+        .select('nome_cliente, horario_inicio, horario_fim, motorista, grupo')
+        .eq('ativo', true);
+
+      if (error) {
+        console.error('[TV Painel] Erro ao buscar horários:', error);
+        return;
+      }
+      setHorariosDb(rows || []);
+    } catch (err) {
+      console.error('[TV Painel] Erro ao buscar horários:', err);
+    }
+  }, []);
 
   const fetchData = useCallback(async () => {
     try {
@@ -363,19 +372,23 @@ const TvBoard = () => {
   }, [datas]);
 
   useEffect(() => {
+    fetchHorarios();
     fetchData();
-    const interval = setInterval(fetchData, REFRESH_INTERVAL);
+    const interval = setInterval(() => {
+      fetchHorarios();
+      fetchData();
+    }, REFRESH_INTERVAL);
     return () => clearInterval(interval);
-  }, [fetchData]);
+  }, [fetchHorarios, fetchData]);
 
   useEffect(() => {
     const t = setInterval(() => setTick((v) => v + 1), 1000);
     return () => clearInterval(t);
   }, []);
 
-  const { regulares, brhub } = useMemo(() => agruparColetas(data), [data]);
+  const { regulares, brhub } = useMemo(() => agruparColetas(data, horariosDb), [data, horariosDb]);
   const totalObjetos = useMemo(() => data.reduce((acc, o) => acc + (parseInt(o.totalObjeto) || 0), 0), [data]);
-  const corteInfo = useMemo(() => getCorteInfo(data), [data]);
+  const corteInfo = useMemo(() => getCorteInfo(data, horariosDb), [data, horariosDb]);
 
   const horaAtual = new Date().toLocaleTimeString('pt-BR', {
     hour: '2-digit',
@@ -403,19 +416,16 @@ const TvBoard = () => {
     );
   }
 
-  // Combinar todos os grupos para exibição em colunas
   const allGroups: GrupoHorario[] = [...regulares];
   if (brhub) allGroups.push(brhub);
   allGroups.sort((a, b) => a.sortKey - b.sortKey);
 
-  // Dividir em 2 colunas se tiver muitos grupos
   const midpoint = Math.ceil(allGroups.length / 2);
   const col1 = allGroups.slice(0, midpoint);
   const col2 = allGroups.slice(midpoint);
 
   return (
     <div className="h-screen bg-[#0a0e17] text-white flex flex-col select-none overflow-hidden">
-      {/* ── Header compacto ──────────────────────────────── */}
       <header className="flex items-center justify-between px-4 py-2 bg-gradient-to-r from-[#0f1523] to-[#0a0e17] border-b border-white/5 flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
@@ -428,7 +438,6 @@ const TvBoard = () => {
         </div>
 
         <div className="flex items-center gap-4">
-          {/* Regra de corte */}
           {corteInfo && (
             <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border ${
               passouCorte
@@ -447,7 +456,6 @@ const TvBoard = () => {
             </div>
           )}
 
-          {/* Contadores */}
           <div className="flex items-center gap-4">
             <div className="text-center">
               <p className="text-gray-600 text-[9px] uppercase tracking-widest">Clientes</p>
@@ -462,7 +470,6 @@ const TvBoard = () => {
 
           <div className="w-px h-8 bg-white/10" />
 
-          {/* Relógio */}
           <div className="text-right">
             <p className="text-2xl font-black tabular-nums tracking-tight text-white leading-tight">{horaAtual}</p>
             <p className="text-[9px] text-gray-600 tracking-widest uppercase">
@@ -472,7 +479,6 @@ const TvBoard = () => {
         </div>
       </header>
 
-      {/* ── Body ────────────────────────────────────────── */}
       <div className="flex-1 overflow-hidden px-4 py-2">
         {data.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 opacity-40">
@@ -481,13 +487,11 @@ const TvBoard = () => {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4 h-full overflow-hidden">
-            {/* Coluna 1 */}
             <div className="flex flex-col gap-3 overflow-hidden">
               {col1.map((grupo) => (
                 <GrupoTable key={grupo.label} grupo={grupo} />
               ))}
             </div>
-            {/* Coluna 2 */}
             <div className="flex flex-col gap-3 overflow-hidden">
               {col2.map((grupo) => (
                 <GrupoTable key={grupo.label} grupo={grupo} />
@@ -497,7 +501,6 @@ const TvBoard = () => {
         )}
       </div>
 
-      {/* ── Footer compacto ─────────────────────────────── */}
       <footer className="px-4 py-1.5 bg-white/[0.02] border-t border-white/5 flex items-center justify-between text-[9px] text-gray-600 uppercase tracking-widest flex-shrink-0">
         <div className="flex items-center gap-3">
           <span>Apenas pré-postados</span>
