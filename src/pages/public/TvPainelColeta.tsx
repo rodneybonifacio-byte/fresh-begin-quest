@@ -454,8 +454,9 @@ const TvBoard = () => {
   allGroups.sort((a, b) => a.sortKey - b.sortKey);
 
   // Separar grupos: HOJE vs PRÓXIMO DIA
-  const hojeGroups = allGroups.filter(g => g.sortKey >= 9999 || horaAtualMinutos < g.sortKey);
-  const proximoDiaGroups = allGroups.filter(g => g.sortKey < 9999 && horaAtualMinutos >= g.sortKey);
+  // Regra: etiquetas geradas com menos de 1h antes do horário de coleta vão para o dia seguinte
+  const hojeGroups = allGroups.filter(g => g.sortKey >= 9999 || horaAtualMinutos < (g.sortKey - 60));
+  const proximoDiaGroups = allGroups.filter(g => g.sortKey < 9999 && horaAtualMinutos >= (g.sortKey - 60));
 
   // Label do próximo dia (seg se for sexta após 15h ou fds)
   const now = new Date();
