@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Package, Clock, Truck, RefreshCw, Lock, Eye, EyeOff, AlertTriangle, Users } from 'lucide-react';
+import { Package, Clock, Truck, RefreshCw, Lock, Eye, EyeOff, AlertTriangle, Users, CalendarClock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
@@ -453,9 +453,21 @@ const TvBoard = () => {
   if (brhub) allGroups.push(brhub);
   allGroups.sort((a, b) => a.sortKey - b.sortKey);
 
-  const midpoint = Math.ceil(allGroups.length / 2);
-  const col1 = allGroups.slice(0, midpoint);
-  const col2 = allGroups.slice(midpoint);
+  // Separar grupos: HOJE vs PRÓXIMO DIA
+  const hojeGroups = allGroups.filter(g => g.sortKey >= 9999 || horaAtualMinutos < g.sortKey);
+  const proximoDiaGroups = allGroups.filter(g => g.sortKey < 9999 && horaAtualMinutos >= g.sortKey);
+
+  // Label do próximo dia (seg se for sexta após 15h ou fds)
+  const now = new Date();
+  const dia = now.getDay();
+  const hora = now.getHours();
+  const isFds = dia === 0 || dia === 6 || (dia === 5 && hora >= 15);
+  const proximoDiaLabel = isFds ? 'Segunda-feira' : 'Amanhã';
+
+  const totalHoje = hojeGroups.reduce((acc, g) => acc + g.totalObjetos, 0);
+  const totalProximo = proximoDiaGroups.reduce((acc, g) => acc + g.totalObjetos, 0);
+  const clientesHoje = hojeGroups.reduce((acc, g) => acc + g.coletas.length, 0);
+  const clientesProximo = proximoDiaGroups.reduce((acc, g) => acc + g.coletas.length, 0);
 
   return (
     <div className="h-screen bg-[#0a0e17] text-white flex flex-col select-none overflow-hidden">
@@ -483,7 +495,7 @@ const TvBoard = () => {
                   Corte: {corteInfo.horarioCorte}
                 </p>
                 <p className="text-gray-500">
-                  {passouCorte ? 'Novas → amanhã' : 'Aceitando p/ hoje'}
+                  {passouCorte ? `Novas → ${proximoDiaLabel.toLowerCase()}` : 'Aceitando p/ hoje'}
                 </p>
               </div>
             </div>
@@ -520,15 +532,60 @@ const TvBoard = () => {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4 h-full overflow-hidden">
-            <div className="flex flex-col gap-3 overflow-hidden">
-              {col1.map((grupo) => (
-                <GrupoTable key={grupo.label} grupo={grupo} />
-              ))}
+            {/* COLUNA ESQUERDA: HOJE */}
+            <div className="flex flex-col gap-2 overflow-hidden">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-emerald-500/20">
+                  <Truck className="w-4 h-4 text-emerald-400" />
+                  <span className="font-black text-sm uppercase tracking-wider text-emerald-400">
+                    Hoje
+                  </span>
+                </div>
+                <span className="text-gray-500 text-[10px] font-bold uppercase tracking-widest">
+                  {clientesHoje} clientes · {totalHoje} obj
+                </span>
+                <div className="flex-1 h-px bg-emerald-500/10" />
+              </div>
+              {hojeGroups.length === 0 ? (
+                <div className="flex flex-col items-center justify-center flex-1 gap-2 opacity-30">
+                  <Package className="w-10 h-10" />
+                  <p className="text-xs font-bold uppercase tracking-widest">Todas as coletas de hoje concluídas</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3 overflow-auto">
+                  {hojeGroups.map((grupo) => (
+                    <GrupoTable key={grupo.label} grupo={grupo} />
+                  ))}
+                </div>
+              )}
             </div>
-            <div className="flex flex-col gap-3 overflow-hidden">
-              {col2.map((grupo) => (
-                <GrupoTable key={grupo.label} grupo={grupo} />
-              ))}
+
+            {/* COLUNA DIREITA: PRÓXIMO DIA */}
+            <div className="flex flex-col gap-2 overflow-hidden">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-red-500/20">
+                  <CalendarClock className="w-4 h-4 text-red-400" />
+                  <span className="font-black text-sm uppercase tracking-wider text-red-400">
+                    {proximoDiaLabel}
+                  </span>
+                </div>
+                <span className="text-gray-500 text-[10px] font-bold uppercase tracking-widest">
+                  {clientesProximo} clientes · {totalProximo} obj
+                </span>
+                <div className="flex-1 h-px bg-red-500/10" />
+              </div>
+              {proximoDiaGroups.length === 0 ? (
+                <div className="flex flex-col items-center justify-center flex-1 gap-2 opacity-30">
+                  <Package className="w-10 h-10" />
+                  <p className="text-xs font-bold uppercase tracking-widest">Nenhuma coleta pendente</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3 overflow-auto">
+                  {proximoDiaGroups.map((grupo) => (
+                    <GrupoTable key={grupo.label} grupo={grupo} />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
