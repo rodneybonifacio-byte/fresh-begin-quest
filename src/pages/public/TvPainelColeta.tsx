@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Package, Clock, Truck, RefreshCw, Lock, Eye, EyeOff, AlertTriangle, Users, CalendarClock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { OrdemColetaService } from '@/services/OrdemColetaService';
+
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface OrdemColeta {
@@ -373,7 +373,7 @@ const TvBoard = () => {
   const [tick, setTick] = useState(0);
 
   const datas = calcularDatasColeta(); // recalcula a cada render para label no header
-  const service = useMemo(() => new OrdemColetaService(), []);
+  
 
   // Buscar horários da tabela auxiliar
   const fetchHorarios = useCallback(async () => {
@@ -395,16 +395,18 @@ const TvBoard = () => {
 
   const fetchData = useCallback(async () => {
     try {
-      // Recalcular datas a cada fetch (igual ao admin)
       const datasAtuais = calcularDatasColeta();
+      const token = localStorage.getItem('token');
+      const baseUrl = import.meta.env.VITE_BASE_API_URL || '';
+      const url = `${baseUrl}/emissoes/ordem-coleta?dataIni=${datasAtuais.dataIni}&dataFim=${datasAtuais.dataFim}&status=PRE_POSTADO`;
 
-      const response = await service.getWithParams({
-        dataIni: datasAtuais.dataIni,
-        dataFim: datasAtuais.dataFim,
-        status: 'PRE_POSTADO',
+      const res = await fetch(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
 
-      const lista: OrdemColeta[] = (response?.data || []) as any;
+      if (!res.ok) throw new Error('Fetch failed');
+      const json = await res.json();
+      const lista: OrdemColeta[] = json?.data || json || [];
 
       // Filtro rigoroso: apenas PRE_POSTADO
       const filtered = lista.filter((item) => {
@@ -419,7 +421,7 @@ const TvBoard = () => {
     } finally {
       setLoading(false);
     }
-  }, [service]);
+  }, []);
 
   useEffect(() => {
     fetchHorarios();
