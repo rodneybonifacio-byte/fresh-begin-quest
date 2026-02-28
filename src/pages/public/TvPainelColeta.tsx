@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Package, Clock, Truck, RefreshCw, Lock, Eye, EyeOff, AlertTriangle, Users, ChevronDown, ChevronRight, MapPin, Volume2, VolumeX, Bell, Activity, Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import logoBrhub from '@/assets/logo-brhub-new.png';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Etiqueta {
@@ -252,17 +253,10 @@ const TvLogin = ({ onAuth }: { onAuth: () => void }) => {
     <div className="min-h-screen bg-[#060a13] flex items-center justify-center p-6">
       <form onSubmit={handleSubmit} className="w-full max-w-sm flex flex-col items-center gap-8">
         <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-red-500 flex items-center justify-center shadow-2xl shadow-amber-500/30">
-              <Truck className="w-12 h-12 text-white" />
-            </div>
-            <div className="absolute -top-1 -right-1 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center animate-pulse">
-              <Activity className="w-3 h-3 text-white" />
-            </div>
-          </div>
+          <img src={logoBrhub} alt="BRHUB Envios" className="w-28 h-28 object-contain drop-shadow-2xl" />
           <div className="text-center">
-            <h1 className="text-3xl font-black text-white tracking-tight">CONTROL TOWER</h1>
-            <p className="text-amber-500/60 text-sm mt-1 font-semibold tracking-widest uppercase">Painel de Coleta</p>
+            <h1 className="text-2xl font-black text-white tracking-tight uppercase">Painel de Coleta</h1>
+            <p className="text-amber-500/60 text-sm mt-1 font-semibold tracking-widest uppercase">BRHUB Envios</p>
           </div>
         </div>
         <div className="w-full space-y-4">
@@ -712,15 +706,10 @@ const TvBoard = () => {
       {/* Header - Control Tower style */}
       <header className="flex items-center justify-between px-5 py-3 bg-gradient-to-r from-[#0c1220] via-[#0a0f1a] to-[#0c1220] border-b border-white/[0.06] flex-shrink-0">
         <div className="flex items-center gap-4">
-          <div className="relative">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 via-orange-500 to-red-500 flex items-center justify-center shadow-lg shadow-amber-500/20">
-              <Truck className="w-6 h-6 text-white" />
-            </div>
-            <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-[#060a13] animate-pulse" />
-          </div>
+          <img src={logoBrhub} alt="BRHUB Envios" className="w-12 h-12 object-contain" />
           <div>
             <h1 className="text-xl font-black tracking-tight uppercase leading-tight flex items-center gap-2">
-              Control Tower
+              Painel de Coleta
               <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-full uppercase tracking-widest border border-emerald-500/20">
                 Live
               </span>
