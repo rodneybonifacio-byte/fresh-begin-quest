@@ -288,7 +288,7 @@ const GrupoTable = ({ grupo }: { grupo: GrupoHorario }) => (
       {grupo.coletas.map((ordem, i) => (
         <div
           key={`${ordem.cliente}-${i}`}
-          className={`grid grid-cols-[28px_1fr_1fr_90px_55px] gap-2 px-2 py-1.5 items-center ${
+          className={`grid grid-cols-[28px_1fr_1.2fr_55px] gap-2 px-2 py-1.5 items-center ${
             i % 2 === 0 ? 'bg-white/[0.02]' : 'bg-white/[0.04]'
           }`}
         >
@@ -298,11 +298,8 @@ const GrupoTable = ({ grupo }: { grupo: GrupoHorario }) => (
           <span className="text-white font-bold text-[11px] truncate uppercase tracking-wide">
             {ordem.cliente}
           </span>
-          <span className="text-gray-500 text-[10px] truncate">
+          <span className="text-gray-300 text-[10px] truncate">
             {ordem.localColeta || '—'}
-          </span>
-          <span className="text-blue-300 text-[10px] font-semibold uppercase truncate">
-            {ordem.responsavel || '—'}
           </span>
           <div className="flex justify-end">
             <span className="bg-amber-500/20 text-amber-400 font-black text-xs px-2 py-0.5 rounded tabular-nums text-center min-w-[36px]">
