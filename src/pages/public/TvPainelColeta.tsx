@@ -261,56 +261,92 @@ const TvLogin = ({ onAuth }: { onAuth: () => void }) => {
 };
 
 // ─── Componente de Grupo (tabela compacta) ───────────────────────────────────
-const GrupoTable = ({ grupo }: { grupo: GrupoHorario }) => (
-  <div className="flex flex-col">
-    <div className="flex items-center gap-2 mb-1">
-      <div className={`flex items-center gap-1.5 px-3 py-1 rounded-md ${
-        grupo.isBrhub ? 'bg-cyan-500/20' : 'bg-amber-500/20'
-      }`}>
-        {grupo.isBrhub ? (
-          <Users className="w-3.5 h-3.5 text-cyan-400" />
-        ) : (
-          <Clock className="w-3.5 h-3.5 text-amber-400" />
-        )}
-        <span className={`font-black text-xs uppercase tracking-wider ${
-          grupo.isBrhub ? 'text-cyan-400' : 'text-amber-400'
-        }`}>
-          {grupo.isBrhub ? `BRHUB · ${grupo.label}` : grupo.label}
-        </span>
-      </div>
-      <span className="text-gray-600 text-[10px] font-bold uppercase tracking-widest">
-        {grupo.coletas.length} · {grupo.totalObjetos} obj
-      </span>
-      <div className="flex-1 h-px bg-white/5" />
-    </div>
+const GrupoTable = ({ grupo }: { grupo: GrupoHorario }) => {
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const corteGrupo = grupo.sortKey - 60; // 1h antes do horário de coleta
+  const passouCorteGrupo = grupo.sortKey < 9999 && nowMinutes >= corteGrupo;
+  const urgente = grupo.sortKey < 9999 && nowMinutes >= corteGrupo && nowMinutes < grupo.sortKey;
+  const jaPassou = grupo.sortKey < 9999 && nowMinutes >= grupo.sortKey;
 
-    <div className="rounded-md overflow-hidden border border-white/5">
-      {grupo.coletas.map((ordem, i) => (
-        <div
-          key={`${ordem.cliente}-${i}`}
-          className={`grid grid-cols-[28px_1fr_1.2fr_55px] gap-2 px-2 py-1.5 items-center ${
-            i % 2 === 0 ? 'bg-white/[0.02]' : 'bg-white/[0.04]'
-          }`}
-        >
-          <span className="text-amber-400/50 font-bold text-[11px] tabular-nums">
-            {String(i + 1).padStart(2, '0')}
+  return (
+    <div className="flex flex-col">
+      <div className="flex items-center gap-2 mb-1">
+        <div className={`flex items-center gap-1.5 px-3 py-1 rounded-md ${
+          jaPassou
+            ? 'bg-red-500/20'
+            : urgente
+            ? 'bg-orange-500/20 animate-pulse'
+            : grupo.isBrhub
+            ? 'bg-cyan-500/20'
+            : 'bg-amber-500/20'
+        }`}>
+          {grupo.isBrhub ? (
+            <Users className={`w-3.5 h-3.5 ${jaPassou ? 'text-red-400' : urgente ? 'text-orange-400' : 'text-cyan-400'}`} />
+          ) : jaPassou ? (
+            <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
+          ) : urgente ? (
+            <AlertTriangle className="w-3.5 h-3.5 text-orange-400" />
+          ) : (
+            <Clock className="w-3.5 h-3.5 text-amber-400" />
+          )}
+          <span className={`font-black text-xs uppercase tracking-wider ${
+            jaPassou
+              ? 'text-red-400'
+              : urgente
+              ? 'text-orange-400'
+              : grupo.isBrhub
+              ? 'text-cyan-400'
+              : 'text-amber-400'
+          }`}>
+            {grupo.isBrhub ? `BRHUB · ${grupo.label}` : grupo.label}
           </span>
-          <span className="text-white font-bold text-[11px] truncate uppercase tracking-wide">
-            {ordem.cliente}
-          </span>
-          <span className="text-gray-300 text-[10px] truncate">
-            {ordem.localColeta || '—'}
-          </span>
-          <div className="flex justify-end">
-            <span className="bg-amber-500/20 text-amber-400 font-black text-xs px-2 py-0.5 rounded tabular-nums text-center min-w-[36px]">
-              {ordem.totalObjeto}
-            </span>
-          </div>
         </div>
-      ))}
+        {passouCorteGrupo && (
+          <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${
+            jaPassou
+              ? 'bg-red-500/10 text-red-400'
+              : 'bg-orange-500/10 text-orange-400'
+          }`}>
+            {jaPassou ? 'Novas → amanhã' : `Corte ${fmtMinutes(corteGrupo < 0 ? 0 : corteGrupo)}`}
+          </span>
+        )}
+        <span className="text-gray-600 text-[10px] font-bold uppercase tracking-widest">
+          {grupo.coletas.length} · {grupo.totalObjetos} obj
+        </span>
+        <div className="flex-1 h-px bg-white/5" />
+      </div>
+
+      <div className={`rounded-md overflow-hidden border ${
+        jaPassou ? 'border-red-500/20' : urgente ? 'border-orange-500/20' : 'border-white/5'
+      }`}>
+        {grupo.coletas.map((ordem, i) => (
+          <div
+            key={`${ordem.cliente}-${i}`}
+            className={`grid grid-cols-[28px_1fr_1.2fr_55px] gap-2 px-2 py-1.5 items-center ${
+              i % 2 === 0 ? 'bg-white/[0.02]' : 'bg-white/[0.04]'
+            }`}
+          >
+            <span className="text-amber-400/50 font-bold text-[11px] tabular-nums">
+              {String(i + 1).padStart(2, '0')}
+            </span>
+            <span className="text-white font-bold text-[11px] truncate uppercase tracking-wide">
+              {ordem.cliente}
+            </span>
+            <span className="text-gray-300 text-[10px] truncate">
+              {ordem.localColeta || '—'}
+            </span>
+            <div className="flex justify-end">
+              <span className="bg-amber-500/20 text-amber-400 font-black text-xs px-2 py-0.5 rounded tabular-nums text-center min-w-[36px]">
+                {ordem.totalObjeto}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // ─── Painel principal ────────────────────────────────────────────────────────
 const TvBoard = () => {
