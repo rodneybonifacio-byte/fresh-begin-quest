@@ -41,61 +41,86 @@ serve(async (req) => {
     const token = await getAdminToken();
     const baseUrl = Deno.env.get('BASE_API_URL');
 
-    // Buscar etiquetas via /emissoes/admin (mesmo padrão do relatório admin)
-    // Sem filtro de data — traz todas as etiquetas com o status informado
-    const allEmissoes: any[] = [];
-    const batchSize = 200;
-    let offset = 0;
-    let hasMore = true;
+    // Helper para buscar lotes paginados
+    async function fetchAllByStatus(st: string, maxRecords = 2000): Promise<any[]> {
+      const results: any[] = [];
+      const batchSize = 200;
+      let offset = 0;
+      let hasMore = true;
 
-    while (hasMore) {
-      const apiUrl = `${baseUrl}/emissoes/admin?status=${status}&limit=${batchSize}&offset=${offset}`;
-      console.log(`📦 Buscando lote offset=${offset}: ${apiUrl}`);
+      while (hasMore) {
+        const apiUrl = `${baseUrl}/emissoes/admin?status=${st}&limit=${batchSize}&offset=${offset}`;
+        console.log(`📦 Buscando ${st} offset=${offset}`);
 
-      const response = await fetch(apiUrl, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        const response = await fetch(apiUrl, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`❌ Erro ao buscar emissões (offset=${offset}):`, errorText);
-        
-        // Se for o primeiro lote, retorna erro
-        if (offset === 0) {
-          return new Response(
-            JSON.stringify({ error: 'Falha ao buscar dados', details: errorText }),
-            { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`❌ Erro ao buscar ${st} (offset=${offset}):`, errorText);
+          if (offset === 0 && st === status) {
+            throw { status: response.status, details: errorText };
+          }
+          break;
         }
-        // Se já temos dados, para de buscar
-        break;
-      }
 
-      const json = await response.json();
-      const batch = json?.data || json || [];
+        const json = await response.json();
+        const batch = json?.data || json || [];
 
-      if (Array.isArray(batch)) {
-        allEmissoes.push(...batch);
-      }
+        if (Array.isArray(batch)) {
+          results.push(...batch);
+        }
 
-      // Se retornou menos que o batch, não há mais dados
-      if (!Array.isArray(batch) || batch.length < batchSize) {
-        hasMore = false;
-      } else {
-        offset += batchSize;
-      }
+        if (!Array.isArray(batch) || batch.length < batchSize) {
+          hasMore = false;
+        } else {
+          offset += batchSize;
+        }
 
-      // Limite de segurança
-      if (allEmissoes.length >= 2000) {
-        console.log(`⚠️ Limite de segurança atingido: ${allEmissoes.length} registros`);
-        hasMore = false;
+        if (results.length >= maxRecords) {
+          console.log(`⚠️ Limite de segurança: ${results.length} registros (${st})`);
+          hasMore = false;
+        }
       }
+      return results;
     }
 
-    console.log(`✅ Total: ${allEmissoes.length} etiquetas (status=${status})`);
+    // 1. Buscar etiquetas PRE_POSTADO
+    const prePostadas = await fetchAllByStatus(status);
+    console.log(`✅ ${prePostadas.length} etiquetas ${status}`);
+
+    // 2. Buscar etiquetas POSTADO para deduplicação
+    const postadas = await fetchAllByStatus('POSTADO');
+    console.log(`✅ ${postadas.length} etiquetas POSTADO (para dedup)`);
+
+    // 3. Montar set de chaves (destinatario + dia) já postadas
+    const getDedupeKey = (em: any): string => {
+      const destNome = (em.destinatario?.nome || em.destinatarioNome || '').toUpperCase().trim();
+      const remetNome = (em.remetenteNome || em.remetente?.nome || '').toUpperCase().trim();
+      const dia = (em.criadoEm || '').split('T')[0]; // YYYY-MM-DD
+      return `${remetNome}|${destNome}|${dia}`;
+    };
+
+    const postadasSet = new Set<string>();
+    for (const em of postadas) {
+      postadasSet.add(getDedupeKey(em));
+    }
+
+    // 4. Filtrar PRE_POSTADO removendo as que já foram postadas
+    const filtradas = prePostadas.filter(em => {
+      const key = getDedupeKey(em);
+      if (postadasSet.has(key)) {
+        console.log(`🔄 Dedup: removendo PRE_POSTADO (${em.codigoObjeto}) — já postada: ${key}`);
+        return false;
+      }
+      return true;
+    });
+
+    console.log(`✅ Total final: ${filtradas.length} etiquetas (removidas ${prePostadas.length - filtradas.length} duplicadas)`);
 
     return new Response(
-      JSON.stringify({ data: allEmissoes }),
+      JSON.stringify({ data: filtradas }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
