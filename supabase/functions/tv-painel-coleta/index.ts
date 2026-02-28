@@ -21,7 +21,8 @@ async function getAdminToken(): Promise<string> {
   });
 
   if (!loginResponse.ok) {
-    throw new Error(`Falha no login admin: ${loginResponse.status}`);
+    const errorText = await loginResponse.text();
+    throw new Error(`Falha no login admin: ${loginResponse.status} - ${errorText}`);
   }
 
   const loginData = await loginResponse.json();
@@ -40,38 +41,61 @@ serve(async (req) => {
     const token = await getAdminToken();
     const baseUrl = Deno.env.get('BASE_API_URL');
 
-    // Buscar data de hoje no formato YYYY-MM-DD
-    const now = new Date();
-    const fmt = (d: Date) => {
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const dd = String(d.getDate()).padStart(2, '0');
-      return `${y}-${m}-${dd}`;
-    };
-    const hoje = fmt(now);
+    // Buscar etiquetas via /emissoes/admin (mesmo padrão do relatório admin)
+    // Sem filtro de data — traz todas as etiquetas com o status informado
+    const allEmissoes: any[] = [];
+    const batchSize = 200;
+    let offset = 0;
+    let hasMore = true;
 
-    // Buscar etiquetas individuais via /emissoes com status PRE_POSTADO
-    const apiUrl = `${baseUrl}/emissoes?status=${status}&dataIni=${hoje}&dataFim=${hoje}&limit=500`;
-    console.log(`📦 Buscando etiquetas: ${apiUrl}`);
-    
-    const response = await fetch(apiUrl, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    while (hasMore) {
+      const apiUrl = `${baseUrl}/emissoes/admin?status=${status}&limit=${batchSize}&offset=${offset}`;
+      console.log(`📦 Buscando lote offset=${offset}: ${apiUrl}`);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Erro ao buscar emissões:', errorText);
-      return new Response(
-        JSON.stringify({ error: 'Falha ao buscar dados', details: errorText }),
-        { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      const response = await fetch(apiUrl, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`❌ Erro ao buscar emissões (offset=${offset}):`, errorText);
+        
+        // Se for o primeiro lote, retorna erro
+        if (offset === 0) {
+          return new Response(
+            JSON.stringify({ error: 'Falha ao buscar dados', details: errorText }),
+            { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        // Se já temos dados, para de buscar
+        break;
+      }
+
+      const json = await response.json();
+      const batch = json?.data || json || [];
+
+      if (Array.isArray(batch)) {
+        allEmissoes.push(...batch);
+      }
+
+      // Se retornou menos que o batch, não há mais dados
+      if (!Array.isArray(batch) || batch.length < batchSize) {
+        hasMore = false;
+      } else {
+        offset += batchSize;
+      }
+
+      // Limite de segurança
+      if (allEmissoes.length >= 2000) {
+        console.log(`⚠️ Limite de segurança atingido: ${allEmissoes.length} registros`);
+        hasMore = false;
+      }
     }
 
-    const data = await response.json();
-    console.log(`✅ Retornados ${(data?.data || data || []).length} registros`);
-    
+    console.log(`✅ Total: ${allEmissoes.length} etiquetas (status=${status})`);
+
     return new Response(
-      JSON.stringify(data),
+      JSON.stringify({ data: allEmissoes }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
