@@ -256,7 +256,7 @@ const TvLogin = ({ onAuth }: { onAuth: () => void }) => {
           <img src={logoBrhub} alt="BRHUB Envios" className="w-28 h-28 object-contain drop-shadow-2xl" />
           <div className="text-center">
             <h1 className="text-2xl font-black text-white tracking-tight uppercase">Painel de Coleta</h1>
-            <p className="text-amber-500/60 text-sm mt-1 font-semibold tracking-widest uppercase">BRHUB Envios</p>
+            <p className="text-orange-500/60 text-sm mt-1 font-semibold tracking-widest uppercase">BRHUB Envios</p>
           </div>
         </div>
         <div className="w-full space-y-4">
@@ -272,7 +272,7 @@ const TvLogin = ({ onAuth }: { onAuth: () => void }) => {
               className={`w-full pl-12 pr-12 py-4 rounded-xl bg-white/5 border text-white text-lg font-mono tracking-[0.3em] text-center placeholder:tracking-normal placeholder:text-gray-600 focus:outline-none focus:ring-2 transition-all ${
                 error
                   ? 'border-red-500 focus:ring-red-500/40'
-                  : 'border-white/10 focus:ring-amber-500/40 focus:border-amber-500/60'
+                  : 'border-white/10 focus:ring-orange-500/40 focus:border-orange-500/60'
               }`}
             />
             <button
@@ -287,7 +287,7 @@ const TvLogin = ({ onAuth }: { onAuth: () => void }) => {
           <button
             type="submit"
             disabled={pin.length < 4}
-            className="w-full py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold text-lg shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full py-4 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold text-lg shadow-lg shadow-orange-500/20 hover:shadow-orange-500/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Acessar Painel
           </button>
@@ -302,13 +302,13 @@ const MetricCard = ({ label, value, icon: Icon, color, pulse }: {
   label: string; value: number | string; icon: any; color: string; pulse?: boolean 
 }) => {
   const colorMap: Record<string, string> = {
-    amber: 'from-amber-500/20 to-amber-600/5 border-amber-500/20 text-amber-400',
+    orange: 'from-orange-500/20 to-orange-600/5 border-orange-500/20 text-orange-400',
     emerald: 'from-emerald-500/20 to-emerald-600/5 border-emerald-500/20 text-emerald-400',
     blue: 'from-blue-500/20 to-blue-600/5 border-blue-500/20 text-blue-400',
     cyan: 'from-cyan-500/20 to-cyan-600/5 border-cyan-500/20 text-cyan-400',
     red: 'from-red-500/20 to-red-600/5 border-red-500/20 text-red-400',
   };
-  const c = colorMap[color] || colorMap.amber;
+  const c = colorMap[color] || colorMap.orange;
 
   return (
     <div className={`flex items-center gap-3 px-4 py-2.5 rounded-lg bg-gradient-to-r border backdrop-blur-sm ${c} ${pulse ? 'animate-pulse' : ''}`}>
@@ -330,15 +330,15 @@ const ClienteRow = ({ cliente, index, isNew }: { cliente: ClienteAgrupado; index
       <div
         onClick={() => setExpanded(!expanded)}
         className={`grid grid-cols-[24px_1fr_auto_50px] gap-2 px-3 py-2 items-center cursor-pointer transition-all duration-200 hover:bg-white/[0.06] ${
-          isNew ? 'bg-amber-500/10 border-l-2 border-amber-400' : index % 2 === 0 ? 'bg-white/[0.015]' : 'bg-white/[0.035]'
+          isNew ? 'bg-orange-500/10 border-l-2 border-orange-400' : index % 2 === 0 ? 'bg-white/[0.015]' : 'bg-white/[0.035]'
         }`}
       >
         <span className="text-gray-600 flex items-center">
-          {expanded ? <ChevronDown className="w-3.5 h-3.5 text-amber-400" /> : <ChevronRight className="w-3.5 h-3.5" />}
+          {expanded ? <ChevronDown className="w-3.5 h-3.5 text-orange-400" /> : <ChevronRight className="w-3.5 h-3.5" />}
         </span>
         <div className="flex flex-col min-w-0 gap-0.5">
           <span className="text-white font-bold text-xs truncate uppercase tracking-wide leading-tight">
-            {isNew && <Zap className="w-3 h-3 inline text-amber-400 mr-1" />}
+            {isNew && <Zap className="w-3 h-3 inline text-orange-400 mr-1" />}
             {cliente.nome}
           </span>
           <span className="text-gray-500 text-[9px] truncate flex items-center gap-1 leading-tight">
@@ -361,7 +361,7 @@ const ClienteRow = ({ cliente, index, isNew }: { cliente: ClienteAgrupado; index
       </div>
 
       {expanded && (
-        <div className="bg-[#0c1222] border-l-2 border-amber-500/30 ml-4">
+        <div className="bg-[#0c1222] border-l-2 border-orange-500/30 ml-4">
           <div className="grid grid-cols-[1fr_1.2fr_auto_70px] gap-2 px-4 py-1.5 text-[8px] text-gray-500 uppercase tracking-widest font-bold border-b border-white/5">
             <span>Código</span>
             <span>Destinatário</span>
@@ -377,7 +377,7 @@ const ClienteRow = ({ cliente, index, isNew }: { cliente: ClienteAgrupado; index
                   i % 2 === 0 ? 'bg-white/[0.01]' : 'bg-white/[0.025]'
                 }`}
               >
-                <span className="text-amber-300/80 font-mono text-[10px] truncate">
+                <span className="text-orange-300/80 font-mono text-[10px] truncate">
                   {et.codigoObjeto || '—'}
                 </span>
                 <span className="text-gray-300 text-[10px] truncate">
@@ -417,7 +417,7 @@ const GrupoTable = ({ grupo }: { grupo: GrupoHorario }) => {
     ? 'text-orange-400' 
     : grupo.isBrhub 
     ? 'text-cyan-400' 
-    : 'text-amber-400';
+    : 'text-orange-400';
 
   return (
     <div className="flex flex-col">
@@ -476,7 +476,7 @@ const RefreshProgress = ({ lastUpdate }: { lastUpdate: Date }) => {
   return (
     <div className="w-full h-[3px] bg-white/5 overflow-hidden">
       <div
-        className="h-full bg-gradient-to-r from-amber-500 via-orange-500 to-amber-400 transition-all duration-500 ease-linear"
+        className="h-full bg-gradient-to-r from-orange-500 via-orange-400 to-orange-500 transition-all duration-500 ease-linear"
         style={{ width: `${progress}%` }}
       />
     </div>
@@ -490,22 +490,22 @@ const AlertBanner = ({ count, onDismiss }: { count: number; onDismiss: () => voi
   return (
     <div 
       onClick={onDismiss}
-      className="mx-4 mt-2 flex items-center justify-between px-4 py-2.5 rounded-lg bg-gradient-to-r from-amber-500/20 via-orange-500/15 to-amber-500/20 border border-amber-500/30 cursor-pointer animate-pulse"
+      className="mx-4 mt-2 flex items-center justify-between px-4 py-2.5 rounded-lg bg-gradient-to-r from-orange-500/20 via-orange-500/15 to-orange-500/20 border border-orange-500/30 cursor-pointer animate-pulse"
     >
       <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-full bg-amber-500/30 flex items-center justify-center">
-          <Bell className="w-4 h-4 text-amber-400" />
+        <div className="w-8 h-8 rounded-full bg-orange-500/30 flex items-center justify-center">
+          <Bell className="w-4 h-4 text-orange-400" />
         </div>
         <div>
-          <p className="text-amber-400 font-black text-sm uppercase tracking-wide">
+          <p className="text-orange-400 font-black text-sm uppercase tracking-wide">
             {count} {count === 1 ? 'nova coleta detectada' : 'novas coletas detectadas'}
           </p>
-          <p className="text-amber-400/50 text-[10px] uppercase tracking-widest">Clique para dispensar</p>
+          <p className="text-orange-400/50 text-[10px] uppercase tracking-widest">Clique para dispensar</p>
         </div>
       </div>
       <div className="flex items-center gap-1.5">
-        <span className="inline-block w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-        <span className="inline-block w-2 h-2 rounded-full bg-amber-400" />
+        <span className="inline-block w-2 h-2 rounded-full bg-orange-400 animate-ping" />
+        <span className="inline-block w-2 h-2 rounded-full bg-orange-400" />
       </div>
     </div>
   );
@@ -683,10 +683,10 @@ const TvBoard = () => {
     return (
       <div className="min-h-screen bg-[#060a13] flex flex-col items-center justify-center gap-4">
         <div className="relative">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
             <Truck className="w-8 h-8 text-white" />
           </div>
-          <RefreshCw className="w-6 h-6 text-amber-400 animate-spin absolute -bottom-2 -right-2" />
+          <RefreshCw className="w-6 h-6 text-orange-400 animate-spin absolute -bottom-2 -right-2" />
         </div>
         <p className="text-gray-500 text-sm font-bold uppercase tracking-widest">Carregando painel...</p>
       </div>
@@ -694,10 +694,10 @@ const TvBoard = () => {
   }
 
   return (
-    <div className={`h-screen bg-[#060a13] text-white flex flex-col select-none overflow-hidden ${flashActive ? 'ring-4 ring-amber-500/50 ring-inset' : ''}`}>
+    <div className={`h-screen bg-[#060a13] text-white flex flex-col select-none overflow-hidden ${flashActive ? 'ring-4 ring-orange-500/50 ring-inset' : ''}`}>
       {/* Flash overlay */}
       {flashActive && (
-        <div className="fixed inset-0 bg-amber-500/5 pointer-events-none z-50 animate-pulse" />
+        <div className="fixed inset-0 bg-orange-500/5 pointer-events-none z-50 animate-pulse" />
       )}
 
       {/* Progress bar no topo */}
@@ -723,7 +723,7 @@ const TvBoard = () => {
         {/* Metrics */}
         <div className="flex items-center gap-3">
           <MetricCard label="Clientes" value={totalClientes} icon={Users} color="blue" />
-          <MetricCard label="Etiquetas" value={totalObjetos} icon={Package} color="amber" />
+          <MetricCard label="Etiquetas" value={totalObjetos} icon={Package} color="orange" />
           {urgentCount > 0 && (
             <MetricCard label="Urgentes" value={urgentCount} icon={AlertTriangle} color="red" pulse />
           )}
@@ -735,7 +735,7 @@ const TvBoard = () => {
             onClick={() => setSoundEnabled(!soundEnabled)}
             className={`p-2 rounded-lg border transition-all ${
               soundEnabled 
-                ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' 
+                ? 'bg-orange-500/10 border-orange-500/20 text-orange-400' 
                 : 'bg-white/5 border-white/10 text-gray-600'
             }`}
             title={soundEnabled ? 'Som ativado' : 'Som desativado'}
