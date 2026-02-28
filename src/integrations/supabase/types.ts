@@ -131,6 +131,48 @@ export type Database = {
         }
         Relationships: []
       }
+      clientes_coleta_horarios: {
+        Row: {
+          ativo: boolean
+          cnpj: string | null
+          created_at: string
+          endereco: string | null
+          grupo: string | null
+          horario_fim: string | null
+          horario_inicio: string
+          id: string
+          motorista: string | null
+          nome_cliente: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          cnpj?: string | null
+          created_at?: string
+          endereco?: string | null
+          grupo?: string | null
+          horario_fim?: string | null
+          horario_inicio?: string
+          id?: string
+          motorista?: string | null
+          nome_cliente: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          cnpj?: string | null
+          created_at?: string
+          endereco?: string | null
+          grupo?: string | null
+          horario_fim?: string | null
+          horario_inicio?: string
+          id?: string
+          motorista?: string | null
+          nome_cliente?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       clientes_indicados: {
         Row: {
           cliente_email: string | null
