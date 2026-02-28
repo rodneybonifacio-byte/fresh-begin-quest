@@ -1,17 +1,38 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Package, Clock, Truck, RefreshCw, Lock, Eye, EyeOff, AlertTriangle, Users, CalendarClock } from 'lucide-react';
+import { Package, Clock, Truck, RefreshCw, Lock, Eye, EyeOff, AlertTriangle, Users, CalendarClock, ChevronDown, ChevronRight, MapPin } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
-
 // ─── Tipos ───────────────────────────────────────────────────────────────────
-interface OrdemColeta {
-  cliente: string;
-  localColeta: string;
-  responsavel: string;
-  dataHoraColeta: string;
-  totalObjeto: string;
-  status?: string;
-  remetenteId?: string;
+interface Etiqueta {
+  id: string;
+  codigoObjeto: string;
+  status: string;
+  criadoEm: string;
+  destinatario?: {
+    nome: string;
+    cep?: string;
+    localidade?: string;
+    uf?: string;
+  };
+  remetente?: {
+    nome: string;
+    cep?: string;
+    logradouro?: string;
+    numero?: string;
+    bairro?: string;
+    localidade?: string;
+    uf?: string;
+  };
+  remetenteNome?: string;
+  remetenteCpfCnpj?: string;
+  servico?: string;
+}
+
+interface ClienteAgrupado {
+  nome: string;
+  endereco: string;
+  etiquetas: Etiqueta[];
+  totalPrePostado: number;
 }
 
 interface ClienteHorario {
@@ -20,6 +41,7 @@ interface ClienteHorario {
   horario_fim: string | null;
   motorista: string | null;
   grupo: string | null;
+  endereco: string | null;
 }
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
@@ -34,41 +56,6 @@ const isBrhubClient = (nome: string): boolean => {
   return BRHUB_CLIENTS.some(c => upper.includes(c));
 };
 
-// ─── Lógica de datas ─────────────────────────────────────────────────────────
-const calcularDatasColeta = () => {
-  const now = new Date();
-  const dia = now.getDay();
-  const hora = now.getHours();
-
-  const fmt = (d: Date) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${dd}`;
-  };
-
-  const hoje = fmt(now);
-  const isFds = dia === 0 || dia === 6 || (dia === 5 && hora >= 15);
-
-  // Limite máximo: 4 dias atrás (etiquetas mais velhas são desconsideradas)
-  const maxDiasAtras = new Date(now);
-  maxDiasAtras.setDate(now.getDate() - 4);
-  const limiteMin = fmt(maxDiasAtras);
-
-  if (isFds) {
-    let diasAteSexta = dia === 5 ? 0 : dia === 6 ? 1 : 2;
-    const sexta = new Date(now);
-    sexta.setDate(now.getDate() - diasAteSexta);
-    const dataIni = fmt(sexta) > limiteMin ? fmt(sexta) : limiteMin;
-    return { dataIni, dataFim: hoje, label: `Sexta ${fmt(sexta)} → Hoje` };
-  }
-
-  const ontem = new Date(now);
-  ontem.setDate(now.getDate() - 1);
-  const dataIni = fmt(ontem) > limiteMin ? fmt(ontem) : limiteMin;
-  return { dataIni, dataFim: hoje, label: `${fmt(ontem)} → ${hoje}` };
-};
-
 // ─── Helpers de horário ──────────────────────────────────────────────────────
 const parseTime = (timeStr: string): number => {
   if (!timeStr) return 9999;
@@ -78,127 +65,153 @@ const parseTime = (timeStr: string): number => {
   return parseInt(parts[0]) * 60 + parseInt(parts[1]);
 };
 
-const formatTimeRange = (time: string): string => {
-  if (!time) return 'Sem horário';
-  const clean = time.replace(/[^\d:]/g, '');
-  const parts = clean.split(':');
-  if (parts.length < 2) return time;
-  const h = parseInt(parts[0]);
-  const m = parseInt(parts[1]);
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-};
-
 const fmtMinutes = (mins: number) => {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
+  void fmtMinutes; // prevent unused warning
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 };
 
-/** Resolve horário: tabela auxiliar > API */
-const resolverHorario = (ordem: OrdemColeta, horariosDb: ClienteHorario[]): string => {
-  if (isBrhubClient(ordem.cliente)) return '16:00';
-  
-  const upper = ordem.cliente.toUpperCase().trim();
-  const match = horariosDb.find(h => upper.includes(h.nome_cliente.toUpperCase().trim()));
-  if (match) {
-    return match.horario_inicio;
+const formatHora = (dateStr: string): string => {
+  if (!dateStr) return '--:--';
+  try {
+    const d = new Date(dateStr);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  } catch {
+    return '--:--';
   }
-  
-  return formatTimeRange(ordem.dataHoraColeta);
 };
 
-/** Resolve label do grupo com faixa horária */
-const resolverLabel = (ordem: OrdemColeta, horariosDb: ClienteHorario[]): string => {
-  const upper = ordem.cliente.toUpperCase().trim();
+const resolverHorario = (nome: string, horariosDb: ClienteHorario[]): string => {
+  if (isBrhubClient(nome)) return '16:00';
+  const upper = nome.toUpperCase().trim();
   const match = horariosDb.find(h => upper.includes(h.nome_cliente.toUpperCase().trim()));
-  if (match && match.horario_fim) {
-    return `${match.horario_inicio} – ${match.horario_fim}`;
-  }
+  return match?.horario_inicio || '14:00';
+};
+
+const resolverLabel = (nome: string, horariosDb: ClienteHorario[]): string => {
+  const upper = nome.toUpperCase().trim();
+  const match = horariosDb.find(h => upper.includes(h.nome_cliente.toUpperCase().trim()));
+  if (match?.horario_fim) return `${match.horario_inicio} – ${match.horario_fim}`;
   if (match) return match.horario_inicio;
-  return formatTimeRange(ordem.dataHoraColeta);
+  return '14:00';
 };
 
-const getCorteInfo = (coletas: OrdemColeta[], horariosDb: ClienteHorario[]): { horarioCorte: string; primeiroHorario: string } | null => {
-  if (coletas.length === 0) return null;
-
-  const horarios = coletas
-    .map(c => {
-      const resolved = resolverHorario(c, horariosDb);
-      return parseTime(resolved);
-    })
-    .filter(h => h < 9999)
-    .sort((a, b) => a - b);
-
-  if (horarios.length === 0) return null;
-
-  const primeiro = horarios[0];
-  const corte = primeiro - 60;
-
-  return {
-    horarioCorte: fmtMinutes(corte < 0 ? 0 : corte),
-    primeiroHorario: fmtMinutes(primeiro),
+// ─── Status badge ────────────────────────────────────────────────────────────
+const StatusBadge = ({ status }: { status: string }) => {
+  const normalized = status?.toUpperCase().replace(/-/g, '_') || '';
+  const colors: Record<string, string> = {
+    PRE_POSTADO: 'bg-blue-500/20 text-blue-400',
+    POSTADO: 'bg-green-500/20 text-green-400',
+    EM_TRANSITO: 'bg-cyan-500/20 text-cyan-400',
+    ENTREGUE: 'bg-emerald-500/20 text-emerald-400',
+    CANCELADO: 'bg-red-500/20 text-red-400',
+    DEVOLVIDO: 'bg-gray-500/20 text-gray-400',
   };
+  const style = colors[normalized] || 'bg-gray-500/20 text-gray-400';
+  return (
+    <span className={`text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${style}`}>
+      {status?.replace(/_/g, ' ') || 'SEM STATUS'}
+    </span>
+  );
 };
 
-// ─── Agrupar coletas ─────────────────────────────────────────────────────────
-interface GrupoHorario {
-  label: string;
-  sortKey: number;
-  coletas: OrdemColeta[];
-  totalObjetos: number;
-  isBrhub?: boolean;
-}
+// ─── Agrupar etiquetas por remetente ─────────────────────────────────────────
+const agruparPorRemetente = (etiquetas: Etiqueta[], horariosDb: ClienteHorario[]): {
+  regulares: GrupoHorario[];
+  brhub: GrupoHorario | null;
+} => {
+  // Agrupar por nome do remetente
+  const clienteMap = new Map<string, ClienteAgrupado>();
 
-const agruparColetas = (coletas: OrdemColeta[], horariosDb: ClienteHorario[]): { regulares: GrupoHorario[]; brhub: GrupoHorario | null } => {
-  const brhubColetas: OrdemColeta[] = [];
-  const outrasColetas: OrdemColeta[] = [];
+  for (const et of etiquetas) {
+    const nome = et.remetenteNome || et.remetente?.nome || 'Desconhecido';
+    const key = nome.toUpperCase().trim();
 
-  for (const c of coletas) {
-    if (isBrhubClient(c.cliente)) {
-      brhubColetas.push(c);
+    if (!clienteMap.has(key)) {
+      const endereco = et.remetente
+        ? [et.remetente.logradouro, et.remetente.numero, et.remetente.bairro, et.remetente.localidade, et.remetente.uf]
+            .filter(Boolean).join(', ')
+        : '';
+      
+      // Tentar endereço da tabela auxiliar
+      const upper = key;
+      const matchDb = horariosDb.find(h => upper.includes(h.nome_cliente.toUpperCase().trim()));
+      
+      clienteMap.set(key, {
+        nome,
+        endereco: matchDb?.endereco || endereco || 'Endereço não informado',
+        etiquetas: [],
+        totalPrePostado: 0,
+      });
+    }
+    const cliente = clienteMap.get(key)!;
+    cliente.etiquetas.push(et);
+    const statusNorm = et.status?.toUpperCase().replace(/-/g, '_') || '';
+    if (statusNorm === 'PRE_POSTADO') cliente.totalPrePostado++;
+  }
+
+  // Agrupar clientes por horário
+  const brhubClientes: ClienteAgrupado[] = [];
+  const outrosClientes: ClienteAgrupado[] = [];
+
+  for (const cliente of clienteMap.values()) {
+    if (isBrhubClient(cliente.nome)) {
+      brhubClientes.push(cliente);
     } else {
-      outrasColetas.push(c);
+      outrosClientes.push(cliente);
     }
   }
 
-  // Agrupar regulares por horário (usando tabela auxiliar)
-  const map = new Map<string, { coletas: OrdemColeta[]; label: string }>();
-  for (const c of outrasColetas) {
-    const time = resolverHorario(c, horariosDb);
-    const label = resolverLabel(c, horariosDb);
+  // Agrupar outros por faixa horária
+  const horarioMap = new Map<string, { clientes: ClienteAgrupado[]; label: string }>();
+  for (const c of outrosClientes) {
+    const time = resolverHorario(c.nome, horariosDb);
+    const label = resolverLabel(c.nome, horariosDb);
     const key = time === 'Sem horário' ? 'ZZ:ZZ' : time;
-    if (!map.has(key)) map.set(key, { coletas: [], label });
-    map.get(key)!.coletas.push(c);
-    // Use the most descriptive label (with range)
-    if (label.includes('–') && !map.get(key)!.label.includes('–')) {
-      map.get(key)!.label = label;
+    if (!horarioMap.has(key)) horarioMap.set(key, { clientes: [], label });
+    horarioMap.get(key)!.clientes.push(c);
+    if (label.includes('–') && !horarioMap.get(key)!.label.includes('–')) {
+      horarioMap.get(key)!.label = label;
     }
   }
 
   const regulares: GrupoHorario[] = [];
-  for (const [key, val] of map) {
+  for (const [key, val] of horarioMap) {
+    const totalEtiquetas = val.clientes.reduce((acc, c) => acc + c.etiquetas.length, 0);
+    const totalPrePostado = val.clientes.reduce((acc, c) => acc + c.totalPrePostado, 0);
     regulares.push({
       label: key === 'ZZ:ZZ' ? 'Sem horário' : val.label,
       sortKey: key === 'ZZ:ZZ' ? 9999 : parseTime(key),
-      coletas: val.coletas.sort((a, b) => a.cliente.localeCompare(b.cliente)),
-      totalObjetos: val.coletas.reduce((acc, o) => acc + (parseInt(o.totalObjeto) || 0), 0),
+      clientes: val.clientes.sort((a, b) => a.nome.localeCompare(b.nome)),
+      totalObjetos: totalEtiquetas,
+      totalPrePostado,
     });
   }
-
   regulares.sort((a, b) => a.sortKey - b.sortKey);
 
-  const brhub: GrupoHorario | null = brhubColetas.length > 0
+  const brhub: GrupoHorario | null = brhubClientes.length > 0
     ? {
         label: BRHUB_HORARIO,
         sortKey: 960,
-        coletas: brhubColetas.sort((a, b) => a.cliente.localeCompare(b.cliente)),
-        totalObjetos: brhubColetas.reduce((acc, o) => acc + (parseInt(o.totalObjeto) || 0), 0),
+        clientes: brhubClientes.sort((a, b) => a.nome.localeCompare(b.nome)),
+        totalObjetos: brhubClientes.reduce((acc, c) => acc + c.etiquetas.length, 0),
+        totalPrePostado: brhubClientes.reduce((acc, c) => acc + c.totalPrePostado, 0),
         isBrhub: true,
       }
     : null;
 
   return { regulares, brhub };
 };
+
+interface GrupoHorario {
+  label: string;
+  sortKey: number;
+  clientes: ClienteAgrupado[];
+  totalObjetos: number;
+  totalPrePostado: number;
+  isBrhub?: boolean;
+}
 
 // ─── Componente de Login (PIN) ───────────────────────────────────────────────
 const TvLogin = ({ onAuth }: { onAuth: () => void }) => {
@@ -268,12 +281,91 @@ const TvLogin = ({ onAuth }: { onAuth: () => void }) => {
   );
 };
 
-// ─── Componente de Grupo (tabela compacta) ───────────────────────────────────
+// ─── Componente Cliente Expandível ───────────────────────────────────────────
+const ClienteRow = ({ cliente, index }: { cliente: ClienteAgrupado; index: number }) => {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="flex flex-col">
+      <div
+        onClick={() => setExpanded(!expanded)}
+        className={`grid grid-cols-[28px_1fr_auto_55px] gap-2 px-2 py-1.5 items-center cursor-pointer hover:bg-white/[0.06] transition-colors ${
+          index % 2 === 0 ? 'bg-white/[0.02]' : 'bg-white/[0.04]'
+        }`}
+      >
+        <span className="text-amber-400/50 font-bold text-[11px] tabular-nums flex items-center gap-0.5">
+          {expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+        </span>
+        <div className="flex flex-col min-w-0">
+          <span className="text-white font-bold text-[11px] truncate uppercase tracking-wide">
+            {cliente.nome}
+          </span>
+          <span className="text-gray-500 text-[9px] truncate flex items-center gap-1">
+            <MapPin className="w-2.5 h-2.5 flex-shrink-0" />
+            {cliente.endereco}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          {cliente.totalPrePostado > 0 && (
+            <span className="bg-blue-500/20 text-blue-400 font-bold text-[8px] px-1.5 py-0.5 rounded">
+              {cliente.totalPrePostado} PRÉ
+            </span>
+          )}
+          {cliente.etiquetas.length - cliente.totalPrePostado > 0 && (
+            <span className="bg-gray-500/20 text-gray-400 font-bold text-[8px] px-1.5 py-0.5 rounded">
+              {cliente.etiquetas.length - cliente.totalPrePostado} OUTROS
+            </span>
+          )}
+        </div>
+        <div className="flex justify-end">
+          <span className="bg-amber-500/20 text-amber-400 font-black text-xs px-2 py-0.5 rounded tabular-nums text-center min-w-[36px]">
+            {cliente.etiquetas.length}
+          </span>
+        </div>
+      </div>
+
+      {/* Sub-menu: etiquetas individuais */}
+      {expanded && (
+        <div className="bg-white/[0.01] border-l-2 border-amber-500/30 ml-6">
+          {/* Header */}
+          <div className="grid grid-cols-[1fr_1.2fr_auto_50px] gap-2 px-3 py-1 text-[8px] text-gray-600 uppercase tracking-widest font-bold border-b border-white/5">
+            <span>Código</span>
+            <span>Destinatário</span>
+            <span>Status</span>
+            <span className="text-right">Hora</span>
+          </div>
+          {cliente.etiquetas
+            .sort((a, b) => (a.criadoEm || '').localeCompare(b.criadoEm || ''))
+            .map((et, i) => (
+              <div
+                key={et.id || i}
+                className={`grid grid-cols-[1fr_1.2fr_auto_50px] gap-2 px-3 py-1 items-center ${
+                  i % 2 === 0 ? 'bg-white/[0.01]' : 'bg-white/[0.03]'
+                }`}
+              >
+                <span className="text-amber-300/80 font-mono text-[10px] truncate">
+                  {et.codigoObjeto || '—'}
+                </span>
+                <span className="text-gray-300 text-[10px] truncate">
+                  {et.destinatario?.nome || '—'}
+                </span>
+                <StatusBadge status={et.status} />
+                <span className="text-gray-500 text-[10px] font-mono text-right tabular-nums">
+                  {formatHora(et.criadoEm)}
+                </span>
+              </div>
+            ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── Componente de Grupo ─────────────────────────────────────────────────────
 const GrupoTable = ({ grupo }: { grupo: GrupoHorario }) => {
   const now = new Date();
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  const corteGrupo = grupo.sortKey - 60; // 1h antes do horário de coleta
-  const passouCorteGrupo = grupo.sortKey < 9999 && nowMinutes >= corteGrupo;
+  const corteGrupo = grupo.sortKey - 60;
   const urgente = grupo.sortKey < 9999 && nowMinutes >= corteGrupo && nowMinutes < grupo.sortKey;
   const jaPassou = grupo.sortKey < 9999 && nowMinutes >= grupo.sortKey;
 
@@ -281,13 +373,7 @@ const GrupoTable = ({ grupo }: { grupo: GrupoHorario }) => {
     <div className="flex flex-col">
       <div className="flex items-center gap-2 mb-1">
         <div className={`flex items-center gap-1.5 px-3 py-1 rounded-md ${
-          jaPassou
-            ? 'bg-red-500/20'
-            : urgente
-            ? 'bg-orange-500/20 animate-pulse'
-            : grupo.isBrhub
-            ? 'bg-cyan-500/20'
-            : 'bg-amber-500/20'
+          jaPassou ? 'bg-red-500/20' : urgente ? 'bg-orange-500/20 animate-pulse' : grupo.isBrhub ? 'bg-cyan-500/20' : 'bg-amber-500/20'
         }`}>
           {grupo.isBrhub ? (
             <Users className={`w-3.5 h-3.5 ${jaPassou ? 'text-red-400' : urgente ? 'text-orange-400' : 'text-cyan-400'}`} />
@@ -299,28 +385,13 @@ const GrupoTable = ({ grupo }: { grupo: GrupoHorario }) => {
             <Clock className="w-3.5 h-3.5 text-amber-400" />
           )}
           <span className={`font-black text-xs uppercase tracking-wider ${
-            jaPassou
-              ? 'text-red-400'
-              : urgente
-              ? 'text-orange-400'
-              : grupo.isBrhub
-              ? 'text-cyan-400'
-              : 'text-amber-400'
+            jaPassou ? 'text-red-400' : urgente ? 'text-orange-400' : grupo.isBrhub ? 'text-cyan-400' : 'text-amber-400'
           }`}>
             {grupo.isBrhub ? `BRHUB · ${grupo.label}` : grupo.label}
           </span>
         </div>
-        {passouCorteGrupo && (
-          <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${
-            jaPassou
-              ? 'bg-red-500/10 text-red-400'
-              : 'bg-orange-500/10 text-orange-400'
-          }`}>
-            {jaPassou ? 'Novas → amanhã' : `Corte ${fmtMinutes(corteGrupo < 0 ? 0 : corteGrupo)}`}
-          </span>
-        )}
         <span className="text-gray-600 text-[10px] font-bold uppercase tracking-widest">
-          {grupo.coletas.length} · {grupo.totalObjetos} obj
+          {grupo.clientes.length} clientes · {grupo.totalObjetos} obj
         </span>
         <div className="flex-1 h-px bg-white/5" />
       </div>
@@ -328,36 +399,8 @@ const GrupoTable = ({ grupo }: { grupo: GrupoHorario }) => {
       <div className={`rounded-md overflow-hidden border ${
         jaPassou ? 'border-red-500/20' : urgente ? 'border-orange-500/20' : 'border-white/5'
       }`}>
-        {grupo.coletas.map((ordem, i) => (
-          <div
-            key={`${ordem.cliente}-${i}`}
-            className={`grid grid-cols-[28px_1fr_auto_55px] gap-2 px-2 py-1.5 items-center ${
-              i % 2 === 0 ? 'bg-white/[0.02]' : 'bg-white/[0.04]'
-            }`}
-          >
-            <span className="text-amber-400/50 font-bold text-[11px] tabular-nums">
-              {String(i + 1).padStart(2, '0')}
-            </span>
-            <span className="text-white font-bold text-[11px] truncate uppercase tracking-wide">
-              {ordem.cliente}
-            </span>
-            <span className={`text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${
-              ordem.status?.toUpperCase().replace(/-/g, '_') === 'PRE_POSTADO'
-                ? 'bg-blue-500/20 text-blue-400'
-                : ordem.status?.toUpperCase() === 'POSTADO'
-                ? 'bg-green-500/20 text-green-400'
-                : ordem.status?.toUpperCase() === 'CANCELADO'
-                ? 'bg-red-500/20 text-red-400'
-                : 'bg-gray-500/20 text-gray-400'
-            }`}>
-              {ordem.status || 'SEM STATUS'}
-            </span>
-            <div className="flex justify-end">
-              <span className="bg-amber-500/20 text-amber-400 font-black text-xs px-2 py-0.5 rounded tabular-nums text-center min-w-[36px]">
-                {ordem.totalObjeto}
-              </span>
-            </div>
-          </div>
+        {grupo.clientes.map((cliente, i) => (
+          <ClienteRow key={cliente.nome} cliente={cliente} index={i} />
         ))}
       </div>
     </div>
@@ -366,23 +409,18 @@ const GrupoTable = ({ grupo }: { grupo: GrupoHorario }) => {
 
 // ─── Painel principal ────────────────────────────────────────────────────────
 const TvBoard = () => {
-  const [data, setData] = useState<OrdemColeta[]>([]);
+  const [data, setData] = useState<Etiqueta[]>([]);
   const [horariosDb, setHorariosDb] = useState<ClienteHorario[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [tick, setTick] = useState(0);
 
-  const datas = calcularDatasColeta(); // recalcula a cada render para label no header
-  
-
-  // Buscar horários da tabela auxiliar
   const fetchHorarios = useCallback(async () => {
     try {
       const { data: rows, error } = await supabase
         .from('clientes_coleta_horarios')
-        .select('nome_cliente, horario_inicio, horario_fim, motorista, grupo')
+        .select('nome_cliente, horario_inicio, horario_fim, motorista, grupo, endereco')
         .eq('ativo', true);
-
       if (error) {
         console.error('[TV Painel] Erro ao buscar horários:', error);
         return;
@@ -395,9 +433,8 @@ const TvBoard = () => {
 
   const fetchData = useCallback(async () => {
     try {
-      const datasAtuais = calcularDatasColeta();
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'xikvfybxthvqhpjbrszp';
-      const url = `https://${projectId}.supabase.co/functions/v1/tv-painel-coleta?dataIni=${datasAtuais.dataIni}&dataFim=${datasAtuais.dataFim}&status=PRE_POSTADO`;
+      const url = `https://${projectId}.supabase.co/functions/v1/tv-painel-coleta?status=PRE_POSTADO`;
 
       const res = await fetch(url, {
         headers: {
@@ -407,15 +444,10 @@ const TvBoard = () => {
 
       if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
       const json = await res.json();
-      const lista: OrdemColeta[] = json?.data || json || [];
+      const lista: Etiqueta[] = json?.data || json || [];
 
-      // Filtro rigoroso: apenas PRE_POSTADO
-      const filtered = lista.filter((item) => {
-        if (typeof item.status !== 'string') return true;
-        return String(item.status).toUpperCase().replace(/-/g, '_') === 'PRE_POSTADO';
-      });
-
-      setData(filtered);
+      console.log(`[TV Painel] ${lista.length} etiquetas recebidas`);
+      setData(lista);
       setLastUpdate(new Date());
     } catch (err) {
       console.error('[TV Painel] Erro ao buscar dados:', err);
@@ -439,15 +471,14 @@ const TvBoard = () => {
     return () => clearInterval(t);
   }, []);
 
-  const { regulares, brhub } = useMemo(() => agruparColetas(data, horariosDb), [data, horariosDb]);
-  const totalObjetos = useMemo(() => data.reduce((acc, o) => acc + (parseInt(o.totalObjeto) || 0), 0), [data]);
-  const corteInfo = useMemo(() => getCorteInfo(data, horariosDb), [data, horariosDb]);
+  const { regulares, brhub } = useMemo(() => agruparPorRemetente(data, horariosDb), [data, horariosDb]);
+  const totalObjetos = data.length;
+  const totalClientes = useMemo(() => {
+    const nomes = new Set(data.map(e => (e.remetenteNome || e.remetente?.nome || '').toUpperCase().trim()));
+    return nomes.size;
+  }, [data]);
 
-  const horaAtual = new Date().toLocaleTimeString('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  });
+  const horaAtual = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
   const proximoRefresh = useMemo(() => {
     const next = new Date(lastUpdate.getTime() + REFRESH_INTERVAL);
@@ -459,7 +490,6 @@ const TvBoard = () => {
   }, [lastUpdate, tick]);
 
   const horaAtualMinutos = new Date().getHours() * 60 + new Date().getMinutes();
-  const passouCorte = corteInfo ? horaAtualMinutos >= parseTime(corteInfo.horarioCorte) : false;
 
   if (loading) {
     return (
@@ -473,12 +503,10 @@ const TvBoard = () => {
   if (brhub) allGroups.push(brhub);
   allGroups.sort((a, b) => a.sortKey - b.sortKey);
 
-  // Separar grupos: HOJE vs PRÓXIMO DIA
-  // Regra: etiquetas geradas com menos de 1h antes do horário de coleta vão para o dia seguinte
+  // Separar HOJE vs PRÓXIMO DIA
   const hojeGroups = allGroups.filter(g => g.sortKey >= 9999 || horaAtualMinutos < (g.sortKey - 60));
   const proximoDiaGroups = allGroups.filter(g => g.sortKey < 9999 && horaAtualMinutos >= (g.sortKey - 60));
 
-  // Label do próximo dia (seg se for sexta após 15h ou fds)
   const now = new Date();
   const dia = now.getDay();
   const hora = now.getHours();
@@ -487,8 +515,10 @@ const TvBoard = () => {
 
   const totalHoje = hojeGroups.reduce((acc, g) => acc + g.totalObjetos, 0);
   const totalProximo = proximoDiaGroups.reduce((acc, g) => acc + g.totalObjetos, 0);
-  const clientesHoje = hojeGroups.reduce((acc, g) => acc + g.coletas.length, 0);
-  const clientesProximo = proximoDiaGroups.reduce((acc, g) => acc + g.coletas.length, 0);
+  const clientesHoje = hojeGroups.reduce((acc, g) => acc + g.clientes.length, 0);
+  const clientesProximo = proximoDiaGroups.reduce((acc, g) => acc + g.clientes.length, 0);
+
+  const hoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
   return (
     <div className="h-screen bg-[#0a0e17] text-white flex flex-col select-none overflow-hidden">
@@ -499,37 +529,19 @@ const TvBoard = () => {
           </div>
           <div>
             <h1 className="text-lg font-black tracking-tight uppercase leading-tight">Painel de Coleta</h1>
-            <p className="text-gray-600 text-[10px] tracking-widest uppercase">{datas.label}</p>
+            <p className="text-gray-600 text-[10px] tracking-widest uppercase">{hoje}</p>
           </div>
         </div>
 
         <div className="flex items-center gap-4">
-          {corteInfo && (
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border ${
-              passouCorte
-                ? 'bg-red-500/10 border-red-500/30'
-                : 'bg-emerald-500/10 border-emerald-500/30'
-            }`}>
-              <AlertTriangle className={`w-3.5 h-3.5 ${passouCorte ? 'text-red-400' : 'text-emerald-400'}`} />
-              <div className="text-[10px] leading-tight">
-                <p className={`font-bold ${passouCorte ? 'text-red-400' : 'text-emerald-400'}`}>
-                  Corte: {corteInfo.horarioCorte}
-                </p>
-                <p className="text-gray-500">
-                  {passouCorte ? `Novas → ${proximoDiaLabel.toLowerCase()}` : 'Aceitando p/ hoje'}
-                </p>
-              </div>
-            </div>
-          )}
-
           <div className="flex items-center gap-4">
             <div className="text-center">
               <p className="text-gray-600 text-[9px] uppercase tracking-widest">Clientes</p>
-              <p className="text-2xl font-black text-white tabular-nums leading-tight">{data.length}</p>
+              <p className="text-2xl font-black text-white tabular-nums leading-tight">{totalClientes}</p>
             </div>
             <div className="w-px h-8 bg-white/10" />
             <div className="text-center">
-              <p className="text-gray-600 text-[9px] uppercase tracking-widest">Objetos</p>
+              <p className="text-gray-600 text-[9px] uppercase tracking-widest">Etiquetas</p>
               <p className="text-2xl font-black text-amber-400 tabular-nums leading-tight">{totalObjetos}</p>
             </div>
           </div>
@@ -549,7 +561,7 @@ const TvBoard = () => {
         {data.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 opacity-40">
             <Package className="w-16 h-16" />
-            <p className="text-lg font-bold uppercase tracking-widest">Nenhuma coleta pendente</p>
+            <p className="text-lg font-bold uppercase tracking-widest">Nenhuma etiqueta encontrada</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4 h-full overflow-hidden">
@@ -558,12 +570,10 @@ const TvBoard = () => {
               <div className="flex items-center gap-2 mb-1">
                 <div className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-emerald-500/20">
                   <Truck className="w-4 h-4 text-emerald-400" />
-                  <span className="font-black text-sm uppercase tracking-wider text-emerald-400">
-                    Hoje
-                  </span>
+                  <span className="font-black text-sm uppercase tracking-wider text-emerald-400">Hoje</span>
                 </div>
                 <span className="text-gray-500 text-[10px] font-bold uppercase tracking-widest">
-                  {clientesHoje} clientes · {totalHoje} obj
+                  {clientesHoje} clientes · {totalHoje} etiq
                 </span>
                 <div className="flex-1 h-px bg-emerald-500/10" />
               </div>
@@ -586,12 +596,10 @@ const TvBoard = () => {
               <div className="flex items-center gap-2 mb-1">
                 <div className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-red-500/20">
                   <CalendarClock className="w-4 h-4 text-red-400" />
-                  <span className="font-black text-sm uppercase tracking-wider text-red-400">
-                    {proximoDiaLabel}
-                  </span>
+                  <span className="font-black text-sm uppercase tracking-wider text-red-400">{proximoDiaLabel}</span>
                 </div>
                 <span className="text-gray-500 text-[10px] font-bold uppercase tracking-widest">
-                  {clientesProximo} clientes · {totalProximo} obj
+                  {clientesProximo} clientes · {totalProximo} etiq
                 </span>
                 <div className="flex-1 h-px bg-red-500/10" />
               </div>
@@ -614,13 +622,7 @@ const TvBoard = () => {
 
       <footer className="px-4 py-1.5 bg-white/[0.02] border-t border-white/5 flex items-center justify-between text-[9px] text-gray-600 uppercase tracking-widest flex-shrink-0">
         <div className="flex items-center gap-3">
-          <span>Apenas pré-postados</span>
-          {corteInfo && (
-            <>
-              <span className="text-white/10">|</span>
-              <span>1ª coleta: {corteInfo.primeiroHorario} · Corte: {corteInfo.horarioCorte}</span>
-            </>
-          )}
+          <span>Etiquetas do dia · Clique para expandir</span>
           <span className="text-white/10">|</span>
           <span className="text-cyan-400/60">BRHUB: {BRHUB_HORARIO}</span>
         </div>

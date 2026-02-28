@@ -35,28 +35,32 @@ serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const dataIni = url.searchParams.get('dataIni');
-    const dataFim = url.searchParams.get('dataFim');
     const status = url.searchParams.get('status') || 'PRE_POSTADO';
-
-    if (!dataIni || !dataFim) {
-      return new Response(
-        JSON.stringify({ error: 'dataIni e dataFim são obrigatórios' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
 
     const token = await getAdminToken();
     const baseUrl = Deno.env.get('BASE_API_URL');
 
-    const apiUrl = `${baseUrl}/emissoes/ordem-coleta?dataIni=${dataIni}&dataFim=${dataFim}&status=${status}`;
+    // Buscar data de hoje no formato YYYY-MM-DD
+    const now = new Date();
+    const fmt = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${dd}`;
+    };
+    const hoje = fmt(now);
+
+    // Buscar etiquetas individuais via /emissoes com status PRE_POSTADO
+    const apiUrl = `${baseUrl}/emissoes?status=${status}&dataIni=${hoje}&dataFim=${hoje}&limit=500`;
+    console.log(`📦 Buscando etiquetas: ${apiUrl}`);
+    
     const response = await fetch(apiUrl, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ Erro ao buscar ordem-coleta:', errorText);
+      console.error('❌ Erro ao buscar emissões:', errorText);
       return new Response(
         JSON.stringify({ error: 'Falha ao buscar dados', details: errorText }),
         { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -64,6 +68,8 @@ serve(async (req) => {
     }
 
     const data = await response.json();
+    console.log(`✅ Retornados ${(data?.data || data || []).length} registros`);
+    
     return new Response(
       JSON.stringify(data),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
