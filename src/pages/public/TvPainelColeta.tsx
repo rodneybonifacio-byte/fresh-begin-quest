@@ -49,16 +49,23 @@ const calcularDatasColeta = () => {
   const hoje = fmt(now);
   const isFds = dia === 0 || dia === 6 || (dia === 5 && hora >= 15);
 
+  // Limite máximo: 4 dias atrás (etiquetas mais velhas são desconsideradas)
+  const maxDiasAtras = new Date(now);
+  maxDiasAtras.setDate(now.getDate() - 4);
+  const limiteMin = fmt(maxDiasAtras);
+
   if (isFds) {
     let diasAteSexta = dia === 5 ? 0 : dia === 6 ? 1 : 2;
     const sexta = new Date(now);
     sexta.setDate(now.getDate() - diasAteSexta);
-    return { dataIni: fmt(sexta), dataFim: hoje, label: `Sexta ${fmt(sexta)} → Hoje` };
+    const dataIni = fmt(sexta) > limiteMin ? fmt(sexta) : limiteMin;
+    return { dataIni, dataFim: hoje, label: `Sexta ${fmt(sexta)} → Hoje` };
   }
 
   const ontem = new Date(now);
   ontem.setDate(now.getDate() - 1);
-  return { dataIni: fmt(ontem), dataFim: hoje, label: `${fmt(ontem)} → ${hoje}` };
+  const dataIni = fmt(ontem) > limiteMin ? fmt(ontem) : limiteMin;
+  return { dataIni, dataFim: hoje, label: `${fmt(ontem)} → ${hoje}` };
 };
 
 // ─── Helpers de horário ──────────────────────────────────────────────────────
@@ -390,9 +397,12 @@ const TvBoard = () => {
       const json = await res.json();
       const lista: OrdemColeta[] = json?.data || json || [];
 
+      // Filtro rigoroso: apenas PRE_POSTADO
+      // Se a API já filtrou (sem campo status no payload), confia no resultado
+      // Se tem campo status, filtra apenas PRE_POSTADO
       const filtered = lista.filter((item) => {
-        if (!item.status) return true;
-        return String(item.status).toUpperCase().replace('-', '_') === 'PRE_POSTADO';
+        if (typeof item.status !== 'string') return true; // API já filtrou via param
+        return String(item.status).toUpperCase().replace(/-/g, '_') === 'PRE_POSTADO';
       });
 
       setData(filtered);
