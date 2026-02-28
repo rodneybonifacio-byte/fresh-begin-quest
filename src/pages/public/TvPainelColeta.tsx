@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Package, Clock, Truck, RefreshCw, Lock, Eye, EyeOff, AlertTriangle, Users, CalendarClock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { OrdemColetaService } from '@/services/OrdemColetaService';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface OrdemColeta {
@@ -363,7 +364,8 @@ const TvBoard = () => {
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [tick, setTick] = useState(0);
 
-  const datas = useMemo(() => calcularDatasColeta(), []);
+  const datas = calcularDatasColeta(); // recalcula a cada render para label no header
+  const service = useMemo(() => new OrdemColetaService(), []);
 
   // Buscar horários da tabela auxiliar
   const fetchHorarios = useCallback(async () => {
@@ -385,23 +387,20 @@ const TvBoard = () => {
 
   const fetchData = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
-      const baseUrl = import.meta.env.VITE_BASE_API_URL || '';
-      const url = `${baseUrl}/emissoes/ordem-coleta?dataIni=${datas.dataIni}&dataFim=${datas.dataFim}&status=PRE_POSTADO`;
+      // Recalcular datas a cada fetch (igual ao admin)
+      const datasAtuais = calcularDatasColeta();
 
-      const res = await fetch(url, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      const response = await service.getWithParams({
+        dataIni: datasAtuais.dataIni,
+        dataFim: datasAtuais.dataFim,
+        status: 'PRE_POSTADO',
       });
 
-      if (!res.ok) throw new Error('Fetch failed');
-      const json = await res.json();
-      const lista: OrdemColeta[] = json?.data || json || [];
+      const lista: OrdemColeta[] = (response?.data || []) as any;
 
       // Filtro rigoroso: apenas PRE_POSTADO
-      // Se a API já filtrou (sem campo status no payload), confia no resultado
-      // Se tem campo status, filtra apenas PRE_POSTADO
       const filtered = lista.filter((item) => {
-        if (typeof item.status !== 'string') return true; // API já filtrou via param
+        if (typeof item.status !== 'string') return true;
         return String(item.status).toUpperCase().replace(/-/g, '_') === 'PRE_POSTADO';
       });
 
@@ -412,7 +411,7 @@ const TvBoard = () => {
     } finally {
       setLoading(false);
     }
-  }, [datas]);
+  }, [service]);
 
   useEffect(() => {
     fetchHorarios();
