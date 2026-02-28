@@ -340,9 +340,14 @@ const ClienteRow = ({ cliente, index, isNew, newIds }: { cliente: ClienteAgrupad
             {isNew && <Zap className="w-3 h-3 inline text-orange-500 mr-1" />}
             {cliente.nome}
           </span>
-          <span className="text-gray-400 text-[9px] truncate flex items-center gap-1 leading-tight">
+          <span className="text-gray-400 text-[9px] flex items-center gap-1 leading-tight">
             <MapPin className="w-2.5 h-2.5 flex-shrink-0 text-gray-300" />
-            {cliente.endereco}
+            <span className="flex flex-col">
+              <span className="truncate">{cliente.endereco}</span>
+              {cliente.nome.toUpperCase().includes('BAUARTE') && (
+                <span className="truncate text-orange-400">📍 Rua Ribeiro de Lima, 750 - Bom Retiro</span>
+              )}
+            </span>
           </span>
         </div>
         <div className="flex items-center gap-1">
