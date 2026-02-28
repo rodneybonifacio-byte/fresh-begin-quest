@@ -16,13 +16,59 @@ interface OrdemColeta {
 const TV_PIN = '7890';
 const REFRESH_INTERVAL = 120_000;
 
-// ─── Clientes BRHUB ──────────────────────────────────────────────────────────
+// ─── Horários da planilha (por cliente) ──────────────────────────────────────
 const BRHUB_CLIENTS = ['TG GRIFFES', '7 DAYS', 'CAIRO', 'NEXX', 'ERONIA', 'ATENDENCIA'];
 const BRHUB_HORARIO = '16:00 – 17:00';
+
+// Mapa: nome parcial do cliente → horário fixo da planilha
+const HORARIOS_PLANILHA: { nome: string; horario: string }[] = [
+  // 14:00 – 15:00
+  { nome: 'CARMEN JEANS', horario: '14:00' },
+  { nome: 'OPTIMIST', horario: '14:00' },
+  { nome: 'ALINE CONF', horario: '14:00' },
+  { nome: 'MARIA CHICA', horario: '14:00' },
+  { nome: 'STRANGER', horario: '14:00' },
+  { nome: 'FULL STOP', horario: '14:00' },
+  { nome: 'FIRE', horario: '14:00' },
+  { nome: 'STONEWALL', horario: '14:00' },
+  { nome: 'ETTA', horario: '14:00' },
+  { nome: 'KEROBLUSA', horario: '14:00' },
+  { nome: 'G2K JEANS', horario: '14:00' },
+  { nome: 'UEMTEL', horario: '14:00' },
+  { nome: 'BORAME', horario: '14:00' },
+  { nome: 'SCERA', horario: '14:00' },
+  { nome: 'MIRANTE JEANS', horario: '14:00' },
+  { nome: 'GBY MODAS', horario: '14:00' },
+  { nome: 'BH YOO', horario: '14:00' },
+  { nome: 'SEJA KAYLA', horario: '14:00' },
+  { nome: 'SEXY COOKIE', horario: '14:00' },
+  { nome: 'VOGABOX', horario: '14:00' },
+  { nome: 'LODERRO', horario: '14:00' },
+  { nome: 'LADY MODAS', horario: '14:00' },
+  // 15:00 – 16:00
+  { nome: 'FASHION GIRL', horario: '15:00' },
+  // DIÁRIA (sem horário fixo)
+  { nome: 'LARAS MODA', horario: 'DIARIA' },
+];
 
 const isBrhubClient = (nome: string): boolean => {
   const upper = nome.toUpperCase().trim();
   return BRHUB_CLIENTS.some(c => upper.includes(c));
+};
+
+/** Retorna o horário fixo da planilha para o cliente, ou null se não encontrado */
+const getHorarioPlanilha = (nome: string): string | null => {
+  const upper = nome.toUpperCase().trim();
+  const match = HORARIOS_PLANILHA.find(h => upper.includes(h.nome));
+  return match ? match.horario : null;
+};
+
+/** Resolve o horário efetivo: planilha > API */
+const resolverHorario = (ordem: OrdemColeta): string => {
+  if (isBrhubClient(ordem.cliente)) return '16:00';
+  const planilha = getHorarioPlanilha(ordem.cliente);
+  if (planilha) return planilha;
+  return formatTimeRange(ordem.dataHoraColeta);
 };
 
 // ─── Lógica de datas ─────────────────────────────────────────────────────────
@@ -118,11 +164,11 @@ const agruparColetas = (coletas: OrdemColeta[]): { regulares: GrupoHorario[]; br
     }
   }
 
-  // Agrupar regulares por horário
+  // Agrupar regulares por horário (usando horário da planilha)
   const map = new Map<string, OrdemColeta[]>();
   for (const c of outrasColetas) {
-    const time = formatTimeRange(c.dataHoraColeta);
-    const key = time === 'Sem horário' ? 'ZZ:ZZ' : time;
+    const time = resolverHorario(c);
+    const key = time === 'Sem horário' ? 'ZZ:ZZ' : time === 'DIARIA' ? 'DIARIA' : time;
     if (!map.has(key)) map.set(key, []);
     map.get(key)!.push(c);
   }
@@ -130,8 +176,8 @@ const agruparColetas = (coletas: OrdemColeta[]): { regulares: GrupoHorario[]; br
   const regulares: GrupoHorario[] = [];
   for (const [key, items] of map) {
     regulares.push({
-      label: key === 'ZZ:ZZ' ? 'Sem horário' : key,
-      sortKey: key === 'ZZ:ZZ' ? 9999 : parseTime(key),
+      label: key === 'ZZ:ZZ' ? 'Sem horário' : key === 'DIARIA' ? 'Diária' : key,
+      sortKey: key === 'ZZ:ZZ' ? 9999 : key === 'DIARIA' ? 9998 : parseTime(key),
       coletas: items.sort((a, b) => a.cliente.localeCompare(b.cliente)),
       totalObjetos: items.reduce((acc, o) => acc + (parseInt(o.totalObjeto) || 0), 0),
     });
