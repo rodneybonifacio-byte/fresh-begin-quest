@@ -321,7 +321,7 @@ const MetricCard = ({ label, value, icon: Icon, color, pulse }: {
 };
 
 // ─── Cliente Row ─────────────────────────────────────────────────────────────
-const ClienteRow = ({ cliente, index, isNew }: { cliente: ClienteAgrupado; index: number; isNew?: boolean }) => {
+const ClienteRow = ({ cliente, index, isNew, newIds }: { cliente: ClienteAgrupado; index: number; isNew?: boolean; newIds?: Set<string> }) => {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -373,7 +373,9 @@ const ClienteRow = ({ cliente, index, isNew }: { cliente: ClienteAgrupado; index
               <div
                 key={et.id || i}
                 className={`grid grid-cols-[1fr_1.2fr_auto_70px] gap-2 px-4 py-1.5 items-center border-b border-gray-100/60 ${
-                  i % 2 === 0 ? 'bg-white/60' : 'bg-orange-50/30'
+                  newIds?.has(et.id || et.codigoObjeto)
+                    ? 'bg-amber-50 border-l-2 border-amber-400'
+                    : i % 2 === 0 ? 'bg-white/60' : 'bg-orange-50/30'
                 }`}
               >
                 <span className="text-orange-600 font-mono text-[10px] truncate">
@@ -395,7 +397,7 @@ const ClienteRow = ({ cliente, index, isNew }: { cliente: ClienteAgrupado; index
 };
 
 // ─── Grupo Table ─────────────────────────────────────────────────────────────
-const GrupoTable = ({ grupo, coletaConfirmada, onConfirmarColeta }: { grupo: GrupoHorario; coletaConfirmada?: boolean; onConfirmarColeta?: () => void }) => {
+const GrupoTable = ({ grupo, coletaConfirmada, onConfirmarColeta, newIds }: { grupo: GrupoHorario; coletaConfirmada?: boolean; onConfirmarColeta?: () => void; newIds?: Set<string> }) => {
   const headerColor = coletaConfirmada
     ? 'bg-emerald-50 border-emerald-200'
     : grupo.isBrhub 
@@ -455,9 +457,10 @@ const GrupoTable = ({ grupo, coletaConfirmada, onConfirmarColeta }: { grupo: Gru
 
       {/* Corpo */}
       <div className={`rounded-b-lg overflow-hidden border border-t-0 ${coletaConfirmada ? 'border-emerald-100' : 'border-gray-100'} bg-white`}>
-        {grupo.clientes.map((cliente, i) => (
-          <ClienteRow key={cliente.nome} cliente={cliente} index={i} />
-        ))}
+        {grupo.clientes.map((cliente, i) => {
+          const hasNew = newIds ? cliente.etiquetas.some(et => newIds.has(et.id || et.codigoObjeto)) : false;
+          return <ClienteRow key={cliente.nome} cliente={cliente} index={i} isNew={hasNew} newIds={newIds} />;
+        })}
       </div>
     </div>
   );
@@ -557,6 +560,8 @@ const TvBoard = () => {
   const [newAlertCount, setNewAlertCount] = useState(0);
   const [flashActive, setFlashActive] = useState(false);
   const previousCountRef = useRef(0);
+  const previousIdsRef = useRef<Set<string>>(new Set());
+  const [newIds, setNewIds] = useState<Set<string>>(new Set());
   const [coletasConfirmadas, setColetasConfirmadas] = useState<Set<string>>(new Set());
 
   const toggleColeta = useCallback((label: string) => {
@@ -610,14 +615,23 @@ const TvBoard = () => {
       console.log(`[TV Painel] ${lista.length} etiquetas recebidas, ${filtrada.length} após filtro de 4 dias`);
 
       // Detect new items
-      const prevCount = previousCountRef.current;
-      if (prevCount > 0 && filtrada.length > prevCount) {
-        const diff = filtrada.length - prevCount;
-        setNewAlertCount(diff);
-        setFlashActive(true);
-        if (soundEnabled) playAlertSound();
-        setTimeout(() => setFlashActive(false), 3000);
+      const prevIds = previousIdsRef.current;
+      const currentIds = new Set(filtrada.map(et => et.id || et.codigoObjeto));
+      
+      if (prevIds.size > 0) {
+        const brandNewIds = new Set<string>();
+        for (const id of currentIds) {
+          if (!prevIds.has(id)) brandNewIds.add(id);
+        }
+        if (brandNewIds.size > 0) {
+          setNewAlertCount(brandNewIds.size);
+          setNewIds(prev => new Set([...prev, ...brandNewIds]));
+          setFlashActive(true);
+          if (soundEnabled) playAlertSound();
+          setTimeout(() => setFlashActive(false), 3000);
+        }
       }
+      previousIdsRef.current = currentIds;
       previousCountRef.current = filtrada.length;
 
       setData(filtrada);
@@ -840,7 +854,7 @@ const TvBoard = () => {
               ) : (
                 <div className="flex flex-col gap-3 overflow-auto pr-1 scrollbar-thin">
                   {allGroupsCol1.map((grupo) => (
-                    <GrupoTable key={grupo.label} grupo={grupo} coletaConfirmada={coletasConfirmadas.has(grupo.label)} onConfirmarColeta={() => toggleColeta(grupo.label)} />
+                    <GrupoTable key={grupo.label} grupo={grupo} coletaConfirmada={coletasConfirmadas.has(grupo.label)} onConfirmarColeta={() => toggleColeta(grupo.label)} newIds={newIds} />
                   ))}
                 </div>
               )}
@@ -869,7 +883,7 @@ const TvBoard = () => {
                 ) : (
                   <div className="flex flex-col gap-3 overflow-auto pr-1 scrollbar-thin">
                     {allGroupsCol2.map((grupo) => (
-                      <GrupoTable key={grupo.label} grupo={grupo} coletaConfirmada={coletasConfirmadas.has(grupo.label)} onConfirmarColeta={() => toggleColeta(grupo.label)} />
+                      <GrupoTable key={grupo.label} grupo={grupo} coletaConfirmada={coletasConfirmadas.has(grupo.label)} onConfirmarColeta={() => toggleColeta(grupo.label)} newIds={newIds} />
                     ))}
                   </div>
                 )}
