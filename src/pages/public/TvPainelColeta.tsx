@@ -396,14 +396,16 @@ const ClienteRow = ({ cliente, index, isNew }: { cliente: ClienteAgrupado; index
 };
 
 // ─── Grupo Table ─────────────────────────────────────────────────────────────
-const GrupoTable = ({ grupo }: { grupo: GrupoHorario }) => {
+const GrupoTable = ({ grupo, coletaConfirmada, onConfirmarColeta }: { grupo: GrupoHorario; coletaConfirmada?: boolean; onConfirmarColeta?: () => void }) => {
   const now = new Date();
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
   const corteGrupo = grupo.sortKey - 60;
   const urgente = grupo.sortKey < 9999 && nowMinutes >= corteGrupo && nowMinutes < grupo.sortKey;
   const jaPassou = grupo.sortKey < 9999 && nowMinutes >= grupo.sortKey;
 
-  const headerColor = jaPassou 
+  const headerColor = coletaConfirmada
+    ? 'bg-emerald-500/15 border-emerald-500/40'
+    : jaPassou 
     ? 'bg-red-500/10 border-red-500/30' 
     : urgente 
     ? 'bg-orange-500/10 border-orange-500/30' 
@@ -411,7 +413,9 @@ const GrupoTable = ({ grupo }: { grupo: GrupoHorario }) => {
     ? 'bg-cyan-500/10 border-cyan-500/30' 
     : 'bg-white/[0.03] border-white/10';
 
-  const textColor = jaPassou 
+  const textColor = coletaConfirmada
+    ? 'text-emerald-400'
+    : jaPassou 
     ? 'text-red-400' 
     : urgente 
     ? 'text-orange-400' 
@@ -420,11 +424,13 @@ const GrupoTable = ({ grupo }: { grupo: GrupoHorario }) => {
     : 'text-orange-400';
 
   return (
-    <div className="flex flex-col">
+    <div className={`flex flex-col ${coletaConfirmada ? 'opacity-70' : ''}`}>
       {/* Header do grupo */}
-      <div className={`flex items-center justify-between px-3 py-1.5 rounded-t-lg border ${headerColor} ${urgente ? 'animate-pulse' : ''}`}>
+      <div className={`flex items-center justify-between px-3 py-1.5 rounded-t-lg border ${headerColor} ${urgente && !coletaConfirmada ? 'animate-pulse' : ''}`}>
         <div className="flex items-center gap-2">
-          {grupo.isBrhub ? (
+          {coletaConfirmada ? (
+            <Truck className={`w-3.5 h-3.5 ${textColor}`} />
+          ) : grupo.isBrhub ? (
             <Users className={`w-3.5 h-3.5 ${textColor}`} />
           ) : jaPassou ? (
             <AlertTriangle className={`w-3.5 h-3.5 ${textColor}`} />
@@ -436,7 +442,10 @@ const GrupoTable = ({ grupo }: { grupo: GrupoHorario }) => {
           <span className={`font-black text-xs uppercase tracking-wider ${textColor}`}>
             {grupo.isBrhub ? `BRHUB · ${grupo.label}` : grupo.label}
           </span>
-          {jaPassou && (
+          {coletaConfirmada && (
+            <span className="text-[8px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded font-bold uppercase">✓ Coletado</span>
+          )}
+          {!coletaConfirmada && jaPassou && (
             <span className="text-[8px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded font-bold uppercase">Atrasado</span>
           )}
         </div>
@@ -447,11 +456,27 @@ const GrupoTable = ({ grupo }: { grupo: GrupoHorario }) => {
           <span className={`font-black text-sm tabular-nums ${textColor}`}>
             {grupo.totalObjetos}
           </span>
+          {!coletaConfirmada && onConfirmarColeta && (
+            <button
+              onClick={onConfirmarColeta}
+              className="ml-1 px-2.5 py-1 rounded-md bg-emerald-500/20 text-emerald-400 text-[9px] font-bold uppercase tracking-wide border border-emerald-500/30 hover:bg-emerald-500/30 hover:border-emerald-400/50 transition-all"
+            >
+              Confirmar Coleta
+            </button>
+          )}
+          {coletaConfirmada && onConfirmarColeta && (
+            <button
+              onClick={onConfirmarColeta}
+              className="ml-1 px-2.5 py-1 rounded-md bg-white/5 text-gray-500 text-[9px] font-bold uppercase tracking-wide border border-white/10 hover:bg-white/10 transition-all"
+            >
+              Desfazer
+            </button>
+          )}
         </div>
       </div>
 
       {/* Corpo */}
-      <div className="rounded-b-lg overflow-hidden border border-t-0 border-white/5 bg-[#0a0f1a]">
+      <div className={`rounded-b-lg overflow-hidden border border-t-0 ${coletaConfirmada ? 'border-emerald-500/10' : 'border-white/5'} bg-[#0a0f1a]`}>
         {grupo.clientes.map((cliente, i) => (
           <ClienteRow key={cliente.nome} cliente={cliente} index={i} />
         ))}
@@ -522,6 +547,16 @@ const TvBoard = () => {
   const [newAlertCount, setNewAlertCount] = useState(0);
   const [flashActive, setFlashActive] = useState(false);
   const previousCountRef = useRef(0);
+  const [coletasConfirmadas, setColetasConfirmadas] = useState<Set<string>>(new Set());
+
+  const toggleColeta = useCallback((label: string) => {
+    setColetasConfirmadas(prev => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  }, []);
 
   const fetchHorarios = useCallback(async () => {
     try {
@@ -792,7 +827,7 @@ const TvBoard = () => {
               ) : (
                 <div className="flex flex-col gap-3 overflow-auto pr-1 scrollbar-thin">
                   {allGroupsCol1.map((grupo) => (
-                    <GrupoTable key={grupo.label} grupo={grupo} />
+                    <GrupoTable key={grupo.label} grupo={grupo} coletaConfirmada={coletasConfirmadas.has(grupo.label)} onConfirmarColeta={() => toggleColeta(grupo.label)} />
                   ))}
                 </div>
               )}
@@ -821,7 +856,7 @@ const TvBoard = () => {
                 ) : (
                   <div className="flex flex-col gap-3 overflow-auto pr-1 scrollbar-thin">
                     {allGroupsCol2.map((grupo) => (
-                      <GrupoTable key={grupo.label} grupo={grupo} />
+                      <GrupoTable key={grupo.label} grupo={grupo} coletaConfirmada={coletasConfirmadas.has(grupo.label)} onConfirmarColeta={() => toggleColeta(grupo.label)} />
                     ))}
                   </div>
                 )}
