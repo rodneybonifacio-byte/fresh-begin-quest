@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Package, Clock, Truck, RefreshCw, Lock, Eye, EyeOff, AlertTriangle, Users, CalendarClock, ChevronDown, ChevronRight, MapPin } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { Package, Clock, Truck, RefreshCw, Lock, Eye, EyeOff, AlertTriangle, Users, ChevronDown, ChevronRight, MapPin, Volume2, VolumeX, Bell, Activity, Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
@@ -56,6 +56,32 @@ const isBrhubClient = (nome: string): boolean => {
   return BRHUB_CLIENTS.some(c => upper.includes(c));
 };
 
+// ─── Audio Alert ─────────────────────────────────────────────────────────────
+const playAlertSound = () => {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    // Triple beep pattern
+    const playBeep = (startTime: number, freq: number, duration: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0, startTime);
+      gain.gain.linearRampToValueAtTime(0.3, startTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+      osc.start(startTime);
+      osc.stop(startTime + duration);
+    };
+    playBeep(ctx.currentTime, 880, 0.15);
+    playBeep(ctx.currentTime + 0.2, 880, 0.15);
+    playBeep(ctx.currentTime + 0.4, 1100, 0.25);
+  } catch (e) {
+    console.warn('[TV Painel] Audio alert failed:', e);
+  }
+};
+
 // ─── Helpers de horário ──────────────────────────────────────────────────────
 const parseTime = (timeStr: string): number => {
   if (!timeStr) return 9999;
@@ -63,13 +89,6 @@ const parseTime = (timeStr: string): number => {
   const parts = clean.split(':');
   if (parts.length < 2) return 9999;
   return parseInt(parts[0]) * 60 + parseInt(parts[1]);
-};
-
-const fmtMinutes = (mins: number) => {
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  void fmtMinutes; // prevent unused warning
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 };
 
 const formatDataHora = (dateStr: string): string => {
@@ -105,27 +124,35 @@ const resolverLabel = (nome: string, horariosDb: ClienteHorario[]): string => {
 const StatusBadge = ({ status }: { status: string }) => {
   const normalized = status?.toUpperCase().replace(/-/g, '_') || '';
   const colors: Record<string, string> = {
-    PRE_POSTADO: 'bg-blue-500/20 text-blue-400',
-    POSTADO: 'bg-green-500/20 text-green-400',
-    EM_TRANSITO: 'bg-cyan-500/20 text-cyan-400',
-    ENTREGUE: 'bg-emerald-500/20 text-emerald-400',
-    CANCELADO: 'bg-red-500/20 text-red-400',
-    DEVOLVIDO: 'bg-gray-500/20 text-gray-400',
+    PRE_POSTADO: 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
+    POSTADO: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
+    EM_TRANSITO: 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30',
+    ENTREGUE: 'bg-green-500/20 text-green-400 border border-green-500/30',
+    CANCELADO: 'bg-red-500/20 text-red-400 border border-red-500/30',
+    DEVOLVIDO: 'bg-gray-500/20 text-gray-400 border border-gray-500/30',
   };
-  const style = colors[normalized] || 'bg-gray-500/20 text-gray-400';
+  const style = colors[normalized] || 'bg-gray-500/20 text-gray-400 border border-gray-500/30';
   return (
-    <span className={`text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${style}`}>
+    <span className={`text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-sm ${style}`}>
       {status?.replace(/_/g, ' ') || 'SEM STATUS'}
     </span>
   );
 };
 
 // ─── Agrupar etiquetas por remetente ─────────────────────────────────────────
+interface GrupoHorario {
+  label: string;
+  sortKey: number;
+  clientes: ClienteAgrupado[];
+  totalObjetos: number;
+  totalPrePostado: number;
+  isBrhub?: boolean;
+}
+
 const agruparPorRemetente = (etiquetas: Etiqueta[], horariosDb: ClienteHorario[]): {
   regulares: GrupoHorario[];
   brhub: GrupoHorario | null;
 } => {
-  // Agrupar por nome do remetente
   const clienteMap = new Map<string, ClienteAgrupado>();
 
   for (const et of etiquetas) {
@@ -137,11 +164,8 @@ const agruparPorRemetente = (etiquetas: Etiqueta[], horariosDb: ClienteHorario[]
         ? [et.remetente.logradouro, et.remetente.numero, et.remetente.bairro, et.remetente.localidade, et.remetente.uf]
             .filter(Boolean).join(', ')
         : '';
-      
-      // Tentar endereço da tabela auxiliar
       const upper = key;
       const matchDb = horariosDb.find(h => upper.includes(h.nome_cliente.toUpperCase().trim()));
-      
       clienteMap.set(key, {
         nome,
         endereco: matchDb?.endereco || endereco || 'Endereço não informado',
@@ -155,7 +179,6 @@ const agruparPorRemetente = (etiquetas: Etiqueta[], horariosDb: ClienteHorario[]
     if (statusNorm === 'PRE_POSTADO') cliente.totalPrePostado++;
   }
 
-  // Agrupar clientes por horário
   const brhubClientes: ClienteAgrupado[] = [];
   const outrosClientes: ClienteAgrupado[] = [];
 
@@ -167,7 +190,6 @@ const agruparPorRemetente = (etiquetas: Etiqueta[], horariosDb: ClienteHorario[]
     }
   }
 
-  // Agrupar outros por faixa horária
   const horarioMap = new Map<string, { clientes: ClienteAgrupado[]; label: string }>();
   for (const c of outrosClientes) {
     const time = resolverHorario(c.nome, horariosDb);
@@ -208,15 +230,6 @@ const agruparPorRemetente = (etiquetas: Etiqueta[], horariosDb: ClienteHorario[]
   return { regulares, brhub };
 };
 
-interface GrupoHorario {
-  label: string;
-  sortKey: number;
-  clientes: ClienteAgrupado[];
-  totalObjetos: number;
-  totalPrePostado: number;
-  isBrhub?: boolean;
-}
-
 // ─── Componente de Login (PIN) ───────────────────────────────────────────────
 const TvLogin = ({ onAuth }: { onAuth: () => void }) => {
   const [pin, setPin] = useState('');
@@ -236,15 +249,20 @@ const TvLogin = ({ onAuth }: { onAuth: () => void }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0e17] flex items-center justify-center p-6">
+    <div className="min-h-screen bg-[#060a13] flex items-center justify-center p-6">
       <form onSubmit={handleSubmit} className="w-full max-w-sm flex flex-col items-center gap-8">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
-            <Truck className="w-10 h-10 text-white" />
+          <div className="relative">
+            <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-red-500 flex items-center justify-center shadow-2xl shadow-amber-500/30">
+              <Truck className="w-12 h-12 text-white" />
+            </div>
+            <div className="absolute -top-1 -right-1 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center animate-pulse">
+              <Activity className="w-3 h-3 text-white" />
+            </div>
           </div>
           <div className="text-center">
-            <h1 className="text-3xl font-black text-white tracking-tight">Painel de Coleta</h1>
-            <p className="text-gray-500 text-sm mt-1">Insira o PIN para acessar</p>
+            <h1 className="text-3xl font-black text-white tracking-tight">CONTROL TOWER</h1>
+            <p className="text-amber-500/60 text-sm mt-1 font-semibold tracking-widest uppercase">Painel de Coleta</p>
           </div>
         </div>
         <div className="w-full space-y-4">
@@ -285,66 +303,84 @@ const TvLogin = ({ onAuth }: { onAuth: () => void }) => {
   );
 };
 
-// ─── Componente Cliente Expandível ───────────────────────────────────────────
-const ClienteRow = ({ cliente, index }: { cliente: ClienteAgrupado; index: number }) => {
+// ─── Metric Card ─────────────────────────────────────────────────────────────
+const MetricCard = ({ label, value, icon: Icon, color, pulse }: { 
+  label: string; value: number | string; icon: any; color: string; pulse?: boolean 
+}) => {
+  const colorMap: Record<string, string> = {
+    amber: 'from-amber-500/20 to-amber-600/5 border-amber-500/20 text-amber-400',
+    emerald: 'from-emerald-500/20 to-emerald-600/5 border-emerald-500/20 text-emerald-400',
+    blue: 'from-blue-500/20 to-blue-600/5 border-blue-500/20 text-blue-400',
+    cyan: 'from-cyan-500/20 to-cyan-600/5 border-cyan-500/20 text-cyan-400',
+    red: 'from-red-500/20 to-red-600/5 border-red-500/20 text-red-400',
+  };
+  const c = colorMap[color] || colorMap.amber;
+
+  return (
+    <div className={`flex items-center gap-3 px-4 py-2.5 rounded-lg bg-gradient-to-r border backdrop-blur-sm ${c} ${pulse ? 'animate-pulse' : ''}`}>
+      <Icon className="w-5 h-5 flex-shrink-0" />
+      <div>
+        <p className="text-[9px] uppercase tracking-widest opacity-70 font-bold">{label}</p>
+        <p className="text-xl font-black tabular-nums leading-tight">{value}</p>
+      </div>
+    </div>
+  );
+};
+
+// ─── Cliente Row ─────────────────────────────────────────────────────────────
+const ClienteRow = ({ cliente, index, isNew }: { cliente: ClienteAgrupado; index: number; isNew?: boolean }) => {
   const [expanded, setExpanded] = useState(false);
 
   return (
     <div className="flex flex-col">
       <div
         onClick={() => setExpanded(!expanded)}
-        className={`grid grid-cols-[28px_1fr_auto_55px] gap-2 px-2 py-1.5 items-center cursor-pointer hover:bg-white/[0.06] transition-colors ${
-          index % 2 === 0 ? 'bg-white/[0.02]' : 'bg-white/[0.04]'
+        className={`grid grid-cols-[24px_1fr_auto_50px] gap-2 px-3 py-2 items-center cursor-pointer transition-all duration-200 hover:bg-white/[0.06] ${
+          isNew ? 'bg-amber-500/10 border-l-2 border-amber-400' : index % 2 === 0 ? 'bg-white/[0.015]' : 'bg-white/[0.035]'
         }`}
       >
-        <span className="text-amber-400/50 font-bold text-[11px] tabular-nums flex items-center gap-0.5">
-          {expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+        <span className="text-gray-600 flex items-center">
+          {expanded ? <ChevronDown className="w-3.5 h-3.5 text-amber-400" /> : <ChevronRight className="w-3.5 h-3.5" />}
         </span>
-        <div className="flex flex-col min-w-0">
-          <span className="text-white font-bold text-[11px] truncate uppercase tracking-wide">
+        <div className="flex flex-col min-w-0 gap-0.5">
+          <span className="text-white font-bold text-xs truncate uppercase tracking-wide leading-tight">
+            {isNew && <Zap className="w-3 h-3 inline text-amber-400 mr-1" />}
             {cliente.nome}
           </span>
-          <span className="text-gray-500 text-[9px] truncate flex items-center gap-1">
-            <MapPin className="w-2.5 h-2.5 flex-shrink-0" />
+          <span className="text-gray-500 text-[9px] truncate flex items-center gap-1 leading-tight">
+            <MapPin className="w-2.5 h-2.5 flex-shrink-0 text-gray-600" />
             {cliente.endereco}
           </span>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           {cliente.totalPrePostado > 0 && (
-            <span className="bg-blue-500/20 text-blue-400 font-bold text-[8px] px-1.5 py-0.5 rounded">
+            <span className="bg-blue-500/20 text-blue-400 font-bold text-[8px] px-1.5 py-0.5 rounded-sm border border-blue-500/20">
               {cliente.totalPrePostado} PRÉ
-            </span>
-          )}
-          {cliente.etiquetas.length - cliente.totalPrePostado > 0 && (
-            <span className="bg-gray-500/20 text-gray-400 font-bold text-[8px] px-1.5 py-0.5 rounded">
-              {cliente.etiquetas.length - cliente.totalPrePostado} OUTROS
             </span>
           )}
         </div>
         <div className="flex justify-end">
-          <span className="bg-amber-500/20 text-amber-400 font-black text-xs px-2 py-0.5 rounded tabular-nums text-center min-w-[36px]">
+          <span className="bg-white/10 text-white font-black text-xs px-2.5 py-1 rounded-md tabular-nums text-center min-w-[36px]">
             {cliente.etiquetas.length}
           </span>
         </div>
       </div>
 
-      {/* Sub-menu: etiquetas individuais */}
       {expanded && (
-        <div className="bg-white/[0.01] border-l-2 border-amber-500/30 ml-6">
-          {/* Header */}
-          <div className="grid grid-cols-[1fr_1.2fr_auto_70px] gap-2 px-3 py-1 text-[8px] text-gray-600 uppercase tracking-widest font-bold border-b border-white/5">
+        <div className="bg-[#0c1222] border-l-2 border-amber-500/30 ml-4">
+          <div className="grid grid-cols-[1fr_1.2fr_auto_70px] gap-2 px-4 py-1.5 text-[8px] text-gray-500 uppercase tracking-widest font-bold border-b border-white/5">
             <span>Código</span>
             <span>Destinatário</span>
             <span>Status</span>
-            <span>Gerado em</span>
+            <span className="text-right">Gerado em</span>
           </div>
           {cliente.etiquetas
             .sort((a, b) => (a.criadoEm || '').localeCompare(b.criadoEm || ''))
             .map((et, i) => (
               <div
                 key={et.id || i}
-                className={`grid grid-cols-[1fr_1.2fr_auto_70px] gap-2 px-3 py-1 items-center ${
-                  i % 2 === 0 ? 'bg-white/[0.01]' : 'bg-white/[0.03]'
+                className={`grid grid-cols-[1fr_1.2fr_auto_70px] gap-2 px-4 py-1.5 items-center border-b border-white/[0.03] ${
+                  i % 2 === 0 ? 'bg-white/[0.01]' : 'bg-white/[0.025]'
                 }`}
               >
                 <span className="text-amber-300/80 font-mono text-[10px] truncate">
@@ -365,7 +401,7 @@ const ClienteRow = ({ cliente, index }: { cliente: ClienteAgrupado; index: numbe
   );
 };
 
-// ─── Componente de Grupo ─────────────────────────────────────────────────────
+// ─── Grupo Table ─────────────────────────────────────────────────────────────
 const GrupoTable = ({ grupo }: { grupo: GrupoHorario }) => {
   const now = new Date();
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
@@ -373,39 +409,109 @@ const GrupoTable = ({ grupo }: { grupo: GrupoHorario }) => {
   const urgente = grupo.sortKey < 9999 && nowMinutes >= corteGrupo && nowMinutes < grupo.sortKey;
   const jaPassou = grupo.sortKey < 9999 && nowMinutes >= grupo.sortKey;
 
+  const headerColor = jaPassou 
+    ? 'bg-red-500/10 border-red-500/30' 
+    : urgente 
+    ? 'bg-orange-500/10 border-orange-500/30' 
+    : grupo.isBrhub 
+    ? 'bg-cyan-500/10 border-cyan-500/30' 
+    : 'bg-white/[0.03] border-white/10';
+
+  const textColor = jaPassou 
+    ? 'text-red-400' 
+    : urgente 
+    ? 'text-orange-400' 
+    : grupo.isBrhub 
+    ? 'text-cyan-400' 
+    : 'text-amber-400';
+
   return (
     <div className="flex flex-col">
-      <div className="flex items-center gap-2 mb-1">
-        <div className={`flex items-center gap-1.5 px-3 py-1 rounded-md ${
-          jaPassou ? 'bg-red-500/20' : urgente ? 'bg-orange-500/20 animate-pulse' : grupo.isBrhub ? 'bg-cyan-500/20' : 'bg-amber-500/20'
-        }`}>
+      {/* Header do grupo */}
+      <div className={`flex items-center justify-between px-3 py-1.5 rounded-t-lg border ${headerColor} ${urgente ? 'animate-pulse' : ''}`}>
+        <div className="flex items-center gap-2">
           {grupo.isBrhub ? (
-            <Users className={`w-3.5 h-3.5 ${jaPassou ? 'text-red-400' : urgente ? 'text-orange-400' : 'text-cyan-400'}`} />
+            <Users className={`w-3.5 h-3.5 ${textColor}`} />
           ) : jaPassou ? (
-            <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
+            <AlertTriangle className={`w-3.5 h-3.5 ${textColor}`} />
           ) : urgente ? (
-            <AlertTriangle className="w-3.5 h-3.5 text-orange-400" />
+            <AlertTriangle className={`w-3.5 h-3.5 ${textColor}`} />
           ) : (
-            <Clock className="w-3.5 h-3.5 text-amber-400" />
+            <Clock className={`w-3.5 h-3.5 ${textColor}`} />
           )}
-          <span className={`font-black text-xs uppercase tracking-wider ${
-            jaPassou ? 'text-red-400' : urgente ? 'text-orange-400' : grupo.isBrhub ? 'text-cyan-400' : 'text-amber-400'
-          }`}>
+          <span className={`font-black text-xs uppercase tracking-wider ${textColor}`}>
             {grupo.isBrhub ? `BRHUB · ${grupo.label}` : grupo.label}
           </span>
+          {jaPassou && (
+            <span className="text-[8px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded font-bold uppercase">Atrasado</span>
+          )}
         </div>
-        <span className="text-gray-600 text-[10px] font-bold uppercase tracking-widest">
-          {grupo.clientes.length} clientes · {grupo.totalObjetos} obj
-        </span>
-        <div className="flex-1 h-px bg-white/5" />
+        <div className="flex items-center gap-2">
+          <span className="text-gray-500 text-[9px] font-bold uppercase tracking-widest">
+            {grupo.clientes.length} clientes
+          </span>
+          <span className={`font-black text-sm tabular-nums ${textColor}`}>
+            {grupo.totalObjetos}
+          </span>
+        </div>
       </div>
 
-      <div className={`rounded-md overflow-hidden border ${
-        jaPassou ? 'border-red-500/20' : urgente ? 'border-orange-500/20' : 'border-white/5'
-      }`}>
+      {/* Corpo */}
+      <div className="rounded-b-lg overflow-hidden border border-t-0 border-white/5 bg-[#0a0f1a]">
         {grupo.clientes.map((cliente, i) => (
           <ClienteRow key={cliente.nome} cliente={cliente} index={i} />
         ))}
+      </div>
+    </div>
+  );
+};
+
+// ─── Progress Bar ────────────────────────────────────────────────────────────
+const RefreshProgress = ({ lastUpdate }: { lastUpdate: Date }) => {
+  const [progress, setProgress] = useState(100);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - lastUpdate.getTime();
+      const remaining = Math.max(0, 100 - (elapsed / REFRESH_INTERVAL) * 100);
+      setProgress(remaining);
+    }, 500);
+    return () => clearInterval(interval);
+  }, [lastUpdate]);
+
+  return (
+    <div className="w-full h-[3px] bg-white/5 overflow-hidden">
+      <div
+        className="h-full bg-gradient-to-r from-amber-500 via-orange-500 to-amber-400 transition-all duration-500 ease-linear"
+        style={{ width: `${progress}%` }}
+      />
+    </div>
+  );
+};
+
+// ─── Alert Banner ────────────────────────────────────────────────────────────
+const AlertBanner = ({ count, onDismiss }: { count: number; onDismiss: () => void }) => {
+  if (count <= 0) return null;
+
+  return (
+    <div 
+      onClick={onDismiss}
+      className="mx-4 mt-2 flex items-center justify-between px-4 py-2.5 rounded-lg bg-gradient-to-r from-amber-500/20 via-orange-500/15 to-amber-500/20 border border-amber-500/30 cursor-pointer animate-pulse"
+    >
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 rounded-full bg-amber-500/30 flex items-center justify-center">
+          <Bell className="w-4 h-4 text-amber-400" />
+        </div>
+        <div>
+          <p className="text-amber-400 font-black text-sm uppercase tracking-wide">
+            {count} {count === 1 ? 'nova coleta detectada' : 'novas coletas detectadas'}
+          </p>
+          <p className="text-amber-400/50 text-[10px] uppercase tracking-widest">Clique para dispensar</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <span className="inline-block w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+        <span className="inline-block w-2 h-2 rounded-full bg-amber-400" />
       </div>
     </div>
   );
@@ -418,6 +524,10 @@ const TvBoard = () => {
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [tick, setTick] = useState(0);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [newAlertCount, setNewAlertCount] = useState(0);
+  const [flashActive, setFlashActive] = useState(false);
+  const previousCountRef = useRef(0);
 
   const fetchHorarios = useCallback(async () => {
     try {
@@ -450,7 +560,6 @@ const TvBoard = () => {
       const json = await res.json();
       const lista: Etiqueta[] = json?.data || json || [];
 
-      // Filtrar etiquetas com mais de 4 dias
       const now = Date.now();
       const FOUR_DAYS_MS = 4 * 24 * 60 * 60 * 1000;
       const filtrada = lista.filter(et => {
@@ -460,6 +569,18 @@ const TvBoard = () => {
       });
 
       console.log(`[TV Painel] ${lista.length} etiquetas recebidas, ${filtrada.length} após filtro de 4 dias`);
+
+      // Detect new items
+      const prevCount = previousCountRef.current;
+      if (prevCount > 0 && filtrada.length > prevCount) {
+        const diff = filtrada.length - prevCount;
+        setNewAlertCount(diff);
+        setFlashActive(true);
+        if (soundEnabled) playAlertSound();
+        setTimeout(() => setFlashActive(false), 3000);
+      }
+      previousCountRef.current = filtrada.length;
+
       setData(filtrada);
       setLastUpdate(new Date());
     } catch (err) {
@@ -467,7 +588,7 @@ const TvBoard = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [soundEnabled]);
 
   useEffect(() => {
     fetchHorarios();
@@ -495,9 +616,8 @@ const TvBoard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastUpdate, tick]);
 
-  // ─── Nomes dos dias da semana ─────────────────────────────────────────
+  // ─── Colunas por dia da semana ─────────────────────────────────────────
   const DIAS_SEMANA = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
-
   const now = new Date();
   const diaAtual = now.getDay();
   const isFds = diaAtual === 0 || diaAtual === 6;
@@ -505,31 +625,18 @@ const TvBoard = () => {
   const col1 = isFds ? 'Segunda-feira' : DIAS_SEMANA[diaAtual];
   const col2 = isFds ? null : (diaAtual === 5 ? 'Segunda-feira' : DIAS_SEMANA[diaAtual + 1]);
 
-  // Separar etiquetas por coluna
   const etiquetasCol1: Etiqueta[] = [];
   const etiquetasCol2: Etiqueta[] = [];
 
   for (const et of data) {
-    if (!et.criadoEm) {
-      etiquetasCol1.push(et);
-      continue;
-    }
+    if (!et.criadoEm) { etiquetasCol1.push(et); continue; }
     const criadoDate = new Date(et.criadoEm);
     const criadoDia = criadoDate.getDay();
     const criadoHora = criadoDate.getHours() * 60 + criadoDate.getMinutes();
 
-    // Etiqueta gerada no sábado ou domingo → sempre Segunda (col1)
-    if (criadoDia === 0 || criadoDia === 6) {
-      etiquetasCol1.push(et);
-      continue;
-    }
+    if (criadoDia === 0 || criadoDia === 6) { etiquetasCol1.push(et); continue; }
+    if (isFds) { etiquetasCol1.push(et); continue; }
 
-    if (isFds) {
-      etiquetasCol1.push(et);
-      continue;
-    }
-
-    // Dia útil: verificar horário de coleta do cliente
     const nomeRemetente = et.remetenteNome || et.remetente?.nome || '';
     const horarioColeta = resolverHorario(nomeRemetente, horariosDb);
     const horarioColetaMin = parseTime(horarioColeta);
@@ -544,9 +651,7 @@ const TvBoard = () => {
         etiquetasCol1.push(et);
       }
     } else {
-      // Gerada em dia anterior que ainda não foi postada
       if (criadoDia === 5 && criadoHora >= horarioColetaMin) {
-        // Sexta após horário → Segunda
         etiquetasCol1.push(et);
       } else {
         etiquetasCol1.push(et);
@@ -572,80 +677,131 @@ const TvBoard = () => {
   const clientesCol1 = allGroupsCol1.reduce((acc, g) => acc + g.clientes.length, 0);
   const clientesCol2 = allGroupsCol2.reduce((acc, g) => acc + g.clientes.length, 0);
   const singleColumn = col2 === null;
-  const hoje = now.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+  // Count urgent groups
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const urgentCount = [...allGroupsCol1, ...allGroupsCol2].filter(g => {
+    const corte = g.sortKey - 60;
+    return g.sortKey < 9999 && nowMinutes >= corte && nowMinutes < g.sortKey;
+  }).length;
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0e17] flex items-center justify-center">
-        <RefreshCw className="w-12 h-12 text-amber-500 animate-spin" />
+      <div className="min-h-screen bg-[#060a13] flex flex-col items-center justify-center gap-4">
+        <div className="relative">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
+            <Truck className="w-8 h-8 text-white" />
+          </div>
+          <RefreshCw className="w-6 h-6 text-amber-400 animate-spin absolute -bottom-2 -right-2" />
+        </div>
+        <p className="text-gray-500 text-sm font-bold uppercase tracking-widest">Carregando painel...</p>
       </div>
     );
   }
 
   return (
-    <div className="h-screen bg-[#0a0e17] text-white flex flex-col select-none overflow-hidden">
-      <header className="flex items-center justify-between px-4 py-2 bg-gradient-to-r from-[#0f1523] to-[#0a0e17] border-b border-white/5 flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
-            <Truck className="w-5 h-5 text-white" />
+    <div className={`h-screen bg-[#060a13] text-white flex flex-col select-none overflow-hidden ${flashActive ? 'ring-4 ring-amber-500/50 ring-inset' : ''}`}>
+      {/* Flash overlay */}
+      {flashActive && (
+        <div className="fixed inset-0 bg-amber-500/5 pointer-events-none z-50 animate-pulse" />
+      )}
+
+      {/* Progress bar no topo */}
+      <RefreshProgress lastUpdate={lastUpdate} />
+
+      {/* Header - Control Tower style */}
+      <header className="flex items-center justify-between px-5 py-3 bg-gradient-to-r from-[#0c1220] via-[#0a0f1a] to-[#0c1220] border-b border-white/[0.06] flex-shrink-0">
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500 via-orange-500 to-red-500 flex items-center justify-center shadow-lg shadow-amber-500/20">
+              <Truck className="w-6 h-6 text-white" />
+            </div>
+            <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-[#060a13] animate-pulse" />
           </div>
           <div>
-            <h1 className="text-lg font-black tracking-tight uppercase leading-tight">Painel de Coleta</h1>
-            <p className="text-gray-600 text-[10px] tracking-widest uppercase">{hoje}</p>
+            <h1 className="text-xl font-black tracking-tight uppercase leading-tight flex items-center gap-2">
+              Control Tower
+              <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-full uppercase tracking-widest border border-emerald-500/20">
+                Live
+              </span>
+            </h1>
+            <p className="text-gray-500 text-[10px] tracking-widest uppercase font-semibold">
+              {now.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+            </p>
           </div>
         </div>
 
+        {/* Metrics */}
+        <div className="flex items-center gap-3">
+          <MetricCard label="Clientes" value={totalClientes} icon={Users} color="blue" />
+          <MetricCard label="Etiquetas" value={totalObjetos} icon={Package} color="amber" />
+          {urgentCount > 0 && (
+            <MetricCard label="Urgentes" value={urgentCount} icon={AlertTriangle} color="red" pulse />
+          )}
+        </div>
+
+        {/* Clock & Controls */}
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-4">
-            <div className="text-center">
-              <p className="text-gray-600 text-[9px] uppercase tracking-widest">Clientes</p>
-              <p className="text-2xl font-black text-white tabular-nums leading-tight">{totalClientes}</p>
-            </div>
-            <div className="w-px h-8 bg-white/10" />
-            <div className="text-center">
-              <p className="text-gray-600 text-[9px] uppercase tracking-widest">Etiquetas</p>
-              <p className="text-2xl font-black text-amber-400 tabular-nums leading-tight">{totalObjetos}</p>
-            </div>
-          </div>
+          <button
+            onClick={() => setSoundEnabled(!soundEnabled)}
+            className={`p-2 rounded-lg border transition-all ${
+              soundEnabled 
+                ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' 
+                : 'bg-white/5 border-white/10 text-gray-600'
+            }`}
+            title={soundEnabled ? 'Som ativado' : 'Som desativado'}
+          >
+            {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+          </button>
 
-          <div className="w-px h-8 bg-white/10" />
-
-          <div className="text-right">
-            <p className="text-2xl font-black tabular-nums tracking-tight text-white leading-tight">{horaAtual}</p>
-            <p className="text-[9px] text-gray-600 tracking-widest uppercase">
-              Refresh {proximoRefresh}
+          <div className="text-right pl-4 border-l border-white/10">
+            <p className="text-3xl font-black tabular-nums tracking-tight text-white leading-tight font-mono">{horaAtual}</p>
+            <p className="text-[9px] text-gray-500 tracking-widest uppercase font-bold flex items-center justify-end gap-1.5">
+              <RefreshCw className="w-2.5 h-2.5" />
+              {proximoRefresh}
             </p>
           </div>
         </div>
       </header>
 
-      <div className="flex-1 overflow-hidden px-4 py-2">
+      {/* Alert Banner */}
+      <AlertBanner count={newAlertCount} onDismiss={() => setNewAlertCount(0)} />
+
+      {/* Content */}
+      <div className="flex-1 overflow-hidden px-4 py-3">
         {data.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full gap-3 opacity-40">
-            <Package className="w-16 h-16" />
-            <p className="text-lg font-bold uppercase tracking-widest">Nenhuma etiqueta encontrada</p>
+          <div className="flex flex-col items-center justify-center h-full gap-4 opacity-30">
+            <div className="w-20 h-20 rounded-2xl bg-white/5 flex items-center justify-center">
+              <Package className="w-10 h-10" />
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-black uppercase tracking-widest">Nenhuma coleta pendente</p>
+              <p className="text-sm text-gray-600 mt-1">Aguardando novas etiquetas...</p>
+            </div>
           </div>
         ) : (
-          <div className={`grid ${singleColumn ? 'grid-cols-1' : 'grid-cols-2'} gap-4 h-full overflow-hidden`}>
+          <div className={`grid ${singleColumn ? 'grid-cols-1' : 'grid-cols-2'} gap-5 h-full overflow-hidden`}>
             {/* COLUNA 1 */}
-            <div className="flex flex-col gap-2 overflow-hidden">
-              <div className="flex items-center gap-2 mb-1">
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-emerald-500/20">
-                  <Truck className="w-4 h-4 text-emerald-400" />
-                  <span className="font-black text-sm uppercase tracking-wider text-emerald-400">{col1}</span>
+            <div className="flex flex-col gap-3 overflow-hidden">
+              <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-8 rounded-full bg-gradient-to-b from-emerald-400 to-emerald-600" />
+                  <div>
+                    <h2 className="font-black text-base uppercase tracking-wider text-emerald-400 leading-tight">{col1}</h2>
+                    <p className="text-gray-500 text-[9px] font-bold uppercase tracking-widest">
+                      {clientesCol1} clientes · {totalCol1} etiquetas
+                    </p>
+                  </div>
                 </div>
-                <span className="text-gray-500 text-[10px] font-bold uppercase tracking-widest">
-                  {clientesCol1} clientes · {totalCol1} etiq
-                </span>
-                <div className="flex-1 h-px bg-emerald-500/10" />
+                <span className="text-3xl font-black text-emerald-400/30 tabular-nums">{totalCol1}</span>
               </div>
               {allGroupsCol1.length === 0 ? (
-                <div className="flex flex-col items-center justify-center flex-1 gap-2 opacity-30">
+                <div className="flex flex-col items-center justify-center flex-1 gap-2 opacity-20">
                   <Package className="w-10 h-10" />
-                  <p className="text-xs font-bold uppercase tracking-widest">Nenhuma coleta pendente</p>
+                  <p className="text-xs font-bold uppercase tracking-widest">Nenhuma coleta</p>
                 </div>
               ) : (
-                <div className="flex flex-col gap-3 overflow-auto">
+                <div className="flex flex-col gap-3 overflow-auto pr-1 scrollbar-thin">
                   {allGroupsCol1.map((grupo) => (
                     <GrupoTable key={grupo.label} grupo={grupo} />
                   ))}
@@ -653,26 +809,28 @@ const TvBoard = () => {
               )}
             </div>
 
-            {/* COLUNA 2 (se existir) */}
+            {/* COLUNA 2 */}
             {!singleColumn && (
-              <div className="flex flex-col gap-2 overflow-hidden">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-blue-500/20">
-                    <CalendarClock className="w-4 h-4 text-blue-400" />
-                    <span className="font-black text-sm uppercase tracking-wider text-blue-400">{col2}</span>
+              <div className="flex flex-col gap-3 overflow-hidden">
+                <div className="flex items-center justify-between px-1">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-8 rounded-full bg-gradient-to-b from-blue-400 to-blue-600" />
+                    <div>
+                      <h2 className="font-black text-base uppercase tracking-wider text-blue-400 leading-tight">{col2}</h2>
+                      <p className="text-gray-500 text-[9px] font-bold uppercase tracking-widest">
+                        {clientesCol2} clientes · {totalCol2} etiquetas
+                      </p>
+                    </div>
                   </div>
-                  <span className="text-gray-500 text-[10px] font-bold uppercase tracking-widest">
-                    {clientesCol2} clientes · {totalCol2} etiq
-                  </span>
-                  <div className="flex-1 h-px bg-blue-500/10" />
+                  <span className="text-3xl font-black text-blue-400/30 tabular-nums">{totalCol2}</span>
                 </div>
                 {allGroupsCol2.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center flex-1 gap-2 opacity-30">
+                  <div className="flex flex-col items-center justify-center flex-1 gap-2 opacity-20">
                     <Package className="w-10 h-10" />
-                    <p className="text-xs font-bold uppercase tracking-widest">Nenhuma coleta pendente</p>
+                    <p className="text-xs font-bold uppercase tracking-widest">Nenhuma coleta</p>
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-3 overflow-auto">
+                  <div className="flex flex-col gap-3 overflow-auto pr-1 scrollbar-thin">
                     {allGroupsCol2.map((grupo) => (
                       <GrupoTable key={grupo.label} grupo={grupo} />
                     ))}
@@ -684,15 +842,20 @@ const TvBoard = () => {
         )}
       </div>
 
-      <footer className="px-4 py-1.5 bg-white/[0.02] border-t border-white/5 flex items-center justify-between text-[9px] text-gray-600 uppercase tracking-widest flex-shrink-0">
+      {/* Footer */}
+      <footer className="px-5 py-2 bg-[#0c1220] border-t border-white/[0.06] flex items-center justify-between text-[9px] text-gray-500 uppercase tracking-widest flex-shrink-0">
         <div className="flex items-center gap-3">
-          <span>Etiquetas do dia · Clique para expandir</span>
+          <Activity className="w-3 h-3 text-emerald-500" />
+          <span>Sistema operacional · Auto-refresh 2min</span>
           <span className="text-white/10">|</span>
           <span className="text-cyan-400/60">BRHUB: {BRHUB_HORARIO}</span>
         </div>
-        <span>
-          Atualizado: {lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-        </span>
+        <div className="flex items-center gap-3">
+          <span>
+            Atualizado: {lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+          </span>
+          <span className={`w-2 h-2 rounded-full ${soundEnabled ? 'bg-emerald-500' : 'bg-gray-600'}`} />
+        </div>
       </footer>
     </div>
   );
