@@ -331,7 +331,7 @@ const GrupoTable = ({ grupo }: { grupo: GrupoHorario }) => {
         {grupo.coletas.map((ordem, i) => (
           <div
             key={`${ordem.cliente}-${i}`}
-            className={`grid grid-cols-[28px_1fr_1.2fr_55px] gap-2 px-2 py-1.5 items-center ${
+            className={`grid grid-cols-[28px_1fr_auto_55px] gap-2 px-2 py-1.5 items-center ${
               i % 2 === 0 ? 'bg-white/[0.02]' : 'bg-white/[0.04]'
             }`}
           >
@@ -341,8 +341,16 @@ const GrupoTable = ({ grupo }: { grupo: GrupoHorario }) => {
             <span className="text-white font-bold text-[11px] truncate uppercase tracking-wide">
               {ordem.cliente}
             </span>
-            <span className="text-gray-300 text-[10px] truncate">
-              {ordem.localColeta || '—'}
+            <span className={`text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${
+              ordem.status?.toUpperCase().replace(/-/g, '_') === 'PRE_POSTADO'
+                ? 'bg-blue-500/20 text-blue-400'
+                : ordem.status?.toUpperCase() === 'POSTADO'
+                ? 'bg-green-500/20 text-green-400'
+                : ordem.status?.toUpperCase() === 'CANCELADO'
+                ? 'bg-red-500/20 text-red-400'
+                : 'bg-gray-500/20 text-gray-400'
+            }`}>
+              {ordem.status || 'SEM STATUS'}
             </span>
             <div className="flex justify-end">
               <span className="bg-amber-500/20 text-amber-400 font-black text-xs px-2 py-0.5 rounded tabular-nums text-center min-w-[36px]">
