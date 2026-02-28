@@ -61,7 +61,6 @@ const isBrhubClient = (nome: string): boolean => {
 const playAlertSound = () => {
   try {
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    // Triple beep pattern
     const playBeep = (startTime: number, freq: number, duration: number) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -125,14 +124,14 @@ const resolverLabel = (nome: string, horariosDb: ClienteHorario[]): string => {
 const StatusBadge = ({ status }: { status: string }) => {
   const normalized = status?.toUpperCase().replace(/-/g, '_') || '';
   const colors: Record<string, string> = {
-    PRE_POSTADO: 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
-    POSTADO: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
-    EM_TRANSITO: 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30',
-    ENTREGUE: 'bg-green-500/20 text-green-400 border border-green-500/30',
-    CANCELADO: 'bg-red-500/20 text-red-400 border border-red-500/30',
-    DEVOLVIDO: 'bg-gray-500/20 text-gray-400 border border-gray-500/30',
+    PRE_POSTADO: 'bg-blue-100 text-blue-700 border border-blue-200',
+    POSTADO: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
+    EM_TRANSITO: 'bg-cyan-100 text-cyan-700 border border-cyan-200',
+    ENTREGUE: 'bg-green-100 text-green-700 border border-green-200',
+    CANCELADO: 'bg-red-100 text-red-700 border border-red-200',
+    DEVOLVIDO: 'bg-gray-100 text-gray-600 border border-gray-200',
   };
-  const style = colors[normalized] || 'bg-gray-500/20 text-gray-400 border border-gray-500/30';
+  const style = colors[normalized] || 'bg-gray-100 text-gray-600 border border-gray-200';
   return (
     <span className={`text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-sm ${style}`}>
       {status?.replace(/_/g, ' ') || 'SEM STATUS'}
@@ -250,18 +249,18 @@ const TvLogin = ({ onAuth }: { onAuth: () => void }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#060a13] flex items-center justify-center p-6 font-sans">
+    <div className="min-h-screen bg-orange-50 flex items-center justify-center p-6 font-sans">
       <form onSubmit={handleSubmit} className="w-full max-w-sm flex flex-col items-center gap-8">
         <div className="flex flex-col items-center gap-4">
-          <img src={logoBrhub} alt="BRHUB Envios" className="w-28 h-28 object-contain drop-shadow-2xl" />
+          <img src={logoBrhub} alt="BRHUB Envios" className="w-28 h-28 object-contain drop-shadow-lg" />
           <div className="text-center">
-            <h1 className="text-2xl font-black text-white tracking-tight uppercase font-display">Painel de Coleta</h1>
-            <p className="text-orange-500/60 text-sm mt-1 font-semibold tracking-widest uppercase">BRHUB Envios</p>
+            <h1 className="text-2xl font-black text-gray-800 tracking-tight uppercase font-display">Painel de Coleta</h1>
+            <p className="text-orange-500 text-sm mt-1 font-semibold tracking-widest uppercase">BRHUB Envios</p>
           </div>
         </div>
         <div className="w-full space-y-4">
           <div className="relative">
-            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type={showPin ? 'text' : 'password'}
               value={pin}
@@ -269,25 +268,25 @@ const TvLogin = ({ onAuth }: { onAuth: () => void }) => {
               placeholder="PIN de acesso"
               inputMode="numeric"
               autoFocus
-              className={`w-full pl-12 pr-12 py-4 rounded-xl bg-white/5 border text-white text-lg font-mono tracking-[0.3em] text-center placeholder:tracking-normal placeholder:text-gray-600 focus:outline-none focus:ring-2 transition-all ${
+              className={`w-full pl-12 pr-12 py-4 rounded-xl bg-white border text-gray-800 text-lg font-mono tracking-[0.3em] text-center placeholder:tracking-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 transition-all shadow-sm ${
                 error
-                  ? 'border-red-500 focus:ring-red-500/40'
-                  : 'border-white/10 focus:ring-orange-500/40 focus:border-orange-500/60'
+                  ? 'border-red-300 focus:ring-red-300'
+                  : 'border-gray-200 focus:ring-orange-300 focus:border-orange-300'
               }`}
             />
             <button
               type="button"
               onClick={() => setShowPin(!showPin)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
               {showPin ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
             </button>
           </div>
-          {error && <p className="text-red-400 text-sm text-center font-medium">PIN incorreto.</p>}
+          {error && <p className="text-red-500 text-sm text-center font-medium">PIN incorreto.</p>}
           <button
             type="submit"
             disabled={pin.length < 4}
-            className="w-full py-4 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold text-lg shadow-lg shadow-orange-500/20 hover:shadow-orange-500/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full py-4 rounded-xl bg-gradient-to-r from-orange-400 to-orange-500 text-white font-bold text-lg shadow-md shadow-orange-200 hover:shadow-orange-300 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Acessar Painel
           </button>
@@ -302,19 +301,19 @@ const MetricCard = ({ label, value, icon: Icon, color, pulse }: {
   label: string; value: number | string; icon: any; color: string; pulse?: boolean 
 }) => {
   const colorMap: Record<string, string> = {
-    orange: 'from-orange-500/20 to-orange-600/5 border-orange-500/20 text-orange-400',
-    emerald: 'from-emerald-500/20 to-emerald-600/5 border-emerald-500/20 text-emerald-400',
-    blue: 'from-blue-500/20 to-blue-600/5 border-blue-500/20 text-blue-400',
-    cyan: 'from-cyan-500/20 to-cyan-600/5 border-cyan-500/20 text-cyan-400',
-    red: 'from-red-500/20 to-red-600/5 border-red-500/20 text-red-400',
+    orange: 'bg-orange-50 border-orange-200 text-orange-600',
+    emerald: 'bg-emerald-50 border-emerald-200 text-emerald-600',
+    blue: 'bg-blue-50 border-blue-200 text-blue-600',
+    cyan: 'bg-cyan-50 border-cyan-200 text-cyan-600',
+    red: 'bg-red-50 border-red-200 text-red-600',
   };
   const c = colorMap[color] || colorMap.orange;
 
   return (
-    <div className={`flex items-center gap-3 px-4 py-2.5 rounded-lg bg-gradient-to-r border backdrop-blur-sm ${c} ${pulse ? 'animate-pulse' : ''}`}>
+    <div className={`flex items-center gap-3 px-4 py-2.5 rounded-lg border ${c} ${pulse ? 'animate-pulse' : ''}`}>
       <Icon className="w-5 h-5 flex-shrink-0" />
       <div>
-        <p className="text-[9px] uppercase tracking-widest opacity-70 font-bold">{label}</p>
+        <p className="text-[9px] uppercase tracking-widest opacity-60 font-bold">{label}</p>
         <p className="text-xl font-black tabular-nums leading-tight font-display">{value}</p>
       </div>
     </div>
@@ -329,40 +328,40 @@ const ClienteRow = ({ cliente, index, isNew }: { cliente: ClienteAgrupado; index
     <div className="flex flex-col">
       <div
         onClick={() => setExpanded(!expanded)}
-        className={`grid grid-cols-[24px_1fr_auto_50px] gap-2 px-3 py-2 items-center cursor-pointer transition-all duration-200 hover:bg-white/[0.06] ${
-          isNew ? 'bg-orange-500/10 border-l-2 border-orange-400' : index % 2 === 0 ? 'bg-white/[0.015]' : 'bg-white/[0.035]'
+        className={`grid grid-cols-[24px_1fr_auto_50px] gap-2 px-3 py-2 items-center cursor-pointer transition-all duration-200 hover:bg-gray-50 ${
+          isNew ? 'bg-orange-50 border-l-2 border-orange-400' : index % 2 === 0 ? 'bg-white' : 'bg-gray-50/60'
         }`}
       >
-        <span className="text-gray-600 flex items-center">
-          {expanded ? <ChevronDown className="w-3.5 h-3.5 text-orange-400" /> : <ChevronRight className="w-3.5 h-3.5" />}
+        <span className="text-gray-400 flex items-center">
+          {expanded ? <ChevronDown className="w-3.5 h-3.5 text-orange-500" /> : <ChevronRight className="w-3.5 h-3.5" />}
         </span>
         <div className="flex flex-col min-w-0 gap-0.5">
-          <span className="text-white font-bold text-xs truncate uppercase tracking-wide leading-tight">
-            {isNew && <Zap className="w-3 h-3 inline text-orange-400 mr-1" />}
+          <span className="text-gray-800 font-bold text-xs truncate uppercase tracking-wide leading-tight">
+            {isNew && <Zap className="w-3 h-3 inline text-orange-500 mr-1" />}
             {cliente.nome}
           </span>
-          <span className="text-gray-500 text-[9px] truncate flex items-center gap-1 leading-tight">
-            <MapPin className="w-2.5 h-2.5 flex-shrink-0 text-gray-600" />
+          <span className="text-gray-400 text-[9px] truncate flex items-center gap-1 leading-tight">
+            <MapPin className="w-2.5 h-2.5 flex-shrink-0 text-gray-300" />
             {cliente.endereco}
           </span>
         </div>
         <div className="flex items-center gap-1">
           {cliente.totalPrePostado > 0 && (
-            <span className="bg-blue-500/20 text-blue-400 font-bold text-[8px] px-1.5 py-0.5 rounded-sm border border-blue-500/20">
+            <span className="bg-blue-100 text-blue-600 font-bold text-[8px] px-1.5 py-0.5 rounded-sm border border-blue-200">
               {cliente.totalPrePostado} PRÉ
             </span>
           )}
         </div>
         <div className="flex justify-end">
-          <span className="bg-white/10 text-white font-black text-xs px-2.5 py-1 rounded-md tabular-nums text-center min-w-[36px]">
+          <span className="bg-gray-100 text-gray-700 font-black text-xs px-2.5 py-1 rounded-md tabular-nums text-center min-w-[36px]">
             {cliente.etiquetas.length}
           </span>
         </div>
       </div>
 
       {expanded && (
-        <div className="bg-[#0c1222] border-l-2 border-orange-500/30 ml-4">
-          <div className="grid grid-cols-[1fr_1.2fr_auto_70px] gap-2 px-4 py-1.5 text-[8px] text-gray-500 uppercase tracking-widest font-bold border-b border-white/5">
+        <div className="bg-orange-50/50 border-l-2 border-orange-300 ml-4">
+          <div className="grid grid-cols-[1fr_1.2fr_auto_70px] gap-2 px-4 py-1.5 text-[8px] text-gray-400 uppercase tracking-widest font-bold border-b border-gray-100">
             <span>Código</span>
             <span>Destinatário</span>
             <span>Status</span>
@@ -373,18 +372,18 @@ const ClienteRow = ({ cliente, index, isNew }: { cliente: ClienteAgrupado; index
             .map((et, i) => (
               <div
                 key={et.id || i}
-                className={`grid grid-cols-[1fr_1.2fr_auto_70px] gap-2 px-4 py-1.5 items-center border-b border-white/[0.03] ${
-                  i % 2 === 0 ? 'bg-white/[0.01]' : 'bg-white/[0.025]'
+                className={`grid grid-cols-[1fr_1.2fr_auto_70px] gap-2 px-4 py-1.5 items-center border-b border-gray-100/60 ${
+                  i % 2 === 0 ? 'bg-white/60' : 'bg-orange-50/30'
                 }`}
               >
-                <span className="text-orange-300/80 font-mono text-[10px] truncate">
+                <span className="text-orange-600 font-mono text-[10px] truncate">
                   {et.codigoObjeto || '—'}
                 </span>
-                <span className="text-gray-300 text-[10px] truncate">
+                <span className="text-gray-600 text-[10px] truncate">
                   {et.destinatario?.nome || '—'}
                 </span>
                 <StatusBadge status={et.status} />
-                <span className="text-gray-500 text-[10px] font-mono text-right tabular-nums">
+                <span className="text-gray-400 text-[10px] font-mono text-right tabular-nums">
                   {formatDataHora(et.criadoEm)}
                 </span>
               </div>
@@ -398,16 +397,16 @@ const ClienteRow = ({ cliente, index, isNew }: { cliente: ClienteAgrupado; index
 // ─── Grupo Table ─────────────────────────────────────────────────────────────
 const GrupoTable = ({ grupo, coletaConfirmada, onConfirmarColeta }: { grupo: GrupoHorario; coletaConfirmada?: boolean; onConfirmarColeta?: () => void }) => {
   const headerColor = coletaConfirmada
-    ? 'bg-emerald-500/15 border-emerald-500/40'
+    ? 'bg-emerald-50 border-emerald-200'
     : grupo.isBrhub 
-    ? 'bg-cyan-500/10 border-cyan-500/30' 
-    : 'bg-white/[0.03] border-white/10';
+    ? 'bg-cyan-50 border-cyan-200' 
+    : 'bg-gray-50 border-gray-200';
 
   const textColor = coletaConfirmada
-    ? 'text-emerald-400'
+    ? 'text-emerald-600'
     : grupo.isBrhub 
-    ? 'text-cyan-400' 
-    : 'text-orange-400';
+    ? 'text-cyan-600' 
+    : 'text-orange-600';
 
   return (
     <div className={`flex flex-col ${coletaConfirmada ? 'opacity-70' : ''}`}>
@@ -425,11 +424,11 @@ const GrupoTable = ({ grupo, coletaConfirmada, onConfirmarColeta }: { grupo: Gru
             {grupo.isBrhub ? `BRHUB · ${grupo.label}` : grupo.label}
           </span>
           {coletaConfirmada && (
-            <span className="text-[8px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded font-bold uppercase">✓ Coletado</span>
+            <span className="text-[8px] bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded font-bold uppercase">✓ Coletado</span>
           )}
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-gray-500 text-[9px] font-bold uppercase tracking-widest">
+          <span className="text-gray-400 text-[9px] font-bold uppercase tracking-widest">
             {grupo.clientes.length} clientes
           </span>
           <span className={`font-black text-sm tabular-nums ${textColor}`}>
@@ -438,7 +437,7 @@ const GrupoTable = ({ grupo, coletaConfirmada, onConfirmarColeta }: { grupo: Gru
           {!coletaConfirmada && onConfirmarColeta && (
             <button
               onClick={onConfirmarColeta}
-              className="ml-1 px-2.5 py-1 rounded-md bg-emerald-500/20 text-emerald-400 text-[9px] font-bold uppercase tracking-wide border border-emerald-500/30 hover:bg-emerald-500/30 hover:border-emerald-400/50 transition-all"
+              className="ml-1 px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-600 text-[9px] font-bold uppercase tracking-wide border border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300 transition-all"
             >
               Confirmar Coleta
             </button>
@@ -446,7 +445,7 @@ const GrupoTable = ({ grupo, coletaConfirmada, onConfirmarColeta }: { grupo: Gru
           {coletaConfirmada && onConfirmarColeta && (
             <button
               onClick={onConfirmarColeta}
-              className="ml-1 px-2.5 py-1 rounded-md bg-white/5 text-gray-500 text-[9px] font-bold uppercase tracking-wide border border-white/10 hover:bg-white/10 transition-all"
+              className="ml-1 px-2.5 py-1 rounded-md bg-gray-50 text-gray-400 text-[9px] font-bold uppercase tracking-wide border border-gray-200 hover:bg-gray-100 transition-all"
             >
               Desfazer
             </button>
@@ -455,7 +454,7 @@ const GrupoTable = ({ grupo, coletaConfirmada, onConfirmarColeta }: { grupo: Gru
       </div>
 
       {/* Corpo */}
-      <div className={`rounded-b-lg overflow-hidden border border-t-0 ${coletaConfirmada ? 'border-emerald-500/10' : 'border-white/5'} bg-[#0a0f1a]`}>
+      <div className={`rounded-b-lg overflow-hidden border border-t-0 ${coletaConfirmada ? 'border-emerald-100' : 'border-gray-100'} bg-white`}>
         {grupo.clientes.map((cliente, i) => (
           <ClienteRow key={cliente.nome} cliente={cliente} index={i} />
         ))}
@@ -478,9 +477,9 @@ const RefreshProgress = ({ lastUpdate }: { lastUpdate: Date }) => {
   }, [lastUpdate]);
 
   return (
-    <div className="w-full h-[3px] bg-white/5 overflow-hidden">
+    <div className="w-full h-[3px] bg-gray-100 overflow-hidden">
       <div
-        className="h-full bg-gradient-to-r from-orange-500 via-orange-400 to-orange-500 transition-all duration-500 ease-linear"
+        className="h-full bg-gradient-to-r from-orange-300 via-orange-400 to-orange-300 transition-all duration-500 ease-linear"
         style={{ width: `${progress}%` }}
       />
     </div>
@@ -494,17 +493,17 @@ const AlertBanner = ({ count, onDismiss }: { count: number; onDismiss: () => voi
   return (
     <div 
       onClick={onDismiss}
-      className="mx-4 mt-2 flex items-center justify-between px-4 py-2.5 rounded-lg bg-gradient-to-r from-orange-500/20 via-orange-500/15 to-orange-500/20 border border-orange-500/30 cursor-pointer animate-pulse"
+      className="mx-4 mt-2 flex items-center justify-between px-4 py-2.5 rounded-lg bg-orange-50 border border-orange-200 cursor-pointer animate-pulse"
     >
       <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-full bg-orange-500/30 flex items-center justify-center">
-          <Bell className="w-4 h-4 text-orange-400" />
+        <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
+          <Bell className="w-4 h-4 text-orange-500" />
         </div>
         <div>
-          <p className="text-orange-400 font-black text-sm uppercase tracking-wide">
+          <p className="text-orange-600 font-black text-sm uppercase tracking-wide">
             {count} {count === 1 ? 'nova coleta detectada' : 'novas coletas detectadas'}
           </p>
-          <p className="text-orange-400/50 text-[10px] uppercase tracking-widest">Clique para dispensar</p>
+          <p className="text-orange-400 text-[10px] uppercase tracking-widest">Clique para dispensar</p>
         </div>
       </div>
       <div className="flex items-center gap-1.5">
@@ -520,16 +519,16 @@ const NewCollectionPopup = ({ count, onConfirm }: { count: number; onConfirm: ()
   if (count <= 0) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="bg-[#0c1222] border-2 border-orange-500/50 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl shadow-orange-500/20 flex flex-col items-center gap-6">
-        <div className="w-16 h-16 rounded-full bg-orange-500/20 border-2 border-orange-500/40 flex items-center justify-center animate-pulse">
-          <Bell className="w-8 h-8 text-orange-400" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm animate-in fade-in duration-300">
+      <div className="bg-white border-2 border-orange-200 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl shadow-orange-100 flex flex-col items-center gap-6">
+        <div className="w-16 h-16 rounded-full bg-orange-100 border-2 border-orange-200 flex items-center justify-center animate-pulse">
+          <Bell className="w-8 h-8 text-orange-500" />
         </div>
         <div className="text-center space-y-2">
-          <h2 className="text-2xl font-black text-white uppercase tracking-wide font-display">
+          <h2 className="text-2xl font-black text-gray-800 uppercase tracking-wide font-display">
             Nova Coleta Detectada!
           </h2>
-          <p className="text-orange-400 text-lg font-bold">
+          <p className="text-orange-500 text-lg font-bold">
             {count} {count === 1 ? 'nova etiqueta' : 'novas etiquetas'}
           </p>
           <p className="text-gray-400 text-sm">
@@ -538,7 +537,7 @@ const NewCollectionPopup = ({ count, onConfirm }: { count: number; onConfirm: ()
         </div>
         <button
           onClick={onConfirm}
-          className="w-full py-4 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-black text-lg uppercase tracking-wider shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 hover:scale-[1.02] transition-all active:scale-95"
+          className="w-full py-4 rounded-xl bg-gradient-to-r from-orange-400 to-orange-500 text-white font-black text-lg uppercase tracking-wider shadow-md shadow-orange-200 hover:shadow-orange-300 hover:scale-[1.02] transition-all active:scale-95"
         >
           Confirmar
         </button>
@@ -727,40 +726,40 @@ const TvBoard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#060a13] flex flex-col items-center justify-center gap-4">
+      <div className="min-h-screen bg-orange-50 flex flex-col items-center justify-center gap-4">
         <div className="relative">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center shadow-md shadow-orange-200">
             <Truck className="w-8 h-8 text-white" />
           </div>
           <RefreshCw className="w-6 h-6 text-orange-400 animate-spin absolute -bottom-2 -right-2" />
         </div>
-        <p className="text-gray-500 text-sm font-bold uppercase tracking-widest">Carregando painel...</p>
+        <p className="text-gray-400 text-sm font-bold uppercase tracking-widest">Carregando painel...</p>
       </div>
     );
   }
 
   return (
-    <div className={`h-screen bg-[#060a13] text-white flex flex-col select-none overflow-hidden font-sans ${flashActive ? 'ring-4 ring-orange-500/50 ring-inset' : ''}`}>
+    <div className={`h-screen bg-gray-50 text-gray-800 flex flex-col select-none overflow-hidden font-sans ${flashActive ? 'ring-4 ring-orange-300 ring-inset' : ''}`}>
       {/* Flash overlay */}
       {flashActive && (
-        <div className="fixed inset-0 bg-orange-500/5 pointer-events-none z-50 animate-pulse" />
+        <div className="fixed inset-0 bg-orange-100/40 pointer-events-none z-50 animate-pulse" />
       )}
 
       {/* Progress bar no topo */}
       <RefreshProgress lastUpdate={lastUpdate} />
 
-      {/* Header - Control Tower style */}
-      <header className="flex items-center justify-between px-5 py-3 bg-gradient-to-r from-[#0c1220] via-[#0a0f1a] to-[#0c1220] border-b border-white/[0.06] flex-shrink-0">
+      {/* Header */}
+      <header className="flex items-center justify-between px-5 py-3 bg-white border-b border-gray-100 flex-shrink-0 shadow-sm">
         <div className="flex items-center gap-4">
           <img src={logoBrhub} alt="BRHUB Envios" className="w-12 h-12 object-contain" />
           <div>
-            <h1 className="text-xl font-black tracking-tight uppercase leading-tight flex items-center gap-2 font-display">
+            <h1 className="text-xl font-black tracking-tight uppercase leading-tight flex items-center gap-2 font-display text-gray-800">
               Painel de Coleta
-              <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-full uppercase tracking-widest border border-emerald-500/20 font-sans">
+              <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full uppercase tracking-widest border border-emerald-200 font-sans">
                 Live
               </span>
             </h1>
-            <p className="text-gray-500 text-[10px] tracking-widest uppercase font-semibold">
+            <p className="text-gray-400 text-[10px] tracking-widest uppercase font-semibold">
               {now.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
             </p>
           </div>
@@ -781,17 +780,17 @@ const TvBoard = () => {
             onClick={() => setSoundEnabled(!soundEnabled)}
             className={`p-2 rounded-lg border transition-all ${
               soundEnabled 
-                ? 'bg-orange-500/10 border-orange-500/20 text-orange-400' 
-                : 'bg-white/5 border-white/10 text-gray-600'
+                ? 'bg-orange-50 border-orange-200 text-orange-500' 
+                : 'bg-gray-50 border-gray-200 text-gray-400'
             }`}
             title={soundEnabled ? 'Som ativado' : 'Som desativado'}
           >
             {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
           </button>
 
-          <div className="text-right pl-4 border-l border-white/10">
-            <p className="text-3xl font-black tabular-nums tracking-tight text-white leading-tight font-display">{horaAtual}</p>
-            <p className="text-[9px] text-gray-500 tracking-widest uppercase font-bold flex items-center justify-end gap-1.5">
+          <div className="text-right pl-4 border-l border-gray-200">
+            <p className="text-3xl font-black tabular-nums tracking-tight text-gray-800 leading-tight font-display">{horaAtual}</p>
+            <p className="text-[9px] text-gray-400 tracking-widest uppercase font-bold flex items-center justify-end gap-1.5">
               <RefreshCw className="w-2.5 h-2.5" />
               {proximoRefresh}
             </p>
@@ -809,12 +808,12 @@ const TvBoard = () => {
       <div className="flex-1 overflow-hidden px-4 py-3">
         {data.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-4 opacity-30">
-            <div className="w-20 h-20 rounded-2xl bg-white/5 flex items-center justify-center">
-              <Package className="w-10 h-10" />
+            <div className="w-20 h-20 rounded-2xl bg-gray-100 flex items-center justify-center">
+              <Package className="w-10 h-10 text-gray-400" />
             </div>
             <div className="text-center">
-              <p className="text-lg font-black uppercase tracking-widest">Nenhuma coleta pendente</p>
-              <p className="text-sm text-gray-600 mt-1">Aguardando novas etiquetas...</p>
+              <p className="text-lg font-black uppercase tracking-widest text-gray-500">Nenhuma coleta pendente</p>
+              <p className="text-sm text-gray-400 mt-1">Aguardando novas etiquetas...</p>
             </div>
           </div>
         ) : (
@@ -823,20 +822,20 @@ const TvBoard = () => {
             <div className="flex flex-col gap-3 overflow-hidden">
               <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-8 rounded-full bg-gradient-to-b from-emerald-400 to-emerald-600" />
+                  <div className="w-1.5 h-8 rounded-full bg-gradient-to-b from-emerald-300 to-emerald-500" />
                   <div>
-                    <h2 className="font-black text-base uppercase tracking-wider text-emerald-400 leading-tight font-display">{col1}</h2>
-                    <p className="text-gray-500 text-[9px] font-bold uppercase tracking-widest">
+                    <h2 className="font-black text-base uppercase tracking-wider text-emerald-600 leading-tight font-display">{col1}</h2>
+                    <p className="text-gray-400 text-[9px] font-bold uppercase tracking-widest">
                       {clientesCol1} clientes · {totalCol1} etiquetas
                     </p>
                   </div>
                 </div>
-                <span className="text-3xl font-black text-emerald-400/30 tabular-nums font-display">{totalCol1}</span>
+                <span className="text-3xl font-black text-emerald-200 tabular-nums font-display">{totalCol1}</span>
               </div>
               {allGroupsCol1.length === 0 ? (
                 <div className="flex flex-col items-center justify-center flex-1 gap-2 opacity-20">
-                  <Package className="w-10 h-10" />
-                  <p className="text-xs font-bold uppercase tracking-widest">Nenhuma coleta</p>
+                  <Package className="w-10 h-10 text-gray-300" />
+                  <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Nenhuma coleta</p>
                 </div>
               ) : (
                 <div className="flex flex-col gap-3 overflow-auto pr-1 scrollbar-thin">
@@ -852,20 +851,20 @@ const TvBoard = () => {
               <div className="flex flex-col gap-3 overflow-hidden">
                 <div className="flex items-center justify-between px-1">
                   <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-8 rounded-full bg-gradient-to-b from-blue-400 to-blue-600" />
+                    <div className="w-1.5 h-8 rounded-full bg-gradient-to-b from-blue-300 to-blue-500" />
                     <div>
-                      <h2 className="font-black text-base uppercase tracking-wider text-blue-400 leading-tight font-display">{col2}</h2>
-                      <p className="text-gray-500 text-[9px] font-bold uppercase tracking-widest">
+                      <h2 className="font-black text-base uppercase tracking-wider text-blue-600 leading-tight font-display">{col2}</h2>
+                      <p className="text-gray-400 text-[9px] font-bold uppercase tracking-widest">
                         {clientesCol2} clientes · {totalCol2} etiquetas
                       </p>
                     </div>
                   </div>
-                  <span className="text-3xl font-black text-blue-400/30 tabular-nums font-display">{totalCol2}</span>
+                  <span className="text-3xl font-black text-blue-200 tabular-nums font-display">{totalCol2}</span>
                 </div>
                 {allGroupsCol2.length === 0 ? (
                   <div className="flex flex-col items-center justify-center flex-1 gap-2 opacity-20">
-                    <Package className="w-10 h-10" />
-                    <p className="text-xs font-bold uppercase tracking-widest">Nenhuma coleta</p>
+                    <Package className="w-10 h-10 text-gray-300" />
+                    <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Nenhuma coleta</p>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-3 overflow-auto pr-1 scrollbar-thin">
@@ -881,18 +880,18 @@ const TvBoard = () => {
       </div>
 
       {/* Footer */}
-      <footer className="px-5 py-2 bg-[#0c1220] border-t border-white/[0.06] flex items-center justify-between text-[9px] text-gray-500 uppercase tracking-widest flex-shrink-0">
+      <footer className="px-5 py-2 bg-white border-t border-gray-100 flex items-center justify-between text-[9px] text-gray-400 uppercase tracking-widest flex-shrink-0">
         <div className="flex items-center gap-3">
-          <Activity className="w-3 h-3 text-emerald-500" />
+          <Activity className="w-3 h-3 text-emerald-400" />
           <span>Sistema operacional · Auto-refresh 2min</span>
-          <span className="text-white/10">|</span>
-          <span className="text-cyan-400/60">BRHUB: {BRHUB_HORARIO}</span>
+          <span className="text-gray-200">|</span>
+          <span className="text-cyan-500">BRHUB: {BRHUB_HORARIO}</span>
         </div>
         <div className="flex items-center gap-3">
           <span>
             Atualizado: {lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </span>
-          <span className={`w-2 h-2 rounded-full ${soundEnabled ? 'bg-emerald-500' : 'bg-gray-600'}`} />
+          <span className={`w-2 h-2 rounded-full ${soundEnabled ? 'bg-emerald-400' : 'bg-gray-300'}`} />
         </div>
       </footer>
     </div>
