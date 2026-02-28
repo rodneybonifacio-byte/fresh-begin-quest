@@ -250,12 +250,12 @@ const TvLogin = ({ onAuth }: { onAuth: () => void }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#060a13] flex items-center justify-center p-6">
+    <div className="min-h-screen bg-[#060a13] flex items-center justify-center p-6 font-sans">
       <form onSubmit={handleSubmit} className="w-full max-w-sm flex flex-col items-center gap-8">
         <div className="flex flex-col items-center gap-4">
           <img src={logoBrhub} alt="BRHUB Envios" className="w-28 h-28 object-contain drop-shadow-2xl" />
           <div className="text-center">
-            <h1 className="text-2xl font-black text-white tracking-tight uppercase">Painel de Coleta</h1>
+            <h1 className="text-2xl font-black text-white tracking-tight uppercase font-display">Painel de Coleta</h1>
             <p className="text-orange-500/60 text-sm mt-1 font-semibold tracking-widest uppercase">BRHUB Envios</p>
           </div>
         </div>
@@ -315,7 +315,7 @@ const MetricCard = ({ label, value, icon: Icon, color, pulse }: {
       <Icon className="w-5 h-5 flex-shrink-0" />
       <div>
         <p className="text-[9px] uppercase tracking-widest opacity-70 font-bold">{label}</p>
-        <p className="text-xl font-black tabular-nums leading-tight">{value}</p>
+        <p className="text-xl font-black tabular-nums leading-tight font-display">{value}</p>
       </div>
     </div>
   );
@@ -694,7 +694,7 @@ const TvBoard = () => {
   }
 
   return (
-    <div className={`h-screen bg-[#060a13] text-white flex flex-col select-none overflow-hidden ${flashActive ? 'ring-4 ring-orange-500/50 ring-inset' : ''}`}>
+    <div className={`h-screen bg-[#060a13] text-white flex flex-col select-none overflow-hidden font-sans ${flashActive ? 'ring-4 ring-orange-500/50 ring-inset' : ''}`}>
       {/* Flash overlay */}
       {flashActive && (
         <div className="fixed inset-0 bg-orange-500/5 pointer-events-none z-50 animate-pulse" />
@@ -708,9 +708,9 @@ const TvBoard = () => {
         <div className="flex items-center gap-4">
           <img src={logoBrhub} alt="BRHUB Envios" className="w-12 h-12 object-contain" />
           <div>
-            <h1 className="text-xl font-black tracking-tight uppercase leading-tight flex items-center gap-2">
+            <h1 className="text-xl font-black tracking-tight uppercase leading-tight flex items-center gap-2 font-display">
               Painel de Coleta
-              <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-full uppercase tracking-widest border border-emerald-500/20">
+              <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-full uppercase tracking-widest border border-emerald-500/20 font-sans">
                 Live
               </span>
             </h1>
@@ -744,7 +744,7 @@ const TvBoard = () => {
           </button>
 
           <div className="text-right pl-4 border-l border-white/10">
-            <p className="text-3xl font-black tabular-nums tracking-tight text-white leading-tight font-mono">{horaAtual}</p>
+            <p className="text-3xl font-black tabular-nums tracking-tight text-white leading-tight font-display">{horaAtual}</p>
             <p className="text-[9px] text-gray-500 tracking-widest uppercase font-bold flex items-center justify-end gap-1.5">
               <RefreshCw className="w-2.5 h-2.5" />
               {proximoRefresh}
@@ -776,13 +776,13 @@ const TvBoard = () => {
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-8 rounded-full bg-gradient-to-b from-emerald-400 to-emerald-600" />
                   <div>
-                    <h2 className="font-black text-base uppercase tracking-wider text-emerald-400 leading-tight">{col1}</h2>
+                    <h2 className="font-black text-base uppercase tracking-wider text-emerald-400 leading-tight font-display">{col1}</h2>
                     <p className="text-gray-500 text-[9px] font-bold uppercase tracking-widest">
                       {clientesCol1} clientes · {totalCol1} etiquetas
                     </p>
                   </div>
                 </div>
-                <span className="text-3xl font-black text-emerald-400/30 tabular-nums">{totalCol1}</span>
+                <span className="text-3xl font-black text-emerald-400/30 tabular-nums font-display">{totalCol1}</span>
               </div>
               {allGroupsCol1.length === 0 ? (
                 <div className="flex flex-col items-center justify-center flex-1 gap-2 opacity-20">
@@ -805,13 +805,13 @@ const TvBoard = () => {
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-8 rounded-full bg-gradient-to-b from-blue-400 to-blue-600" />
                     <div>
-                      <h2 className="font-black text-base uppercase tracking-wider text-blue-400 leading-tight">{col2}</h2>
+                      <h2 className="font-black text-base uppercase tracking-wider text-blue-400 leading-tight font-display">{col2}</h2>
                       <p className="text-gray-500 text-[9px] font-bold uppercase tracking-widest">
                         {clientesCol2} clientes · {totalCol2} etiquetas
                       </p>
                     </div>
                   </div>
-                  <span className="text-3xl font-black text-blue-400/30 tabular-nums">{totalCol2}</span>
+                  <span className="text-3xl font-black text-blue-400/30 tabular-nums font-display">{totalCol2}</span>
                 </div>
                 {allGroupsCol2.length === 0 ? (
                   <div className="flex flex-col items-center justify-center flex-1 gap-2 opacity-20">
