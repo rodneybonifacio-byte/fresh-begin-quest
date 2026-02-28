@@ -522,7 +522,7 @@ const NewCollectionPopup = ({ count, onConfirm }: { count: number; onConfirm: ()
   if (count <= 0) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm animate-in fade-in duration-300 cursor-pointer" onClick={onConfirm}>
       <div className="bg-white border-2 border-orange-200 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl shadow-orange-100 flex flex-col items-center gap-6">
         <div className="w-16 h-16 rounded-full bg-orange-100 border-2 border-orange-200 flex items-center justify-center animate-pulse">
           <Bell className="w-8 h-8 text-orange-500" />
