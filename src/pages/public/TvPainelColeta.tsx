@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Package, MapPin, Clock, Truck, RefreshCw, Lock, Eye, EyeOff, User, AlertTriangle } from 'lucide-react';
+import { Package, Clock, Truck, RefreshCw, Lock, Eye, EyeOff, AlertTriangle, Users } from 'lucide-react';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface OrdemColeta {
@@ -14,7 +14,16 @@ interface OrdemColeta {
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 const TV_PIN = '7890';
-const REFRESH_INTERVAL = 120_000; // 2 min
+const REFRESH_INTERVAL = 120_000;
+
+// ─── Clientes BRHUB ──────────────────────────────────────────────────────────
+const BRHUB_CLIENTS = ['TG GRIFFES', '7 DAYS', 'CAIRO', 'NEXX', 'ERONIA', 'ATENDENCIA'];
+const BRHUB_HORARIO = '16:00 – 17:00';
+
+const isBrhubClient = (nome: string): boolean => {
+  const upper = nome.toUpperCase().trim();
+  return BRHUB_CLIENTS.some(c => upper.includes(c));
+};
 
 // ─── Lógica de datas ─────────────────────────────────────────────────────────
 const calcularDatasColeta = () => {
@@ -63,11 +72,6 @@ const formatTimeRange = (time: string): string => {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 };
 
-/**
- * Regra de corte: horário de corte = primeiro horário da coleta - 1h
- * Se a hora atual já passou o horário de corte, a coleta que seria para hoje
- * na verdade deveria ter sido agendada ontem (já está atrasada).
- */
 const getCorteInfo = (coletas: OrdemColeta[]): { horarioCorte: string; primeiroHorario: string } | null => {
   if (coletas.length === 0) return null;
 
@@ -79,7 +83,7 @@ const getCorteInfo = (coletas: OrdemColeta[]): { horarioCorte: string; primeiroH
   if (horarios.length === 0) return null;
 
   const primeiro = horarios[0];
-  const corte = primeiro - 60; // 1h antes
+  const corte = primeiro - 60;
 
   const fmtMinutes = (mins: number) => {
     const h = Math.floor(mins / 60);
@@ -93,35 +97,59 @@ const getCorteInfo = (coletas: OrdemColeta[]): { horarioCorte: string; primeiroH
   };
 };
 
-// ─── Agrupar coletas por faixa horária ───────────────────────────────────────
+// ─── Agrupar coletas ─────────────────────────────────────────────────────────
 interface GrupoHorario {
   label: string;
   sortKey: number;
   coletas: OrdemColeta[];
   totalObjetos: number;
+  isBrhub?: boolean;
 }
 
-const agruparPorHorario = (coletas: OrdemColeta[]): GrupoHorario[] => {
-  const map = new Map<string, OrdemColeta[]>();
+const agruparColetas = (coletas: OrdemColeta[]): { regulares: GrupoHorario[]; brhub: GrupoHorario | null } => {
+  const brhubColetas: OrdemColeta[] = [];
+  const outrasColetas: OrdemColeta[] = [];
 
   for (const c of coletas) {
+    if (isBrhubClient(c.cliente)) {
+      brhubColetas.push(c);
+    } else {
+      outrasColetas.push(c);
+    }
+  }
+
+  // Agrupar regulares por horário
+  const map = new Map<string, OrdemColeta[]>();
+  for (const c of outrasColetas) {
     const time = formatTimeRange(c.dataHoraColeta);
     const key = time === 'Sem horário' ? 'ZZ:ZZ' : time;
     if (!map.has(key)) map.set(key, []);
     map.get(key)!.push(c);
   }
 
-  const grupos: GrupoHorario[] = [];
+  const regulares: GrupoHorario[] = [];
   for (const [key, items] of map) {
-    grupos.push({
-      label: key === 'ZZ:ZZ' ? 'Sem horário definido' : key,
+    regulares.push({
+      label: key === 'ZZ:ZZ' ? 'Sem horário' : key,
       sortKey: key === 'ZZ:ZZ' ? 9999 : parseTime(key),
       coletas: items.sort((a, b) => a.cliente.localeCompare(b.cliente)),
       totalObjetos: items.reduce((acc, o) => acc + (parseInt(o.totalObjeto) || 0), 0),
     });
   }
 
-  return grupos.sort((a, b) => a.sortKey - b.sortKey);
+  regulares.sort((a, b) => a.sortKey - b.sortKey);
+
+  const brhub: GrupoHorario | null = brhubColetas.length > 0
+    ? {
+        label: BRHUB_HORARIO,
+        sortKey: 960, // 16:00
+        coletas: brhubColetas.sort((a, b) => a.cliente.localeCompare(b.cliente)),
+        totalObjetos: brhubColetas.reduce((acc, o) => acc + (parseInt(o.totalObjeto) || 0), 0),
+        isBrhub: true,
+      }
+    : null;
+
+  return { regulares, brhub };
 };
 
 // ─── Componente de Login (PIN) ───────────────────────────────────────────────
@@ -154,7 +182,6 @@ const TvLogin = ({ onAuth }: { onAuth: () => void }) => {
             <p className="text-gray-500 text-sm mt-1">Insira o PIN para acessar</p>
           </div>
         </div>
-
         <div className="w-full space-y-4">
           <div className="relative">
             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
@@ -193,7 +220,66 @@ const TvLogin = ({ onAuth }: { onAuth: () => void }) => {
   );
 };
 
-// ─── Painel principal (TV Board) ─────────────────────────────────────────────
+// ─── Componente de Grupo (tabela compacta) ───────────────────────────────────
+const GrupoTable = ({ grupo }: { grupo: GrupoHorario }) => (
+  <div className="flex flex-col">
+    {/* Header do grupo */}
+    <div className="flex items-center gap-2 mb-1">
+      <div className={`flex items-center gap-1.5 px-3 py-1 rounded-md ${
+        grupo.isBrhub
+          ? 'bg-cyan-500/20'
+          : 'bg-amber-500/20'
+      }`}>
+        {grupo.isBrhub ? (
+          <Users className="w-3.5 h-3.5 text-cyan-400" />
+        ) : (
+          <Clock className="w-3.5 h-3.5 text-amber-400" />
+        )}
+        <span className={`font-black text-xs uppercase tracking-wider ${
+          grupo.isBrhub ? 'text-cyan-400' : 'text-amber-400'
+        }`}>
+          {grupo.isBrhub ? `BRHUB · ${grupo.label}` : grupo.label}
+        </span>
+      </div>
+      <span className="text-gray-600 text-[10px] font-bold uppercase tracking-widest">
+        {grupo.coletas.length} · {grupo.totalObjetos} obj
+      </span>
+      <div className="flex-1 h-px bg-white/5" />
+    </div>
+
+    {/* Linhas */}
+    <div className="rounded-md overflow-hidden border border-white/5">
+      {grupo.coletas.map((ordem, i) => (
+        <div
+          key={`${ordem.cliente}-${i}`}
+          className={`grid grid-cols-[28px_1fr_1fr_90px_55px] gap-2 px-2 py-1.5 items-center ${
+            i % 2 === 0 ? 'bg-white/[0.02]' : 'bg-white/[0.04]'
+          }`}
+        >
+          <span className="text-amber-400/50 font-bold text-[11px] tabular-nums">
+            {String(i + 1).padStart(2, '0')}
+          </span>
+          <span className="text-white font-bold text-[11px] truncate uppercase tracking-wide">
+            {ordem.cliente}
+          </span>
+          <span className="text-gray-500 text-[10px] truncate">
+            {ordem.localColeta || '—'}
+          </span>
+          <span className="text-blue-300 text-[10px] font-semibold uppercase truncate">
+            {ordem.responsavel || '—'}
+          </span>
+          <div className="flex justify-end">
+            <span className="bg-amber-500/20 text-amber-400 font-black text-xs px-2 py-0.5 rounded tabular-nums text-center min-w-[36px]">
+              {ordem.totalObjeto}
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+// ─── Painel principal ────────────────────────────────────────────────────────
 const TvBoard = () => {
   const [data, setData] = useState<OrdemColeta[]>([]);
   const [loading, setLoading] = useState(true);
@@ -216,7 +302,6 @@ const TvBoard = () => {
       const json = await res.json();
       const lista: OrdemColeta[] = json?.data || json || [];
 
-      // Filtro de segurança: apenas PRE_POSTADO
       const filtered = lista.filter((item) => {
         if (!item.status) return true;
         return String(item.status).toUpperCase().replace('-', '_') === 'PRE_POSTADO';
@@ -237,13 +322,12 @@ const TvBoard = () => {
     return () => clearInterval(interval);
   }, [fetchData]);
 
-  // Relógio
   useEffect(() => {
     const t = setInterval(() => setTick((v) => v + 1), 1000);
     return () => clearInterval(t);
   }, []);
 
-  const grupos = useMemo(() => agruparPorHorario(data), [data]);
+  const { regulares, brhub } = useMemo(() => agruparColetas(data), [data]);
   const totalObjetos = useMemo(() => data.reduce((acc, o) => acc + (parseInt(o.totalObjeto) || 0), 0), [data]);
   const corteInfo = useMemo(() => getCorteInfo(data), [data]);
 
@@ -262,7 +346,6 @@ const TvBoard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastUpdate, tick]);
 
-  // Verificar se já passou do horário de corte
   const horaAtualMinutos = new Date().getHours() * 60 + new Date().getMinutes();
   const passouCorte = corteInfo ? horaAtualMinutos >= parseTime(corteInfo.horarioCorte) : false;
 
@@ -274,163 +357,115 @@ const TvBoard = () => {
     );
   }
 
+  // Combinar todos os grupos para exibição em colunas
+  const allGroups: GrupoHorario[] = [...regulares];
+  if (brhub) allGroups.push(brhub);
+  allGroups.sort((a, b) => a.sortKey - b.sortKey);
+
+  // Dividir em 2 colunas se tiver muitos grupos
+  const midpoint = Math.ceil(allGroups.length / 2);
+  const col1 = allGroups.slice(0, midpoint);
+  const col2 = allGroups.slice(midpoint);
+
   return (
-    <div className="min-h-screen bg-[#0a0e17] text-white flex flex-col select-none">
-      {/* ── Header ──────────────────────────────────────────── */}
-      <header className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-[#0f1523] to-[#0a0e17] border-b border-white/5 flex-shrink-0">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
-            <Truck className="w-7 h-7 text-white" />
+    <div className="h-screen bg-[#0a0e17] text-white flex flex-col select-none overflow-hidden">
+      {/* ── Header compacto ──────────────────────────────── */}
+      <header className="flex items-center justify-between px-4 py-2 bg-gradient-to-r from-[#0f1523] to-[#0a0e17] border-b border-white/5 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
+            <Truck className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-black tracking-tight uppercase">Painel de Coleta</h1>
-            <p className="text-gray-500 text-xs tracking-widest uppercase">{datas.label}</p>
+            <h1 className="text-lg font-black tracking-tight uppercase leading-tight">Painel de Coleta</h1>
+            <p className="text-gray-600 text-[10px] tracking-widest uppercase">{datas.label}</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
           {/* Regra de corte */}
           {corteInfo && (
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border ${
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border ${
               passouCorte
                 ? 'bg-red-500/10 border-red-500/30'
                 : 'bg-emerald-500/10 border-emerald-500/30'
             }`}>
-              <AlertTriangle className={`w-4 h-4 ${passouCorte ? 'text-red-400' : 'text-emerald-400'}`} />
-              <div className="text-xs">
+              <AlertTriangle className={`w-3.5 h-3.5 ${passouCorte ? 'text-red-400' : 'text-emerald-400'}`} />
+              <div className="text-[10px] leading-tight">
                 <p className={`font-bold ${passouCorte ? 'text-red-400' : 'text-emerald-400'}`}>
                   Corte: {corteInfo.horarioCorte}
                 </p>
                 <p className="text-gray-500">
-                  {passouCorte ? 'Novas etiquetas vão p/ amanhã' : 'Aceitando etiquetas p/ hoje'}
+                  {passouCorte ? 'Novas → amanhã' : 'Aceitando p/ hoje'}
                 </p>
               </div>
             </div>
           )}
 
           {/* Contadores */}
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4">
             <div className="text-center">
-              <p className="text-gray-500 text-[10px] uppercase tracking-widest">Clientes</p>
-              <p className="text-3xl font-black text-white tabular-nums">{data.length}</p>
+              <p className="text-gray-600 text-[9px] uppercase tracking-widest">Clientes</p>
+              <p className="text-2xl font-black text-white tabular-nums leading-tight">{data.length}</p>
             </div>
-            <div className="w-px h-10 bg-white/10" />
+            <div className="w-px h-8 bg-white/10" />
             <div className="text-center">
-              <p className="text-gray-500 text-[10px] uppercase tracking-widest">Objetos</p>
-              <p className="text-3xl font-black text-amber-400 tabular-nums">{totalObjetos}</p>
+              <p className="text-gray-600 text-[9px] uppercase tracking-widest">Objetos</p>
+              <p className="text-2xl font-black text-amber-400 tabular-nums leading-tight">{totalObjetos}</p>
             </div>
           </div>
 
-          <div className="w-px h-10 bg-white/10" />
+          <div className="w-px h-8 bg-white/10" />
 
           {/* Relógio */}
           <div className="text-right">
-            <p className="text-3xl font-black tabular-nums tracking-tight text-white">{horaAtual}</p>
-            <p className="text-[10px] text-gray-500 tracking-widest uppercase">
-              Atualiza em {proximoRefresh}
+            <p className="text-2xl font-black tabular-nums tracking-tight text-white leading-tight">{horaAtual}</p>
+            <p className="text-[9px] text-gray-600 tracking-widest uppercase">
+              Refresh {proximoRefresh}
             </p>
           </div>
         </div>
       </header>
 
-      {/* ── Body ────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto px-6 py-4">
+      {/* ── Body ────────────────────────────────────────── */}
+      <div className="flex-1 overflow-hidden px-4 py-2">
         {data.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full gap-4 opacity-40">
-            <Package className="w-20 h-20" />
-            <p className="text-xl font-bold uppercase tracking-widest">Nenhuma coleta pendente</p>
+          <div className="flex flex-col items-center justify-center h-full gap-3 opacity-40">
+            <Package className="w-16 h-16" />
+            <p className="text-lg font-bold uppercase tracking-widest">Nenhuma coleta pendente</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-6">
-            {grupos.map((grupo) => (
-              <div key={grupo.label} className="flex flex-col">
-                {/* Group header */}
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="flex items-center gap-2 bg-amber-500/20 px-4 py-1.5 rounded-lg">
-                    <Clock className="w-4 h-4 text-amber-400" />
-                    <span className="text-amber-400 font-black text-sm uppercase tracking-wider">
-                      {grupo.label}
-                    </span>
-                  </div>
-                  <span className="text-gray-500 text-xs font-bold uppercase tracking-widest">
-                    {grupo.coletas.length} cliente{grupo.coletas.length > 1 ? 's' : ''} · {grupo.totalObjetos} obj
-                  </span>
-                  <div className="flex-1 h-px bg-white/5" />
-                </div>
-
-                {/* Table header */}
-                <div className="grid grid-cols-[40px_1fr_1.5fr_120px_80px] gap-3 px-4 py-2 bg-white/[0.02] rounded-t-lg border-b border-white/5">
-                  <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">#</span>
-                  <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Cliente</span>
-                  <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Local de Coleta</span>
-                  <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Motorista</span>
-                  <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold text-right">Qtd</span>
-                </div>
-
-                {/* Rows */}
-                {grupo.coletas.map((ordem, i) => (
-                  <div
-                    key={`${ordem.cliente}-${i}`}
-                    className={`grid grid-cols-[40px_1fr_1.5fr_120px_80px] gap-3 px-4 py-3 items-center border-b border-white/[0.03] ${
-                      i % 2 === 0 ? 'bg-white/[0.01]' : ''
-                    } hover:bg-white/[0.04] transition-colors`}
-                  >
-                    {/* Nº */}
-                    <span className="text-amber-400/60 font-bold text-sm tabular-nums">
-                      {String(i + 1).padStart(2, '0')}
-                    </span>
-
-                    {/* Cliente */}
-                    <span className="text-white font-bold text-sm truncate uppercase tracking-wide">
-                      {ordem.cliente}
-                    </span>
-
-                    {/* Local */}
-                    <div className="flex items-center gap-2 min-w-0">
-                      <MapPin className="w-3.5 h-3.5 text-gray-600 flex-shrink-0" />
-                      <span className="text-gray-400 text-xs truncate">
-                        {ordem.localColeta || '—'}
-                      </span>
-                    </div>
-
-                    {/* Motorista */}
-                    <div className="flex items-center gap-1.5">
-                      <User className="w-3.5 h-3.5 text-blue-400/70 flex-shrink-0" />
-                      <span className="text-blue-300 text-xs font-semibold uppercase truncate">
-                        {ordem.responsavel || '—'}
-                      </span>
-                    </div>
-
-                    {/* Qtd */}
-                    <div className="flex justify-end">
-                      <span className="bg-amber-500/20 text-amber-400 font-black text-base px-3 py-0.5 rounded-md tabular-nums min-w-[50px] text-center">
-                        {ordem.totalObjeto}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ))}
+          <div className="grid grid-cols-2 gap-4 h-full overflow-hidden">
+            {/* Coluna 1 */}
+            <div className="flex flex-col gap-3 overflow-hidden">
+              {col1.map((grupo) => (
+                <GrupoTable key={grupo.label} grupo={grupo} />
+              ))}
+            </div>
+            {/* Coluna 2 */}
+            <div className="flex flex-col gap-3 overflow-hidden">
+              {col2.map((grupo) => (
+                <GrupoTable key={grupo.label} grupo={grupo} />
+              ))}
+            </div>
           </div>
         )}
       </div>
 
-      {/* ── Footer ──────────────────────────────────────────── */}
-      <footer className="px-6 py-3 bg-white/[0.02] border-t border-white/5 flex items-center justify-between text-[10px] text-gray-600 uppercase tracking-widest flex-shrink-0">
-        <div className="flex items-center gap-4">
-          <span>Apenas objetos pré-postados</span>
+      {/* ── Footer compacto ─────────────────────────────── */}
+      <footer className="px-4 py-1.5 bg-white/[0.02] border-t border-white/5 flex items-center justify-between text-[9px] text-gray-600 uppercase tracking-widest flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <span>Apenas pré-postados</span>
           {corteInfo && (
             <>
               <span className="text-white/10">|</span>
-              <span>
-                1ª coleta: {corteInfo.primeiroHorario} · Corte p/ novas etiquetas: {corteInfo.horarioCorte}
-              </span>
+              <span>1ª coleta: {corteInfo.primeiroHorario} · Corte: {corteInfo.horarioCorte}</span>
             </>
           )}
+          <span className="text-white/10">|</span>
+          <span className="text-cyan-400/60">BRHUB: {BRHUB_HORARIO}</span>
         </div>
         <span>
-          Última atualização:{' '}
-          {lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+          Atualizado: {lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
         </span>
       </footer>
     </div>
