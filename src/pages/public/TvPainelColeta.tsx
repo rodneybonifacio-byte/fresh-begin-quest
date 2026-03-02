@@ -612,6 +612,10 @@ const TvBoard = () => {
       const now = Date.now();
       const FOUR_DAYS_MS = 4 * 24 * 60 * 60 * 1000;
       const filtrada = lista.filter(et => {
+        // Remover Crazy Crab das coletas
+        const remetNome = (et.remetenteNome || et.remetente?.nome || '').toUpperCase();
+        if (remetNome.includes('CRAZY CRAB')) return false;
+
         if (!et.criadoEm) return true;
         const criado = new Date(et.criadoEm).getTime();
         return (now - criado) <= FOUR_DAYS_MS;
