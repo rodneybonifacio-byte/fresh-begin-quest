@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Package, Clock, Truck, RefreshCw, Lock, Eye, EyeOff, AlertTriangle, Users, ChevronDown, ChevronRight, MapPin, Volume2, VolumeX, Bell, Activity, Zap } from 'lucide-react';
+import { Package, Clock, Truck, RefreshCw, Lock, Eye, EyeOff, Users, ChevronDown, ChevronRight, MapPin, Volume2, VolumeX, Bell, Activity, Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import logoBrhub from '@/assets/logo-brhub-new.png';
 
@@ -678,68 +678,62 @@ const TvBoard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastUpdate, tick]);
 
-  // ─── Kanban: 5 colunas (Seg a Sex) ──────────────────────────────────────────
-  const DIAS_KANBAN = [
-    { label: 'Segunda', short: 'SEG', dayIndex: 1, color: 'emerald' },
-    { label: 'Terça', short: 'TER', dayIndex: 2, color: 'blue' },
-    { label: 'Quarta', short: 'QUA', dayIndex: 3, color: 'violet' },
-    { label: 'Quinta', short: 'QUI', dayIndex: 4, color: 'amber' },
-    { label: 'Sexta', short: 'SEX', dayIndex: 5, color: 'rose' },
-  ];
-
+  // ─── Kanban: 2 colunas (Hoje + Próximo dia útil) ────────────────────────────
+  const DIAS_SHORT = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
   const now = new Date();
-  // diaAtual used implicitly via now.getDay() in template
+  const diaAtual = now.getDay();
+  const isFds = diaAtual === 0 || diaAtual === 6;
 
-  // Distribuir etiquetas por dia da semana
-  const etiquetasPorDia: Record<number, Etiqueta[]> = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+  const dia1Index = isFds ? 1 : diaAtual;
+  const dia2Index = isFds ? 2 : (diaAtual === 5 ? 1 : diaAtual + 1);
+  const dia1Short = DIAS_SHORT[dia1Index];
+  const dia2Short = DIAS_SHORT[dia2Index];
+
+  const etiquetasCol1: Etiqueta[] = [];
+  const etiquetasCol2: Etiqueta[] = [];
 
   for (const et of data) {
-    if (!et.criadoEm) {
-      // Sem data → coloca na segunda
-      etiquetasPorDia[1].push(et);
-      continue;
-    }
+    if (!et.criadoEm) { etiquetasCol1.push(et); continue; }
     const criadoDate = new Date(et.criadoEm);
     const criadoDia = criadoDate.getDay();
     const criadoHora = criadoDate.getHours() * 60 + criadoDate.getMinutes();
 
+    if (criadoDia === 0 || criadoDia === 6) { etiquetasCol1.push(et); continue; }
+    if (isFds) { etiquetasCol1.push(et); continue; }
+
     const nomeRemetente = et.remetenteNome || et.remetente?.nome || '';
     const horarioColeta = resolverHorario(nomeRemetente, horariosDb);
     const horarioColetaMin = parseTime(horarioColeta);
+    const isHoje = criadoDate.toDateString() === now.toDateString();
 
-    if (criadoDia === 0 || criadoDia === 6) {
-      // Fim de semana → segunda
-      etiquetasPorDia[1].push(et);
-    } else if (criadoHora >= horarioColetaMin) {
-      // Criada após horário de coleta → próximo dia útil
-      const nextDay = criadoDia === 5 ? 1 : criadoDia + 1;
-      etiquetasPorDia[nextDay].push(et);
+    if (isHoje) {
+      if (criadoHora < horarioColetaMin) {
+        etiquetasCol1.push(et);
+      } else {
+        etiquetasCol2.push(et);
+      }
     } else {
-      etiquetasPorDia[criadoDia].push(et);
+      etiquetasCol1.push(et);
     }
   }
 
-  // Agrupar cada coluna
-  const colunas = DIAS_KANBAN.map(dia => {
-    const ets = etiquetasPorDia[dia.dayIndex];
-    const { regulares, brhub } = agruparPorRemetente(ets, horariosDb);
-    const allGroups: GrupoHorario[] = [...regulares];
-    if (brhub) allGroups.push(brhub);
-    allGroups.sort((a, b) => a.sortKey - b.sortKey);
-    const totalClientes = allGroups.reduce((acc, g) => acc + g.clientes.length, 0);
-    return { ...dia, etiquetas: ets, allGroups, totalClientes };
-  });
+  const { regulares: regularesCol1, brhub: brhubCol1 } = agruparPorRemetente(etiquetasCol1, horariosDb);
+  const { regulares: regularesCol2, brhub: brhubCol2 } = agruparPorRemetente(etiquetasCol2, horariosDb);
+
+  const allGroupsCol1: GrupoHorario[] = [...regularesCol1];
+  if (brhubCol1) allGroupsCol1.push(brhubCol1);
+  allGroupsCol1.sort((a, b) => a.sortKey - b.sortKey);
+
+  const allGroupsCol2: GrupoHorario[] = [...regularesCol2];
+  if (brhubCol2) allGroupsCol2.push(brhubCol2);
+  allGroupsCol2.sort((a, b) => a.sortKey - b.sortKey);
 
   const totalObjetos = data.length;
   const totalClientes = new Set(data.map(e => (e.remetenteNome || e.remetente?.nome || '').toUpperCase().trim())).size;
-
-  // Count urgent groups
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  const allKanbanGroups = colunas.flatMap(c => c.allGroups);
-  const urgentCount = allKanbanGroups.filter(g => {
-    const corte = g.sortKey - 60;
-    return g.sortKey < 9999 && nowMinutes >= corte && nowMinutes < g.sortKey;
-  }).length;
+  const totalCol1 = etiquetasCol1.length;
+  const totalCol2 = etiquetasCol2.length;
+  const clientesCol1 = allGroupsCol1.reduce((acc, g) => acc + g.clientes.length, 0);
+  const clientesCol2 = allGroupsCol2.reduce((acc, g) => acc + g.clientes.length, 0);
 
   if (loading) {
     return (
@@ -805,13 +799,10 @@ const TvBoard = () => {
           </div>
         </div>
 
-        {/* Metrics - scroll horizontal no mobile */}
+        {/* Metrics */}
         <div className="flex items-center gap-2 lg:gap-3 w-full lg:w-auto overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
           <MetricCard label="Clientes" value={totalClientes} icon={Users} color="blue" />
           <MetricCard label="Etiquetas" value={totalObjetos} icon={Package} color="orange" />
-          {urgentCount > 0 && (
-            <MetricCard label="Urgentes" value={urgentCount} icon={AlertTriangle} color="red" pulse />
-          )}
         </div>
 
         {/* Clock & Controls - desktop */}
@@ -844,8 +835,8 @@ const TvBoard = () => {
       {/* Popup de nova coleta */}
       <NewCollectionPopup count={newAlertCount} onConfirm={() => setNewAlertCount(0)} />
 
-      {/* Content - Kanban 5 colunas */}
-      <div className="flex-1 overflow-hidden px-2 lg:px-3 py-2">
+      {/* Content - Kanban 2 colunas */}
+      <div className="flex-1 overflow-hidden px-3 lg:px-4 py-2 lg:py-3">
         {data.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-4 opacity-30">
             <div className="w-20 h-20 rounded-2xl bg-gray-100 flex items-center justify-center">
@@ -857,64 +848,66 @@ const TvBoard = () => {
             </div>
           </div>
         ) : (
-          <div className="flex gap-2 lg:gap-3 h-full overflow-x-auto lg:overflow-hidden">
-            {colunas.map((col) => {
-              const colorMap: Record<string, { bar: string; text: string; count: string }> = {
-                emerald: { bar: 'from-emerald-300 to-emerald-500', text: 'text-emerald-600', count: 'text-emerald-200' },
-                blue: { bar: 'from-blue-300 to-blue-500', text: 'text-blue-600', count: 'text-blue-200' },
-                violet: { bar: 'from-violet-300 to-violet-500', text: 'text-violet-600', count: 'text-violet-200' },
-                amber: { bar: 'from-amber-300 to-amber-500', text: 'text-amber-600', count: 'text-amber-200' },
-                rose: { bar: 'from-rose-300 to-rose-500', text: 'text-rose-600', count: 'text-rose-200' },
-              };
-              const colors = colorMap[col.color] || colorMap.emerald;
-              const isToday = now.getDay() === col.dayIndex;
-
-              return (
-                <div
-                  key={col.dayIndex}
-                  className={`flex flex-col gap-2 min-w-[240px] lg:min-w-0 flex-1 ${isToday ? 'ring-2 ring-orange-300 rounded-xl' : ''}`}
-                >
-                  {/* Header da coluna */}
-                  <div className={`flex items-center justify-between px-2 py-1.5 rounded-lg ${isToday ? 'bg-orange-50 border border-orange-200' : 'bg-white border border-gray-100'}`}>
-                    <div className="flex items-center gap-1.5">
-                      <div className={`w-1 h-6 rounded-full bg-gradient-to-b ${colors.bar}`} />
-                      <div>
-                        <h2 className={`font-black text-[11px] lg:text-xs uppercase tracking-wider leading-tight font-display ${isToday ? 'text-orange-600' : colors.text}`}>
-                          {col.short}
-                          {isToday && <span className="ml-1 text-[8px] font-bold bg-orange-100 text-orange-500 px-1 py-0.5 rounded uppercase">Hoje</span>}
-                        </h2>
-                        <p className="text-gray-400 text-[8px] font-bold uppercase tracking-widest">
-                          {col.totalClientes}cli · {col.etiquetas.length}etq
-                        </p>
-                      </div>
-                    </div>
-                    <span className={`text-lg lg:text-xl font-black tabular-nums font-display ${isToday ? 'text-orange-200' : colors.count}`}>
-                      {col.etiquetas.length}
-                    </span>
-                  </div>
-
-                  {/* Grupos */}
-                  <div className="flex-1 overflow-auto scrollbar-thin flex flex-col gap-2">
-                    {col.allGroups.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center flex-1 gap-1 opacity-20 py-8">
-                        <Package className="w-6 h-6 text-gray-300" />
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Vazio</p>
-                      </div>
-                    ) : (
-                      col.allGroups.map((grupo: GrupoHorario) => (
-                        <GrupoTable
-                          key={grupo.label}
-                          grupo={grupo}
-                          coletaConfirmada={coletasConfirmadas.has(`${col.short}-${grupo.label}`)}
-                          onConfirmarColeta={() => toggleColeta(`${col.short}-${grupo.label}`)}
-                          newIds={newIds}
-                        />
-                      ))
-                    )}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5 h-full overflow-auto lg:overflow-hidden">
+            {/* COLUNA 1 - HOJE */}
+            <div className="flex flex-col gap-3 overflow-visible lg:overflow-hidden">
+              <div className="flex items-center justify-between px-2 py-2 rounded-lg bg-orange-50 border border-orange-200">
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-8 rounded-full bg-gradient-to-b from-orange-300 to-orange-500" />
+                  <div>
+                    <h2 className="font-black text-sm lg:text-base uppercase tracking-wider text-orange-600 leading-tight font-display">
+                      {dia1Short} <span className="text-[8px] font-bold bg-orange-100 text-orange-500 px-1.5 py-0.5 rounded uppercase ml-1">Hoje</span>
+                    </h2>
+                    <p className="text-gray-400 text-[9px] font-bold uppercase tracking-widest">
+                      {clientesCol1} clientes · {totalCol1} etiquetas
+                    </p>
                   </div>
                 </div>
-              );
-            })}
+                <span className="text-2xl lg:text-3xl font-black text-orange-200 tabular-nums font-display">{totalCol1}</span>
+              </div>
+              {allGroupsCol1.length === 0 ? (
+                <div className="flex flex-col items-center justify-center flex-1 gap-2 opacity-20">
+                  <Package className="w-10 h-10 text-gray-300" />
+                  <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Nenhuma coleta</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3 overflow-auto pr-1 scrollbar-thin">
+                  {allGroupsCol1.map((grupo) => (
+                    <GrupoTable key={grupo.label} grupo={grupo} coletaConfirmada={coletasConfirmadas.has(grupo.label)} onConfirmarColeta={() => toggleColeta(grupo.label)} newIds={newIds} />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* COLUNA 2 - PRÓXIMO DIA */}
+            <div className="flex flex-col gap-3 overflow-visible lg:overflow-hidden">
+              <div className="flex items-center justify-between px-2 py-2 rounded-lg bg-white border border-gray-200">
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-8 rounded-full bg-gradient-to-b from-blue-300 to-blue-500" />
+                  <div>
+                    <h2 className="font-black text-sm lg:text-base uppercase tracking-wider text-blue-600 leading-tight font-display">
+                      {dia2Short} <span className="text-[8px] font-bold bg-blue-50 text-blue-400 px-1.5 py-0.5 rounded uppercase ml-1">Próximo</span>
+                    </h2>
+                    <p className="text-gray-400 text-[9px] font-bold uppercase tracking-widest">
+                      {clientesCol2} clientes · {totalCol2} etiquetas
+                    </p>
+                  </div>
+                </div>
+                <span className="text-2xl lg:text-3xl font-black text-blue-200 tabular-nums font-display">{totalCol2}</span>
+              </div>
+              {allGroupsCol2.length === 0 ? (
+                <div className="flex flex-col items-center justify-center flex-1 gap-2 opacity-20">
+                  <Package className="w-10 h-10 text-gray-300" />
+                  <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Nenhuma coleta</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3 overflow-auto pr-1 scrollbar-thin">
+                  {allGroupsCol2.map((grupo) => (
+                    <GrupoTable key={grupo.label} grupo={grupo} coletaConfirmada={coletasConfirmadas.has(grupo.label)} onConfirmarColeta={() => toggleColeta(grupo.label)} newIds={newIds} />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
