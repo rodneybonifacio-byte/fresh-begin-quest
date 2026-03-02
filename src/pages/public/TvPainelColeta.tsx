@@ -738,7 +738,7 @@ const TvBoard = () => {
   const totalCol2 = etiquetasCol2.length;
   const clientesCol1 = allGroupsCol1.reduce((acc, g) => acc + g.clientes.length, 0);
   const clientesCol2 = allGroupsCol2.reduce((acc, g) => acc + g.clientes.length, 0);
-  const singleColumn = col2 === null;
+  const singleColumn = col2 === null || etiquetasCol2.length === 0;
 
   // Count urgent groups
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
