@@ -577,6 +577,91 @@ const NewCollectionPopup = ({ count, onConfirm }: { count: number; onConfirm: ()
   );
 };
 
+// ─── Modal de Confirmação de Coleta ──────────────────────────────────────────
+const ConfirmarColetaModal = ({ 
+  nomeCliente, 
+  isDesfazer, 
+  onConfirm, 
+  onCancel 
+}: { 
+  nomeCliente: string; 
+  isDesfazer: boolean; 
+  onConfirm: (nomePessoa: string) => void; 
+  onCancel: () => void; 
+}) => {
+  const [nomePessoa, setNomePessoa] = useState('');
+  const [error, setError] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = nomePessoa.trim();
+    if (trimmed.length < 2) {
+      setError(true);
+      return;
+    }
+    onConfirm(trimmed);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm animate-in fade-in duration-300">
+      <div className="bg-white border-2 border-gray-200 rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl flex flex-col gap-5" onClick={(e) => e.stopPropagation()}>
+        <div className="text-center space-y-1">
+          <div className={`w-12 h-12 rounded-full mx-auto flex items-center justify-center mb-3 ${
+            isDesfazer ? 'bg-gray-100 border-2 border-gray-200' : 'bg-emerald-100 border-2 border-emerald-200'
+          }`}>
+            <Truck className={`w-6 h-6 ${isDesfazer ? 'text-gray-500' : 'text-emerald-500'}`} />
+          </div>
+          <h2 className="text-lg font-black text-gray-800 uppercase tracking-wide">
+            {isDesfazer ? 'Desfazer Coleta' : 'Confirmar Coleta'}
+          </h2>
+          <p className="text-gray-500 text-xs">
+            Cliente: <span className="font-bold text-gray-700">{nomeCliente}</span>
+          </p>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+              {isDesfazer ? 'Quem está desfazendo?' : 'Quem está confirmando?'}
+            </label>
+            <input
+              type="text"
+              value={nomePessoa}
+              onChange={(e) => { setNomePessoa(e.target.value); setError(false); }}
+              placeholder="Digite seu nome"
+              autoFocus
+              className={`w-full px-4 py-3 rounded-xl bg-gray-50 border text-gray-800 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 transition-all ${
+                error ? 'border-red-300 focus:ring-red-200' : 'border-gray-200 focus:ring-orange-200 focus:border-orange-300'
+              }`}
+            />
+            {error && <p className="text-red-500 text-[10px] font-medium">Informe seu nome (mínimo 2 caracteres)</p>}
+          </div>
+          
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-500 font-bold text-sm uppercase tracking-wide hover:bg-gray-50 transition-all"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className={`flex-1 py-3 rounded-xl text-white font-bold text-sm uppercase tracking-wide shadow-md transition-all hover:scale-[1.02] active:scale-95 ${
+                isDesfazer 
+                  ? 'bg-gradient-to-r from-gray-400 to-gray-500 shadow-gray-200' 
+                  : 'bg-gradient-to-r from-emerald-400 to-emerald-500 shadow-emerald-200'
+              }`}
+            >
+              {isDesfazer ? 'Desfazer' : 'Confirmar'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 // ─── Painel principal ────────────────────────────────────────────────────────
 const TvBoard = () => {
   const [data, setData] = useState<Etiqueta[]>([]);
@@ -591,6 +676,7 @@ const TvBoard = () => {
   const previousIdsRef = useRef<Set<string>>(new Set());
   const [newIds, setNewIds] = useState<Set<string>>(new Set());
   const [coletasConfirmadas, setColetasConfirmadas] = useState<Set<string>>(new Set());
+  const [coletaModal, setColetaModal] = useState<{ nomeCliente: string; isDesfazer: boolean } | null>(null);
 
   const fetchColetasConfirmadas = useCallback(async () => {
     try {
@@ -610,24 +696,29 @@ const TvBoard = () => {
     }
   }, []);
 
-  const toggleColeta = useCallback(async (nomeCliente: string) => {
+  const openColetaModal = useCallback((nomeCliente: string) => {
+    const key = nomeCliente.toUpperCase().trim();
+    const isDesfazer = coletasConfirmadas.has(key);
+    setColetaModal({ nomeCliente: key, isDesfazer });
+  }, [coletasConfirmadas]);
+
+  const confirmColeta = useCallback(async (nomeCliente: string, nomePessoa: string, isDesfazer: boolean) => {
     const key = nomeCliente.toUpperCase().trim();
     const hoje = new Date().toISOString().split('T')[0];
     
-    if (coletasConfirmadas.has(key)) {
-      // Remove
+    if (isDesfazer) {
       setColetasConfirmadas(prev => { const next = new Set(prev); next.delete(key); return next; });
       await supabase.from('coletas_confirmadas').delete().eq('nome_cliente', key).eq('data_coleta', hoje);
     } else {
-      // Add
       setColetasConfirmadas(prev => new Set([...prev, key]));
       await supabase.from('coletas_confirmadas').upsert({
         nome_cliente: key,
         data_coleta: hoje,
-        confirmado_por: 'TV Painel',
+        confirmado_por: nomePessoa,
       }, { onConflict: 'nome_cliente,data_coleta' });
     }
-  }, [coletasConfirmadas]);
+    setColetaModal(null);
+  }, []);
 
   const fetchHorarios = useCallback(async () => {
     try {
@@ -926,7 +1017,7 @@ const TvBoard = () => {
               ) : (
                 <div className="flex flex-col gap-3 overflow-auto pr-1 scrollbar-thin">
                   {allGroupsCol1.map((grupo) => (
-                    <GrupoTable key={grupo.label} grupo={grupo} coletasConfirmadas={coletasConfirmadas} onConfirmarColeta={toggleColeta} newIds={newIds} />
+                    <GrupoTable key={grupo.label} grupo={grupo} coletasConfirmadas={coletasConfirmadas} onConfirmarColeta={openColetaModal} newIds={newIds} />
                   ))}
                 </div>
               )}
@@ -956,7 +1047,7 @@ const TvBoard = () => {
               ) : (
                 <div className="flex flex-col gap-3 overflow-auto pr-1 scrollbar-thin">
                   {allGroupsCol2.map((grupo) => (
-                    <GrupoTable key={grupo.label} grupo={grupo} coletasConfirmadas={coletasConfirmadas} onConfirmarColeta={toggleColeta} newIds={newIds} />
+                    <GrupoTable key={grupo.label} grupo={grupo} coletasConfirmadas={coletasConfirmadas} onConfirmarColeta={openColetaModal} newIds={newIds} />
                   ))}
                 </div>
               )}
@@ -981,6 +1072,16 @@ const TvBoard = () => {
           <span className={`w-2 h-2 rounded-full ${soundEnabled ? 'bg-emerald-400' : 'bg-gray-300'}`} />
         </div>
       </footer>
+
+      {/* Modal de confirmação de coleta */}
+      {coletaModal && (
+        <ConfirmarColetaModal
+          nomeCliente={coletaModal.nomeCliente}
+          isDesfazer={coletaModal.isDesfazer}
+          onConfirm={(nomePessoa) => confirmColeta(coletaModal.nomeCliente, nomePessoa, coletaModal.isDesfazer)}
+          onCancel={() => setColetaModal(null)}
+        />
+      )}
     </div>
   );
 };
