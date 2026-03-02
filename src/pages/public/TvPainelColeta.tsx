@@ -36,6 +36,7 @@ interface ClienteAgrupado {
   totalPrePostado: number;
 }
 
+
 interface ClienteHorario {
   nome_cliente: string;
   horario_inicio: string;
@@ -321,23 +322,28 @@ const MetricCard = ({ label, value, icon: Icon, color, pulse }: {
 };
 
 // ─── Cliente Row ─────────────────────────────────────────────────────────────
-const ClienteRow = ({ cliente, index, isNew, newIds }: { cliente: ClienteAgrupado; index: number; isNew?: boolean; newIds?: Set<string> }) => {
+const ClienteRow = ({ cliente, index, isNew, newIds, coletaConfirmada, onConfirmarColeta }: { 
+  cliente: ClienteAgrupado; index: number; isNew?: boolean; newIds?: Set<string>; 
+  coletaConfirmada?: boolean; onConfirmarColeta?: () => void;
+}) => {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="flex flex-col">
+    <div className={`flex flex-col ${coletaConfirmada ? 'opacity-60' : ''}`}>
       <div
-        onClick={() => setExpanded(!expanded)}
-        className={`grid grid-cols-[24px_1fr_auto_50px] gap-2 px-3 py-2 items-center cursor-pointer transition-all duration-200 hover:bg-gray-50 ${
-          isNew ? 'bg-orange-50 border-l-2 border-orange-400' : index % 2 === 0 ? 'bg-white' : 'bg-gray-50/60'
+        className={`grid grid-cols-[24px_1fr_auto_auto_50px] gap-2 px-3 py-2 items-center transition-all duration-200 ${
+          coletaConfirmada 
+            ? 'bg-emerald-50/60' 
+            : isNew ? 'bg-orange-50 border-l-2 border-orange-400' : index % 2 === 0 ? 'bg-white' : 'bg-gray-50/60'
         }`}
       >
-        <span className="text-gray-400 flex items-center">
+        <span className="text-gray-400 flex items-center cursor-pointer" onClick={() => setExpanded(!expanded)}>
           {expanded ? <ChevronDown className="w-3.5 h-3.5 text-orange-500" /> : <ChevronRight className="w-3.5 h-3.5" />}
         </span>
-        <div className="flex flex-col min-w-0 gap-0.5">
-          <span className="text-gray-800 font-bold text-xs truncate uppercase tracking-wide leading-tight">
-            {isNew && <Zap className="w-3 h-3 inline text-orange-500 mr-1" />}
+        <div className="flex flex-col min-w-0 gap-0.5 cursor-pointer" onClick={() => setExpanded(!expanded)}>
+          <span className={`font-bold text-xs truncate uppercase tracking-wide leading-tight ${coletaConfirmada ? 'text-emerald-700 line-through' : 'text-gray-800'}`}>
+            {coletaConfirmada && <Truck className="w-3 h-3 inline text-emerald-500 mr-1" />}
+            {isNew && !coletaConfirmada && <Zap className="w-3 h-3 inline text-orange-500 mr-1" />}
             {cliente.nome}
           </span>
           <span className="text-gray-400 text-[9px] flex items-center gap-1 leading-tight">
@@ -355,6 +361,23 @@ const ClienteRow = ({ cliente, index, isNew, newIds }: { cliente: ClienteAgrupad
             <span className="bg-blue-100 text-blue-600 font-bold text-[8px] px-1.5 py-0.5 rounded-sm border border-blue-200">
               {cliente.totalPrePostado} PRÉ
             </span>
+          )}
+          {coletaConfirmada && (
+            <span className="text-[8px] bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded font-bold uppercase border border-emerald-200">✓ Coletado</span>
+          )}
+        </div>
+        <div className="flex items-center">
+          {onConfirmarColeta && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onConfirmarColeta(); }}
+              className={`px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-wide border transition-all ${
+                coletaConfirmada
+                  ? 'bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100'
+                  : 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300'
+              }`}
+            >
+              {coletaConfirmada ? 'Desfazer' : '✓ Coleta'}
+            </button>
           )}
         </div>
         <div className="flex justify-end">
@@ -402,25 +425,30 @@ const ClienteRow = ({ cliente, index, isNew, newIds }: { cliente: ClienteAgrupad
 };
 
 // ─── Grupo Table ─────────────────────────────────────────────────────────────
-const GrupoTable = ({ grupo, coletaConfirmada, onConfirmarColeta, newIds }: { grupo: GrupoHorario; coletaConfirmada?: boolean; onConfirmarColeta?: () => void; newIds?: Set<string> }) => {
-  const headerColor = coletaConfirmada
+const GrupoTable = ({ grupo, newIds, coletasConfirmadas, onConfirmarColeta }: { 
+  grupo: GrupoHorario; newIds?: Set<string>; 
+  coletasConfirmadas: Set<string>; onConfirmarColeta: (nomeCliente: string) => void;
+}) => {
+  const allConfirmed = grupo.clientes.every(c => coletasConfirmadas.has(c.nome.toUpperCase().trim()));
+  
+  const headerColor = allConfirmed
     ? 'bg-emerald-50 border-emerald-200'
     : grupo.isBrhub 
     ? 'bg-cyan-50 border-cyan-200' 
     : 'bg-gray-50 border-gray-200';
 
-  const textColor = coletaConfirmada
+  const textColor = allConfirmed
     ? 'text-emerald-600'
     : grupo.isBrhub 
     ? 'text-cyan-600' 
     : 'text-orange-600';
 
   return (
-    <div className={`flex flex-col ${coletaConfirmada ? 'opacity-70' : ''}`}>
+    <div className={`flex flex-col ${allConfirmed ? 'opacity-70' : ''}`}>
       {/* Header do grupo */}
       <div className={`flex items-center justify-between px-3 py-1.5 rounded-t-lg border ${headerColor}`}>
         <div className="flex items-center gap-2">
-          {coletaConfirmada ? (
+          {allConfirmed ? (
             <Truck className={`w-3.5 h-3.5 ${textColor}`} />
           ) : grupo.isBrhub ? (
             <Users className={`w-3.5 h-3.5 ${textColor}`} />
@@ -430,8 +458,8 @@ const GrupoTable = ({ grupo, coletaConfirmada, onConfirmarColeta, newIds }: { gr
           <span className={`font-black text-xs uppercase tracking-wider ${textColor}`}>
             {grupo.isBrhub ? `BRHUB · ${grupo.label}` : grupo.label}
           </span>
-          {coletaConfirmada && (
-            <span className="text-[8px] bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded font-bold uppercase">✓ Coletado</span>
+          {allConfirmed && (
+            <span className="text-[8px] bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded font-bold uppercase">✓ Todos coletados</span>
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -441,30 +469,25 @@ const GrupoTable = ({ grupo, coletaConfirmada, onConfirmarColeta, newIds }: { gr
           <span className={`font-black text-sm tabular-nums ${textColor}`}>
             {grupo.totalObjetos}
           </span>
-          {!coletaConfirmada && onConfirmarColeta && (
-            <button
-              onClick={onConfirmarColeta}
-              className="ml-1 px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-600 text-[9px] font-bold uppercase tracking-wide border border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300 transition-all"
-            >
-              Confirmar Coleta
-            </button>
-          )}
-          {coletaConfirmada && onConfirmarColeta && (
-            <button
-              onClick={onConfirmarColeta}
-              className="ml-1 px-2.5 py-1 rounded-md bg-gray-50 text-gray-400 text-[9px] font-bold uppercase tracking-wide border border-gray-200 hover:bg-gray-100 transition-all"
-            >
-              Desfazer
-            </button>
-          )}
         </div>
       </div>
 
       {/* Corpo */}
-      <div className={`rounded-b-lg overflow-hidden border border-t-0 ${coletaConfirmada ? 'border-emerald-100' : 'border-gray-100'} bg-white`}>
+      <div className={`rounded-b-lg overflow-hidden border border-t-0 ${allConfirmed ? 'border-emerald-100' : 'border-gray-100'} bg-white`}>
         {grupo.clientes.map((cliente, i) => {
           const hasNew = newIds ? cliente.etiquetas.some(et => newIds.has(et.id || et.codigoObjeto)) : false;
-          return <ClienteRow key={cliente.nome} cliente={cliente} index={i} isNew={hasNew} newIds={newIds} />;
+          const clienteKey = cliente.nome.toUpperCase().trim();
+          return (
+            <ClienteRow 
+              key={cliente.nome} 
+              cliente={cliente} 
+              index={i} 
+              isNew={hasNew} 
+              newIds={newIds}
+              coletaConfirmada={coletasConfirmadas.has(clienteKey)}
+              onConfirmarColeta={() => onConfirmarColeta(clienteKey)}
+            />
+          );
         })}
       </div>
     </div>
@@ -569,14 +592,42 @@ const TvBoard = () => {
   const [newIds, setNewIds] = useState<Set<string>>(new Set());
   const [coletasConfirmadas, setColetasConfirmadas] = useState<Set<string>>(new Set());
 
-  const toggleColeta = useCallback((label: string) => {
-    setColetasConfirmadas(prev => {
-      const next = new Set(prev);
-      if (next.has(label)) next.delete(label);
-      else next.add(label);
-      return next;
-    });
+  const fetchColetasConfirmadas = useCallback(async () => {
+    try {
+      const hoje = new Date().toISOString().split('T')[0];
+      const { data: rows, error } = await supabase
+        .from('coletas_confirmadas')
+        .select('nome_cliente')
+        .eq('data_coleta', hoje);
+      if (error) {
+        console.error('[TV Painel] Erro ao buscar coletas confirmadas:', error);
+        return;
+      }
+      const confirmados = new Set((rows || []).map(r => (r as any).nome_cliente?.toUpperCase?.().trim()));
+      setColetasConfirmadas(confirmados);
+    } catch (err) {
+      console.error('[TV Painel] Erro ao buscar coletas confirmadas:', err);
+    }
   }, []);
+
+  const toggleColeta = useCallback(async (nomeCliente: string) => {
+    const key = nomeCliente.toUpperCase().trim();
+    const hoje = new Date().toISOString().split('T')[0];
+    
+    if (coletasConfirmadas.has(key)) {
+      // Remove
+      setColetasConfirmadas(prev => { const next = new Set(prev); next.delete(key); return next; });
+      await supabase.from('coletas_confirmadas').delete().eq('nome_cliente', key).eq('data_coleta', hoje);
+    } else {
+      // Add
+      setColetasConfirmadas(prev => new Set([...prev, key]));
+      await supabase.from('coletas_confirmadas').upsert({
+        nome_cliente: key,
+        data_coleta: hoje,
+        confirmado_por: 'TV Painel',
+      }, { onConflict: 'nome_cliente,data_coleta' });
+    }
+  }, [coletasConfirmadas]);
 
   const fetchHorarios = useCallback(async () => {
     try {
@@ -655,12 +706,14 @@ const TvBoard = () => {
   useEffect(() => {
     fetchHorarios();
     fetchData();
+    fetchColetasConfirmadas();
     const interval = setInterval(() => {
       fetchHorarios();
       fetchData();
+      fetchColetasConfirmadas();
     }, REFRESH_INTERVAL);
     return () => clearInterval(interval);
-  }, [fetchHorarios, fetchData]);
+  }, [fetchHorarios, fetchData, fetchColetasConfirmadas]);
 
   useEffect(() => {
     const t = setInterval(() => setTick((v) => v + 1), 1000);
@@ -873,7 +926,7 @@ const TvBoard = () => {
               ) : (
                 <div className="flex flex-col gap-3 overflow-auto pr-1 scrollbar-thin">
                   {allGroupsCol1.map((grupo) => (
-                    <GrupoTable key={grupo.label} grupo={grupo} coletaConfirmada={coletasConfirmadas.has(grupo.label)} onConfirmarColeta={() => toggleColeta(grupo.label)} newIds={newIds} />
+                    <GrupoTable key={grupo.label} grupo={grupo} coletasConfirmadas={coletasConfirmadas} onConfirmarColeta={toggleColeta} newIds={newIds} />
                   ))}
                 </div>
               )}
@@ -903,7 +956,7 @@ const TvBoard = () => {
               ) : (
                 <div className="flex flex-col gap-3 overflow-auto pr-1 scrollbar-thin">
                   {allGroupsCol2.map((grupo) => (
-                    <GrupoTable key={grupo.label} grupo={grupo} coletaConfirmada={coletasConfirmadas.has(grupo.label)} onConfirmarColeta={() => toggleColeta(grupo.label)} newIds={newIds} />
+                    <GrupoTable key={grupo.label} grupo={grupo} coletasConfirmadas={coletasConfirmadas} onConfirmarColeta={toggleColeta} newIds={newIds} />
                   ))}
                 </div>
               )}

@@ -220,6 +220,33 @@ export type Database = {
           },
         ]
       }
+      coletas_confirmadas: {
+        Row: {
+          coluna: string | null
+          confirmado_em: string
+          confirmado_por: string | null
+          data_coleta: string
+          id: string
+          nome_cliente: string
+        }
+        Insert: {
+          coluna?: string | null
+          confirmado_em?: string
+          confirmado_por?: string | null
+          data_coleta?: string
+          id?: string
+          nome_cliente: string
+        }
+        Update: {
+          coluna?: string | null
+          confirmado_em?: string
+          confirmado_por?: string | null
+          data_coleta?: string
+          id?: string
+          nome_cliente?: string
+        }
+        Relationships: []
+      }
       comissoes_conecta: {
         Row: {
           cliente_id: string
