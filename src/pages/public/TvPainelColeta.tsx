@@ -840,24 +840,34 @@ const TvBoard = () => {
     if (!et.criadoEm) { etiquetasCol1.push(et); continue; }
     const criadoDate = new Date(et.criadoEm);
     const criadoDia = criadoDate.getDay();
-    const criadoHora = criadoDate.getHours() * 60 + criadoDate.getMinutes();
 
+    // Se criado no FDS, vai para col1 (segunda)
     if (criadoDia === 0 || criadoDia === 6) { etiquetasCol1.push(et); continue; }
+    // Se HOJE é FDS, tudo vai para col1 (segunda)
     if (isFds) { etiquetasCol1.push(et); continue; }
 
     const nomeRemetente = et.remetenteNome || et.remetente?.nome || '';
     const horarioColeta = resolverHorario(nomeRemetente, horariosDb);
     const horarioColetaMin = parseTime(horarioColeta);
     const isHoje = criadoDate.toDateString() === now.toDateString();
+    const horaAtualMin = now.getHours() * 60 + now.getMinutes();
 
     if (isHoje) {
-      if (criadoHora < horarioColetaMin) {
+      // Se criada HOJE: se ainda dá tempo de coletar (criou antes do cutoff E hora atual < cutoff) → col1
+      // Se hora atual já passou o cutoff OU criou depois do cutoff → col2
+      if (horaAtualMin < horarioColetaMin && (criadoDate.getHours() * 60 + criadoDate.getMinutes()) < horarioColetaMin) {
         etiquetasCol1.push(et);
       } else {
         etiquetasCol2.push(et);
       }
     } else {
-      etiquetasCol1.push(et);
+      // Etiqueta de dias anteriores: se hora atual já passou do cutoff do cliente → col2 (próximo dia)
+      // Se ainda está dentro da janela de coleta de hoje → col1
+      if (horaAtualMin >= horarioColetaMin) {
+        etiquetasCol2.push(et);
+      } else {
+        etiquetasCol1.push(et);
+      }
     }
   }
 

@@ -94,24 +94,38 @@ serve(async (req) => {
     const postadas = await fetchAllByStatus('POSTADO');
     console.log(`✅ ${postadas.length} etiquetas POSTADO (para dedup)`);
 
-    // 3. Montar set de chaves (destinatario + dia) já postadas
+    // 3. Montar set de códigos de objeto já postados (dedup por código único)
+    const postadasByCode = new Set<string>();
+    for (const em of postadas) {
+      if (em.codigoObjeto) {
+        postadasByCode.add(em.codigoObjeto.toUpperCase().trim());
+      }
+    }
+
+    // 3b. Montar set de chaves (remetente + destinatário) já postadas (sem filtro de dia)
     const getDedupeKey = (em: any): string => {
       const destNome = (em.destinatario?.nome || em.destinatarioNome || '').toUpperCase().trim();
       const remetNome = (em.remetenteNome || em.remetente?.nome || '').toUpperCase().trim();
-      const dia = (em.criadoEm || '').split('T')[0]; // YYYY-MM-DD
-      return `${remetNome}|${destNome}|${dia}`;
+      return `${remetNome}|${destNome}`;
     };
 
-    const postadasSet = new Set<string>();
+    const postadasByKey = new Set<string>();
     for (const em of postadas) {
-      postadasSet.add(getDedupeKey(em));
+      postadasByKey.add(getDedupeKey(em));
     }
 
     // 4. Filtrar PRE_POSTADO removendo as que já foram postadas
     const filtradas = prePostadas.filter(em => {
+      // Dedup por código de objeto (exato)
+      const code = (em.codigoObjeto || '').toUpperCase().trim();
+      if (code && postadasByCode.has(code)) {
+        console.log(`🔄 Dedup código: removendo PRE_POSTADO (${em.codigoObjeto}) — mesmo código já POSTADO`);
+        return false;
+      }
+      // Dedup por remetente+destinatário (sem restrição de dia)
       const key = getDedupeKey(em);
-      if (postadasSet.has(key)) {
-        console.log(`🔄 Dedup: removendo PRE_POSTADO (${em.codigoObjeto}) — já postada: ${key}`);
+      if (postadasByKey.has(key)) {
+        console.log(`🔄 Dedup nome: removendo PRE_POSTADO (${em.codigoObjeto}) — ${key} já postada`);
         return false;
       }
       return true;
