@@ -121,6 +121,38 @@ serve(async (req) => {
       }
     }
 
+    // 5. Buscar em pedidos_importados (destinatários) pelo telefone
+    if (contactName === whatsappDisplayName || contactName === normalizedPhoneForLookup) {
+      const { data: pedido } = await supabase
+        .from("pedidos_importados")
+        .select("destinatario_nome")
+        .or(`destinatario_telefone.ilike.%${normalizedPhoneForLookup}%`)
+        .not("destinatario_nome", "is", null)
+        .limit(1)
+        .single();
+      
+      if (pedido?.destinatario_nome) {
+        contactName = pedido.destinatario_nome;
+        console.log("✅ Nome encontrado via destinatário pedido:", contactName);
+      }
+    }
+
+    // 6. Buscar em etiquetas_pendentes_correcao (destinatários) pelo celular
+    if (contactName === whatsappDisplayName || contactName === normalizedPhoneForLookup) {
+      const { data: etiqueta } = await supabase
+        .from("etiquetas_pendentes_correcao")
+        .select("destinatario_nome")
+        .or(`destinatario_celular.ilike.%${normalizedPhoneForLookup}%`)
+        .not("destinatario_nome", "is", null)
+        .limit(1)
+        .single();
+      
+      if (etiqueta?.destinatario_nome) {
+        contactName = etiqueta.destinatario_nome;
+        console.log("✅ Nome encontrado via etiqueta destinatário:", contactName);
+      }
+    }
+
     // 5. Fallback: usar displayName do WhatsApp (já está setado)
     if (contactName === normalizedPhoneForLookup && whatsappDisplayName) {
       contactName = whatsappDisplayName;
