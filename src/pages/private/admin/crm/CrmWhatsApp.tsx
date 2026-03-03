@@ -192,17 +192,24 @@ const CrmWhatsApp = () => {
     try {
       const ext = file.name.split('.').pop() || 'bin';
       const fileName = `crm-media/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      
+      // Sanitize contentType - remove codecs parameter that can cause storage issues
+      const uploadContentType = file.type.split(';')[0].trim() || 'application/octet-stream';
+      
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(fileName, file, { contentType: file.type, upsert: true });
+        .upload(fileName, file, { contentType: uploadContentType, upsert: true });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Erro upload storage:', uploadError);
+        throw uploadError;
+      }
 
       const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
       const mediaUrl = publicUrlData.publicUrl;
 
-      const isImage = file.type.startsWith('image/');
-      const isAudio = file.type.startsWith('audio/');
+      const isImage = uploadContentType.startsWith('image/');
+      const isAudio = uploadContentType.startsWith('audio/');
       const contentType = isImage ? 'image' : isAudio ? 'audio' : 'file';
       const msgText = isImage ? '📷 Imagem' : isAudio ? '🎤 Áudio' : `📎 ${file.name}`;
 
