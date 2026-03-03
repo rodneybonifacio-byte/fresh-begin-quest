@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { aiManagementQuery, aiManagementUpdate } from '@/services/aiManagementApi';
-import { ShieldCheck, ToggleLeft, ToggleRight, Lock, Phone, Plus, Trash2, Search } from 'lucide-react';
+import { ShieldCheck, ToggleLeft, ToggleRight, Lock, Phone, Plus, Trash2, Search, Pencil, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface AiTool {
@@ -73,6 +73,9 @@ const ToolsTab: React.FC = () => {
   const [filterCategory, setFilterCategory] = useState('all');
   const [newPhone, setNewPhone] = useState('');
   const [newContactName, setNewContactName] = useState('');
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
+  const [editPhone, setEditPhone] = useState('');
+  const [editContactName, setEditContactName] = useState('');
 
   // Tools query
   const { data: tools, isLoading: loadingTools } = useQuery({
@@ -354,32 +357,84 @@ const ToolsTab: React.FC = () => {
               <p className="text-xs">Adicione um número para liberar acesso total à IA</p>
             </div>
           ) : (
-            <div className="space-y-2">
+             <div className="space-y-2">
               {(phoneRules || []).map((rule) => (
                 <div key={rule.id} className={`border rounded-lg p-4 transition-colors ${rule.is_active ? 'border-border bg-card' : 'border-border/50 bg-muted/30 opacity-60'}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Phone className="w-4 h-4 text-muted-foreground" />
-                        <span className="font-mono font-medium text-foreground text-sm">{rule.phone_number}</span>
-                        {rule.contact_name && (
-                          <span className="text-xs text-muted-foreground">({rule.contact_name})</span>
-                        )}
-                      </div>
-                      <div className="flex gap-2 flex-wrap mt-1">
-                        {rule.allow_all && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 font-medium">
-                            Acesso Total
-                          </span>
-                        )}
-                        {rule.skip_approval && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 font-medium">
-                            Sem Aprovação
-                          </span>
-                        )}
-                      </div>
+                      {editingRuleId === rule.id ? (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <input
+                            type="text"
+                            value={editPhone}
+                            onChange={(e) => setEditPhone(e.target.value)}
+                            placeholder="Número"
+                            className="px-2 py-1 border border-border rounded bg-background text-foreground text-sm font-mono w-[180px]"
+                          />
+                          <input
+                            type="text"
+                            value={editContactName}
+                            onChange={(e) => setEditContactName(e.target.value)}
+                            placeholder="Nome (opcional)"
+                            className="px-2 py-1 border border-border rounded bg-background text-foreground text-sm w-[150px]"
+                          />
+                          <button
+                            onClick={() => {
+                              if (!editPhone.trim()) return toast.error('Informe o número');
+                              updateRuleMutation.mutate({ id: rule.id, updates: { phone_number: editPhone.trim(), contact_name: editContactName.trim() || null } });
+                              setEditingRuleId(null);
+                            }}
+                            className="p-1 text-green-600 hover:text-green-800"
+                            title="Salvar"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setEditingRuleId(null)}
+                            className="p-1 text-muted-foreground hover:text-foreground"
+                            title="Cancelar"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2 mb-1">
+                            <Phone className="w-4 h-4 text-muted-foreground" />
+                            <span className="font-mono font-medium text-foreground text-sm">{rule.phone_number}</span>
+                            {rule.contact_name && (
+                              <span className="text-xs text-muted-foreground">({rule.contact_name})</span>
+                            )}
+                          </div>
+                          <div className="flex gap-2 flex-wrap mt-1">
+                            {rule.allow_all && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 font-medium">
+                                Acesso Total
+                              </span>
+                            )}
+                            {rule.skip_approval && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 font-medium">
+                                Sem Aprovação
+                              </span>
+                            )}
+                          </div>
+                        </>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
+                      {editingRuleId !== rule.id && (
+                        <button
+                          onClick={() => {
+                            setEditingRuleId(rule.id);
+                            setEditPhone(rule.phone_number);
+                            setEditContactName(rule.contact_name || '');
+                          }}
+                          className="p-1 text-muted-foreground hover:text-foreground"
+                          title="Editar"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                      )}
                       <button
                         onClick={() => updateRuleMutation.mutate({ id: rule.id, updates: { allow_all: !rule.allow_all } })}
                         className={`text-xs px-2 py-1 rounded-md ${rule.allow_all ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}
