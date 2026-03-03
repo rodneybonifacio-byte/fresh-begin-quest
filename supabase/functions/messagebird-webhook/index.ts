@@ -269,13 +269,52 @@ serve(async (req) => {
       }
     }
 
+    // Se for áudio/mídia inbound, baixar do MessageBird (requer auth) e re-upload para Storage
+    let finalMediaUrl = mediaUrl;
+    if (direction === "inbound" && mediaUrl && (contentType === "audio" || contentType === "voice" || contentType === "ptt" || contentType === "image")) {
+      try {
+        const accessKey = channel?.access_key || Deno.env.get("MESSAGEBIRD_ACCESS_KEY");
+        if (accessKey) {
+          console.log("📥 Baixando mídia do MessageBird:", mediaUrl.substring(0, 80));
+          const mediaResponse = await fetch(mediaUrl, {
+            headers: { Authorization: `AccessKey ${accessKey}` },
+          });
+          if (mediaResponse.ok) {
+            const mediaBuffer = await mediaResponse.arrayBuffer();
+            const mimeType = mediaResponse.headers.get("content-type") || (contentType === "image" ? "image/jpeg" : "audio/ogg");
+            const ext = mimeType.includes("mp3") ? "mp3" : mimeType.includes("mp4") ? "mp4" : mimeType.includes("jpeg") || mimeType.includes("jpg") ? "jpg" : mimeType.includes("png") ? "png" : mimeType.includes("ogg") ? "ogg" : "bin";
+            const fileName = `whatsapp-media/${contentType}-${Date.now()}-${crypto.randomUUID().substring(0, 8)}.${ext}`;
+            
+            const { error: uploadError } = await supabase.storage
+              .from("avatars")
+              .upload(fileName, new Uint8Array(mediaBuffer), {
+                contentType: mimeType,
+                upsert: true,
+              });
+            
+            if (!uploadError) {
+              const { data: publicUrlData } = supabase.storage.from("avatars").getPublicUrl(fileName);
+              finalMediaUrl = publicUrlData.publicUrl;
+              console.log("✅ Mídia re-uploaded para Storage:", finalMediaUrl.substring(0, 80));
+            } else {
+              console.warn("⚠️ Erro upload mídia para Storage:", uploadError);
+            }
+          } else {
+            console.warn("⚠️ Erro ao baixar mídia do MessageBird:", mediaResponse.status);
+          }
+        }
+      } catch (mediaError) {
+        console.warn("⚠️ Erro ao processar mídia:", mediaError);
+      }
+    }
+
     const { error: msgError } = await supabase.from("whatsapp_messages").insert({
       conversation_id: conversation.id,
       messagebird_id: messageBirdId,
       direction,
       content_type: contentType,
       content: messageContent,
-      media_url: mediaUrl,
+      media_url: finalMediaUrl,
       media_type: mediaType,
       status: "delivered",
       sent_by: direction === "inbound" ? "contact" : "system",
@@ -307,7 +346,7 @@ serve(async (req) => {
             channelId: channel?.id,
             agent: channel?.ai_agent || "maya",
             contentType,
-            mediaUrl,
+            mediaUrl: finalMediaUrl,
           }),
         });
         console.log("🤖 Chat AI response status:", response.status);
