@@ -244,11 +244,24 @@ const CrmWhatsApp = () => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // Audio recording
+  // Audio recording - getUserMedia called directly in click handler for security compliance
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true },
+      });
+
+      // Determine supported MIME type
+      let mimeType = 'audio/webm';
+      if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+        mimeType = 'audio/webm;codecs=opus';
+      } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+        mimeType = 'audio/webm';
+      } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+        mimeType = 'audio/mp4';
+      }
+
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
@@ -261,17 +274,31 @@ const CrmWhatsApp = () => {
         if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
         setRecordingTime(0);
 
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/ogg; codecs=opus' });
-        const audioFile = new File([audioBlob], `audio-${Date.now()}.ogg`, { type: 'audio/ogg; codecs=opus' });
+        if (audioChunksRef.current.length === 0) {
+          console.warn('Nenhum chunk de áudio capturado');
+          return;
+        }
+
+        // Use the base MIME type (without codecs) for the Blob to avoid storage issues
+        const baseMime = mimeType.split(';')[0];
+        const ext = baseMime.includes('mp4') ? 'mp4' : 'ogg';
+        const audioBlob = new Blob(audioChunksRef.current, { type: baseMime });
+        const audioFile = new File([audioBlob], `audio-${Date.now()}.${ext}`, { type: baseMime });
+        console.log(`🎤 Áudio gravado: ${audioFile.size} bytes, tipo: ${baseMime}`);
         await uploadAndSend(audioFile);
       };
 
-      mediaRecorder.start(250);
+      mediaRecorder.start(1000);
       setIsRecording(true);
       setRecordingTime(0);
       recordingTimerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000);
-    } catch (e) {
+    } catch (e: any) {
       console.error('Erro ao gravar áudio:', e);
+      if (e?.name === 'NotAllowedError') {
+        alert('Permissão de microfone negada. Verifique as configurações do navegador.');
+      } else {
+        alert('Erro ao iniciar gravação. Tente novamente.');
+      }
     }
   };
 
