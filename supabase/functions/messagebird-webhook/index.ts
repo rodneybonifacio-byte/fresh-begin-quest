@@ -393,7 +393,7 @@ serve(async (req) => {
             message: messageContent,
             contactPhone: normalizedPhone,
             channelId: channel?.id,
-            agent: channel?.ai_agent || "maya",
+            agent: conversation.active_agent || channel?.ai_agent || "veronica",
             contentType,
             mediaUrl: finalMediaUrl,
           }),

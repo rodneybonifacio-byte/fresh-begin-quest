@@ -1623,6 +1623,7 @@ export type Database = {
       }
       whatsapp_conversations: {
         Row: {
+          active_agent: string | null
           ai_enabled: boolean
           cliente_id: string | null
           contact_avatar_url: string | null
@@ -1640,6 +1641,7 @@ export type Database = {
           whatsapp_channel_id: string | null
         }
         Insert: {
+          active_agent?: string | null
           ai_enabled?: boolean
           cliente_id?: string | null
           contact_avatar_url?: string | null
@@ -1657,6 +1659,7 @@ export type Database = {
           whatsapp_channel_id?: string | null
         }
         Update: {
+          active_agent?: string | null
           ai_enabled?: boolean
           cliente_id?: string | null
           contact_avatar_url?: string | null

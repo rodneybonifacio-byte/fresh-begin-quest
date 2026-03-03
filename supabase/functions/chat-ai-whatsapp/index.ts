@@ -185,7 +185,6 @@ serve(async (req) => {
       const errText = await aiResponse.text();
       console.error("❌ OpenAI error:", aiResponse.status, errText);
 
-      // Log de erro
       await logInteraction(supabase, {
         conversation_id: conversationId,
         agent_name: agentName,
@@ -249,7 +248,6 @@ serve(async (req) => {
             };
             const audioUrl = await generateTTSAudio(aiReply, elevenLabsKey, voiceConfig);
             if (audioUrl) {
-              // Enviar áudio via MessageBird
               const audioPayload = {
                 to: contactPhone,
                 from: channel.channel_id,
@@ -329,6 +327,17 @@ serve(async (req) => {
           last_message_preview: aiReply.substring(0, 100),
         })
         .eq("id", conversationId);
+
+      // === HANDOFF: VERONICA → FELIPE ===
+      // Se a Veronica está atendendo e detectamos um problema que precisa de escalação,
+      // ela avisa que vai transferir e o Felipe entra com áudio se apresentando
+      if (agentName === "veronica") {
+        const shouldHandoff = detectHandoffTrigger(message, aiReply);
+        if (shouldHandoff) {
+          console.log("🔄 Handoff detectado: Veronica → Felipe");
+          await performHandoffToFelipe(supabase, conversationId, contactPhone, message, channel);
+        }
+      }
     }
 
     return new Response(
@@ -664,7 +673,12 @@ REGRAS:
 - Use 1-2 emojis naturalmente. Português informal: "vc", "tá", "pra".
 - Vá direto ao ponto. Seja proativa e carinhosa.
 - Rastreio: status + localização + previsão em uma frase.
-- Se não souber: "vou chamar alguém do time pra te ajudar, tá? 😊"`;
+- Se não souber: "vou chamar alguém do time pra te ajudar, tá? 😊"
+
+TRANSFERÊNCIA PRO FELIPE:
+- Se o cliente tiver um problema GRAVE (extravio, dano, cobrança errada, reclamação forte, ameaça jurídica), você DEVE responder normalmente reconhecendo o problema e depois o sistema vai transferir pro Felipe automaticamente.
+- NÃO diga "vou transferir" no seu texto, o sistema cuida disso.
+- Apenas demonstre empatia e reconheça a gravidade do problema.`;
 }
 
 async function analyzeImageWithGemini(imageUrl: string, geminiKey: string): Promise<{ description: string; trackingCode: string | null }> {
@@ -949,4 +963,238 @@ function formatTrackingForAI(rastreioData: any): string {
   }
   
   return result;
+}
+
+// === HANDOFF VERONICA → FELIPE ===
+
+function detectHandoffTrigger(userMessage: string, _aiReply: string): boolean {
+  const lowerMsg = (userMessage || "").toLowerCase();
+  
+  const escalationKeywords = [
+    "procon", "processo", "advogado", "denúncia", "reclame aqui",
+    "pior empresa", "péssimo", "horrível", "absurdo", "lixo",
+    "cobrança indevida", "cobrado errado", "valor errado", "não recebi crédito",
+    "estorno", "reembolso", "devolver meu dinheiro",
+    "extraviou", "extraviado", "roubado", "furto", "sumiu", "perdido",
+    "pacote sumiu", "encomenda sumiu",
+    "danificado", "quebrado", "avariado", "amassado", "destruído",
+    "cancelar tudo", "quero cancelar", "cancela minha conta",
+    "nunca mais", "vou processar", "vou denunciar", "vocês são", "que vergonha",
+    "insatisfeito", "muita raiva", "revoltado",
+  ];
+  
+  return escalationKeywords.some(k => lowerMsg.includes(k));
+}
+
+async function performHandoffToFelipe(
+  supabase: any,
+  conversationId: string,
+  contactPhone: string,
+  userMessage: string,
+  channel: { channel_id: string; access_key: string }
+) {
+  try {
+    const handoffMessage = "Entendi a situação, vou te transferir pro Felipe que é nosso especialista e vai te ajudar a resolver isso, tá? Um momento 😊";
+    
+    const handoffPayload = {
+      to: contactPhone,
+      from: channel.channel_id,
+      type: "text",
+      content: { text: handoffMessage },
+    };
+
+    const mbHandoff = await fetch("https://conversations.messagebird.com/v1/send", {
+      method: "POST",
+      headers: {
+        Authorization: `AccessKey ${channel.access_key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(handoffPayload),
+    });
+    const mbHandoffResult = await mbHandoff.json();
+
+    await supabase.from("whatsapp_messages").insert({
+      conversation_id: conversationId,
+      messagebird_id: mbHandoffResult.id || null,
+      direction: "outbound",
+      content_type: "text",
+      content: handoffMessage,
+      status: "sent",
+      sent_by: "veronica",
+      ai_generated: true,
+    });
+
+    console.log("📨 Veronica enviou mensagem de handoff");
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) return;
+
+    const { data: felipeConfig } = await supabase
+      .from("ai_agents")
+      .select("*")
+      .eq("name", "felipe")
+      .eq("is_active", true)
+      .single();
+
+    const { data: conv } = await supabase
+      .from("whatsapp_conversations")
+      .select("contact_name")
+      .eq("id", conversationId)
+      .single();
+
+    const contactName = conv?.contact_name || "";
+    const greeting = contactName ? `${contactName.split(" ")[0]}` : "tudo bem";
+
+    const felipeIntroPrompt = `Você é o Felipe, especialista de resolução de problemas da BRHUB Envios. A Veronica acabou de te transferir um cliente que está com um problema.
+
+O cliente disse: "${userMessage}"
+
+Você precisa se apresentar de forma tranquilizadora e empática. Fale como se estivesse num áudio de WhatsApp, natural e humano.
+
+REGRAS:
+- Se apresente: "E aí ${greeting}, aqui é o Felipe"
+- Diga que a Veronica te passou a situação
+- Mostre que entendeu o problema do cliente
+- Tranquilize dizendo que vai resolver
+- Tom calmo, confiante, profissional mas informal
+- Máximo 3-4 frases curtas
+- NÃO use emojis (vai ser convertido em áudio)
+- NÃO faça perguntas nessa primeira mensagem, só tranquilize`;
+
+    const felipeResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: felipeConfig?.model || "gpt-4o",
+        messages: [
+          { role: "system", content: felipeIntroPrompt },
+          { role: "user", content: userMessage },
+        ],
+        max_tokens: 150,
+        temperature: 0.8,
+      }),
+    });
+
+    if (!felipeResponse.ok) {
+      console.error("❌ Erro OpenAI Felipe handoff:", felipeResponse.status);
+      return;
+    }
+
+    const felipeData = await felipeResponse.json();
+    const felipeReply = felipeData.choices?.[0]?.message?.content || "E aí, aqui é o Felipe. A Veronica me passou sua situação e vou te ajudar a resolver, pode ficar tranquilo.";
+
+    console.log("🤖 Felipe reply:", felipeReply.substring(0, 100));
+
+    const elevenLabsKey = Deno.env.get("ELEVENLABS_API_KEY");
+    let felipeAudioSent = false;
+
+    if (elevenLabsKey) {
+      try {
+        const felipeVoiceConfig: VoiceConfig = {
+          voiceId: felipeConfig?.voice_id || "cjVigY5qzO86Huf0OWal",
+          model: felipeConfig?.tts_model || "eleven_multilingual_v2",
+          stability: felipeConfig?.voice_stability ?? 0.45,
+          similarityBoost: felipeConfig?.voice_similarity_boost ?? 0.75,
+          style: felipeConfig?.voice_style ?? 0.2,
+          speed: felipeConfig?.voice_speed ?? 1.0,
+        };
+
+        const audioUrl = await generateTTSAudio(felipeReply, elevenLabsKey, felipeVoiceConfig);
+        if (audioUrl) {
+          const audioPayload = {
+            to: contactPhone,
+            from: channel.channel_id,
+            type: "audio",
+            content: { audio: { url: audioUrl } },
+          };
+
+          const mbAudio = await fetch("https://conversations.messagebird.com/v1/send", {
+            method: "POST",
+            headers: {
+              Authorization: `AccessKey ${channel.access_key}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(audioPayload),
+          });
+          const mbAudioResult = await mbAudio.json();
+
+          await supabase.from("whatsapp_messages").insert({
+            conversation_id: conversationId,
+            messagebird_id: mbAudioResult.id || null,
+            direction: "outbound",
+            content_type: "voice",
+            content: felipeReply,
+            media_url: audioUrl,
+            status: "sent",
+            sent_by: "felipe",
+            ai_generated: true,
+          });
+
+          felipeAudioSent = true;
+          console.log("🔊 Felipe áudio de handoff enviado");
+        }
+      } catch (ttsErr) {
+        console.warn("⚠️ Erro TTS Felipe handoff:", ttsErr);
+      }
+    }
+
+    if (!felipeAudioSent) {
+      const textPayload = {
+        to: contactPhone,
+        from: channel.channel_id,
+        type: "text",
+        content: { text: felipeReply },
+      };
+
+      const mbText = await fetch("https://conversations.messagebird.com/v1/send", {
+        method: "POST",
+        headers: {
+          Authorization: `AccessKey ${channel.access_key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(textPayload),
+      });
+      const mbTextResult = await mbText.json();
+
+      await supabase.from("whatsapp_messages").insert({
+        conversation_id: conversationId,
+        messagebird_id: mbTextResult.id || null,
+        direction: "outbound",
+        content_type: "text",
+        content: felipeReply,
+        status: "sent",
+        sent_by: "felipe",
+        ai_generated: true,
+      });
+    }
+
+    // Marcar conversa para usar Felipe nas próximas mensagens
+    await supabase
+      .from("whatsapp_conversations")
+      .update({
+        active_agent: "felipe",
+        last_message_at: new Date().toISOString(),
+        last_message_preview: felipeReply.substring(0, 100),
+      })
+      .eq("id", conversationId);
+
+    await logInteraction(supabase, {
+      conversation_id: conversationId,
+      agent_name: "felipe",
+      content_type: "voice",
+      provider: "openai",
+      model: felipeConfig?.model || "gpt-4o",
+      success: true,
+      response_time_ms: 0,
+      tool_used: "handoff_from_veronica",
+    });
+
+    console.log("✅ Handoff Veronica → Felipe concluído com sucesso");
+  } catch (e) {
+    console.error("❌ Erro no handoff Veronica → Felipe:", e);
+  }
 }
