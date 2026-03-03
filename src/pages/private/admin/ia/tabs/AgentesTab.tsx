@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { aiManagementQuery, aiManagementUpdate } from '@/services/aiManagementApi';
 import { Bot, Save, ToggleLeft, ToggleRight, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -28,37 +28,26 @@ const AgentesTab: React.FC = () => {
 
   const { data: agents, isLoading } = useQuery({
     queryKey: ['ai-agents'],
-    queryFn: async () => {
-      const token = localStorage.getItem('token');
-      const { data, error } = await supabase
-        .from('ai_agents')
-        .select('*')
-        .order('name')
-        .setHeader('Authorization', `Bearer ${token}`);
-      if (error) throw error;
-      return data as AiAgent[];
-    },
+    queryFn: () => aiManagementQuery<AiAgent>({
+      action: 'select',
+      table: 'ai_agents',
+      orderBy: { column: 'name', ascending: true },
+    }),
   });
 
   const updateMutation = useMutation({
     mutationFn: async (agent: Partial<AiAgent> & { id: string }) => {
-      const token = localStorage.getItem('token');
-      const { error } = await supabase
-        .from('ai_agents')
-        .update({
-          display_name: agent.display_name,
-          description: agent.description,
-          system_prompt: agent.system_prompt,
-          personality: agent.personality,
-          is_active: agent.is_active,
-          model: agent.model,
-          provider: agent.provider,
-          temperature: agent.temperature,
-          max_tokens: agent.max_tokens,
-        })
-        .eq('id', agent.id)
-        .setHeader('Authorization', `Bearer ${token}`);
-      if (error) throw error;
+      await aiManagementUpdate('ai_agents', agent.id, {
+        display_name: agent.display_name,
+        description: agent.description,
+        system_prompt: agent.system_prompt,
+        personality: agent.personality,
+        is_active: agent.is_active,
+        model: agent.model,
+        provider: agent.provider,
+        temperature: agent.temperature,
+        max_tokens: agent.max_tokens,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ai-agents'] });

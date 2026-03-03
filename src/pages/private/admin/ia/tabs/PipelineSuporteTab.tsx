@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { AlertTriangle, CheckCircle, Clock, MessageSquare, User, ArrowRight } from 'lucide-react';
+import { aiManagementQuery, aiManagementUpdate } from '@/services/aiManagementApi';
+import { CheckCircle, Clock, User, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface SupportTicket {
@@ -58,33 +58,18 @@ const PipelineSuporteTab: React.FC = () => {
 
   const { data: tickets, isLoading } = useQuery({
     queryKey: ['support-pipeline', filterStatus],
-    queryFn: async () => {
-      const token = localStorage.getItem('token');
-      let query = supabase
-        .from('ai_support_pipeline')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .setHeader('Authorization', `Bearer ${token}`);
-
-      if (filterStatus !== 'todos') {
-        query = query.eq('status', filterStatus);
-      }
-
-      const { data, error } = await query.limit(50);
-      if (error) throw error;
-      return data as SupportTicket[];
-    },
+    queryFn: () => aiManagementQuery<SupportTicket>({
+      action: 'select',
+      table: 'ai_support_pipeline',
+      filters: filterStatus !== 'todos' ? [{ column: 'status', op: 'eq', value: filterStatus }] : undefined,
+      orderBy: { column: 'created_at', ascending: false },
+      limit: 50,
+    }),
   });
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const token = localStorage.getItem('token');
-      const { error } = await supabase
-        .from('ai_support_pipeline')
-        .update({ status })
-        .eq('id', id)
-        .setHeader('Authorization', `Bearer ${token}`);
-      if (error) throw error;
+      await aiManagementUpdate('ai_support_pipeline', id, { status });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['support-pipeline'] });
@@ -100,67 +85,79 @@ const PipelineSuporteTab: React.FC = () => {
         <p><strong>Pipeline de Suporte:</strong> A IA detecta automaticamente quando um cliente está reclamando e cria um ticket no pipeline. Você pode acompanhar, classificar e resolver os chamados aqui.</p>
       </div>
 
-      {/* Filtros de status */}
-      <div className="flex flex-wrap gap-2">
-        {['todos', 'aberto', 'em_andamento', 'aguardando_cliente', 'resolvido', 'fechado'].map(status => (
+      <div className="flex gap-2 flex-wrap">
+        {['todos', 'aberto', 'em_andamento', 'aguardando_cliente', 'resolvido', 'fechado'].map((s) => (
           <button
-            key={status}
-            onClick={() => setFilterStatus(status)}
-            className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${filterStatus === status ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+            key={s}
+            onClick={() => setFilterStatus(s)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              filterStatus === s ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            }`}
           >
-            {status === 'todos' ? 'Todos' : statusLabels[status] || status}
+            {s === 'todos' ? 'Todos' : statusLabels[s] || s}
           </button>
         ))}
       </div>
 
       {isLoading ? (
-        <div className="text-muted-foreground">Carregando pipeline...</div>
-      ) : (tickets || []).length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-50" />
-          <p>Nenhum ticket encontrado</p>
-          <p className="text-sm mt-1">Quando a IA detectar reclamações, os tickets aparecerão aqui</p>
+        <div className="p-4 text-muted-foreground">Carregando pipeline...</div>
+      ) : !tickets?.length ? (
+        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+          <CheckCircle className="w-10 h-10 mb-3 opacity-30" />
+          <p className="text-sm">Nenhum ticket encontrado</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {tickets?.map((ticket) => (
+          {tickets.map((ticket) => (
             <div key={ticket.id} className="border border-border rounded-xl p-4 bg-card">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[ticket.status]}`}>
-                      {statusLabels[ticket.status]}
+              <div className="flex items-start justify-between mb-2">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="font-medium text-foreground text-sm">{ticket.subject || 'Sem assunto'}</h4>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${statusColors[ticket.status] || 'bg-gray-100'}`}>
+                      {statusLabels[ticket.status] || ticket.status}
                     </span>
-                    <span className={`text-xs font-medium ${priorityColors[ticket.priority]}`}>
-                      {ticket.priority === 'urgente' && <AlertTriangle className="w-3 h-3 inline mr-0.5" />}
-                      {ticket.priority.toUpperCase()}
+                    <span className={`text-xs font-medium ${priorityColors[ticket.priority] || ''}`}>
+                      {ticket.priority}
                     </span>
-                    {ticket.sentiment && (
-                      <span className="text-xs text-muted-foreground">{sentimentLabels[ticket.sentiment]}</span>
-                    )}
                   </div>
-                  <h4 className="font-medium text-foreground">{ticket.subject || 'Sem assunto'}</h4>
-                  {ticket.description && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{ticket.description}</p>}
-                  <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                    {ticket.contact_name && <span className="flex items-center gap-1"><User className="w-3 h-3" />{ticket.contact_name}</span>}
-                    {ticket.contact_phone && <span>{ticket.contact_phone}</span>}
-                    <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{new Date(ticket.created_at).toLocaleString('pt-BR')}</span>
-                    <span className="text-xs">Detectado por: {ticket.detected_by}</span>
-                  </div>
+                  {ticket.contact_name && (
+                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                      <User className="w-3 h-3" /> {ticket.contact_name}
+                      {ticket.contact_phone && ` · ${ticket.contact_phone}`}
+                    </p>
+                  )}
+                  {ticket.description && (
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{ticket.description}</p>
+                  )}
                 </div>
-                <div className="flex items-center gap-1 ml-4">
+                <div className="flex items-center gap-1 ml-3">
+                  {ticket.sentiment && (
+                    <span className="text-xs">{sentimentLabels[ticket.sentiment] || ticket.sentiment}</span>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/50">
+                <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                  <Clock className="w-3 h-3" />
+                  {new Date(ticket.created_at).toLocaleDateString('pt-BR')} {new Date(ticket.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                  {ticket.detected_by && (
+                    <span className="ml-2">Detectado por: {ticket.detected_by}</span>
+                  )}
+                </div>
+                <div className="flex gap-1">
                   {ticket.status === 'aberto' && (
                     <button
                       onClick={() => updateStatusMutation.mutate({ id: ticket.id, status: 'em_andamento' })}
-                      className="px-3 py-1.5 rounded-lg bg-yellow-100 text-yellow-700 text-xs hover:bg-yellow-200 flex items-center gap-1"
+                      className="text-[10px] px-2 py-1 rounded bg-yellow-100 text-yellow-700 hover:bg-yellow-200 flex items-center gap-1"
                     >
-                      <ArrowRight className="w-3 h-3" /> Atender
+                      <ArrowRight className="w-3 h-3" /> Em Andamento
                     </button>
                   )}
                   {ticket.status === 'em_andamento' && (
                     <button
                       onClick={() => updateStatusMutation.mutate({ id: ticket.id, status: 'resolvido' })}
-                      className="px-3 py-1.5 rounded-lg bg-green-100 text-green-700 text-xs hover:bg-green-200 flex items-center gap-1"
+                      className="text-[10px] px-2 py-1 rounded bg-green-100 text-green-700 hover:bg-green-200 flex items-center gap-1"
                     >
                       <CheckCircle className="w-3 h-3" /> Resolver
                     </button>
