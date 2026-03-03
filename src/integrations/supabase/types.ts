@@ -249,6 +249,48 @@ export type Database = {
           },
         ]
       }
+      ai_tool_phone_rules: {
+        Row: {
+          allow_all: boolean
+          allowed_tool_names: string[] | null
+          blocked_tool_names: string[] | null
+          contact_name: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          notes: string | null
+          phone_number: string
+          skip_approval: boolean
+          updated_at: string
+        }
+        Insert: {
+          allow_all?: boolean
+          allowed_tool_names?: string[] | null
+          blocked_tool_names?: string[] | null
+          contact_name?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          phone_number: string
+          skip_approval?: boolean
+          updated_at?: string
+        }
+        Update: {
+          allow_all?: boolean
+          allowed_tool_names?: string[] | null
+          blocked_tool_names?: string[] | null
+          contact_name?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          phone_number?: string
+          skip_approval?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ai_tools: {
         Row: {
           allowed_agents: string[] | null
