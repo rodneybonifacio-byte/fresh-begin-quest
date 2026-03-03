@@ -87,7 +87,7 @@ export async function resolveDefaultChannel(): Promise<WhatsAppChannel | null> {
       access_key: accessKey,
       is_default: true,
       ai_enabled: true,
-      ai_agent: "maya",
+      ai_agent: "veronica",
     };
   }
 

@@ -267,16 +267,29 @@ serve(async (req) => {
       );
     }
 
-    const agentName = agent || "veronica";
+    let agentName = agent || "veronica";
     console.log(`🤖 Chat AI conversa ${conversationId}, agente: ${agentName}, tipo: ${contentType}`);
 
     // === BUSCAR CONFIG DO AGENTE ===
-    const { data: agentConfig } = await supabase
+    let { data: agentConfig } = await supabase
       .from("ai_agents")
       .select("*")
       .eq("name", agentName)
       .eq("is_active", true)
       .single();
+
+    // Fallback: se o agente não existe no banco, usa veronica
+    if (!agentConfig && agentName !== "veronica") {
+      console.warn(`⚠️ Agente "${agentName}" não encontrado, usando veronica como fallback`);
+      const fallback = await supabase
+        .from("ai_agents")
+        .select("*")
+        .eq("name", "veronica")
+        .eq("is_active", true)
+        .single();
+      agentConfig = fallback.data;
+      agentName = "veronica";
+    }
 
     const systemPrompt = agentConfig?.system_prompt || getDefaultPrompt(agentName);
     const modelName = agentConfig?.model || "gpt-4o";
