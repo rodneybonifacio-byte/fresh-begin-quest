@@ -207,9 +207,10 @@ serve(async (req) => {
 
     console.log("🤖 Resposta OpenAI:", aiReply.substring(0, 100));
 
-    // === GERENCIAR TICKETS ===
+    // === GERENCIAR TICKETS E PIPELINE ===
     await ensureTicketOpen(supabase, conversationId, contactPhone, message);
     await detectAndCreateSupportTicket(supabase, conversationId, contactPhone, message, aiReply, agentName);
+    await progressPipelineStatus(supabase, conversationId, message, aiReply);
     await detectTicketResolution(supabase, conversationId, aiReply);
 
     // Log de sucesso
@@ -472,24 +473,125 @@ async function ensureTicketOpen(supabase: any, conversationId: string, contactPh
   }
 }
 
+// === PROGRESSÃO AUTOMÁTICA DO PIPELINE ===
+
+// Mapa de fluxo por categoria
+const PIPELINE_FLOWS: Record<string, string[]> = {
+  reclamacao: ["novo", "triagem", "investigacao", "resolucao", "concluido"],
+  rastreio: ["novo", "verificando", "localizado", "em_transito", "entregue"],
+  cancelamento: ["novo", "analise", "processamento", "aprovado", "concluido"],
+  financeiro: ["novo", "analise", "processamento", "aprovado", "concluido"],
+};
+
+async function progressPipelineStatus(supabase: any, conversationId: string, userMessage: string, aiReply: string) {
+  try {
+    // Buscar pipeline aberto para esta conversa
+    const { data: pipeline } = await supabase
+      .from("ai_support_pipeline")
+      .select("*")
+      .eq("conversation_id", conversationId)
+      .not("status", "in", '("concluido","entregue","cancelado")')
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (!pipeline) return;
+
+    const category = pipeline.category || "reclamacao";
+    const flow = PIPELINE_FLOWS[category] || PIPELINE_FLOWS.reclamacao;
+    const currentIdx = flow.indexOf(pipeline.status);
+    if (currentIdx === -1 || currentIdx >= flow.length - 1) return;
+
+    const lowerReply = (aiReply || "").toLowerCase();
+    const lowerMsg = (userMessage || "").toLowerCase();
+
+    // Regras de progressão baseadas no contexto da resposta da IA
+    let shouldProgress = false;
+    let newStatus = "";
+    let progressReason = "";
+
+    if (category === "rastreio") {
+      if (pipeline.status === "novo" && (lowerReply.includes("vou verificar") || lowerReply.includes("estou consultando") || lowerReply.includes("rastreio"))) {
+        shouldProgress = true; newStatus = "verificando"; progressReason = "IA iniciou verificação de rastreio";
+      } else if (pipeline.status === "verificando" && (lowerReply.includes("localizado") || lowerReply.includes("encontrei") || lowerReply.includes("status"))) {
+        shouldProgress = true; newStatus = "localizado"; progressReason = "Pacote localizado no rastreio";
+      } else if (pipeline.status === "localizado" && (lowerReply.includes("em trânsito") || lowerReply.includes("a caminho") || lowerReply.includes("saiu para"))) {
+        shouldProgress = true; newStatus = "em_transito"; progressReason = "Pacote em trânsito";
+      } else if ((lowerReply.includes("entregue") || lowerReply.includes("entrega confirmada") || lowerReply.includes("foi entregue"))) {
+        shouldProgress = true; newStatus = "entregue"; progressReason = "Entrega confirmada";
+      }
+    } else if (category === "reclamacao") {
+      if (pipeline.status === "novo" && lowerReply.length > 50) {
+        shouldProgress = true; newStatus = "triagem"; progressReason = "IA realizou triagem inicial";
+      } else if (pipeline.status === "triagem" && (lowerReply.includes("verificando") || lowerReply.includes("analisando") || lowerReply.includes("investigar"))) {
+        shouldProgress = true; newStatus = "investigacao"; progressReason = "Investigação em andamento";
+      } else if (pipeline.status === "investigacao" && (lowerReply.includes("solução") || lowerReply.includes("resolver") || lowerReply.includes("providência"))) {
+        shouldProgress = true; newStatus = "resolucao"; progressReason = "Resolução em andamento";
+      }
+    } else if (category === "cancelamento" || category === "financeiro") {
+      if (pipeline.status === "novo" && lowerReply.length > 50) {
+        shouldProgress = true; newStatus = "analise"; progressReason = "IA iniciou análise";
+      } else if (pipeline.status === "analise" && (lowerReply.includes("processando") || lowerReply.includes("encaminhado") || lowerReply.includes("providência"))) {
+        shouldProgress = true; newStatus = "processamento"; progressReason = "Em processamento";
+      } else if (pipeline.status === "processamento" && (lowerReply.includes("aprovado") || lowerReply.includes("estorno") || lowerReply.includes("reembolso"))) {
+        shouldProgress = true; newStatus = "aprovado"; progressReason = "Aprovado/processado";
+      }
+    }
+
+    // Detectar resolução final para qualquer categoria
+    const resolutionPatterns = ["resolvido", "solucionado", "concluído", "problema foi resolvido", "está tudo certo", "foi corrigido"];
+    if (resolutionPatterns.some(p => lowerReply.includes(p))) {
+      const finalStatus = flow[flow.length - 1]; // último estágio do fluxo
+      shouldProgress = true;
+      newStatus = finalStatus;
+      progressReason = "Resolução detectada pela IA";
+    }
+
+    if (shouldProgress && newStatus) {
+      await supabase
+        .from("ai_support_pipeline")
+        .update({
+          status: newStatus,
+          resolution: progressReason,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", pipeline.id);
+
+      // Atualizar sentimento se melhorou
+      if (lowerMsg.includes("obrigad") || lowerMsg.includes("valeu") || lowerMsg.includes("agradeço")) {
+        await supabase
+          .from("ai_support_pipeline")
+          .update({ sentiment: "positivo" })
+          .eq("id", pipeline.id);
+      }
+
+      console.log(`📊 Pipeline ${pipeline.id} [${category}]: ${pipeline.status} → ${newStatus} (${progressReason})`);
+    }
+  } catch (e) {
+    console.warn("⚠️ Erro ao progredir pipeline:", e);
+  }
+}
+
 async function detectTicketResolution(supabase: any, conversationId: string, aiReply: string) {
   try {
     const lowerReply = (aiReply || "").toLowerCase();
 
-    // Padrões que indicam resolução
     const resolutionPatterns = [
       "resolvido", "solucionado", "concluído",
       "problema foi resolvido", "está tudo certo",
       "foi entregue", "entrega confirmada", "entregue com sucesso",
       "estorno realizado", "reembolso aprovado", "crédito devolvido",
-      "qualquer dúvida", "estou à disposição", "posso ajudar em mais algo",
       "foi corrigido", "ajustado com sucesso"
     ];
 
-    const isResolution = resolutionPatterns.some(p => lowerReply.includes(p));
-    if (!isResolution) return;
+    // Padrões fracos que NÃO devem fechar sozinhos (evitar fechamento prematuro)
+    const weakPatterns = ["qualquer dúvida", "estou à disposição", "posso ajudar em mais algo"];
+    const isStrongResolution = resolutionPatterns.some(p => lowerReply.includes(p));
+    const isWeakOnly = !isStrongResolution && weakPatterns.some(p => lowerReply.includes(p));
 
-    // Buscar ticket aberto
+    if (!isStrongResolution) return; // Só fecha com padrões fortes
+
+    // Fechar ticket de sessão (whatsapp_tickets)
     const { data: openTicket } = await supabase
       .from("whatsapp_tickets")
       .select("id")
@@ -498,20 +600,40 @@ async function detectTicketResolution(supabase: any, conversationId: string, aiR
       .limit(1)
       .single();
 
-    if (!openTicket) return;
+    if (openTicket) {
+      await supabase
+        .from("whatsapp_tickets")
+        .update({
+          status: "closed",
+          closed_by: "ai",
+          closed_at: new Date().toISOString(),
+          resolution: aiReply.substring(0, 500),
+        })
+        .eq("id", openTicket.id);
+      console.log(`✅ Ticket ${openTicket.id} fechado automaticamente pela IA`);
+    }
 
-    // Fechar ticket
-    await supabase
-      .from("whatsapp_tickets")
-      .update({
-        status: "closed",
-        closed_by: "ai",
-        closed_at: new Date().toISOString(),
-        resolution: aiReply.substring(0, 500),
-      })
-      .eq("id", openTicket.id);
+    // Também fechar pipeline associado se existir
+    const { data: openPipeline } = await supabase
+      .from("ai_support_pipeline")
+      .select("id, category")
+      .eq("conversation_id", conversationId)
+      .not("status", "in", '("concluido","entregue","cancelado")')
+      .limit(1)
+      .single();
 
-    console.log(`✅ Ticket ${openTicket.id} fechado automaticamente pela IA`);
+    if (openPipeline) {
+      const finalStatus = openPipeline.category === "rastreio" ? "entregue" : "concluido";
+      await supabase
+        .from("ai_support_pipeline")
+        .update({
+          status: finalStatus,
+          resolution: aiReply.substring(0, 500),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", openPipeline.id);
+      console.log(`✅ Pipeline ${openPipeline.id} concluído automaticamente`);
+    }
   } catch (e) {
     console.warn("⚠️ Erro ao detectar resolução:", e);
   }
