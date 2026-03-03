@@ -24,7 +24,9 @@ serve(async (req) => {
 
     const { conversationId, message, contactPhone, agent, contentType, mediaUrl } = await req.json();
 
-    if (!conversationId || !message) {
+    // Para áudio/imagem, não exigir message (texto) pois o conteúdo está na mídia
+    const isMediaMessage = (contentType === "audio" || contentType === "voice" || contentType === "ptt" || contentType === "image") && mediaUrl;
+    if (!conversationId || (!message && !isMediaMessage)) {
       return new Response(
         JSON.stringify({ error: "Dados insuficientes" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -182,35 +184,88 @@ serve(async (req) => {
     // Enviar resposta via MessageBird
     const channel = await resolveChannelForConversation(conversationId);
     if (channel) {
-      const sendPayload = {
-        to: contactPhone,
-        from: channel.channel_id,
-        type: "text",
-        content: { text: aiReply },
-      };
+      // Se o cliente enviou áudio, responder com áudio (TTS) + texto
+      const isAudioInput = contentType === "audio" || contentType === "voice" || contentType === "ptt";
+      let audioSent = false;
 
-      const mbResponse = await fetch("https://conversations.messagebird.com/v1/send", {
-        method: "POST",
-        headers: {
-          Authorization: `AccessKey ${channel.access_key}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(sendPayload),
-      });
+      if (isAudioInput) {
+        const elevenLabsKey = Deno.env.get("ELEVENLABS_API_KEY");
+        if (elevenLabsKey) {
+          try {
+            const audioUrl = await generateTTSAudio(aiReply, elevenLabsKey);
+            if (audioUrl) {
+              // Enviar áudio via MessageBird
+              const audioPayload = {
+                to: contactPhone,
+                from: channel.channel_id,
+                type: "audio",
+                content: { audio: { url: audioUrl } },
+              };
 
-      const mbResult = await mbResponse.json();
-      console.log("📨 Resposta IA enviada via MessageBird:", mbResponse.status);
+              const mbAudioResponse = await fetch("https://conversations.messagebird.com/v1/send", {
+                method: "POST",
+                headers: {
+                  Authorization: `AccessKey ${channel.access_key}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(audioPayload),
+              });
 
-      await supabase.from("whatsapp_messages").insert({
-        conversation_id: conversationId,
-        messagebird_id: mbResult.id || null,
-        direction: "outbound",
-        content_type: "text",
-        content: aiReply,
-        status: "sent",
-        sent_by: agentName,
-        ai_generated: true,
-      });
+              const mbAudioResult = await mbAudioResponse.json();
+              console.log("🔊 Áudio TTS enviado via MessageBird:", mbAudioResponse.status);
+
+              await supabase.from("whatsapp_messages").insert({
+                conversation_id: conversationId,
+                messagebird_id: mbAudioResult.id || null,
+                direction: "outbound",
+                content_type: "audio",
+                content: aiReply,
+                media_url: audioUrl,
+                status: "sent",
+                sent_by: agentName,
+                ai_generated: true,
+              });
+
+              audioSent = true;
+            }
+          } catch (ttsError) {
+            console.warn("⚠️ Erro ao gerar TTS, enviando como texto:", ttsError);
+          }
+        }
+      }
+
+      // Enviar como texto se não enviou áudio (ou como fallback)
+      if (!audioSent) {
+        const sendPayload = {
+          to: contactPhone,
+          from: channel.channel_id,
+          type: "text",
+          content: { text: aiReply },
+        };
+
+        const mbResponse = await fetch("https://conversations.messagebird.com/v1/send", {
+          method: "POST",
+          headers: {
+            Authorization: `AccessKey ${channel.access_key}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(sendPayload),
+        });
+
+        const mbResult = await mbResponse.json();
+        console.log("📨 Resposta IA enviada via MessageBird:", mbResponse.status);
+
+        await supabase.from("whatsapp_messages").insert({
+          conversation_id: conversationId,
+          messagebird_id: mbResult.id || null,
+          direction: "outbound",
+          content_type: "text",
+          content: aiReply,
+          status: "sent",
+          sent_by: agentName,
+          ai_generated: true,
+        });
+      }
 
       await supabase
         .from("whatsapp_conversations")
@@ -393,4 +448,68 @@ async function transcribeAudioWithGemini(audioUrl: string, geminiKey: string): P
 
   const data = await response.json();
   return data.candidates?.[0]?.content?.parts?.[0]?.text || "Áudio não transcrito";
+}
+
+async function generateTTSAudio(text: string, apiKey: string): Promise<string | null> {
+  // Limitar texto para TTS (máximo ~500 chars para não ficar muito longo)
+  const ttsText = text.length > 500 ? text.substring(0, 497) + "..." : text;
+  
+  // Usar voz feminina em português (Laura - FGY2WhTYpPnrIDTdsKH5)
+  const voiceId = "FGY2WhTYpPnrIDTdsKH5";
+
+  const response = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
+    {
+      method: "POST",
+      headers: {
+        "xi-api-key": apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        text: ttsText,
+        model_id: "eleven_multilingual_v2",
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.75,
+          style: 0.3,
+          use_speaker_boost: true,
+        },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`ElevenLabs TTS error: ${response.status} - ${errText}`);
+  }
+
+  const audioBuffer = await response.arrayBuffer();
+  const base64Audio = base64Encode(new Uint8Array(audioBuffer));
+  
+  // Criar data URL para o áudio (MessageBird aceita URLs)
+  // Vamos salvar no Supabase Storage para ter uma URL pública
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+
+  const fileName = `tts-${Date.now()}.mp3`;
+  const { error: uploadError } = await supabase.storage
+    .from("avatars")
+    .upload(`tts-audio/${fileName}`, new Uint8Array(audioBuffer), {
+      contentType: "audio/mpeg",
+      upsert: true,
+    });
+
+  if (uploadError) {
+    console.warn("⚠️ Erro ao fazer upload do áudio TTS:", uploadError);
+    return null;
+  }
+
+  const { data: publicUrl } = supabase.storage
+    .from("avatars")
+    .getPublicUrl(`tts-audio/${fileName}`);
+
+  console.log("🔊 Áudio TTS gerado:", publicUrl.publicUrl);
+  return publicUrl.publicUrl;
 }

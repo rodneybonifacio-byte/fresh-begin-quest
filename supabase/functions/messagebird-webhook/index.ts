@@ -34,14 +34,18 @@ serve(async (req) => {
 
     const message = body.message || body.data || body;
     const channelId = message.channelId || message.channel_id || body.channelId;
-    const contactPhone = message.from || message.contact?.msisdn || message.originator;
-    const contactName = message.contact?.displayName || message.contact?.firstName || contactPhone;
+    // Extrair telefone: verificar message.from, body.contact.msisdn (pode ser número), message.originator
+    const rawPhone = message.from || body.contact?.msisdn || message.contact?.msisdn || message.originator;
+    const contactPhone = rawPhone ? String(rawPhone) : null;
+    const contactName = body.contact?.displayName || body.contact?.firstName || message.contact?.displayName || message.contact?.firstName || contactPhone;
     const messageContent = message.content?.text || message.body || message.content?.html || "";
     const messageBirdId = message.id || body.id;
     const direction = message.direction === "received" || message.direction === "incoming" ? "inbound" : "outbound";
-    const contentType = message.content?.type || message.type || "text";
+    // Detectar tipo de conteúdo: áudio do WhatsApp vem como "audio" ou na estrutura content
+    const rawContentType = message.content?.type || message.type || "text";
+    const contentType = (message.content?.audio || rawContentType === "audio" || rawContentType === "voice") ? "audio" : rawContentType;
     const mediaUrl = message.content?.media?.url || message.content?.image?.url || message.content?.audio?.url || null;
-    const mediaType = message.content?.media?.contentType || null;
+    const mediaType = message.content?.media?.contentType || message.content?.audio?.contentType || null;
 
     if (!contactPhone) {
       console.error("❌ Telefone do contato não encontrado no payload");
