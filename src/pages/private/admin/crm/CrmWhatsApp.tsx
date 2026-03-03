@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../../../integrations/supabase/client';
-import { MessageSquare, Send, Search, Phone, User, Bot, Clock, ChevronLeft, ToggleLeft, ToggleRight, Smile, Check, CheckCheck, Ticket } from 'lucide-react';
+import { MessageSquare, Send, Search, Phone, User, Bot, Clock, ChevronLeft, ToggleLeft, ToggleRight, Smile, Check, CheckCheck, Ticket, Mic, Paperclip, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import TicketHistory from './TicketHistory';
@@ -42,7 +42,13 @@ const CrmWhatsApp = () => {
   const [loadingConversations, setLoadingConversations] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [mobileShowChat, setMobileShowChat] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Carregar conversas
   const loadConversations = useCallback(async () => {
@@ -178,6 +184,112 @@ const CrmWhatsApp = () => {
         .eq('id', openTicket.id);
     }
   };
+
+  // Upload file to storage and send
+  const uploadAndSend = async (file: File) => {
+    if (!selectedConversation || sending) return;
+    setSending(true);
+    try {
+      const ext = file.name.split('.').pop() || 'bin';
+      const fileName = `crm-media/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { contentType: file.type, upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
+      const mediaUrl = publicUrlData.publicUrl;
+
+      const isImage = file.type.startsWith('image/');
+      const isAudio = file.type.startsWith('audio/');
+      const contentType = isImage ? 'image' : isAudio ? 'audio' : 'file';
+      const msgText = isImage ? '📷 Imagem' : isAudio ? '🎤 Áudio' : `📎 ${file.name}`;
+
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/messagebird-send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          conversationId: selectedConversation.id,
+          message: msgText,
+          contentType,
+          mediaUrl,
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        console.error('Erro ao enviar mídia:', err);
+      }
+    } catch (e) {
+      console.error('Erro ao enviar arquivo:', e);
+    }
+    setSending(false);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) uploadAndSend(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // Audio recording
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+        setRecordingTime(0);
+
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/ogg; codecs=opus' });
+        const audioFile = new File([audioBlob], `audio-${Date.now()}.ogg`, { type: 'audio/ogg; codecs=opus' });
+        await uploadAndSend(audioFile);
+      };
+
+      mediaRecorder.start(250);
+      setIsRecording(true);
+      setRecordingTime(0);
+      recordingTimerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000);
+    } catch (e) {
+      console.error('Erro ao gravar áudio:', e);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+  };
+
+  const cancelRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.ondataavailable = null;
+      mediaRecorderRef.current.onstop = () => {
+        mediaRecorderRef.current?.stream?.getTracks().forEach(t => t.stop());
+      };
+      mediaRecorderRef.current.stop();
+    }
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    setIsRecording(false);
+    setRecordingTime(0);
+    audioChunksRef.current = [];
+  };
+
+  const formatRecordingTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
   const formatPhone = (phone: string) => {
     const clean = phone.replace(/\D/g, '');
@@ -393,24 +505,74 @@ const CrmWhatsApp = () => {
 
             {/* Input */}
             <div className="p-3 border-t border-border bg-card">
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-                  placeholder="Digite uma mensagem..."
-                  className="flex-1 px-4 py-2.5 bg-muted rounded-full text-sm outline-none text-foreground placeholder:text-muted-foreground"
-                  disabled={sending}
-                />
-                <button
-                  onClick={sendMessage}
-                  disabled={!newMessage.trim() || sending}
-                  className="w-10 h-10 rounded-full bg-green-500 hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
-                >
-                  <Send className="w-4 h-4 text-white" />
-                </button>
-              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,audio/*,.pdf,.doc,.docx"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              {isRecording ? (
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={cancelRecording}
+                    className="w-10 h-10 rounded-full bg-muted hover:bg-destructive/10 flex items-center justify-center transition-colors"
+                    title="Cancelar"
+                  >
+                    <X className="w-4 h-4 text-destructive" />
+                  </button>
+                  <div className="flex-1 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
+                    <span className="text-sm font-medium text-destructive">{formatRecordingTime(recordingTime)}</span>
+                    <span className="text-xs text-muted-foreground">Gravando...</span>
+                  </div>
+                  <button
+                    onClick={stopRecording}
+                    className="w-10 h-10 rounded-full bg-green-500 hover:bg-green-600 flex items-center justify-center transition-colors"
+                    title="Enviar áudio"
+                  >
+                    <Send className="w-4 h-4 text-white" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={sending}
+                    className="w-10 h-10 rounded-full hover:bg-muted flex items-center justify-center transition-colors disabled:opacity-40"
+                    title="Anexar arquivo"
+                  >
+                    <Paperclip className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                  <input
+                    type="text"
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+                    placeholder="Digite uma mensagem..."
+                    className="flex-1 px-4 py-2.5 bg-muted rounded-full text-sm outline-none text-foreground placeholder:text-muted-foreground"
+                    disabled={sending}
+                  />
+                  {newMessage.trim() ? (
+                    <button
+                      onClick={sendMessage}
+                      disabled={sending}
+                      className="w-10 h-10 rounded-full bg-green-500 hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+                    >
+                      <Send className="w-4 h-4 text-white" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={startRecording}
+                      disabled={sending}
+                      className="w-10 h-10 rounded-full bg-green-500 hover:bg-green-600 disabled:opacity-40 flex items-center justify-center transition-colors"
+                      title="Gravar áudio"
+                    >
+                      <Mic className="w-4 h-4 text-white" />
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </>
         ) : (
