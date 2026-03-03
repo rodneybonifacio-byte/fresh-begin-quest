@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../../../integrations/supabase/client';
-import { MessageSquare, Send, Search, Phone, User, Bot, Clock, ChevronLeft, ToggleLeft, ToggleRight, Smile, Check, CheckCheck } from 'lucide-react';
+import { MessageSquare, Send, Search, Phone, User, Bot, Clock, ChevronLeft, ToggleLeft, ToggleRight, Smile, Check, CheckCheck, Ticket } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import TicketHistory from './TicketHistory';
 
 interface Conversation {
   id: string;
@@ -161,6 +162,23 @@ const CrmWhatsApp = () => {
     }
   };
 
+  const closeTicketManually = async (conversationId: string) => {
+    const { data: openTicket } = await supabase
+      .from('whatsapp_tickets')
+      .select('id')
+      .eq('conversation_id', conversationId)
+      .eq('status', 'open')
+      .limit(1)
+      .single();
+
+    if (openTicket) {
+      await supabase
+        .from('whatsapp_tickets')
+        .update({ status: 'closed', closed_by: 'human', closed_at: new Date().toISOString() })
+        .eq('id', openTicket.id);
+    }
+  };
+
   const formatPhone = (phone: string) => {
     const clean = phone.replace(/\D/g, '');
     if (clean.length === 13) return `+${clean.slice(0, 2)} (${clean.slice(2, 4)}) ${clean.slice(4, 9)}-${clean.slice(9)}`;
@@ -291,7 +309,18 @@ const CrmWhatsApp = () => {
                 <Bot className="w-3.5 h-3.5" />
                 IA
               </button>
+              <button
+                onClick={() => closeTicketManually(selectedConversation.id)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-muted text-muted-foreground hover:bg-red-500/10 hover:text-red-600 transition-colors"
+                title="Fechar ticket manualmente"
+              >
+                <Ticket className="w-3.5 h-3.5" />
+                Fechar
+              </button>
             </div>
+
+            {/* Ticket History */}
+            <TicketHistory conversationId={selectedConversation.id} />
 
             {/* Mensagens */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-muted/30">
