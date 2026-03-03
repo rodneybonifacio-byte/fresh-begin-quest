@@ -83,11 +83,18 @@ const CrmWhatsApp = () => {
 
   // Realtime para novas mensagens
   useEffect(() => {
+    const convId = selectedConversation?.id;
+    
     const channel = supabase
-      .channel('whatsapp-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'whatsapp_messages' }, (payload: any) => {
-        const newMsg = payload.new as Message;
-        if (selectedConversation && newMsg.conversation_id === selectedConversation.id) {
+      .channel(`whatsapp-realtime-${convId || 'global'}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'whatsapp_messages',
+        ...(convId ? { filter: `conversation_id=eq.${convId}` } : {}),
+      }, (payload: any) => {
+        if (convId) {
+          const newMsg = payload.new as Message;
           setMessages(prev => {
             if (prev.some(m => m.id === newMsg.id)) return prev;
             return [...prev, newMsg];
@@ -95,13 +102,13 @@ const CrmWhatsApp = () => {
         }
         loadConversations();
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'whatsapp_conversations' }, () => {
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'whatsapp_conversations' }, () => {
         loadConversations();
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [selectedConversation, loadConversations]);
+  }, [selectedConversation?.id, loadConversations]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
