@@ -458,7 +458,7 @@ async function generateTTSAudio(text: string, apiKey: string): Promise<string | 
   const voiceId = "FGY2WhTYpPnrIDTdsKH5";
 
   const response = await fetch(
-    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=opus_48000`,
+    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=opus_48000_128`,
     {
       method: "POST",
       headers: {
