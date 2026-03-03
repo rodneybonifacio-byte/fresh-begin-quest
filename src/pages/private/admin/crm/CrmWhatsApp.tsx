@@ -328,7 +328,17 @@ const CrmWhatsApp = () => {
                       {msg.content_type === 'image' && msg.media_url ? (
                         <img src={msg.media_url} alt="Imagem" className="rounded-lg max-w-full mb-1" />
                       ) : null}
-                      <p className="text-sm whitespace-pre-wrap break-words">{msg.content || '[mídia]'}</p>
+                      {(msg.content_type === 'audio' || msg.content_type === 'voice' || msg.content_type === 'ptt') && msg.media_url ? (
+                        <audio controls className="max-w-full mb-1" preload="metadata">
+                          <source src={msg.media_url} />
+                          Seu navegador não suporta áudio.
+                        </audio>
+                      ) : null}
+                      {msg.content ? (
+                        <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                      ) : (msg.content_type !== 'image' && msg.content_type !== 'audio' && msg.content_type !== 'voice' && msg.content_type !== 'ptt') ? (
+                        <p className="text-sm whitespace-pre-wrap break-words">[mídia]</p>
+                      ) : null}
                       <div className={`flex items-center justify-end gap-1 mt-1 ${msg.direction === 'outbound' ? 'text-white/60' : 'text-muted-foreground'}`}>
                         <Clock className="w-3 h-3" />
                         <span className="text-[10px]">
