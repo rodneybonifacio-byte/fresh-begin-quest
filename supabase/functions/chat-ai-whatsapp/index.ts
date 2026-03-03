@@ -409,6 +409,7 @@ async function detectAndCreateSupportTicket(supabase: any, conversationId: strin
     console.log(`🎫 Ticket criado [${matchedCategory}/${matchedPriority}] conversa:`, conversationId);
   } catch (e) {
     console.warn("⚠️ Erro ao detectar reclamação:", e);
+  }
 }
 
 // === GERENCIAMENTO DE TICKETS (whatsapp_tickets) ===
@@ -504,7 +505,6 @@ async function detectTicketResolution(supabase: any, conversationId: string, aiR
   } catch (e) {
     console.warn("⚠️ Erro ao detectar resolução:", e);
   }
-}
 }
 
 function getDefaultPrompt(agent: string): string {
