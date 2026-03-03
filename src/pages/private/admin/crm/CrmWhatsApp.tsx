@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../../../integrations/supabase/client';
-import { MessageSquare, Send, Search, Phone, User, Bot, Clock, ChevronLeft, ToggleLeft, ToggleRight, Smile } from 'lucide-react';
+import { MessageSquare, Send, Search, Phone, User, Bot, Clock, ChevronLeft, ToggleLeft, ToggleRight, Smile, Check, CheckCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -340,10 +340,20 @@ const CrmWhatsApp = () => {
                         <p className="text-sm whitespace-pre-wrap break-words">[mídia]</p>
                       ) : null}
                       <div className={`flex items-center justify-end gap-1 mt-1 ${msg.direction === 'outbound' ? 'text-white/60' : 'text-muted-foreground'}`}>
-                        <Clock className="w-3 h-3" />
                         <span className="text-[10px]">
                           {format(new Date(msg.created_at), 'HH:mm')}
                         </span>
+                        {msg.direction === 'outbound' && (
+                          msg.status === 'read' ? (
+                            <CheckCheck className="w-3.5 h-3.5 text-blue-400" />
+                          ) : msg.status === 'delivered' ? (
+                            <CheckCheck className="w-3.5 h-3.5" />
+                          ) : msg.status === 'sent' ? (
+                            <Check className="w-3.5 h-3.5" />
+                          ) : (
+                            <Clock className="w-3 h-3" />
+                          )
+                        )}
                       </div>
                     </div>
                   </div>
