@@ -10,72 +10,30 @@ const corsHeaders = {
 };
 
 // ═══════════════════════════════════════════════════════════
-// TOOLS DISPONÍVEIS PARA A IA (OpenAI Function Calling)
+// TOOLS: Carregadas dinamicamente do banco (ai_tools.ai_callable = true)
 // ═══════════════════════════════════════════════════════════
 
-const AI_TOOLS = [
-  {
-    type: "function",
-    function: {
-      name: "rastrear_pacote",
-      description: "Rastreia um pacote dos Correios pelo código de rastreio. Use quando o cliente perguntar sobre status de entrega, onde está o pacote, previsão de entrega, ou enviar um código de rastreio (formato: 2 letras + 9 números + 2 letras, ex: AD167142357BR).",
-      parameters: {
-        type: "object",
-        properties: {
-          codigo_rastreio: { type: "string", description: "Código de rastreio dos Correios (ex: AD167142357BR)" },
-        },
-        required: ["codigo_rastreio"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "cotar_frete",
-      description: "Simula preços de frete para envio de pacote. Use quando o cliente perguntar quanto custa enviar, valores de frete, comparação de preços entre transportadoras, ou quiser fazer uma cotação.",
-      parameters: {
-        type: "object",
-        properties: {
-          cep_origem: { type: "string", description: "CEP de origem (8 dígitos)" },
-          cep_destino: { type: "string", description: "CEP de destino (8 dígitos)" },
-          peso: { type: "number", description: "Peso em kg" },
-          altura: { type: "number", description: "Altura em cm" },
-          largura: { type: "number", description: "Largura em cm" },
-          comprimento: { type: "number", description: "Comprimento em cm" },
-        },
-        required: ["cep_origem", "cep_destino"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "consultar_saldo",
-      description: "Consulta o saldo de créditos disponível do cliente. Use quando o cliente perguntar sobre saldo, créditos, quanto tem disponível, ou recarga.",
-      parameters: {
-        type: "object",
-        properties: {
-          cliente_id: { type: "string", description: "ID do cliente (UUID). Se não souber, use o telefone para buscar." },
-        },
-        required: [],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "buscar_cliente_por_telefone",
-      description: "Busca dados de um cliente pelo número de telefone. Use quando precisar identificar o cliente para consultar saldo, dados ou histórico.",
-      parameters: {
-        type: "object",
-        properties: {
-          telefone: { type: "string", description: "Número de telefone do cliente" },
-        },
-        required: ["telefone"],
-      },
-    },
-  },
-];
+async function loadCallableTools(supabase: any, agentName: string): Promise<any[]> {
+  const { data: tools } = await supabase
+    .from("ai_tools")
+    .select("name, ai_function_schema, allowed_agents")
+    .eq("ai_callable", true)
+    .eq("is_enabled", true);
+
+  if (!tools || tools.length === 0) return [];
+
+  return tools
+    .filter((t: any) => {
+      // Se allowed_agents vazio/null = todos podem usar
+      if (!t.allowed_agents || t.allowed_agents.length === 0) return true;
+      return t.allowed_agents.includes(agentName);
+    })
+    .filter((t: any) => t.ai_function_schema)
+    .map((t: any) => ({
+      type: "function",
+      function: t.ai_function_schema,
+    }));
+}
 
 // ═══════════════════════════════════════════════════════════
 // EXECUTOR DE TOOLS
@@ -89,45 +47,34 @@ async function executeTool(toolName: string, args: any, contactPhone: string): P
 
   try {
     switch (toolName) {
-      case "rastrear_pacote": {
+      // ── Rastreio ──
+      case "rastrear_objeto": {
         const data = await fetchTrackingData(args.codigo_rastreio);
         if (!data) return `Código ${args.codigo_rastreio} não retornou dados. Pode estar incorreto ou ainda não foi postado.`;
         return formatTrackingForAI(data);
       }
 
-      case "cotar_frete": {
-        // Buscar cliente_id pelo telefone do contato
-        const clienteId = await resolveClienteId(supabase, contactPhone);
-        if (!clienteId) return "Não consegui identificar o cliente para fazer a cotação. Peça o CPF/CNPJ ou e-mail para localizar.";
-        
+      // ── Cotação ──
+      case "cotacao_frete": {
+        const clienteId = args.cliente_id || await resolveClienteId(supabase, contactPhone);
+        if (!clienteId) return "Não consegui identificar o cliente para fazer a cotação. Peça o CPF/CNPJ ou e-mail.";
         const token = await getAdminToken();
         if (!token) return "Erro interno ao gerar cotação.";
-
         const BASE_API_URL = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br";
-        const cotacaoPayload = {
-          cepOrigem: (args.cep_origem || "").replace(/\D/g, ""),
-          cepDestino: (args.cep_destino || "").replace(/\D/g, ""),
-          embalagem: {
-            peso: args.peso || 0.3,
-            altura: args.altura || 2,
-            largura: args.largura || 11,
-            comprimento: args.comprimento || 16,
-          },
-          valorDeclarado: 0,
-          clienteId,
-        };
-
         const resp = await fetch(`${BASE_API_URL}/frete/cotacao`, {
           method: "POST",
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-          body: JSON.stringify(cotacaoPayload),
+          body: JSON.stringify({
+            cepOrigem: (args.cep_origem || "").replace(/\D/g, ""),
+            cepDestino: (args.cep_destino || "").replace(/\D/g, ""),
+            embalagem: { peso: args.peso || 0.3, altura: args.altura || 2, largura: args.largura || 11, comprimento: args.comprimento || 16 },
+            valorDeclarado: 0, clienteId,
+          }),
         });
-
-        if (!resp.ok) return `Erro na cotação: ${resp.status}. Verifique se os CEPs estão corretos.`;
+        if (!resp.ok) return `Erro na cotação: ${resp.status}. Verifique os CEPs.`;
         const cotacao = await resp.json();
         const opcoes = cotacao.data || [];
         if (opcoes.length === 0) return "Nenhuma opção de frete encontrada para esses CEPs.";
-
         let result = `Opções de frete de ${args.cep_origem} → ${args.cep_destino}:\n`;
         for (const op of opcoes.slice(0, 5)) {
           result += `- ${op.nomeServico}: R$ ${op.valorTotal || op.valor} (${op.prazo} dias)\n`;
@@ -135,30 +82,157 @@ async function executeTool(toolName: string, args: any, contactPhone: string): P
         return result;
       }
 
+      // ── Saldo ──
       case "consultar_saldo": {
         let clienteId = args.cliente_id;
-        if (!clienteId) {
-          clienteId = await resolveClienteId(supabase, contactPhone);
-        }
-        if (!clienteId) return "Não consegui identificar sua conta. Me diz seu e-mail ou CPF/CNPJ que eu localizo.";
-
+        if (!clienteId) clienteId = await resolveClienteId(supabase, contactPhone);
+        if (!clienteId) return "Não consegui identificar sua conta. Me diz seu e-mail ou CPF/CNPJ.";
         const saldo = await supabase.rpc("calcular_saldo_disponivel", { p_cliente_id: clienteId });
         const bloqueados = await supabase.rpc("calcular_creditos_bloqueados", { p_cliente_id: clienteId });
-
-        const saldoVal = saldo.data ?? 0;
-        const bloqVal = bloqueados.data ?? 0;
-        return `Saldo disponível: R$ ${Number(saldoVal).toFixed(2)}\nCréditos bloqueados (etiquetas pendentes): R$ ${Number(bloqVal).toFixed(2)}`;
+        return `Saldo disponível: R$ ${Number(saldo.data ?? 0).toFixed(2)}\nCréditos bloqueados: R$ ${Number(bloqueados.data ?? 0).toFixed(2)}`;
       }
 
-      case "buscar_cliente_por_telefone": {
-        const phone = (args.telefone || contactPhone).replace(/\D/g, "");
-        const clienteId = await resolveClienteId(supabase, phone);
-        if (!clienteId) return `Não encontrei nenhum cliente com o telefone ${phone}. Peça o e-mail ou CPF/CNPJ.`;
+      // ── Extrato ──
+      case "consultar_extrato": {
+        let clienteId = args.cliente_id;
+        if (!clienteId) clienteId = await resolveClienteId(supabase, contactPhone);
+        if (!clienteId) return "Não consegui identificar sua conta.";
+        const { data: transacoes } = await supabase.rpc("buscar_transacoes_cliente", { p_cliente_id: clienteId, p_limit: args.limite || 10 });
+        if (!transacoes || transacoes.length === 0) return "Nenhuma transação encontrada.";
+        let result = "Últimas transações:\n";
+        for (const t of transacoes.slice(0, 10)) {
+          const data = new Date(t.created_at).toLocaleDateString("pt-BR");
+          result += `- ${data}: ${t.tipo} R$ ${Math.abs(t.valor).toFixed(2)} ${t.descricao || ""}\n`;
+        }
+        return result;
+      }
+
+      // ── Buscar cliente ──
+      case "consultar_cliente_api": {
+        const phone = args.telefone || contactPhone;
+        const clienteId = await resolveClienteId(supabase, (phone || "").replace(/\D/g, ""));
+        if (!clienteId) return "Não encontrei nenhum cliente. Peça e-mail ou CPF/CNPJ.";
         return `Cliente encontrado: ID ${clienteId}`;
       }
 
+      // ── Emissões em atraso ──
+      case "buscar_emissoes_atraso": {
+        let clienteId = args.cliente_id;
+        if (!clienteId) clienteId = await resolveClienteId(supabase, contactPhone);
+        const query = supabase.from("emissoes_em_atraso").select("codigo_objeto, destinatario_nome, servico, data_previsao_entrega").order("detectado_em", { ascending: false }).limit(5);
+        if (clienteId) query.eq("cliente_id", clienteId);
+        if (args.codigo_objeto) query.eq("codigo_objeto", args.codigo_objeto);
+        const { data } = await query;
+        if (!data || data.length === 0) return "Nenhuma emissão em atraso encontrada.";
+        let result = "Pacotes em atraso:\n";
+        for (const e of data) {
+          result += `- ${e.codigo_objeto} → ${e.destinatario_nome || "?"} (${e.servico || "?"}, previsão: ${e.data_previsao_entrega || "?"})\n`;
+        }
+        return result;
+      }
+
+      // ── Serviços do cliente ──
+      case "consultar_servicos_cliente": {
+        let clienteId = args.cliente_id;
+        if (!clienteId) clienteId = await resolveClienteId(supabase, contactPhone);
+        if (!clienteId) return "Não consegui identificar o cliente.";
+        const token = await getAdminToken();
+        if (!token) return "Erro interno.";
+        const BASE_API_URL = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br";
+        const resp = await fetch(`${BASE_API_URL}/clientes/${clienteId}/servicos`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!resp.ok) return "Não foi possível consultar os serviços.";
+        const servicos = await resp.json();
+        const lista = servicos.data || servicos || [];
+        if (Array.isArray(lista) && lista.length === 0) return "Nenhum serviço encontrado para esse cliente.";
+        return `Serviços disponíveis: ${JSON.stringify(lista).substring(0, 500)}`;
+      }
+
+      // ── Remetentes ──
+      case "buscar_remetentes_api": {
+        let clienteId = args.cliente_id;
+        if (!clienteId) clienteId = await resolveClienteId(supabase, contactPhone);
+        if (!clienteId) return "Não consegui identificar o cliente.";
+        const { data: remetentes } = await supabase.from("remetentes").select("nome, cep, localidade, uf").eq("cliente_id", clienteId).limit(5);
+        if (!remetentes || remetentes.length === 0) return "Nenhum remetente cadastrado.";
+        let result = "Remetentes cadastrados:\n";
+        for (const r of remetentes) {
+          result += `- ${r.nome} (CEP: ${r.cep || "?"}, ${r.localidade || "?"}-${r.uf || "?"})\n`;
+        }
+        return result;
+      }
+
+      // ── Recargas ──
+      case "buscar_recargas": {
+        let clienteId = args.cliente_id;
+        if (!clienteId) clienteId = await resolveClienteId(supabase, contactPhone);
+        if (!clienteId) return "Não consegui identificar o cliente.";
+        const query = supabase.from("recargas_pix").select("valor, status, data_criacao").eq("cliente_id", clienteId).order("data_criacao", { ascending: false }).limit(5);
+        if (args.status) query.eq("status", args.status);
+        const { data } = await query;
+        if (!data || data.length === 0) return "Nenhuma recarga encontrada.";
+        let result = "Recargas recentes:\n";
+        for (const r of data) {
+          const dt = new Date(r.data_criacao).toLocaleDateString("pt-BR");
+          result += `- ${dt}: R$ ${Number(r.valor).toFixed(2)} (${r.status})\n`;
+        }
+        return result;
+      }
+
+      // ── Gerar PIX ──
+      case "gerar_pix_recarga": {
+        let clienteId = args.cliente_id;
+        if (!clienteId) clienteId = await resolveClienteId(supabase, contactPhone);
+        if (!clienteId) return "Não consegui identificar o cliente para gerar o PIX.";
+        if (!args.valor || args.valor <= 0) return "Informe o valor da recarga.";
+        const token = await getAdminToken();
+        if (!token) return "Erro interno.";
+        const BASE_API_URL = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br";
+        const resp = await fetch(`${BASE_API_URL}/recargas/pix`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ clienteId, valor: args.valor }),
+        });
+        if (!resp.ok) return `Erro ao gerar PIX: ${resp.status}`;
+        const pix = await resp.json();
+        return `PIX gerado! Valor: R$ ${Number(args.valor).toFixed(2)}\nCopia e cola: ${pix.data?.pixCopiaECola || pix.pixCopiaECola || "indisponível"}`;
+      }
+
+      // ── Etiquetas pendentes ──
+      case "listar_etiquetas_pendentes": {
+        let clienteId = args.cliente_id;
+        if (!clienteId) clienteId = await resolveClienteId(supabase, contactPhone);
+        if (!clienteId) return "Não consegui identificar o cliente.";
+        const { data } = await supabase.from("etiquetas_pendentes_correcao").select("destinatario_nome, destinatario_cep, motivo_erro").eq("cliente_id", clienteId).limit(5);
+        if (!data || data.length === 0) return "Nenhuma etiqueta pendente de correção.";
+        let result = "Etiquetas com erro:\n";
+        for (const e of data) {
+          result += `- ${e.destinatario_nome} (CEP: ${e.destinatario_cep}) → Erro: ${e.motivo_erro}\n`;
+        }
+        return result;
+      }
+
+      // ── Autocadastro ──
+      case "criar_cliente_autocadastro": {
+        if (!args.nome || !args.email || !args.cpf_cnpj || !args.telefone) return "Preciso de: nome, email, CPF/CNPJ e telefone para criar o cadastro.";
+        const token = await getAdminToken();
+        if (!token) return "Erro interno.";
+        const BASE_API_URL = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br";
+        const resp = await fetch(`${BASE_API_URL}/clientes/autocadastro`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ nome: args.nome, email: args.email, cpfCnpj: args.cpf_cnpj.replace(/\D/g, ""), telefone: args.telefone.replace(/\D/g, "") }),
+        });
+        if (!resp.ok) {
+          const errData = await resp.json().catch(() => ({}));
+          return `Erro no cadastro: ${errData.message || resp.status}`;
+        }
+        return "Cadastro realizado com sucesso! O cliente já pode acessar a plataforma.";
+      }
+
       default:
-        return `Ferramenta ${toolName} não reconhecida.`;
+        return `Ferramenta "${toolName}" não tem executor implementado.`;
     }
   } catch (e: any) {
     console.error(`❌ Erro executando tool ${toolName}:`, e);
@@ -266,6 +340,13 @@ serve(async (req) => {
     messages.push({ role: "user", content: userContent });
 
     // ═══════════════════════════════════════════════════════════
+    // CARREGAR TOOLS DINÂMICAS DO BANCO
+    // ═══════════════════════════════════════════════════════════
+
+    const dynamicTools = await loadCallableTools(supabase, agentName);
+    console.log(`🔧 ${dynamicTools.length} tools carregadas para ${agentName}`);
+
+    // ═══════════════════════════════════════════════════════════
     // LOOP DE TOOL CALLING (máximo 3 iterações)
     // ═══════════════════════════════════════════════════════════
 
@@ -285,20 +366,25 @@ serve(async (req) => {
     for (let iteration = 0; iteration < 3; iteration++) {
       console.log(`🔄 Iteração ${iteration + 1} - ${messages.length} mensagens`);
 
+      const requestBody: any = {
+        model: modelName,
+        messages,
+        max_tokens: maxTokens,
+        temperature,
+      };
+      // Só incluir tools se houver alguma disponível
+      if (dynamicTools.length > 0) {
+        requestBody.tools = dynamicTools;
+        requestBody.tool_choice = "auto";
+      }
+
       const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${OPENAI_API_KEY}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          model: modelName,
-          messages,
-          max_tokens: maxTokens,
-          temperature,
-          tools: AI_TOOLS,
-          tool_choice: iteration === 0 ? "auto" : "auto",
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!aiResponse.ok) {
