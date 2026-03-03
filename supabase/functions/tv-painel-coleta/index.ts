@@ -88,7 +88,26 @@ serve(async (req) => {
 
     // 1. Buscar etiquetas PRE_POSTADO
     const prePostadas = await fetchAllByStatus(status);
-    console.log(`✅ ${prePostadas.length} etiquetas ${status}`);
+    console.log(`✅ ${prePostadas.length} etiquetas ${status} (antes do filtro de 4 dias)`);
+
+    // 1b. Filtrar por limite de 4 dias — remover etiquetas muito antigas
+    const now = new Date();
+    const quatroDiasAtras = new Date(now);
+    quatroDiasAtras.setDate(now.getDate() - 4);
+    quatroDiasAtras.setHours(0, 0, 0, 0);
+
+    const prePostadasRecentes = prePostadas.filter(em => {
+      const dataEmissao = em.criadoEm || em.dataCriacao || em.dataEmissao || em.createdAt || em.created_at;
+      if (!dataEmissao) return true; // Se não tem data, mantém por segurança
+      const dataObj = new Date(dataEmissao);
+      if (isNaN(dataObj.getTime())) return true; // Data inválida, mantém
+      if (dataObj < quatroDiasAtras) {
+        console.log(`📅 Filtro 4 dias: removendo ${em.codigoObjeto} (data: ${dataEmissao})`);
+        return false;
+      }
+      return true;
+    });
+    console.log(`✅ ${prePostadasRecentes.length} etiquetas após filtro de 4 dias (removidas ${prePostadas.length - prePostadasRecentes.length})`);
 
     // 2. Buscar etiquetas POSTADO para deduplicação
     const postadas = await fetchAllByStatus('POSTADO');
@@ -115,7 +134,7 @@ serve(async (req) => {
     }
 
     // 4. Filtrar PRE_POSTADO removendo as que já foram postadas
-    const filtradas = prePostadas.filter(em => {
+    const filtradas = prePostadasRecentes.filter(em => {
       // Dedup por código de objeto (exato)
       const code = (em.codigoObjeto || '').toUpperCase().trim();
       if (code && postadasByCode.has(code)) {
@@ -131,7 +150,7 @@ serve(async (req) => {
       return true;
     });
 
-    console.log(`✅ Total final: ${filtradas.length} etiquetas (removidas ${prePostadas.length - filtradas.length} duplicadas)`);
+    console.log(`✅ Total final: ${filtradas.length} etiquetas (removidas ${prePostadasRecentes.length - filtradas.length} duplicadas)`);
 
     return new Response(
       JSON.stringify({ data: filtradas }),
