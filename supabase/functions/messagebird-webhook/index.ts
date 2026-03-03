@@ -37,7 +37,7 @@ serve(async (req) => {
     // Extrair telefone: verificar message.from, body.contact.msisdn (pode ser número), message.originator
     const rawPhone = message.from || body.contact?.msisdn || message.contact?.msisdn || message.originator;
     const contactPhone = rawPhone ? String(rawPhone) : null;
-    const contactName = body.contact?.displayName || body.contact?.firstName || message.contact?.displayName || message.contact?.firstName || contactPhone;
+    const whatsappDisplayName = body.contact?.displayName || body.contact?.firstName || message.contact?.displayName || message.contact?.firstName || null;
     const messageContent = message.content?.text || message.body || message.content?.html || "";
     const messageBirdId = message.id || body.id;
     const direction = message.direction === "received" || message.direction === "incoming" ? "inbound" : "outbound";
@@ -54,6 +54,79 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // === RESOLVER NOME REAL DO CLIENTE ===
+    const normalizedPhoneForLookup = contactPhone.replace(/\D/g, "");
+    let contactName = whatsappDisplayName || normalizedPhoneForLookup;
+
+    // 1. Buscar na tabela whatsapp_conversations (nome já salvo anteriormente)
+    const { data: existingConv } = await supabase
+      .from("whatsapp_conversations")
+      .select("contact_name, cliente_id")
+      .eq("contact_phone", normalizedPhoneForLookup)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    // 2. Se tem cliente_id vinculado, buscar nome nos remetentes
+    if (existingConv?.cliente_id) {
+      const { data: remetente } = await supabase
+        .from("remetentes")
+        .select("nome")
+        .eq("cliente_id", existingConv.cliente_id)
+        .limit(1)
+        .single();
+      if (remetente?.nome) {
+        contactName = remetente.nome;
+        console.log("✅ Nome encontrado via remetente:", contactName);
+      }
+    }
+
+    // 3. Se não achou nos remetentes, buscar por telefone nos remetentes
+    if (contactName === whatsappDisplayName || contactName === normalizedPhoneForLookup) {
+      // Tentar buscar remetente pelo celular (com diferentes formatos)
+      const phoneVariants = [
+        normalizedPhoneForLookup,
+        normalizedPhoneForLookup.startsWith("55") ? normalizedPhoneForLookup.substring(2) : `55${normalizedPhoneForLookup}`,
+      ];
+      
+      for (const phoneVariant of phoneVariants) {
+        const { data: remetenteByCel } = await supabase
+          .from("remetentes")
+          .select("nome")
+          .or(`celular.ilike.%${phoneVariant}%,telefone.ilike.%${phoneVariant}%`)
+          .limit(1)
+          .single();
+        
+        if (remetenteByCel?.nome) {
+          contactName = remetenteByCel.nome;
+          console.log("✅ Nome encontrado via telefone remetente:", contactName);
+          break;
+        }
+      }
+    }
+
+    // 4. Buscar em cadastros_origem pelo telefone
+    if (contactName === whatsappDisplayName || contactName === normalizedPhoneForLookup) {
+      const { data: cadastro } = await supabase
+        .from("cadastros_origem")
+        .select("nome_cliente")
+        .or(`telefone_cliente.ilike.%${normalizedPhoneForLookup}%`)
+        .limit(1)
+        .single();
+      
+      if (cadastro?.nome_cliente) {
+        contactName = cadastro.nome_cliente;
+        console.log("✅ Nome encontrado via cadastros_origem:", contactName);
+      }
+    }
+
+    // 5. Fallback: usar displayName do WhatsApp (já está setado)
+    if (contactName === normalizedPhoneForLookup && whatsappDisplayName) {
+      contactName = whatsappDisplayName;
+    }
+
+    console.log(`👤 Nome final do contato: ${contactName}`);
 
     // Resolver canal
     let channel = null;
