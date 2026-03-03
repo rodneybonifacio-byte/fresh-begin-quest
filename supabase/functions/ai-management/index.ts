@@ -60,6 +60,7 @@ Deno.serve(async (req) => {
       "ai_providers",
       "ai_interaction_logs",
       "ai_support_pipeline",
+      "ai_tool_phone_rules",
     ];
 
     if (!allowedTables.includes(table)) {
