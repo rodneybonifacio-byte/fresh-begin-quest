@@ -112,7 +112,25 @@ serve(async (req) => {
     }
     // === TEXTO ===
     else {
-      messages.push({ role: "user", content: message });
+      // Detectar código de rastreio e consultar API
+      const trackingCode = detectTrackingCode(message);
+      if (trackingCode) {
+        console.log("📦 Código de rastreio detectado:", trackingCode);
+        try {
+          const trackingData = await fetchTrackingData(trackingCode);
+          if (trackingData) {
+            const trackingContext = formatTrackingForAI(trackingData);
+            messages.push({ role: "user", content: `[O cliente enviou um código de rastreio: ${trackingCode}]\n\nDados do rastreio:\n${trackingContext}\n\nMensagem original: "${message}"\n\nResponda ao cliente com as informações de rastreio de forma clara e amigável.` });
+          } else {
+            messages.push({ role: "user", content: `[O cliente enviou um código de rastreio: ${trackingCode}, mas não foi possível obter informações. Informe que o código não retornou dados ou pode estar incorreto.]\n\nMensagem original: "${message}"` });
+          }
+        } catch (trackErr) {
+          console.warn("⚠️ Erro ao consultar rastreio:", trackErr);
+          messages.push({ role: "user", content: `[O cliente enviou um código de rastreio: ${trackingCode}, mas houve um erro ao consultar. Peça desculpas e sugira tentar novamente.]\n\nMensagem original: "${message}"` });
+        }
+      } else {
+        messages.push({ role: "user", content: message });
+      }
     }
 
     // === LÓGICA → OpenAI ===
@@ -511,4 +529,92 @@ async function generateTTSAudio(text: string, apiKey: string): Promise<string | 
 
   console.log("🔊 Áudio TTS gerado:", publicUrl.publicUrl);
   return publicUrl.publicUrl;
+}
+
+// === RASTREIO HELPERS ===
+
+function detectTrackingCode(text: string): string | null {
+  if (!text) return null;
+  // Padrões de códigos de rastreio dos Correios: AA123456789BR, SS987654321BR etc.
+  const correiosPattern = /\b([A-Z]{2}\d{9}[A-Z]{2})\b/i;
+  const match = text.match(correiosPattern);
+  if (match) return match[1].toUpperCase();
+  
+  // Também aceitar só o código se a mensagem inteira for basicamente o código
+  const trimmed = text.trim().toUpperCase();
+  if (/^[A-Z]{2}\d{9}[A-Z]{2}$/.test(trimmed)) return trimmed;
+  
+  return null;
+}
+
+async function fetchTrackingData(codigo: string): Promise<any> {
+  const BASE_API_URL = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br";
+  const adminEmail = Deno.env.get("API_ADMIN_EMAIL");
+  const adminPassword = Deno.env.get("API_ADMIN_PASSWORD");
+
+  if (!adminEmail || !adminPassword) {
+    console.warn("⚠️ Credenciais admin não configuradas para rastreio");
+    return null;
+  }
+
+  // Login
+  const loginResponse = await fetch(`${BASE_API_URL}/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: adminEmail, password: adminPassword }),
+  });
+
+  if (!loginResponse.ok) {
+    console.error("❌ Falha login admin para rastreio:", loginResponse.status);
+    return null;
+  }
+
+  const loginData = await loginResponse.json();
+  const token = loginData.token;
+
+  // Consultar rastreio
+  const rastreioResponse = await fetch(`${BASE_API_URL}/rastrear?codigo=${codigo}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!rastreioResponse.ok) {
+    console.error("❌ Erro API rastreio:", rastreioResponse.status);
+    return null;
+  }
+
+  const data = await rastreioResponse.json();
+  console.log("📦 Rastreio obtido para", codigo);
+  return data;
+}
+
+function formatTrackingForAI(rastreioData: any): string {
+  const dados = rastreioData?.data || rastreioData;
+  const eventos = dados?.eventos || [];
+  
+  let result = "";
+  
+  if (dados?.codigoObjeto) result += `Código: ${dados.codigoObjeto}\n`;
+  if (dados?.servico) result += `Serviço: ${dados.servico}\n`;
+  if (dados?.dataPrevisaoEntrega) result += `Previsão de entrega: ${dados.dataPrevisaoEntrega}\n`;
+  
+  if (eventos.length > 0) {
+    result += `\nÚltimos eventos (${eventos.length} total):\n`;
+    // Mostrar até 5 eventos mais recentes
+    const recentEvents = eventos.slice(0, 5);
+    for (const ev of recentEvents) {
+      const local = ev.unidade?.cidadeUf || ev.unidade?.tipo || "";
+      result += `- ${ev.dataCompleta || ev.date || ""} ${ev.horario || ""}: ${ev.descricao || ""}`;
+      if (local) result += ` (${local})`;
+      if (ev.unidadeDestino?.cidadeUf) result += ` → ${ev.unidadeDestino.cidadeUf}`;
+      result += "\n";
+    }
+  } else {
+    result += "\nNenhum evento de rastreio encontrado ainda.\n";
+  }
+  
+  return result;
 }
