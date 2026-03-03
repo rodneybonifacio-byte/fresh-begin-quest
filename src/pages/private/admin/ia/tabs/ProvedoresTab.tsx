@@ -1,6 +1,6 @@
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { aiManagementQuery, aiManagementUpdate } from '@/services/aiManagementApi';
 import { ToggleLeft, ToggleRight, Key, Brain, Eye, Mic } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -31,27 +31,16 @@ const ProvedoresTab: React.FC = () => {
 
   const { data: providers, isLoading } = useQuery({
     queryKey: ['ai-providers'],
-    queryFn: async () => {
-      const token = localStorage.getItem('token');
-      const { data, error } = await supabase
-        .from('ai_providers')
-        .select('*')
-        .order('name')
-        .setHeader('Authorization', `Bearer ${token}`);
-      if (error) throw error;
-      return data as AiProvider[];
-    },
+    queryFn: () => aiManagementQuery<AiProvider>({
+      action: 'select',
+      table: 'ai_providers',
+      orderBy: { column: 'name', ascending: true },
+    }),
   });
 
   const toggleMutation = useMutation({
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
-      const token = localStorage.getItem('token');
-      const { error } = await supabase
-        .from('ai_providers')
-        .update({ is_active })
-        .eq('id', id)
-        .setHeader('Authorization', `Bearer ${token}`);
-      if (error) throw error;
+      await aiManagementUpdate('ai_providers', id, { is_active });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ai-providers'] });
@@ -80,29 +69,15 @@ const ProvedoresTab: React.FC = () => {
                 <p className="text-sm text-muted-foreground">{typeLabels[provider.provider_type] || provider.provider_type}</p>
               </div>
             </div>
-            <button onClick={() => toggleMutation.mutate({ id: provider.id, is_active: !provider.is_active })}>
-              {provider.is_active ? <ToggleRight className="w-7 h-7 text-green-500" /> : <ToggleLeft className="w-7 h-7 text-muted-foreground" />}
-            </button>
-          </div>
-
-          <div className="mt-4 grid md:grid-cols-2 gap-4">
-            <div className="bg-muted/50 rounded-lg p-3">
-              <p className="text-xs text-muted-foreground font-medium mb-1">Modelos Disponíveis</p>
-              <div className="flex flex-wrap gap-1.5">
-                {(provider.config?.models || []).map((m: string) => (
-                  <span key={m} className={`text-xs px-2 py-1 rounded-md ${m === provider.config?.default_model ? 'bg-primary/10 text-primary font-medium border border-primary/30' : 'bg-muted text-muted-foreground'}`}>
-                    {m} {m === provider.config?.default_model && '(padrão)'}
-                  </span>
-                ))}
-              </div>
-            </div>
-            <div className="bg-muted/50 rounded-lg p-3">
-              <p className="text-xs text-muted-foreground font-medium mb-1">Chave de API</p>
-              <div className="flex items-center gap-2">
-                <Key className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm text-foreground font-mono">{provider.secret_key_name || 'N/A'}</span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">Configurada</span>
-              </div>
+            <div className="flex items-center gap-3">
+              {provider.secret_key_name && (
+                <span className="flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">
+                  <Key className="w-3 h-3" /> {provider.secret_key_name}
+                </span>
+              )}
+              <button onClick={() => toggleMutation.mutate({ id: provider.id, is_active: !provider.is_active })}>
+                {provider.is_active ? <ToggleRight className="w-6 h-6 text-green-500" /> : <ToggleLeft className="w-6 h-6 text-muted-foreground" />}
+              </button>
             </div>
           </div>
         </div>
