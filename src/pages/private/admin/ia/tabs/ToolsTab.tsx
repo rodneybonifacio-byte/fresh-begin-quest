@@ -15,6 +15,7 @@ interface AiTool {
   requires_approval: boolean;
   allowed_agents: string[];
   risk_level: string;
+  ai_callable: boolean;
 }
 
 interface PhoneRule {
@@ -190,6 +191,7 @@ const ToolsTab: React.FC = () => {
   const categories = [...new Set((tools || []).map(t => t.category))];
   const totalEnabled = (tools || []).filter(t => t.is_enabled).length;
   const totalApproval = (tools || []).filter(t => t.requires_approval).length;
+  const totalCallable = (tools || []).filter(t => t.ai_callable).length;
 
   return (
     <div className="mt-4 space-y-4">
@@ -210,6 +212,10 @@ const ToolsTab: React.FC = () => {
         <div className="bg-card border border-border rounded-lg px-4 py-2">
           <span className="text-xs text-muted-foreground">Regras Telefone</span>
           <p className="text-lg font-bold text-blue-600">{phoneRules?.length || 0}</p>
+        </div>
+        <div className="bg-card border border-border rounded-lg px-4 py-2">
+          <span className="text-xs text-muted-foreground">IA Callable</span>
+          <p className="text-lg font-bold text-purple-600">{totalCallable}</p>
         </div>
       </div>
 
@@ -274,6 +280,11 @@ const ToolsTab: React.FC = () => {
                             <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${riskColors[tool.risk_level] || 'bg-muted text-muted-foreground'}`}>
                               {riskLabels[tool.risk_level] || tool.risk_level}
                             </span>
+                            {tool.ai_callable && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 font-medium">
+                                🤖 IA
+                              </span>
+                            )}
                             {tool.edge_function && (
                               <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 font-mono">
                                 {tool.edge_function}

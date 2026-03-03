@@ -293,6 +293,8 @@ export type Database = {
       }
       ai_tools: {
         Row: {
+          ai_callable: boolean
+          ai_function_schema: Json | null
           allowed_agents: string[] | null
           category: string
           created_at: string
@@ -308,6 +310,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ai_callable?: boolean
+          ai_function_schema?: Json | null
           allowed_agents?: string[] | null
           category?: string
           created_at?: string
@@ -323,6 +327,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ai_callable?: boolean
+          ai_function_schema?: Json | null
           allowed_agents?: string[] | null
           category?: string
           created_at?: string
