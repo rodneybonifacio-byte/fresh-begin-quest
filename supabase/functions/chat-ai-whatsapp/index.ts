@@ -39,7 +39,7 @@ async function loadCallableTools(supabase: any, agentName: string): Promise<any[
 // EXECUTOR DE TOOLS
 // ═══════════════════════════════════════════════════════════
 
-async function executeTool(toolName: string, args: any, contactPhone: string): Promise<string> {
+async function executeTool(toolName: string, args: any, contactPhone: string, conversationId: string): Promise<string> {
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -109,9 +109,30 @@ async function executeTool(toolName: string, args: any, contactPhone: string): P
 
       // ── Buscar cliente ──
       case "consultar_cliente_api": {
-        const phone = args.telefone || contactPhone;
-        const clienteId = await resolveClienteId(supabase, (phone || "").replace(/\D/g, ""));
+        const cpfCnpj = typeof args.cpf_cnpj === "string" ? args.cpf_cnpj : "";
+        const email = typeof args.email === "string" ? args.email : "";
+        const telefoneInformado = typeof args.telefone === "string" ? args.telefone : "";
+
+        let clienteId: string | null = null;
+
+        // 1) Prioridade para identificadores fortes (CPF/CNPJ ou e-mail)
+        if (cpfCnpj || email) {
+          clienteId = await resolveClienteIdByIdentity(supabase, cpfCnpj, email);
+        }
+
+        // 2) Sempre preferir o telefone real da conversa antes de qualquer telefone vindo do LLM
+        if (!clienteId) {
+          clienteId = await resolveClienteId(supabase, contactPhone);
+        }
+
+        // 3) Só então tentar telefone informado na tool-call (pode vir errado/hallucinado)
+        if (!clienteId && telefoneInformado) {
+          clienteId = await resolveClienteId(supabase, telefoneInformado);
+        }
+
         if (!clienteId) return "Não encontrei nenhum cliente. Peça e-mail ou CPF/CNPJ.";
+
+        await persistConversationClienteId(supabase, conversationId, clienteId);
         return `Cliente encontrado: ID ${clienteId}`;
       }
 
@@ -434,7 +455,7 @@ serve(async (req) => {
           console.log(`🔧 Tool call: ${toolName}(${JSON.stringify(toolArgs)})`);
           toolsUsed.push(toolName);
 
-          const toolResult = await executeTool(toolName, toolArgs, contactPhone);
+          const toolResult = await executeTool(toolName, toolArgs, contactPhone, conversationId);
           
           messages.push({
             role: "tool",
@@ -628,6 +649,77 @@ async function resolveClienteId(supabase: any, phone: string): Promise<string | 
   if (cadastro?.cliente_id) return cadastro.cliente_id;
 
   return null;
+}
+
+async function resolveClienteIdByIdentity(supabase: any, cpfCnpj?: string, email?: string): Promise<string | null> {
+  const cleanDoc = (cpfCnpj || "").replace(/\D/g, "");
+  const cleanEmail = (email || "").trim().toLowerCase();
+
+  // 1) Busca local rápida por CPF/CNPJ em remetentes
+  if (cleanDoc) {
+    const { data: rem } = await supabase
+      .from("remetentes")
+      .select("cliente_id")
+      .eq("cpf_cnpj", cleanDoc)
+      .limit(1)
+      .single();
+    if (rem?.cliente_id) return rem.cliente_id;
+  }
+
+  // 2) Busca local por e-mail em cadastros_origem
+  if (cleanEmail) {
+    const { data: cadastro } = await supabase
+      .from("cadastros_origem")
+      .select("cliente_id")
+      .ilike("email_cliente", cleanEmail)
+      .limit(1)
+      .single();
+    if (cadastro?.cliente_id) return cadastro.cliente_id;
+  }
+
+  // 3) Fallback na API principal (match exato por CPF/CNPJ ou e-mail)
+  const searchValue = cleanDoc || cleanEmail;
+  if (!searchValue) return null;
+
+  const token = await getAdminToken();
+  if (!token) return null;
+
+  try {
+    const BASE_API_URL = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br";
+    const resp = await fetch(`${BASE_API_URL}/clientes?search=${encodeURIComponent(searchValue)}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!resp.ok) return null;
+    const clientes = await resp.json();
+    if (!Array.isArray(clientes) || clientes.length === 0) return null;
+
+    const match = clientes.find((c: any) => {
+      if (cleanDoc) return String(c?.cpfCnpj || "").replace(/\D/g, "") === cleanDoc;
+      if (cleanEmail) return String(c?.email || "").trim().toLowerCase() === cleanEmail;
+      return false;
+    });
+
+    return match?.id || null;
+  } catch {
+    return null;
+  }
+}
+
+async function persistConversationClienteId(supabase: any, conversationId: string, clienteId: string) {
+  if (!conversationId || !clienteId) return;
+
+  const { error } = await supabase
+    .from("whatsapp_conversations")
+    .update({ cliente_id: clienteId })
+    .eq("id", conversationId);
+
+  if (error) {
+    console.warn("⚠️ Não foi possível persistir cliente_id na conversa:", error.message);
+  }
 }
 
 async function getAdminToken(): Promise<string | null> {
