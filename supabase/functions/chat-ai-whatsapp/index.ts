@@ -9,6 +9,167 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// ═══════════════════════════════════════════════════════════
+// TOOLS DISPONÍVEIS PARA A IA (OpenAI Function Calling)
+// ═══════════════════════════════════════════════════════════
+
+const AI_TOOLS = [
+  {
+    type: "function",
+    function: {
+      name: "rastrear_pacote",
+      description: "Rastreia um pacote dos Correios pelo código de rastreio. Use quando o cliente perguntar sobre status de entrega, onde está o pacote, previsão de entrega, ou enviar um código de rastreio (formato: 2 letras + 9 números + 2 letras, ex: AD167142357BR).",
+      parameters: {
+        type: "object",
+        properties: {
+          codigo_rastreio: { type: "string", description: "Código de rastreio dos Correios (ex: AD167142357BR)" },
+        },
+        required: ["codigo_rastreio"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "cotar_frete",
+      description: "Simula preços de frete para envio de pacote. Use quando o cliente perguntar quanto custa enviar, valores de frete, comparação de preços entre transportadoras, ou quiser fazer uma cotação.",
+      parameters: {
+        type: "object",
+        properties: {
+          cep_origem: { type: "string", description: "CEP de origem (8 dígitos)" },
+          cep_destino: { type: "string", description: "CEP de destino (8 dígitos)" },
+          peso: { type: "number", description: "Peso em kg" },
+          altura: { type: "number", description: "Altura em cm" },
+          largura: { type: "number", description: "Largura em cm" },
+          comprimento: { type: "number", description: "Comprimento em cm" },
+        },
+        required: ["cep_origem", "cep_destino"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "consultar_saldo",
+      description: "Consulta o saldo de créditos disponível do cliente. Use quando o cliente perguntar sobre saldo, créditos, quanto tem disponível, ou recarga.",
+      parameters: {
+        type: "object",
+        properties: {
+          cliente_id: { type: "string", description: "ID do cliente (UUID). Se não souber, use o telefone para buscar." },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "buscar_cliente_por_telefone",
+      description: "Busca dados de um cliente pelo número de telefone. Use quando precisar identificar o cliente para consultar saldo, dados ou histórico.",
+      parameters: {
+        type: "object",
+        properties: {
+          telefone: { type: "string", description: "Número de telefone do cliente" },
+        },
+        required: ["telefone"],
+      },
+    },
+  },
+];
+
+// ═══════════════════════════════════════════════════════════
+// EXECUTOR DE TOOLS
+// ═══════════════════════════════════════════════════════════
+
+async function executeTool(toolName: string, args: any, contactPhone: string): Promise<string> {
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+
+  try {
+    switch (toolName) {
+      case "rastrear_pacote": {
+        const data = await fetchTrackingData(args.codigo_rastreio);
+        if (!data) return `Código ${args.codigo_rastreio} não retornou dados. Pode estar incorreto ou ainda não foi postado.`;
+        return formatTrackingForAI(data);
+      }
+
+      case "cotar_frete": {
+        // Buscar cliente_id pelo telefone do contato
+        const clienteId = await resolveClienteId(supabase, contactPhone);
+        if (!clienteId) return "Não consegui identificar o cliente para fazer a cotação. Peça o CPF/CNPJ ou e-mail para localizar.";
+        
+        const token = await getAdminToken();
+        if (!token) return "Erro interno ao gerar cotação.";
+
+        const BASE_API_URL = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br";
+        const cotacaoPayload = {
+          cepOrigem: (args.cep_origem || "").replace(/\D/g, ""),
+          cepDestino: (args.cep_destino || "").replace(/\D/g, ""),
+          embalagem: {
+            peso: args.peso || 0.3,
+            altura: args.altura || 2,
+            largura: args.largura || 11,
+            comprimento: args.comprimento || 16,
+          },
+          valorDeclarado: 0,
+          clienteId,
+        };
+
+        const resp = await fetch(`${BASE_API_URL}/frete/cotacao`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify(cotacaoPayload),
+        });
+
+        if (!resp.ok) return `Erro na cotação: ${resp.status}. Verifique se os CEPs estão corretos.`;
+        const cotacao = await resp.json();
+        const opcoes = cotacao.data || [];
+        if (opcoes.length === 0) return "Nenhuma opção de frete encontrada para esses CEPs.";
+
+        let result = `Opções de frete de ${args.cep_origem} → ${args.cep_destino}:\n`;
+        for (const op of opcoes.slice(0, 5)) {
+          result += `- ${op.nomeServico}: R$ ${op.valorTotal || op.valor} (${op.prazo} dias)\n`;
+        }
+        return result;
+      }
+
+      case "consultar_saldo": {
+        let clienteId = args.cliente_id;
+        if (!clienteId) {
+          clienteId = await resolveClienteId(supabase, contactPhone);
+        }
+        if (!clienteId) return "Não consegui identificar sua conta. Me diz seu e-mail ou CPF/CNPJ que eu localizo.";
+
+        const saldo = await supabase.rpc("calcular_saldo_disponivel", { p_cliente_id: clienteId });
+        const bloqueados = await supabase.rpc("calcular_creditos_bloqueados", { p_cliente_id: clienteId });
+
+        const saldoVal = saldo.data ?? 0;
+        const bloqVal = bloqueados.data ?? 0;
+        return `Saldo disponível: R$ ${Number(saldoVal).toFixed(2)}\nCréditos bloqueados (etiquetas pendentes): R$ ${Number(bloqVal).toFixed(2)}`;
+      }
+
+      case "buscar_cliente_por_telefone": {
+        const phone = (args.telefone || contactPhone).replace(/\D/g, "");
+        const clienteId = await resolveClienteId(supabase, phone);
+        if (!clienteId) return `Não encontrei nenhum cliente com o telefone ${phone}. Peça o e-mail ou CPF/CNPJ.`;
+        return `Cliente encontrado: ID ${clienteId}`;
+      }
+
+      default:
+        return `Ferramenta ${toolName} não reconhecida.`;
+    }
+  } catch (e: any) {
+    console.error(`❌ Erro executando tool ${toolName}:`, e);
+    return `Erro ao executar ${toolName}: ${e.message}`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// MAIN HANDLER
+// ═══════════════════════════════════════════════════════════
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -24,7 +185,6 @@ serve(async (req) => {
 
     const { conversationId, message, contactPhone, agent, contentType, mediaUrl } = await req.json();
 
-    // Para áudio/imagem, não exigir message (texto) pois o conteúdo está na mídia
     const isMediaMessage = (contentType === "audio" || contentType === "voice" || contentType === "ptt" || contentType === "image") && mediaUrl;
     if (!conversationId || (!message && !isMediaMessage)) {
       return new Response(
@@ -36,7 +196,7 @@ serve(async (req) => {
     const agentName = agent || "veronica";
     console.log(`🤖 Chat AI conversa ${conversationId}, agente: ${agentName}, tipo: ${contentType}`);
 
-    // === BUSCAR CONFIG DO AGENTE NO BANCO ===
+    // === BUSCAR CONFIG DO AGENTE ===
     const { data: agentConfig } = await supabase
       .from("ai_agents")
       .select("*")
@@ -47,9 +207,9 @@ serve(async (req) => {
     const systemPrompt = agentConfig?.system_prompt || getDefaultPrompt(agentName);
     const modelName = agentConfig?.model || "gpt-4o";
     const temperature = agentConfig?.temperature || 0.7;
-    const maxTokens = agentConfig?.max_tokens || 200;
+    const maxTokens = agentConfig?.max_tokens || 300;
 
-    // Buscar histórico (últimas 20 mensagens)
+    // === BUSCAR HISTÓRICO ===
     const { data: history } = await supabase
       .from("whatsapp_messages")
       .select("direction, content, content_type, created_at")
@@ -68,151 +228,139 @@ serve(async (req) => {
       }
     }
 
-    // === IMAGEM → Gemini (análise focada + extração de código de rastreio) ===
+    // ═══════════════════════════════════════════════════════════
+    // PRÉ-PROCESSAMENTO: converter mídia em contexto textual
+    // ═══════════════════════════════════════════════════════════
+
+    let userContent = message || "";
+
+    // IMAGEM → Gemini extrai dados relevantes
     if (contentType === "image" && mediaUrl) {
       const geminiKey = Deno.env.get("GEMINI_API_KEY");
       if (geminiKey) {
         try {
           const imageAnalysis = await analyzeImageWithGemini(mediaUrl, geminiKey);
-          console.log("🖼️ Análise Gemini:", JSON.stringify(imageAnalysis).substring(0, 200));
-
-          let imageContext = "";
-
+          console.log("🖼️ Gemini extraiu:", JSON.stringify(imageAnalysis).substring(0, 200));
+          
+          // Compor contexto: dados extraídos da imagem + texto do usuário
+          let imageInfo = imageAnalysis.description || "";
           if (imageAnalysis.trackingCode) {
-            console.log("📦 Código de rastreio extraído da imagem:", imageAnalysis.trackingCode);
-            try {
-              const trackingData = await fetchTrackingData(imageAnalysis.trackingCode);
-              if (trackingData) {
-                const trackingInfo = formatTrackingForAI(trackingData);
-                imageContext = `[CONTEXTO INTERNO - O cliente mandou uma foto com o código de rastreio ${imageAnalysis.trackingCode}. Dados do rastreio:\n${trackingInfo}]\n\n[INSTRUÇÃO: Diga o status atual do pacote em 1-2 frases curtas. Ex: "Seu pacote tá em trânsito, saiu de SP e previsão é dia X 📦". NÃO descreva a imagem, NÃO liste dados da etiqueta. Só o status do rastreio.]`;
-              } else {
-                imageContext = `[CONTEXTO INTERNO - O cliente mandou uma foto com código ${imageAnalysis.trackingCode} mas não retornou dados.]\n\n[INSTRUÇÃO: Diga que consultou o código ${imageAnalysis.trackingCode} mas ainda não tem movimentação. Peça pra aguardar ou confirmar se tá certo. Máximo 2 frases.]`;
-              }
-            } catch (trackErr) {
-              console.warn("⚠️ Erro ao consultar rastreio da imagem:", trackErr);
-              imageContext = `[CONTEXTO INTERNO - Código ${imageAnalysis.trackingCode} encontrado na foto mas erro na consulta.]\n\n[INSTRUÇÃO: Diga que não conseguiu consultar o rastreio agora e que vai tentar de novo. Máximo 2 frases.]`;
-            }
-          } else {
-            // Imagem sem código de rastreio - responder brevemente sobre o conteúdo
-            imageContext = `[CONTEXTO INTERNO - Cliente enviou uma imagem. Resumo: ${imageAnalysis.description}]\n\n[INSTRUÇÃO: Responda de forma ULTRA CURTA (1-2 frases) sobre o que viu. NÃO descreva a imagem em detalhe. NÃO liste dados como remetente, destinatário, endereço. Pergunte como pode ajudar. Se for etiqueta sem código legível, peça o código por texto.]`;
+            imageInfo = `Código de rastreio encontrado na imagem: ${imageAnalysis.trackingCode}. ${imageInfo}`;
           }
-
-          if (message) imageContext += `\n\nCliente disse: "${message}"`;
-          messages.push({ role: "user", content: imageContext });
+          if (imageAnalysis.cepOrigem) imageInfo += ` CEP origem: ${imageAnalysis.cepOrigem}`;
+          if (imageAnalysis.cepDestino) imageInfo += ` CEP destino: ${imageAnalysis.cepDestino}`;
+          
+          userContent = `[Dados extraídos da imagem enviada: ${imageInfo}]${message ? ` Mensagem do cliente: "${message}"` : ""}`;
         } catch (e) {
-          console.warn("⚠️ Erro Gemini imagem:", e);
-          messages.push({ role: "user", content: message || "[imagem não interpretada]" });
+          console.warn("⚠️ Erro Gemini:", e);
+          userContent = message || "[imagem não processada]";
         }
-      } else {
-        messages.push({ role: "user", content: message || "[imagem enviada]" });
       }
     }
-    // === ÁUDIO → ElevenLabs STT ===
+    // ÁUDIO → transcrição
     else if ((contentType === "audio" || contentType === "voice" || contentType === "ptt") && mediaUrl) {
-      const elevenLabsKey = Deno.env.get("ELEVENLABS_API_KEY");
-      if (elevenLabsKey) {
-        try {
-          const transcription = await transcribeAudioWithElevenLabs(mediaUrl, elevenLabsKey);
-          console.log("🎤 ElevenLabs transcrição:", transcription.substring(0, 100));
-          messages.push({ role: "user", content: `[O cliente enviou um áudio. Transcrição: "${transcription}"]\n\nResponda ao que o cliente disse no áudio.` });
-        } catch (e) {
-          console.warn("⚠️ Erro ElevenLabs STT:", e);
-          const geminiKey = Deno.env.get("GEMINI_API_KEY");
-          if (geminiKey) {
-            try {
-              const transcription = await transcribeAudioWithGemini(mediaUrl, geminiKey);
-              messages.push({ role: "user", content: `[Áudio do cliente. Transcrição: "${transcription}"]\n\nResponda ao que o cliente disse.` });
-            } catch (e2) {
-              console.warn("⚠️ Fallback Gemini áudio também falhou:", e2);
-              messages.push({ role: "user", content: message || "[áudio não transcrito]" });
-            }
-          } else {
-            messages.push({ role: "user", content: message || "[áudio não transcrito]" });
-          }
-        }
-      } else {
-        messages.push({ role: "user", content: message || "[áudio enviado]" });
-      }
-    }
-    // === TEXTO ===
-    else {
-      // Detectar código de rastreio e consultar API
-      const trackingCode = detectTrackingCode(message);
-      if (trackingCode) {
-        console.log("📦 Código de rastreio detectado:", trackingCode);
-        try {
-          const trackingData = await fetchTrackingData(trackingCode);
-          if (trackingData) {
-            const trackingContext = formatTrackingForAI(trackingData);
-            messages.push({ role: "user", content: `[O cliente enviou um código de rastreio: ${trackingCode}]\n\nDados do rastreio:\n${trackingContext}\n\nMensagem original: "${message}"\n\nResponda ao cliente com as informações de rastreio de forma clara e amigável.` });
-          } else {
-            messages.push({ role: "user", content: `[O cliente enviou um código de rastreio: ${trackingCode}, mas não foi possível obter informações. Informe que o código não retornou dados ou pode estar incorreto.]\n\nMensagem original: "${message}"` });
-          }
-        } catch (trackErr) {
-          console.warn("⚠️ Erro ao consultar rastreio:", trackErr);
-          messages.push({ role: "user", content: `[O cliente enviou um código de rastreio: ${trackingCode}, mas houve um erro ao consultar. Peça desculpas e sugira tentar novamente.]\n\nMensagem original: "${message}"` });
-        }
-      } else {
-        messages.push({ role: "user", content: message });
-      }
+      const transcription = await transcribeAudio(mediaUrl);
+      userContent = transcription || message || "[áudio não transcrito]";
     }
 
-    // === LÓGICA → OpenAI ===
+    messages.push({ role: "user", content: userContent });
+
+    // ═══════════════════════════════════════════════════════════
+    // LOOP DE TOOL CALLING (máximo 3 iterações)
+    // ═══════════════════════════════════════════════════════════
+
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) {
-      console.error("OPENAI_API_KEY não configurada");
       return new Response(
         JSON.stringify({ error: "AI não configurada" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: modelName,
-        messages,
-        max_tokens: maxTokens,
-        temperature,
-      }),
-    });
+    let aiReply = "";
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+    let toolsUsed: string[] = [];
 
-    if (!aiResponse.ok) {
-      const errText = await aiResponse.text();
-      console.error("❌ OpenAI error:", aiResponse.status, errText);
+    for (let iteration = 0; iteration < 3; iteration++) {
+      console.log(`🔄 Iteração ${iteration + 1} - ${messages.length} mensagens`);
 
-      await logInteraction(supabase, {
-        conversation_id: conversationId,
-        agent_name: agentName,
-        content_type: contentType || "text",
-        provider: "openai",
-        model: modelName,
-        success: false,
-        error_message: `OpenAI ${aiResponse.status}: ${errText.substring(0, 200)}`,
-        response_time_ms: Date.now() - startTime,
+      const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: modelName,
+          messages,
+          max_tokens: maxTokens,
+          temperature,
+          tools: AI_TOOLS,
+          tool_choice: iteration === 0 ? "auto" : "auto",
+        }),
       });
 
-      throw new Error(`OpenAI error: ${aiResponse.status}`);
+      if (!aiResponse.ok) {
+        const errText = await aiResponse.text();
+        console.error("❌ OpenAI error:", aiResponse.status, errText);
+        await logInteraction(supabase, {
+          conversation_id: conversationId,
+          agent_name: agentName,
+          content_type: contentType || "text",
+          provider: "openai",
+          model: modelName,
+          success: false,
+          error_message: `OpenAI ${aiResponse.status}: ${errText.substring(0, 200)}`,
+          response_time_ms: Date.now() - startTime,
+        });
+        throw new Error(`OpenAI error: ${aiResponse.status}`);
+      }
+
+      const aiData = await aiResponse.json();
+      const choice = aiData.choices?.[0];
+      totalInputTokens += aiData.usage?.prompt_tokens || 0;
+      totalOutputTokens += aiData.usage?.completion_tokens || 0;
+
+      // Se a IA quer chamar tools
+      if (choice?.finish_reason === "tool_calls" || choice?.message?.tool_calls) {
+        const toolCalls = choice.message.tool_calls || [];
+        messages.push(choice.message); // Adicionar a mensagem com tool_calls
+
+        for (const tc of toolCalls) {
+          const toolName = tc.function.name;
+          let toolArgs = {};
+          try { toolArgs = JSON.parse(tc.function.arguments); } catch {}
+          
+          console.log(`🔧 Tool call: ${toolName}(${JSON.stringify(toolArgs)})`);
+          toolsUsed.push(toolName);
+
+          const toolResult = await executeTool(toolName, toolArgs, contactPhone);
+          
+          messages.push({
+            role: "tool",
+            tool_call_id: tc.id,
+            content: toolResult,
+          });
+        }
+        // Continuar o loop para a IA processar os resultados
+        continue;
+      }
+
+      // Resposta final (sem tool calls)
+      aiReply = choice?.message?.content || "Desculpe, não consegui processar sua mensagem.";
+      break;
     }
 
-    const aiData = await aiResponse.json();
-    const aiReply = aiData.choices?.[0]?.message?.content || "Desculpe, não consegui processar sua mensagem.";
-    const inputTokens = aiData.usage?.prompt_tokens;
-    const outputTokens = aiData.usage?.completion_tokens;
+    console.log("🤖 Resposta final:", aiReply.substring(0, 150));
 
-    console.log("🤖 Resposta OpenAI:", aiReply.substring(0, 100));
-
-    // === GERENCIAR TICKETS E PIPELINE ===
+    // === PIPELINE & TICKETS ===
     await ensureTicketOpen(supabase, conversationId, contactPhone, message);
     await detectAndCreateSupportTicket(supabase, conversationId, contactPhone, message, aiReply, agentName);
     await progressPipelineStatus(supabase, conversationId, message, aiReply);
     await detectTicketResolution(supabase, conversationId, aiReply);
 
-    // Log de sucesso
+    // Log
     await logInteraction(supabase, {
       conversation_id: conversationId,
       agent_name: agentName,
@@ -220,15 +368,15 @@ serve(async (req) => {
       provider: "openai",
       model: modelName,
       success: true,
-      input_tokens: inputTokens,
-      output_tokens: outputTokens,
+      input_tokens: totalInputTokens,
+      output_tokens: totalOutputTokens,
       response_time_ms: Date.now() - startTime,
+      tool_used: toolsUsed.length > 0 ? toolsUsed.join(",") : null,
     });
 
-    // Enviar resposta via MessageBird
+    // === ENVIAR RESPOSTA VIA MESSAGEBIRD ===
     const channel = await resolveChannelForConversation(conversationId);
     if (channel) {
-      // Se o cliente enviou áudio, responder com áudio (TTS) + texto
       const isAudioInput = contentType === "audio" || contentType === "voice" || contentType === "ptt";
       let audioSent = false;
       const shouldRespondWithAudio = agentConfig?.respond_with_audio !== false;
@@ -248,24 +396,20 @@ serve(async (req) => {
             };
             const audioUrl = await generateTTSAudio(aiReply, elevenLabsKey, voiceConfig);
             if (audioUrl) {
-              const audioPayload = {
-                to: contactPhone,
-                from: channel.channel_id,
-                type: "audio",
-                content: { audio: { url: audioUrl } },
-              };
-
               const mbAudioResponse = await fetch("https://conversations.messagebird.com/v1/send", {
                 method: "POST",
                 headers: {
                   Authorization: `AccessKey ${channel.access_key}`,
                   "Content-Type": "application/json",
                 },
-                body: JSON.stringify(audioPayload),
+                body: JSON.stringify({
+                  to: contactPhone,
+                  from: channel.channel_id,
+                  type: "audio",
+                  content: { audio: { url: audioUrl } },
+                }),
               });
-
               const mbAudioResult = await mbAudioResponse.json();
-              console.log("🔊 Áudio TTS enviado via MessageBird:", mbAudioResponse.status);
 
               await supabase.from("whatsapp_messages").insert({
                 conversation_id: conversationId,
@@ -278,35 +422,29 @@ serve(async (req) => {
                 sent_by: agentName,
                 ai_generated: true,
               });
-
               audioSent = true;
             }
           } catch (ttsError) {
-            console.warn("⚠️ Erro ao gerar TTS, enviando como texto:", ttsError);
+            console.warn("⚠️ Erro TTS:", ttsError);
           }
         }
       }
 
-      // Enviar como texto se não enviou áudio (ou como fallback)
       if (!audioSent) {
-        const sendPayload = {
-          to: contactPhone,
-          from: channel.channel_id,
-          type: "text",
-          content: { text: aiReply },
-        };
-
         const mbResponse = await fetch("https://conversations.messagebird.com/v1/send", {
           method: "POST",
           headers: {
             Authorization: `AccessKey ${channel.access_key}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(sendPayload),
+          body: JSON.stringify({
+            to: contactPhone,
+            from: channel.channel_id,
+            type: "text",
+            content: { text: aiReply },
+          }),
         });
-
         const mbResult = await mbResponse.json();
-        console.log("📨 Resposta IA enviada via MessageBird:", mbResponse.status);
 
         await supabase.from("whatsapp_messages").insert({
           conversation_id: conversationId,
@@ -328,20 +466,15 @@ serve(async (req) => {
         })
         .eq("id", conversationId);
 
-      // === HANDOFF: VERONICA → FELIPE ===
-      // Se a Veronica está atendendo e detectamos um problema que precisa de escalação,
-      // ela avisa que vai transferir e o Felipe entra com áudio se apresentando
-      if (agentName === "veronica") {
-        const shouldHandoff = detectHandoffTrigger(message, aiReply);
-        if (shouldHandoff) {
-          console.log("🔄 Handoff detectado: Veronica → Felipe");
-          await performHandoffToFelipe(supabase, conversationId, contactPhone, message, channel);
-        }
+      // === HANDOFF VERONICA → FELIPE ===
+      if (agentName === "veronica" && detectHandoffTrigger(message, aiReply)) {
+        console.log("🔄 Handoff: Veronica → Felipe");
+        await performHandoffToFelipe(supabase, conversationId, contactPhone, message, channel);
       }
     }
 
     return new Response(
-      JSON.stringify({ ok: true, reply: aiReply }),
+      JSON.stringify({ ok: true, reply: aiReply, tools_used: toolsUsed }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {
@@ -353,350 +486,87 @@ serve(async (req) => {
   }
 });
 
-// === HELPERS ===
+// ═══════════════════════════════════════════════════════════
+// HELPERS: Resolução de cliente
+// ═══════════════════════════════════════════════════════════
 
-async function logInteraction(supabase: any, data: any) {
-  try {
-    await supabase.from("ai_interaction_logs").insert(data);
-  } catch (e) {
-    console.warn("⚠️ Erro ao logar interação:", e);
+async function resolveClienteId(supabase: any, phone: string): Promise<string | null> {
+  const normalized = (phone || "").replace(/\D/g, "");
+  if (!normalized) return null;
+
+  // 1. Buscar em conversas existentes
+  const { data: conv } = await supabase
+    .from("whatsapp_conversations")
+    .select("cliente_id")
+    .eq("contact_phone", normalized)
+    .not("cliente_id", "is", null)
+    .limit(1)
+    .single();
+  if (conv?.cliente_id) return conv.cliente_id;
+
+  // 2. Buscar em remetentes por celular/telefone
+  const phoneVariants = [
+    normalized,
+    normalized.startsWith("55") ? normalized.substring(2) : `55${normalized}`,
+  ];
+  for (const pv of phoneVariants) {
+    const { data: rem } = await supabase
+      .from("remetentes")
+      .select("cliente_id")
+      .or(`celular.ilike.%${pv}%,telefone.ilike.%${pv}%`)
+      .limit(1)
+      .single();
+    if (rem?.cliente_id) return rem.cliente_id;
   }
+
+  // 3. Buscar em cadastros_origem
+  const { data: cadastro } = await supabase
+    .from("cadastros_origem")
+    .select("cliente_id")
+    .or(`telefone_cliente.ilike.%${normalized}%`)
+    .limit(1)
+    .single();
+  if (cadastro?.cliente_id) return cadastro.cliente_id;
+
+  return null;
 }
 
-async function detectAndCreateSupportTicket(supabase: any, conversationId: string, contactPhone: string, userMessage: string, _aiReply: string, agentName: string) {
+async function getAdminToken(): Promise<string | null> {
+  const BASE_API_URL = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br";
+  const email = Deno.env.get("API_ADMIN_EMAIL");
+  const password = Deno.env.get("API_ADMIN_PASSWORD");
+  if (!email || !password) return null;
+
   try {
-    const lowerMsg = (userMessage || "").toLowerCase();
-
-    // Categorização por contexto
-    const categoryRules: { keywords: string[]; category: string; priority: string }[] = [
-      { keywords: ["procon", "processo", "advogado", "pior empresa", "denúncia"], category: "reclamacao", priority: "urgente" },
-      { keywords: ["péssimo", "horrível", "absurdo", "lixo", "nunca mais"], category: "reclamacao", priority: "urgente" },
-      { keywords: ["reclamar", "reclamação", "insatisfeito", "insatisfação", "problema grave"], category: "reclamacao", priority: "alta" },
-      { keywords: ["extraviou", "extraviado", "roubado", "furto", "sumiu", "perdido"], category: "rastreio", priority: "urgente" },
-      { keywords: ["não chegou", "demora", "atraso", "atrasado", "sem atualização"], category: "rastreio", priority: "alta" },
-      { keywords: ["danificado", "quebrado", "avariado", "amassado"], category: "reclamacao", priority: "alta" },
-      { keywords: ["cancelar", "cancelamento", "estornar", "estorno", "reembolso", "devolver"], category: "cancelamento", priority: "alta" },
-      { keywords: ["cobrado errado", "cobrança indevida", "valor errado", "não recebi crédito"], category: "financeiro", priority: "alta" },
-    ];
-
-    let matchedCategory: string | null = null;
-    let matchedPriority = "normal";
-
-    for (const rule of categoryRules) {
-      if (rule.keywords.some(k => lowerMsg.includes(k))) {
-        matchedCategory = rule.category;
-        matchedPriority = rule.priority;
-        break;
-      }
-    }
-
-    if (!matchedCategory) return;
-
-    // Verificar se já existe ticket aberto para esta conversa
-    const { data: existing } = await supabase
-      .from("ai_support_pipeline")
-      .select("id")
-      .eq("conversation_id", conversationId)
-      .in("status", ["novo", "em_atendimento", "aguardando", "aberto", "em_andamento"])
-      .limit(1);
-
-    if (existing && existing.length > 0) return;
-
-    // Buscar nome do contato
-    const { data: conv } = await supabase
-      .from("whatsapp_conversations")
-      .select("contact_name")
-      .eq("id", conversationId)
-      .single();
-
-    // Determinar sentimento
-    const strongNeg = ["péssimo", "horrível", "absurdo", "procon", "processo", "advogado", "pior empresa", "lixo"];
-    const sentiment = strongNeg.some(p => lowerMsg.includes(p)) ? "muito_negativo" : "negativo";
-
-    await supabase.from("ai_support_pipeline").insert({
-      conversation_id: conversationId,
-      contact_phone: contactPhone,
-      contact_name: conv?.contact_name,
-      category: matchedCategory,
-      priority: matchedPriority,
-      status: "novo",
-      subject: `${categoryRules.find(r => r.category === matchedCategory)?.category === 'rastreio' ? '📦' : '⚠️'} ${userMessage.substring(0, 100)}`,
-      description: userMessage,
-      sentiment,
-      detected_by: agentName,
+    const resp = await fetch(`${BASE_API_URL}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
     });
-
-    console.log(`🎫 Ticket criado [${matchedCategory}/${matchedPriority}] conversa:`, conversationId);
-  } catch (e) {
-    console.warn("⚠️ Erro ao detectar reclamação:", e);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    return data.token || null;
+  } catch {
+    return null;
   }
 }
 
-// === GERENCIAMENTO DE TICKETS (whatsapp_tickets) ===
+// ═══════════════════════════════════════════════════════════
+// HELPERS: Mídia (imagem, áudio)
+// ═══════════════════════════════════════════════════════════
 
-async function ensureTicketOpen(supabase: any, conversationId: string, contactPhone: string, userMessage: string) {
-  try {
-    // Verificar se já existe ticket aberto para esta conversa
-    const { data: openTicket } = await supabase
-      .from("whatsapp_tickets")
-      .select("id, message_count")
-      .eq("conversation_id", conversationId)
-      .eq("status", "open")
-      .limit(1)
-      .single();
-
-    if (openTicket) {
-      // Atualizar contagem e último timestamp
-      await supabase
-        .from("whatsapp_tickets")
-        .update({
-          message_count: (openTicket.message_count || 0) + 1,
-          last_message_at: new Date().toISOString(),
-        })
-        .eq("id", openTicket.id);
-      return;
-    }
-
-    // Buscar nome do contato
-    const { data: conv } = await supabase
-      .from("whatsapp_conversations")
-      .select("contact_name")
-      .eq("id", conversationId)
-      .single();
-
-    // Criar novo ticket
-    await supabase.from("whatsapp_tickets").insert({
-      conversation_id: conversationId,
-      contact_phone: contactPhone,
-      contact_name: conv?.contact_name || null,
-      status: "open",
-      subject: userMessage?.substring(0, 120) || "Nova conversa",
-      first_message_at: new Date().toISOString(),
-      last_message_at: new Date().toISOString(),
-      message_count: 1,
-    });
-
-    console.log(`🎫 Ticket aberto para conversa ${conversationId}`);
-  } catch (e) {
-    console.warn("⚠️ Erro ao gerenciar ticket:", e);
-  }
-}
-
-// === PROGRESSÃO AUTOMÁTICA DO PIPELINE ===
-
-// Mapa de fluxo por categoria
-const PIPELINE_FLOWS: Record<string, string[]> = {
-  reclamacao: ["novo", "triagem", "investigacao", "resolucao", "concluido"],
-  rastreio: ["novo", "verificando", "localizado", "em_transito", "entregue"],
-  cancelamento: ["novo", "analise", "processamento", "aprovado", "concluido"],
-  financeiro: ["novo", "analise", "processamento", "aprovado", "concluido"],
-};
-
-async function progressPipelineStatus(supabase: any, conversationId: string, userMessage: string, aiReply: string) {
-  try {
-    // Buscar pipeline aberto para esta conversa
-    const { data: pipeline } = await supabase
-      .from("ai_support_pipeline")
-      .select("*")
-      .eq("conversation_id", conversationId)
-      .not("status", "in", '("concluido","entregue","cancelado")')
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-
-    if (!pipeline) return;
-
-    const category = pipeline.category || "reclamacao";
-    const flow = PIPELINE_FLOWS[category] || PIPELINE_FLOWS.reclamacao;
-    const currentIdx = flow.indexOf(pipeline.status);
-    if (currentIdx === -1 || currentIdx >= flow.length - 1) return;
-
-    const lowerReply = (aiReply || "").toLowerCase();
-    const lowerMsg = (userMessage || "").toLowerCase();
-
-    // Regras de progressão baseadas no contexto da resposta da IA
-    let shouldProgress = false;
-    let newStatus = "";
-    let progressReason = "";
-
-    if (category === "rastreio") {
-      if (pipeline.status === "novo" && (lowerReply.includes("vou verificar") || lowerReply.includes("estou consultando") || lowerReply.includes("rastreio"))) {
-        shouldProgress = true; newStatus = "verificando"; progressReason = "IA iniciou verificação de rastreio";
-      } else if (pipeline.status === "verificando" && (lowerReply.includes("localizado") || lowerReply.includes("encontrei") || lowerReply.includes("status"))) {
-        shouldProgress = true; newStatus = "localizado"; progressReason = "Pacote localizado no rastreio";
-      } else if (pipeline.status === "localizado" && (lowerReply.includes("em trânsito") || lowerReply.includes("a caminho") || lowerReply.includes("saiu para"))) {
-        shouldProgress = true; newStatus = "em_transito"; progressReason = "Pacote em trânsito";
-      } else if ((lowerReply.includes("entregue") || lowerReply.includes("entrega confirmada") || lowerReply.includes("foi entregue"))) {
-        shouldProgress = true; newStatus = "entregue"; progressReason = "Entrega confirmada";
-      }
-    } else if (category === "reclamacao") {
-      if (pipeline.status === "novo" && lowerReply.length > 50) {
-        shouldProgress = true; newStatus = "triagem"; progressReason = "IA realizou triagem inicial";
-      } else if (pipeline.status === "triagem" && (lowerReply.includes("verificando") || lowerReply.includes("analisando") || lowerReply.includes("investigar"))) {
-        shouldProgress = true; newStatus = "investigacao"; progressReason = "Investigação em andamento";
-      } else if (pipeline.status === "investigacao" && (lowerReply.includes("solução") || lowerReply.includes("resolver") || lowerReply.includes("providência"))) {
-        shouldProgress = true; newStatus = "resolucao"; progressReason = "Resolução em andamento";
-      }
-    } else if (category === "cancelamento" || category === "financeiro") {
-      if (pipeline.status === "novo" && lowerReply.length > 50) {
-        shouldProgress = true; newStatus = "analise"; progressReason = "IA iniciou análise";
-      } else if (pipeline.status === "analise" && (lowerReply.includes("processando") || lowerReply.includes("encaminhado") || lowerReply.includes("providência"))) {
-        shouldProgress = true; newStatus = "processamento"; progressReason = "Em processamento";
-      } else if (pipeline.status === "processamento" && (lowerReply.includes("aprovado") || lowerReply.includes("estorno") || lowerReply.includes("reembolso"))) {
-        shouldProgress = true; newStatus = "aprovado"; progressReason = "Aprovado/processado";
-      }
-    }
-
-    // Detectar resolução final para qualquer categoria
-    const resolutionPatterns = ["resolvido", "solucionado", "concluído", "problema foi resolvido", "está tudo certo", "foi corrigido"];
-    if (resolutionPatterns.some(p => lowerReply.includes(p))) {
-      const finalStatus = flow[flow.length - 1]; // último estágio do fluxo
-      shouldProgress = true;
-      newStatus = finalStatus;
-      progressReason = "Resolução detectada pela IA";
-    }
-
-    if (shouldProgress && newStatus) {
-      await supabase
-        .from("ai_support_pipeline")
-        .update({
-          status: newStatus,
-          resolution: progressReason,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", pipeline.id);
-
-      // Atualizar sentimento se melhorou
-      if (lowerMsg.includes("obrigad") || lowerMsg.includes("valeu") || lowerMsg.includes("agradeço")) {
-        await supabase
-          .from("ai_support_pipeline")
-          .update({ sentiment: "positivo" })
-          .eq("id", pipeline.id);
-      }
-
-      console.log(`📊 Pipeline ${pipeline.id} [${category}]: ${pipeline.status} → ${newStatus} (${progressReason})`);
-    }
-  } catch (e) {
-    console.warn("⚠️ Erro ao progredir pipeline:", e);
-  }
-}
-
-async function detectTicketResolution(supabase: any, conversationId: string, aiReply: string) {
-  try {
-    const lowerReply = (aiReply || "").toLowerCase();
-
-    const resolutionPatterns = [
-      "resolvido", "solucionado", "concluído",
-      "problema foi resolvido", "está tudo certo",
-      "foi entregue", "entrega confirmada", "entregue com sucesso",
-      "estorno realizado", "reembolso aprovado", "crédito devolvido",
-      "foi corrigido", "ajustado com sucesso"
-    ];
-
-    // Padrões fracos que NÃO devem fechar sozinhos (evitar fechamento prematuro)
-    const weakPatterns = ["qualquer dúvida", "estou à disposição", "posso ajudar em mais algo"];
-    const isStrongResolution = resolutionPatterns.some(p => lowerReply.includes(p));
-    const isWeakOnly = !isStrongResolution && weakPatterns.some(p => lowerReply.includes(p));
-
-    if (!isStrongResolution) return; // Só fecha com padrões fortes
-
-    // Fechar ticket de sessão (whatsapp_tickets)
-    const { data: openTicket } = await supabase
-      .from("whatsapp_tickets")
-      .select("id")
-      .eq("conversation_id", conversationId)
-      .eq("status", "open")
-      .limit(1)
-      .single();
-
-    if (openTicket) {
-      await supabase
-        .from("whatsapp_tickets")
-        .update({
-          status: "closed",
-          closed_by: "ai",
-          closed_at: new Date().toISOString(),
-          resolution: aiReply.substring(0, 500),
-        })
-        .eq("id", openTicket.id);
-      console.log(`✅ Ticket ${openTicket.id} fechado automaticamente pela IA`);
-    }
-
-    // Também fechar pipeline associado se existir
-    const { data: openPipeline } = await supabase
-      .from("ai_support_pipeline")
-      .select("id, category")
-      .eq("conversation_id", conversationId)
-      .not("status", "in", '("concluido","entregue","cancelado")')
-      .limit(1)
-      .single();
-
-    if (openPipeline) {
-      const finalStatus = openPipeline.category === "rastreio" ? "entregue" : "concluido";
-      await supabase
-        .from("ai_support_pipeline")
-        .update({
-          status: finalStatus,
-          resolution: aiReply.substring(0, 500),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", openPipeline.id);
-      console.log(`✅ Pipeline ${openPipeline.id} concluído automaticamente`);
-    }
-  } catch (e) {
-    console.warn("⚠️ Erro ao detectar resolução:", e);
-  }
-}
-
-function getDefaultPrompt(agent: string): string {
-  if (agent === "felipe") {
-    return `Você é Felipe, atendente da BRHUB Envios. Fale como um humano real no WhatsApp.
-
-REGRAS OBRIGATÓRIAS:
-- Respostas CURTAS: máximo 2-3 frases. Nunca mais que 4 linhas.
-- Fale como gente de verdade, não como robô. Use linguagem natural e informal (mas educada).
-- Vá direto ao ponto. Nada de "Olá! Tudo bem? Como posso ajudá-lo hoje?"
-- Use 1 emoji no máximo por mensagem, e só quando fizer sentido.
-- Se não souber, diga "vou passar pro time resolver" e pronto.
-- NUNCA use bullet points, listas ou formatação elaborada. É WhatsApp, não email.
-- Português brasileiro natural. Pode usar "vc", "tá", "pra" quando apropriado.`;
-  }
-  return `Você é a Veronica, do Time de Suporte da BRHUB Envios — plataforma de logística com fretes até 70% mais baratos via contratos com Correios, Jadlog, Loggi e Azul.
-
-APRESENTAÇÃO: Na PRIMEIRA mensagem: "Oi! Sou a Veronica do Time de Suporte da BRHUB Envios 😊". Depois não repita.
-
-CONHECIMENTO: Você entende de emissão de etiquetas, créditos/PIX, rastreamento, integrações (Shopify/Nuvemshop), emissão em lote, remetentes, faturas e coletas.
-
-REGRAS:
-- Respostas CURTAS: máximo 2-3 frases. NUNCA mais que 4 linhas.
-- NUNCA use bullet points, listas ou formatação de email. É WhatsApp.
-- Use 1-2 emojis naturalmente. Português informal: "vc", "tá", "pra".
-- Vá direto ao ponto. Seja proativa e carinhosa.
-- Rastreio: status + localização + previsão em uma frase.
-- Se não souber: "vou chamar alguém do time pra te ajudar, tá? 😊"
-
-TRANSFERÊNCIA PRO FELIPE:
-- Se o cliente tiver um problema GRAVE (extravio, dano, cobrança errada, reclamação forte, ameaça jurídica), você DEVE responder normalmente reconhecendo o problema e depois o sistema vai transferir pro Felipe automaticamente.
-- NÃO diga "vou transferir" no seu texto, o sistema cuida disso.
-- Apenas demonstre empatia e reconheça a gravidade do problema.`;
-}
-
-async function analyzeImageWithGemini(imageUrl: string, geminiKey: string): Promise<{ description: string; trackingCode: string | null }> {
+async function analyzeImageWithGemini(imageUrl: string, geminiKey: string): Promise<{ description: string; trackingCode: string | null; cepOrigem?: string; cepDestino?: string }> {
   const imageResponse = await fetch(imageUrl);
   if (!imageResponse.ok) throw new Error(`Erro ao baixar imagem: ${imageResponse.status}`);
   const imageBuffer = await imageResponse.arrayBuffer();
   const base64Image = base64Encode(imageBuffer);
   const mimeType = (imageResponse.headers.get("content-type") || "image/jpeg").split(";")[0].trim();
 
-  const prompt = `Analise esta imagem. Foco principal: encontrar código de rastreio dos Correios (formato: 2 letras + 9 números + 2 letras, ex: AA123456789BR).
-
-Se encontrar código de rastreio, retorne:
-DESCRIÇÃO: etiqueta de envio
-CODIGO_RASTREIO: [código exato]
-
-Se NÃO encontrar código de rastreio, descreva em UMA frase curta o que é a imagem.
-DESCRIÇÃO: [uma frase]
-CODIGO_RASTREIO: NENHUM`;
+  const prompt = `Extraia dados úteis desta imagem de forma CONCISA. Retorne no formato:
+DESCRIÇÃO: [1 frase do que é a imagem]
+CODIGO_RASTREIO: [código dos Correios se houver, formato XX123456789XX, ou NENHUM]
+CEP_ORIGEM: [se visível, ou NENHUM]
+CEP_DESTINO: [se visível, ou NENHUM]`;
 
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
@@ -712,36 +582,51 @@ CODIGO_RASTREIO: NENHUM`;
     }
   );
 
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`Gemini image error: ${response.status} - ${errText}`);
-  }
-
+  if (!response.ok) throw new Error(`Gemini error: ${response.status}`);
   const data = await response.json();
-  const fullText = data.candidates?.[0]?.content?.parts?.[0]?.text || "Imagem não identificada";
+  const fullText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-  // Extrair código de rastreio da resposta do Gemini
   let trackingCode: string | null = null;
-  
-  // Tentar extrair do formato estruturado
   const codigoMatch = fullText.match(/CODIGO_RASTREIO:\s*([A-Z]{2}\d{9}[A-Z]{2})/i);
-  if (codigoMatch) {
-    trackingCode = codigoMatch[1].toUpperCase();
-  }
-  
-  // Fallback: buscar padrão de código de rastreio em qualquer lugar do texto
+  if (codigoMatch) trackingCode = codigoMatch[1].toUpperCase();
   if (!trackingCode) {
     const genericMatch = fullText.match(/\b([A-Z]{2}\d{9}[A-Z]{2})\b/);
-    if (genericMatch) {
-      trackingCode = genericMatch[1].toUpperCase();
-    }
+    if (genericMatch) trackingCode = genericMatch[1].toUpperCase();
   }
 
-  // Extrair descrição limpa
-  const descMatch = fullText.match(/DESCRI[CÇ][AÃ]O:\s*([\s\S]*?)(?=CODIGO_RASTREIO:|$)/i);
-  const description = descMatch ? descMatch[1].trim() : fullText;
+  const descMatch = fullText.match(/DESCRI[CÇ][AÃ]O:\s*(.+)/i);
+  const description = descMatch ? descMatch[1].trim() : "Imagem analisada";
 
-  return { description, trackingCode };
+  const cepOrigemMatch = fullText.match(/CEP_ORIGEM:\s*(\d{5}-?\d{3})/);
+  const cepDestinoMatch = fullText.match(/CEP_DESTINO:\s*(\d{5}-?\d{3})/);
+
+  return {
+    description,
+    trackingCode,
+    cepOrigem: cepOrigemMatch?.[1] || undefined,
+    cepDestino: cepDestinoMatch?.[1] || undefined,
+  };
+}
+
+async function transcribeAudio(mediaUrl: string): Promise<string | null> {
+  // Tentar ElevenLabs primeiro, depois Gemini
+  const elevenLabsKey = Deno.env.get("ELEVENLABS_API_KEY");
+  if (elevenLabsKey) {
+    try {
+      return await transcribeAudioWithElevenLabs(mediaUrl, elevenLabsKey);
+    } catch (e) {
+      console.warn("⚠️ ElevenLabs STT falhou:", e);
+    }
+  }
+  const geminiKey = Deno.env.get("GEMINI_API_KEY");
+  if (geminiKey) {
+    try {
+      return await transcribeAudioWithGemini(mediaUrl, geminiKey);
+    } catch (e) {
+      console.warn("⚠️ Gemini STT falhou:", e);
+    }
+  }
+  return null;
 }
 
 async function transcribeAudioWithElevenLabs(audioUrl: string, apiKey: string): Promise<string> {
@@ -761,11 +646,7 @@ async function transcribeAudioWithElevenLabs(audioUrl: string, apiKey: string): 
     body: formData,
   });
 
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`ElevenLabs STT error: ${response.status} - ${errText}`);
-  }
-
+  if (!response.ok) throw new Error(`ElevenLabs STT error: ${response.status}`);
   const data = await response.json();
   return data.text || "Áudio não transcrito";
 }
@@ -784,21 +665,21 @@ async function transcribeAudioWithGemini(audioUrl: string, geminiKey: string): P
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [
-          { text: "Transcreva o conteúdo deste áudio em português. Retorne APENAS a transcrição:" },
+          { text: "Transcreva este áudio em português. Retorne APENAS a transcrição:" },
           { inline_data: { mime_type: mimeType, data: base64Audio } },
         ] }],
       }),
     }
   );
 
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`Gemini audio error: ${response.status} - ${errText}`);
-  }
-
+  if (!response.ok) throw new Error(`Gemini audio error: ${response.status}`);
   const data = await response.json();
   return data.candidates?.[0]?.content?.parts?.[0]?.text || "Áudio não transcrito";
 }
+
+// ═══════════════════════════════════════════════════════════
+// HELPERS: TTS
+// ═══════════════════════════════════════════════════════════
 
 interface VoiceConfig {
   voiceId: string;
@@ -811,51 +692,32 @@ interface VoiceConfig {
 
 async function generateTTSAudio(text: string, apiKey: string, voiceConfig?: VoiceConfig): Promise<string | null> {
   const ttsText = text.length > 500 ? text.substring(0, 497) + "..." : text;
-  
   const voiceId = voiceConfig?.voiceId || "FGY2WhTYpPnrIDTdsKH5";
   const modelId = voiceConfig?.model || "eleven_multilingual_v2";
-  const stability = voiceConfig?.stability ?? 0.5;
-  const similarityBoost = voiceConfig?.similarityBoost ?? 0.75;
-  const style = voiceConfig?.style ?? 0.0;
-  const speed = voiceConfig?.speed ?? 1.0;
-
-  console.log(`🔊 TTS: voz=${voiceId}, modelo=${modelId}, stability=${stability}, similarity=${similarityBoost}`);
 
   const response = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=opus_48000_128`,
     {
       method: "POST",
-      headers: {
-        "xi-api-key": apiKey,
-        "Content-Type": "application/json",
-      },
+      headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
       body: JSON.stringify({
         text: ttsText,
         model_id: modelId,
         voice_settings: {
-          stability,
-          similarity_boost: similarityBoost,
-          style,
+          stability: voiceConfig?.stability ?? 0.5,
+          similarity_boost: voiceConfig?.similarityBoost ?? 0.75,
+          style: voiceConfig?.style ?? 0.0,
           use_speaker_boost: true,
-          speed,
+          speed: voiceConfig?.speed ?? 1.0,
         },
       }),
     }
   );
 
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`ElevenLabs TTS error: ${response.status} - ${errText}`);
-  }
-
+  if (!response.ok) throw new Error(`TTS error: ${response.status}`);
   const audioBuffer = await response.arrayBuffer();
-  const base64Audio = base64Encode(new Uint8Array(audioBuffer));
-  
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-  );
 
+  const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   const fileName = `tts-${Date.now()}.ogg`;
   const { error: uploadError } = await supabase.storage
     .from("avatars")
@@ -864,178 +726,144 @@ async function generateTTSAudio(text: string, apiKey: string, voiceConfig?: Voic
       upsert: true,
     });
 
-  if (uploadError) {
-    console.warn("⚠️ Erro ao fazer upload do áudio TTS:", uploadError);
-    return null;
-  }
-
-  const { data: publicUrl } = supabase.storage
-    .from("avatars")
-    .getPublicUrl(`tts-audio/${fileName}`);
-
-  console.log("🔊 Áudio TTS gerado:", publicUrl.publicUrl);
+  if (uploadError) return null;
+  const { data: publicUrl } = supabase.storage.from("avatars").getPublicUrl(`tts-audio/${fileName}`);
   return publicUrl.publicUrl;
 }
 
-// === RASTREIO HELPERS ===
-
-function detectTrackingCode(text: string): string | null {
-  if (!text) return null;
-  // Padrões de códigos de rastreio dos Correios: AA123456789BR, SS987654321BR etc.
-  const correiosPattern = /\b([A-Z]{2}\d{9}[A-Z]{2})\b/i;
-  const match = text.match(correiosPattern);
-  if (match) return match[1].toUpperCase();
-  
-  // Também aceitar só o código se a mensagem inteira for basicamente o código
-  const trimmed = text.trim().toUpperCase();
-  if (/^[A-Z]{2}\d{9}[A-Z]{2}$/.test(trimmed)) return trimmed;
-  
-  return null;
-}
+// ═══════════════════════════════════════════════════════════
+// HELPERS: Rastreio
+// ═══════════════════════════════════════════════════════════
 
 async function fetchTrackingData(codigo: string): Promise<any> {
   const BASE_API_URL = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br";
   const adminEmail = Deno.env.get("API_ADMIN_EMAIL");
   const adminPassword = Deno.env.get("API_ADMIN_PASSWORD");
+  if (!adminEmail || !adminPassword) return null;
 
-  if (!adminEmail || !adminPassword) {
-    console.warn("⚠️ Credenciais admin não configuradas para rastreio");
-    return null;
-  }
-
-  // Login
   const loginResponse = await fetch(`${BASE_API_URL}/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email: adminEmail, password: adminPassword }),
   });
-
-  if (!loginResponse.ok) {
-    console.error("❌ Falha login admin para rastreio:", loginResponse.status);
-    return null;
-  }
-
+  if (!loginResponse.ok) return null;
   const loginData = await loginResponse.json();
-  const token = loginData.token;
 
-  // Consultar rastreio
   const rastreioResponse = await fetch(`${BASE_API_URL}/rastrear?codigo=${codigo}`, {
     method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
+    headers: { Authorization: `Bearer ${loginData.token}`, "Content-Type": "application/json" },
   });
-
-  if (!rastreioResponse.ok) {
-    console.error("❌ Erro API rastreio:", rastreioResponse.status);
-    return null;
-  }
-
-  const data = await rastreioResponse.json();
-  console.log("📦 Rastreio obtido para", codigo);
-  return data;
+  if (!rastreioResponse.ok) return null;
+  return await rastreioResponse.json();
 }
 
 function formatTrackingForAI(rastreioData: any): string {
   const dados = rastreioData?.data || rastreioData;
   const eventos = dados?.eventos || [];
-  
   let result = "";
-  
   if (dados?.codigoObjeto) result += `Código: ${dados.codigoObjeto}\n`;
   if (dados?.servico) result += `Serviço: ${dados.servico}\n`;
   if (dados?.dataPrevisaoEntrega) result += `Previsão de entrega: ${dados.dataPrevisaoEntrega}\n`;
-  
   if (eventos.length > 0) {
-    result += `\nÚltimos eventos (${eventos.length} total):\n`;
-    // Mostrar até 5 eventos mais recentes
-    const recentEvents = eventos.slice(0, 5);
-    for (const ev of recentEvents) {
-      const local = ev.unidade?.cidadeUf || ev.unidade?.tipo || "";
+    result += `Últimos eventos:\n`;
+    for (const ev of eventos.slice(0, 5)) {
+      const local = ev.unidade?.cidadeUf || "";
       result += `- ${ev.dataCompleta || ev.date || ""} ${ev.horario || ""}: ${ev.descricao || ""}`;
       if (local) result += ` (${local})`;
       if (ev.unidadeDestino?.cidadeUf) result += ` → ${ev.unidadeDestino.cidadeUf}`;
       result += "\n";
     }
   } else {
-    result += "\nNenhum evento de rastreio encontrado ainda.\n";
+    result += "Nenhum evento de rastreio encontrado.\n";
   }
-  
   return result;
 }
 
-// === HANDOFF VERONICA → FELIPE ===
+// ═══════════════════════════════════════════════════════════
+// HELPERS: Prompts padrão
+// ═══════════════════════════════════════════════════════════
 
-function detectHandoffTrigger(userMessage: string, _aiReply: string): boolean {
-  const lowerMsg = (userMessage || "").toLowerCase();
-  
-  const escalationKeywords = [
-    "procon", "processo", "advogado", "denúncia", "reclame aqui",
-    "pior empresa", "péssimo", "horrível", "absurdo", "lixo",
-    "cobrança indevida", "cobrado errado", "valor errado", "não recebi crédito",
-    "estorno", "reembolso", "devolver meu dinheiro",
-    "extraviou", "extraviado", "roubado", "furto", "sumiu", "perdido",
-    "pacote sumiu", "encomenda sumiu",
-    "danificado", "quebrado", "avariado", "amassado", "destruído",
-    "cancelar tudo", "quero cancelar", "cancela minha conta",
-    "nunca mais", "vou processar", "vou denunciar", "vocês são", "que vergonha",
-    "insatisfeito", "muita raiva", "revoltado",
-  ];
-  
-  return escalationKeywords.some(k => lowerMsg.includes(k));
+function getDefaultPrompt(agent: string): string {
+  if (agent === "felipe") {
+    return `Você é Felipe, especialista de resolução de problemas da BRHUB Envios. Fale como um humano real no WhatsApp.
+
+REGRAS OBRIGATÓRIAS:
+- Respostas CURTAS: máximo 2-3 frases. Nunca mais que 4 linhas.
+- Fale como gente de verdade. Use linguagem natural e informal (mas educada).
+- Vá direto ao ponto. Sem saudações genéricas.
+- Use 1 emoji no máximo por mensagem.
+- Se não souber, diga "vou verificar com o time" e pronto.
+- NUNCA use bullet points, listas ou formatação elaborada. É WhatsApp.
+- Português brasileiro natural. Pode usar "vc", "tá", "pra".
+- Você tem acesso a ferramentas (rastreio, cotação, saldo). USE-AS quando o contexto pedir, não invente dados.`;
+  }
+  return `Você é a Veronica, do Time de Suporte da BRHUB Envios — plataforma de logística com fretes até 70% mais baratos via contratos com Correios, Jadlog, Loggi e Azul.
+
+APRESENTAÇÃO: Na PRIMEIRA mensagem: "Oi! Sou a Veronica do Time de Suporte da BRHUB Envios 😊". Depois não repita.
+
+FERRAMENTAS: Você tem acesso a ferramentas reais (rastrear pacote, cotar frete, consultar saldo). SEMPRE use a ferramenta certa ao invés de inventar dados. Se o cliente enviar código de rastreio ou foto de etiqueta, use rastrear_pacote. Se perguntar preço, use cotar_frete. Se perguntar saldo, use consultar_saldo.
+
+REGRAS:
+- Respostas CURTAS: máximo 2-3 frases. NUNCA mais que 4 linhas.
+- NUNCA use bullet points, listas ou formatação de email. É WhatsApp.
+- Use 1-2 emojis naturalmente. Português informal: "vc", "tá", "pra".
+- Vá direto ao ponto. Seja proativa e carinhosa.
+- Quando usar uma ferramenta e tiver resultado, responda de forma natural e curta com os dados.
+- Se não souber: "vou chamar alguém do time pra te ajudar 😊"
+
+TRANSFERÊNCIA PRO FELIPE:
+- Se o cliente tiver problema GRAVE (extravio, dano, cobrança errada, reclamação forte, ameaça jurídica), demonstre empatia. O sistema transfere automaticamente.
+- NÃO diga "vou transferir", apenas reconheça a gravidade.`;
 }
 
-async function performHandoffToFelipe(
-  supabase: any,
-  conversationId: string,
-  contactPhone: string,
-  userMessage: string,
-  channel: { channel_id: string; access_key: string }
-) {
+// ═══════════════════════════════════════════════════════════
+// HELPERS: Logging
+// ═══════════════════════════════════════════════════════════
+
+async function logInteraction(supabase: any, data: any) {
   try {
-    const handoffMessage = "Entendi a situação, vou te transferir pro Felipe que é nosso especialista e vai te ajudar a resolver isso, tá? Um momento 😊";
-    
-    const handoffPayload = {
-      to: contactPhone,
-      from: channel.channel_id,
-      type: "text",
-      content: { text: handoffMessage },
-    };
+    await supabase.from("ai_interaction_logs").insert(data);
+  } catch (e) {
+    console.warn("⚠️ Erro ao logar:", e);
+  }
+}
 
-    const mbHandoff = await fetch("https://conversations.messagebird.com/v1/send", {
-      method: "POST",
-      headers: {
-        Authorization: `AccessKey ${channel.access_key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(handoffPayload),
-    });
-    const mbHandoffResult = await mbHandoff.json();
+// ═══════════════════════════════════════════════════════════
+// HELPERS: Tickets & Pipeline
+// ═══════════════════════════════════════════════════════════
 
-    await supabase.from("whatsapp_messages").insert({
-      conversation_id: conversationId,
-      messagebird_id: mbHandoffResult.id || null,
-      direction: "outbound",
-      content_type: "text",
-      content: handoffMessage,
-      status: "sent",
-      sent_by: "veronica",
-      ai_generated: true,
-    });
+async function detectAndCreateSupportTicket(supabase: any, conversationId: string, contactPhone: string, userMessage: string, _aiReply: string, agentName: string) {
+  try {
+    const lowerMsg = (userMessage || "").toLowerCase();
+    const categoryRules: { keywords: string[]; category: string; priority: string }[] = [
+      { keywords: ["procon", "processo", "advogado", "pior empresa", "denúncia"], category: "reclamacao", priority: "urgente" },
+      { keywords: ["péssimo", "horrível", "absurdo", "lixo", "nunca mais"], category: "reclamacao", priority: "urgente" },
+      { keywords: ["reclamar", "reclamação", "insatisfeito", "problema grave"], category: "reclamacao", priority: "alta" },
+      { keywords: ["extraviou", "extraviado", "roubado", "furto", "sumiu", "perdido"], category: "rastreio", priority: "urgente" },
+      { keywords: ["não chegou", "demora", "atraso", "atrasado"], category: "rastreio", priority: "alta" },
+      { keywords: ["danificado", "quebrado", "avariado", "amassado"], category: "reclamacao", priority: "alta" },
+      { keywords: ["cancelar", "cancelamento", "estornar", "estorno", "reembolso"], category: "cancelamento", priority: "alta" },
+      { keywords: ["cobrado errado", "cobrança indevida", "valor errado"], category: "financeiro", priority: "alta" },
+    ];
 
-    console.log("📨 Veronica enviou mensagem de handoff");
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    let matchedCategory: string | null = null;
+    let matchedPriority = "normal";
+    for (const rule of categoryRules) {
+      if (rule.keywords.some(k => lowerMsg.includes(k))) {
+        matchedCategory = rule.category;
+        matchedPriority = rule.priority;
+        break;
+      }
+    }
+    if (!matchedCategory) return;
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) return;
-
-    const { data: felipeConfig } = await supabase
-      .from("ai_agents")
-      .select("*")
-      .eq("name", "felipe")
-      .eq("is_active", true)
-      .single();
+    const { data: existing } = await supabase
+      .from("ai_support_pipeline")
+      .select("id")
+      .eq("conversation_id", conversationId)
+      .in("status", ["novo", "em_atendimento", "aguardando", "aberto", "em_andamento"])
+      .limit(1);
+    if (existing && existing.length > 0) return;
 
     const { data: conv } = await supabase
       .from("whatsapp_conversations")
@@ -1043,58 +871,223 @@ async function performHandoffToFelipe(
       .eq("id", conversationId)
       .single();
 
-    const contactName = conv?.contact_name || "";
-    const greeting = contactName ? `${contactName.split(" ")[0]}` : "tudo bem";
+    const sentiment = matchedPriority === "urgente" ? "muito_negativo" : "negativo";
 
-    const felipeIntroPrompt = `Você é o Felipe, especialista de resolução de problemas da BRHUB Envios. A Veronica acabou de te transferir um cliente que está com um problema.
-
-O cliente disse: "${userMessage}"
-
-Você precisa se apresentar de forma tranquilizadora e empática. Fale como se estivesse num áudio de WhatsApp, natural e humano.
-
-REGRAS:
-- Se apresente: "E aí ${greeting}, aqui é o Felipe"
-- Diga que a Veronica te passou a situação
-- Mostre que entendeu o problema do cliente
-- Tranquilize dizendo que vai resolver
-- Tom calmo, confiante, profissional mas informal
-- Máximo 3-4 frases curtas
-- NÃO use emojis (vai ser convertido em áudio)
-- NÃO faça perguntas nessa primeira mensagem, só tranquilize`;
-
-    const felipeResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: felipeConfig?.model || "gpt-4o",
-        messages: [
-          { role: "system", content: felipeIntroPrompt },
-          { role: "user", content: userMessage },
-        ],
-        max_tokens: 150,
-        temperature: 0.8,
-      }),
+    await supabase.from("ai_support_pipeline").insert({
+      conversation_id: conversationId,
+      contact_phone: contactPhone,
+      contact_name: conv?.contact_name || null,
+      category: matchedCategory,
+      priority: matchedPriority,
+      status: "novo",
+      subject: (userMessage || "").substring(0, 120),
+      description: userMessage?.substring(0, 500) || null,
+      sentiment,
+      detected_by: agentName,
     });
+  } catch (e) {
+    console.warn("⚠️ Erro pipeline:", e);
+  }
+}
 
-    if (!felipeResponse.ok) {
-      console.error("❌ Erro OpenAI Felipe handoff:", felipeResponse.status);
+async function ensureTicketOpen(supabase: any, conversationId: string, contactPhone: string, userMessage: string) {
+  try {
+    const { data: openTicket } = await supabase
+      .from("whatsapp_tickets")
+      .select("id, message_count")
+      .eq("conversation_id", conversationId)
+      .eq("status", "open")
+      .limit(1)
+      .single();
+
+    if (openTicket) {
+      await supabase.from("whatsapp_tickets").update({
+        message_count: (openTicket.message_count || 0) + 1,
+        last_message_at: new Date().toISOString(),
+      }).eq("id", openTicket.id);
       return;
     }
 
+    const { data: conv } = await supabase
+      .from("whatsapp_conversations")
+      .select("contact_name")
+      .eq("id", conversationId)
+      .single();
+
+    await supabase.from("whatsapp_tickets").insert({
+      conversation_id: conversationId,
+      contact_phone: contactPhone,
+      contact_name: conv?.contact_name || null,
+      status: "open",
+      subject: userMessage?.substring(0, 120) || "Nova conversa",
+      first_message_at: new Date().toISOString(),
+      last_message_at: new Date().toISOString(),
+      message_count: 1,
+    });
+  } catch (e) {
+    console.warn("⚠️ Erro ticket:", e);
+  }
+}
+
+const PIPELINE_FLOWS: Record<string, string[]> = {
+  reclamacao: ["novo", "triagem", "investigacao", "resolucao", "concluido"],
+  rastreio: ["novo", "verificando", "localizado", "em_transito", "entregue"],
+  cancelamento: ["novo", "analise", "processamento", "aprovado", "concluido"],
+  financeiro: ["novo", "analise", "processamento", "aprovado", "concluido"],
+};
+
+async function progressPipelineStatus(supabase: any, conversationId: string, userMessage: string, aiReply: string) {
+  try {
+    const { data: pipeline } = await supabase
+      .from("ai_support_pipeline")
+      .select("*")
+      .eq("conversation_id", conversationId)
+      .not("status", "in", '("concluido","entregue","cancelado")')
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (!pipeline) return;
+
+    const category = pipeline.category || "reclamacao";
+    const flow = PIPELINE_FLOWS[category] || PIPELINE_FLOWS.reclamacao;
+    const currentIdx = flow.indexOf(pipeline.status);
+    if (currentIdx === -1 || currentIdx >= flow.length - 1) return;
+
+    const lowerReply = (aiReply || "").toLowerCase();
+    const lowerMsg = (userMessage || "").toLowerCase();
+    let shouldProgress = false;
+    let newStatus = "";
+    let progressReason = "";
+
+    if (category === "rastreio") {
+      if (pipeline.status === "novo" && lowerReply.includes("rastr")) {
+        shouldProgress = true; newStatus = "verificando"; progressReason = "IA verificou rastreio";
+      } else if (pipeline.status === "verificando" && (lowerReply.includes("localizado") || lowerReply.includes("encontr"))) {
+        shouldProgress = true; newStatus = "localizado"; progressReason = "Pacote localizado";
+      } else if (lowerReply.includes("entregue") || lowerReply.includes("entrega confirmada")) {
+        shouldProgress = true; newStatus = "entregue"; progressReason = "Entrega confirmada";
+      }
+    } else if (category === "reclamacao") {
+      if (pipeline.status === "novo" && lowerReply.length > 50) {
+        shouldProgress = true; newStatus = "triagem"; progressReason = "Triagem inicial";
+      }
+    }
+
+    const resolutionPatterns = ["resolvido", "solucionado", "concluído", "foi corrigido"];
+    if (resolutionPatterns.some(p => lowerReply.includes(p))) {
+      shouldProgress = true; newStatus = flow[flow.length - 1]; progressReason = "Resolução detectada";
+    }
+
+    if (shouldProgress && newStatus) {
+      await supabase.from("ai_support_pipeline").update({
+        status: newStatus,
+        resolution: progressReason,
+        updated_at: new Date().toISOString(),
+      }).eq("id", pipeline.id);
+
+      if (lowerMsg.includes("obrigad") || lowerMsg.includes("valeu")) {
+        await supabase.from("ai_support_pipeline").update({ sentiment: "positivo" }).eq("id", pipeline.id);
+      }
+    }
+  } catch (e) {
+    console.warn("⚠️ Erro pipeline:", e);
+  }
+}
+
+async function detectTicketResolution(supabase: any, conversationId: string, aiReply: string) {
+  try {
+    const lowerReply = (aiReply || "").toLowerCase();
+    const resolutionPatterns = ["resolvido", "solucionado", "concluído", "foi entregue", "entregue com sucesso", "estorno realizado"];
+    const isStrong = resolutionPatterns.some(p => lowerReply.includes(p));
+    if (!isStrong) return;
+
+    await supabase.from("whatsapp_tickets").update({
+      status: "resolved",
+      resolution: aiReply.substring(0, 200),
+      closed_at: new Date().toISOString(),
+      closed_by: "ai",
+    }).eq("conversation_id", conversationId).eq("status", "open");
+  } catch (e) {
+    console.warn("⚠️ Erro ticket resolution:", e);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// HANDOFF: Veronica → Felipe
+// ═══════════════════════════════════════════════════════════
+
+function detectHandoffTrigger(userMessage: string, _aiReply: string): boolean {
+  const lowerMsg = (userMessage || "").toLowerCase();
+  const escalationKeywords = [
+    "procon", "processo", "advogado", "denúncia", "reclame aqui",
+    "pior empresa", "péssimo", "horrível", "absurdo", "lixo",
+    "cobrança indevida", "cobrado errado", "valor errado",
+    "estorno", "reembolso", "devolver meu dinheiro",
+    "extraviou", "extraviado", "roubado", "furto", "sumiu", "perdido",
+    "danificado", "quebrado", "avariado", "amassado", "destruído",
+    "cancelar tudo", "quero cancelar", "cancela minha conta",
+    "nunca mais", "vou processar", "vou denunciar", "que vergonha",
+    "muita raiva", "revoltado",
+  ];
+  return escalationKeywords.some(k => lowerMsg.includes(k));
+}
+
+async function performHandoffToFelipe(
+  supabase: any, conversationId: string, contactPhone: string, userMessage: string,
+  channel: { channel_id: string; access_key: string }
+) {
+  try {
+    const handoffMessage = "Entendi a situação, vou te transferir pro Felipe que é nosso especialista e vai te ajudar a resolver isso, tá? Um momento 😊";
+
+    await fetch("https://conversations.messagebird.com/v1/send", {
+      method: "POST",
+      headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: handoffMessage } }),
+    }).then(r => r.json()).then(async (mbResult) => {
+      await supabase.from("whatsapp_messages").insert({
+        conversation_id: conversationId, messagebird_id: mbResult.id || null,
+        direction: "outbound", content_type: "text", content: handoffMessage,
+        status: "sent", sent_by: "veronica", ai_generated: true,
+      });
+    });
+
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) return;
+
+    const { data: felipeConfig } = await supabase.from("ai_agents").select("*").eq("name", "felipe").eq("is_active", true).single();
+    const { data: conv } = await supabase.from("whatsapp_conversations").select("contact_name").eq("id", conversationId).single();
+
+    const contactName = conv?.contact_name || "";
+    const greeting = contactName ? contactName.split(" ")[0] : "tudo bem";
+
+    const felipeIntroPrompt = `Você é o Felipe, especialista de resolução de problemas da BRHUB Envios. A Veronica te transferiu um cliente.
+O cliente disse: "${userMessage}"
+Se apresente: "E aí ${greeting}, aqui é o Felipe". Diga que a Veronica te passou a situação. Mostre que entendeu. Tranquilize.
+Tom calmo, confiante, informal. Máximo 3-4 frases. SEM emojis (vai virar áudio). SEM perguntas na primeira mensagem.`;
+
+    const felipeResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: felipeConfig?.model || "gpt-4o",
+        messages: [{ role: "system", content: felipeIntroPrompt }, { role: "user", content: userMessage }],
+        max_tokens: 150, temperature: 0.8,
+      }),
+    });
+
+    if (!felipeResponse.ok) return;
     const felipeData = await felipeResponse.json();
-    const felipeReply = felipeData.choices?.[0]?.message?.content || "E aí, aqui é o Felipe. A Veronica me passou sua situação e vou te ajudar a resolver, pode ficar tranquilo.";
+    const felipeReply = felipeData.choices?.[0]?.message?.content || "E aí, aqui é o Felipe. A Veronica me passou sua situação e vou te ajudar a resolver.";
 
-    console.log("🤖 Felipe reply:", felipeReply.substring(0, 100));
-
+    // Tentar enviar como áudio
+    let audioSent = false;
     const elevenLabsKey = Deno.env.get("ELEVENLABS_API_KEY");
-    let felipeAudioSent = false;
-
     if (elevenLabsKey) {
       try {
-        const felipeVoiceConfig: VoiceConfig = {
+        const voiceConfig: VoiceConfig = {
           voiceId: felipeConfig?.voice_id || "cjVigY5qzO86Huf0OWal",
           model: felipeConfig?.tts_model || "eleven_multilingual_v2",
           stability: felipeConfig?.voice_stability ?? 0.45,
@@ -1102,99 +1095,52 @@ REGRAS:
           style: felipeConfig?.voice_style ?? 0.2,
           speed: felipeConfig?.voice_speed ?? 1.0,
         };
-
-        const audioUrl = await generateTTSAudio(felipeReply, elevenLabsKey, felipeVoiceConfig);
+        const audioUrl = await generateTTSAudio(felipeReply, elevenLabsKey, voiceConfig);
         if (audioUrl) {
-          const audioPayload = {
-            to: contactPhone,
-            from: channel.channel_id,
-            type: "audio",
-            content: { audio: { url: audioUrl } },
-          };
-
           const mbAudio = await fetch("https://conversations.messagebird.com/v1/send", {
             method: "POST",
-            headers: {
-              Authorization: `AccessKey ${channel.access_key}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(audioPayload),
+            headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "audio", content: { audio: { url: audioUrl } } }),
           });
           const mbAudioResult = await mbAudio.json();
-
           await supabase.from("whatsapp_messages").insert({
-            conversation_id: conversationId,
-            messagebird_id: mbAudioResult.id || null,
-            direction: "outbound",
-            content_type: "voice",
-            content: felipeReply,
-            media_url: audioUrl,
-            status: "sent",
-            sent_by: "felipe",
-            ai_generated: true,
+            conversation_id: conversationId, messagebird_id: mbAudioResult.id || null,
+            direction: "outbound", content_type: "voice", content: felipeReply,
+            media_url: audioUrl, status: "sent", sent_by: "felipe", ai_generated: true,
           });
-
-          felipeAudioSent = true;
-          console.log("🔊 Felipe áudio de handoff enviado");
+          audioSent = true;
         }
-      } catch (ttsErr) {
-        console.warn("⚠️ Erro TTS Felipe handoff:", ttsErr);
-      }
+      } catch (e) { console.warn("⚠️ TTS Felipe:", e); }
     }
 
-    if (!felipeAudioSent) {
-      const textPayload = {
-        to: contactPhone,
-        from: channel.channel_id,
-        type: "text",
-        content: { text: felipeReply },
-      };
-
+    if (!audioSent) {
       const mbText = await fetch("https://conversations.messagebird.com/v1/send", {
         method: "POST",
-        headers: {
-          Authorization: `AccessKey ${channel.access_key}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(textPayload),
+        headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: felipeReply } }),
       });
       const mbTextResult = await mbText.json();
-
       await supabase.from("whatsapp_messages").insert({
-        conversation_id: conversationId,
-        messagebird_id: mbTextResult.id || null,
-        direction: "outbound",
-        content_type: "text",
-        content: felipeReply,
-        status: "sent",
-        sent_by: "felipe",
-        ai_generated: true,
+        conversation_id: conversationId, messagebird_id: mbTextResult.id || null,
+        direction: "outbound", content_type: "text", content: felipeReply,
+        status: "sent", sent_by: "felipe", ai_generated: true,
       });
     }
 
-    // Marcar conversa para usar Felipe nas próximas mensagens
-    await supabase
-      .from("whatsapp_conversations")
-      .update({
-        active_agent: "felipe",
-        last_message_at: new Date().toISOString(),
-        last_message_preview: felipeReply.substring(0, 100),
-      })
-      .eq("id", conversationId);
+    await supabase.from("whatsapp_conversations").update({
+      active_agent: "felipe",
+      last_message_at: new Date().toISOString(),
+      last_message_preview: felipeReply.substring(0, 100),
+    }).eq("id", conversationId);
 
     await logInteraction(supabase, {
-      conversation_id: conversationId,
-      agent_name: "felipe",
-      content_type: "voice",
-      provider: "openai",
-      model: felipeConfig?.model || "gpt-4o",
-      success: true,
-      response_time_ms: 0,
-      tool_used: "handoff_from_veronica",
+      conversation_id: conversationId, agent_name: "felipe", content_type: "voice",
+      provider: "openai", model: felipeConfig?.model || "gpt-4o", success: true,
+      response_time_ms: 0, tool_used: "handoff_from_veronica",
     });
 
-    console.log("✅ Handoff Veronica → Felipe concluído com sucesso");
+    console.log("✅ Handoff Veronica → Felipe concluído");
   } catch (e) {
-    console.error("❌ Erro no handoff Veronica → Felipe:", e);
+    console.error("❌ Erro handoff:", e);
   }
 }
