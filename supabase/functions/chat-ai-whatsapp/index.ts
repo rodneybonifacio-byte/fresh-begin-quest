@@ -218,7 +218,7 @@ serve(async (req) => {
                 conversation_id: conversationId,
                 messagebird_id: mbAudioResult.id || null,
                 direction: "outbound",
-                content_type: "audio",
+                content_type: "voice",
                 content: aiReply,
                 media_url: audioUrl,
                 status: "sent",
@@ -458,7 +458,7 @@ async function generateTTSAudio(text: string, apiKey: string): Promise<string | 
   const voiceId = "FGY2WhTYpPnrIDTdsKH5";
 
   const response = await fetch(
-    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
+    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=opus_48000`,
     {
       method: "POST",
       headers: {
@@ -486,18 +486,17 @@ async function generateTTSAudio(text: string, apiKey: string): Promise<string | 
   const audioBuffer = await response.arrayBuffer();
   const base64Audio = base64Encode(new Uint8Array(audioBuffer));
   
-  // Criar data URL para o áudio (MessageBird aceita URLs)
-  // Vamos salvar no Supabase Storage para ter uma URL pública
+  // Salvar no Supabase Storage como OGG Opus para WhatsApp exibir como voice note
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  const fileName = `tts-${Date.now()}.mp3`;
+  const fileName = `tts-${Date.now()}.ogg`;
   const { error: uploadError } = await supabase.storage
     .from("avatars")
     .upload(`tts-audio/${fileName}`, new Uint8Array(audioBuffer), {
-      contentType: "audio/mpeg",
+      contentType: "audio/ogg; codecs=opus",
       upsert: true,
     });
 
