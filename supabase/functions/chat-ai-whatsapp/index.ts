@@ -343,24 +343,39 @@ async function logInteraction(supabase: any, data: any) {
 
 async function detectAndCreateSupportTicket(supabase: any, conversationId: string, contactPhone: string, userMessage: string, _aiReply: string, agentName: string) {
   try {
-    const negativePhrases = [
-      "reclamar", "reclamação", "problema", "péssimo", "horrível", "absurdo",
-      "insatisfeito", "insatisfação", "não chegou", "extraviou", "extraviado",
-      "demora", "atraso", "atrasado", "danificado", "quebrado", "roubado",
-      "furto", "procon", "processo", "advogado", "nunca mais", "pior empresa",
+    const lowerMsg = (userMessage || "").toLowerCase();
+
+    // Categorização por contexto
+    const categoryRules: { keywords: string[]; category: string; priority: string }[] = [
+      { keywords: ["procon", "processo", "advogado", "pior empresa", "denúncia"], category: "reclamacao", priority: "urgente" },
+      { keywords: ["péssimo", "horrível", "absurdo", "lixo", "nunca mais"], category: "reclamacao", priority: "urgente" },
+      { keywords: ["reclamar", "reclamação", "insatisfeito", "insatisfação", "problema grave"], category: "reclamacao", priority: "alta" },
+      { keywords: ["extraviou", "extraviado", "roubado", "furto", "sumiu", "perdido"], category: "rastreio", priority: "urgente" },
+      { keywords: ["não chegou", "demora", "atraso", "atrasado", "sem atualização"], category: "rastreio", priority: "alta" },
+      { keywords: ["danificado", "quebrado", "avariado", "amassado"], category: "reclamacao", priority: "alta" },
+      { keywords: ["cancelar", "cancelamento", "estornar", "estorno", "reembolso", "devolver"], category: "cancelamento", priority: "alta" },
+      { keywords: ["cobrado errado", "cobrança indevida", "valor errado", "não recebi crédito"], category: "financeiro", priority: "alta" },
     ];
 
-    const lowerMsg = (userMessage || "").toLowerCase();
-    const isComplaint = negativePhrases.some(p => lowerMsg.includes(p));
+    let matchedCategory: string | null = null;
+    let matchedPriority = "normal";
 
-    if (!isComplaint) return;
+    for (const rule of categoryRules) {
+      if (rule.keywords.some(k => lowerMsg.includes(k))) {
+        matchedCategory = rule.category;
+        matchedPriority = rule.priority;
+        break;
+      }
+    }
+
+    if (!matchedCategory) return;
 
     // Verificar se já existe ticket aberto para esta conversa
     const { data: existing } = await supabase
       .from("ai_support_pipeline")
       .select("id")
       .eq("conversation_id", conversationId)
-      .in("status", ["aberto", "em_andamento"])
+      .in("status", ["novo", "em_atendimento", "aguardando", "aberto", "em_andamento"])
       .limit(1);
 
     if (existing && existing.length > 0) return;
@@ -373,23 +388,23 @@ async function detectAndCreateSupportTicket(supabase: any, conversationId: strin
       .single();
 
     // Determinar sentimento
-    const strongNegative = ["péssimo", "horrível", "absurdo", "procon", "processo", "advogado", "pior empresa"];
-    const sentiment = strongNegative.some(p => lowerMsg.includes(p)) ? "muito_negativo" : "negativo";
+    const strongNeg = ["péssimo", "horrível", "absurdo", "procon", "processo", "advogado", "pior empresa", "lixo"];
+    const sentiment = strongNeg.some(p => lowerMsg.includes(p)) ? "muito_negativo" : "negativo";
 
     await supabase.from("ai_support_pipeline").insert({
       conversation_id: conversationId,
       contact_phone: contactPhone,
       contact_name: conv?.contact_name,
-      category: "reclamacao",
-      priority: sentiment === "muito_negativo" ? "urgente" : "alta",
-      status: "aberto",
-      subject: `Reclamação detectada: ${userMessage.substring(0, 80)}`,
+      category: matchedCategory,
+      priority: matchedPriority,
+      status: "novo",
+      subject: `${categoryRules.find(r => r.category === matchedCategory)?.category === 'rastreio' ? '📦' : '⚠️'} ${userMessage.substring(0, 100)}`,
       description: userMessage,
       sentiment,
       detected_by: agentName,
     });
 
-    console.log("🎫 Ticket de suporte criado para conversa:", conversationId);
+    console.log(`🎫 Ticket criado [${matchedCategory}/${matchedPriority}] conversa:`, conversationId);
   } catch (e) {
     console.warn("⚠️ Erro ao detectar reclamação:", e);
   }

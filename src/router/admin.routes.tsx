@@ -184,7 +184,7 @@ export const adminRoutesConfig: ProtectedRouteItem[] = [
     },
     {
         path: 'crm',
-        component: () => import('../pages/private/admin/crm/CrmWhatsApp'),
+        component: () => import('../pages/private/admin/crm/CrmLayout'),
     },
     {
         path: 'gestao-ia',
