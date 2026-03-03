@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { Tabs, Tab } from '@heroui/tabs';
-import { Bot, Wrench, BarChart3, Settings2, HeadphonesIcon } from 'lucide-react';
+import { Bot, Wrench, BarChart3, Settings2 } from 'lucide-react';
 import AgentesTab from './tabs/AgentesTab';
 import ToolsTab from './tabs/ToolsTab';
 import MetricasTab from './tabs/MetricasTab';
 import ProvedoresTab from './tabs/ProvedoresTab';
-import PipelineSuporteTab from './tabs/PipelineSuporteTab';
 
 const GestaoIA: React.FC = () => {
   const [selectedTab, setSelectedTab] = useState('agentes');
@@ -18,7 +17,7 @@ const GestaoIA: React.FC = () => {
           Gestão da IA
         </h1>
         <p className="text-muted-foreground mt-1">
-          Configure agentes, funções, provedores e monitore o desempenho da inteligência artificial
+          Configure agentes, vozes, funções, provedores e monitore o desempenho da inteligência artificial
         </p>
       </div>
 
@@ -37,7 +36,7 @@ const GestaoIA: React.FC = () => {
           title={
             <div className="flex items-center gap-2">
               <Bot className="w-4 h-4" />
-              <span>Agentes</span>
+              <span>Agentes & Voz</span>
             </div>
           }
         >
@@ -75,17 +74,6 @@ const GestaoIA: React.FC = () => {
           }
         >
           <ProvedoresTab />
-        </Tab>
-        <Tab
-          key="pipeline"
-          title={
-            <div className="flex items-center gap-2">
-              <HeadphonesIcon className="w-4 h-4" />
-              <span>Pipeline Suporte</span>
-            </div>
-          }
-        >
-          <PipelineSuporteTab />
         </Tab>
       </Tabs>
     </div>

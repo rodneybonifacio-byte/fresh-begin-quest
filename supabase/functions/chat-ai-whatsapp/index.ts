@@ -231,12 +231,22 @@ serve(async (req) => {
       // Se o cliente enviou áudio, responder com áudio (TTS) + texto
       const isAudioInput = contentType === "audio" || contentType === "voice" || contentType === "ptt";
       let audioSent = false;
+      const shouldRespondWithAudio = agentConfig?.respond_with_audio !== false;
+      const ttsEnabled = agentConfig?.tts_enabled !== false;
 
-      if (isAudioInput) {
+      if (isAudioInput && shouldRespondWithAudio && ttsEnabled) {
         const elevenLabsKey = Deno.env.get("ELEVENLABS_API_KEY");
         if (elevenLabsKey) {
           try {
-            const audioUrl = await generateTTSAudio(aiReply, elevenLabsKey);
+            const voiceConfig = {
+              voiceId: agentConfig?.voice_id || "FGY2WhTYpPnrIDTdsKH5",
+              model: agentConfig?.tts_model || "eleven_multilingual_v2",
+              stability: agentConfig?.voice_stability ?? 0.5,
+              similarityBoost: agentConfig?.voice_similarity_boost ?? 0.75,
+              style: agentConfig?.voice_style ?? 0.0,
+              speed: agentConfig?.voice_speed ?? 1.0,
+            };
+            const audioUrl = await generateTTSAudio(aiReply, elevenLabsKey, voiceConfig);
             if (audioUrl) {
               // Enviar áudio via MessageBird
               const audioPayload = {
@@ -654,12 +664,26 @@ async function transcribeAudioWithGemini(audioUrl: string, geminiKey: string): P
   return data.candidates?.[0]?.content?.parts?.[0]?.text || "Áudio não transcrito";
 }
 
-async function generateTTSAudio(text: string, apiKey: string): Promise<string | null> {
-  // Limitar texto para TTS (máximo ~500 chars para não ficar muito longo)
+interface VoiceConfig {
+  voiceId: string;
+  model: string;
+  stability: number;
+  similarityBoost: number;
+  style: number;
+  speed: number;
+}
+
+async function generateTTSAudio(text: string, apiKey: string, voiceConfig?: VoiceConfig): Promise<string | null> {
   const ttsText = text.length > 500 ? text.substring(0, 497) + "..." : text;
   
-  // Usar voz feminina em português (Laura - FGY2WhTYpPnrIDTdsKH5)
-  const voiceId = "FGY2WhTYpPnrIDTdsKH5";
+  const voiceId = voiceConfig?.voiceId || "FGY2WhTYpPnrIDTdsKH5";
+  const modelId = voiceConfig?.model || "eleven_multilingual_v2";
+  const stability = voiceConfig?.stability ?? 0.5;
+  const similarityBoost = voiceConfig?.similarityBoost ?? 0.75;
+  const style = voiceConfig?.style ?? 0.0;
+  const speed = voiceConfig?.speed ?? 1.0;
+
+  console.log(`🔊 TTS: voz=${voiceId}, modelo=${modelId}, stability=${stability}, similarity=${similarityBoost}`);
 
   const response = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=opus_48000_128`,
@@ -671,12 +695,13 @@ async function generateTTSAudio(text: string, apiKey: string): Promise<string | 
       },
       body: JSON.stringify({
         text: ttsText,
-        model_id: "eleven_multilingual_v2",
+        model_id: modelId,
         voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.75,
-          style: 0.3,
+          stability,
+          similarity_boost: similarityBoost,
+          style,
           use_speaker_boost: true,
+          speed,
         },
       }),
     }
@@ -690,7 +715,6 @@ async function generateTTSAudio(text: string, apiKey: string): Promise<string | 
   const audioBuffer = await response.arrayBuffer();
   const base64Audio = base64Encode(new Uint8Array(audioBuffer));
   
-  // Salvar no Supabase Storage como OGG Opus para WhatsApp exibir como voice note
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!

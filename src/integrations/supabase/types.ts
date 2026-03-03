@@ -27,9 +27,18 @@ export type Database = {
           name: string
           personality: string | null
           provider: string
+          respond_with_audio: boolean | null
           system_prompt: string
           temperature: number
+          tts_enabled: boolean | null
+          tts_model: string | null
           updated_at: string
+          voice_id: string | null
+          voice_name: string | null
+          voice_similarity_boost: number | null
+          voice_speed: number | null
+          voice_stability: number | null
+          voice_style: number | null
         }
         Insert: {
           avatar_url?: string | null
@@ -43,9 +52,18 @@ export type Database = {
           name: string
           personality?: string | null
           provider?: string
+          respond_with_audio?: boolean | null
           system_prompt: string
           temperature?: number
+          tts_enabled?: boolean | null
+          tts_model?: string | null
           updated_at?: string
+          voice_id?: string | null
+          voice_name?: string | null
+          voice_similarity_boost?: number | null
+          voice_speed?: number | null
+          voice_stability?: number | null
+          voice_style?: number | null
         }
         Update: {
           avatar_url?: string | null
@@ -59,9 +77,18 @@ export type Database = {
           name?: string
           personality?: string | null
           provider?: string
+          respond_with_audio?: boolean | null
           system_prompt?: string
           temperature?: number
+          tts_enabled?: boolean | null
+          tts_model?: string | null
           updated_at?: string
+          voice_id?: string | null
+          voice_name?: string | null
+          voice_similarity_boost?: number | null
+          voice_speed?: number | null
+          voice_stability?: number | null
+          voice_style?: number | null
         }
         Relationships: []
       }
