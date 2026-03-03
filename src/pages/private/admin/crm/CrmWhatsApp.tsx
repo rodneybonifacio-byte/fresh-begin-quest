@@ -128,16 +128,21 @@ const CrmWhatsApp = () => {
     setMobileShowChat(true);
   };
 
+  const getAuthToken = async () => {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token || localStorage.getItem('token') || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  };
+
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation || sending) return;
     setSending(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = await getAuthToken();
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/messagebird-send`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           conversationId: selectedConversation.id,
@@ -150,9 +155,11 @@ const CrmWhatsApp = () => {
       } else {
         const err = await response.json();
         console.error('Erro ao enviar:', err);
+        alert(err?.error || 'Erro ao enviar mensagem');
       }
     } catch (e) {
       console.error('Erro ao enviar mensagem:', e);
+      alert('Erro ao enviar mensagem.');
     }
     setSending(false);
   };
@@ -190,12 +197,16 @@ const CrmWhatsApp = () => {
     if (!selectedConversation || sending) return;
     setSending(true);
     try {
-      const ext = file.name.split('.').pop() || 'bin';
-      const fileName = `crm-media/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      
+      const { data: userData } = await supabase.auth.getUser();
+      const ownerId = userData.user?.id;
+      if (!ownerId) throw new Error('Sessão inválida para upload.');
+
+      const ext = (file.name.split('.').pop() || 'bin').toLowerCase();
+      const fileName = `${ownerId}/crm-media/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
       // Sanitize contentType - remove codecs parameter that can cause storage issues
       const uploadContentType = file.type.split(';')[0].trim() || 'application/octet-stream';
-      
+
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(fileName, file, { contentType: uploadContentType, upsert: true });
@@ -213,12 +224,12 @@ const CrmWhatsApp = () => {
       const contentType = isImage ? 'image' : isAudio ? 'audio' : 'file';
       const msgText = isImage ? '📷 Imagem' : isAudio ? '🎤 Áudio' : `📎 ${file.name}`;
 
-      const token = localStorage.getItem('token');
+      const token = await getAuthToken();
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/messagebird-send`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           conversationId: selectedConversation.id,
@@ -231,9 +242,11 @@ const CrmWhatsApp = () => {
       if (!response.ok) {
         const err = await response.json();
         console.error('Erro ao enviar mídia:', err);
+        throw new Error(err?.error || 'Erro ao enviar mídia.');
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('Erro ao enviar arquivo:', e);
+      alert(e?.message || 'Erro ao enviar arquivo.');
     }
     setSending(false);
   };
@@ -247,13 +260,20 @@ const CrmWhatsApp = () => {
   // Audio recording - getUserMedia called directly in click handler for security compliance
   const startRecording = async () => {
     try {
+      if (!navigator?.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+        alert('Seu navegador não suporta gravação de áudio.');
+        return;
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true },
+        audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 44100 },
       });
 
-      // Determine supported MIME type
+      // Prefer WhatsApp-friendly formats when available
       let mimeType = 'audio/webm';
-      if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+      if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+        mimeType = 'audio/ogg;codecs=opus';
+      } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
         mimeType = 'audio/webm;codecs=opus';
       } else if (MediaRecorder.isTypeSupported('audio/webm')) {
         mimeType = 'audio/webm';
@@ -276,12 +296,19 @@ const CrmWhatsApp = () => {
 
         if (audioChunksRef.current.length === 0) {
           console.warn('Nenhum chunk de áudio capturado');
+          alert('Não foi possível capturar o áudio, tente gravar novamente.');
           return;
         }
 
-        // Use the base MIME type (without codecs) for the Blob to avoid storage issues
-        const baseMime = mimeType.split(';')[0];
-        const ext = baseMime.includes('mp4') ? 'mp4' : 'ogg';
+        const baseMime = mimeType.split(';')[0].trim();
+        const ext = baseMime.includes('ogg')
+          ? 'ogg'
+          : baseMime.includes('webm')
+          ? 'webm'
+          : baseMime.includes('mp4')
+          ? 'mp4'
+          : 'bin';
+
         const audioBlob = new Blob(audioChunksRef.current, { type: baseMime });
         const audioFile = new File([audioBlob], `audio-${Date.now()}.${ext}`, { type: baseMime });
         console.log(`🎤 Áudio gravado: ${audioFile.size} bytes, tipo: ${baseMime}`);
@@ -304,6 +331,11 @@ const CrmWhatsApp = () => {
 
   const stopRecording = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try {
+        mediaRecorderRef.current.requestData();
+      } catch {
+        // ignore requestData errors on unsupported browsers
+      }
       mediaRecorderRef.current.stop();
     }
     setIsRecording(false);
