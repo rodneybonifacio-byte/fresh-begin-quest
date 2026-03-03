@@ -1,4 +1,4 @@
-import { Activity, Archive, Calculator, ClipboardList, Clock, FileBarChart, FilePen, FileStack, Home, Package, Settings, Truck, UsersRound, Wallet, Tags, FileUp, Gift, FileText, UserCog, Receipt, ExternalLink, DollarSign, Handshake } from 'lucide-react';
+import { Activity, Archive, Calculator, ClipboardList, Clock, FileBarChart, FilePen, FileStack, Home, Package, Settings, Truck, UsersRound, Wallet, Tags, FileUp, Gift, FileText, UserCog, Receipt, ExternalLink, DollarSign, Handshake, MessageSquare } from 'lucide-react';
 import { observer } from 'mobx-react-lite';
 import { useLocation } from 'react-router-dom';
 import { SidebarLayout } from './SidebarLayout';
@@ -206,6 +206,12 @@ const AdminSidebar = observer(({
                     active: isPathActive('/admin/ferramentas/estrategia-primeira-etiqueta')
                 }
             ]
+        },
+        {
+            icon: MessageSquare,
+            label: 'CRM',
+            to: '/admin/crm',
+            active: isPathActive('/admin/crm')
         },
         {
             icon: Handshake,

@@ -182,6 +182,10 @@ export const adminRoutesConfig: ProtectedRouteItem[] = [
         path: 'conecta/parceiros',
         component: () => import('../pages/private/admin/conecta/ParceirosConecta'),
     },
+    {
+        path: 'crm',
+        component: () => import('../pages/private/admin/crm/CrmWhatsApp'),
+    },
 ];
 
 export const AdminRoutes = generateProtectedRoutes(adminRoutesConfig);
