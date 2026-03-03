@@ -207,8 +207,10 @@ serve(async (req) => {
 
     console.log("🤖 Resposta OpenAI:", aiReply.substring(0, 100));
 
-    // === DETECTAR RECLAMAÇÃO E CRIAR TICKET ===
+    // === GERENCIAR TICKETS ===
+    await ensureTicketOpen(supabase, conversationId, contactPhone, message);
     await detectAndCreateSupportTicket(supabase, conversationId, contactPhone, message, aiReply, agentName);
+    await detectTicketResolution(supabase, conversationId, aiReply);
 
     // Log de sucesso
     await logInteraction(supabase, {
@@ -407,7 +409,102 @@ async function detectAndCreateSupportTicket(supabase: any, conversationId: strin
     console.log(`🎫 Ticket criado [${matchedCategory}/${matchedPriority}] conversa:`, conversationId);
   } catch (e) {
     console.warn("⚠️ Erro ao detectar reclamação:", e);
+}
+
+// === GERENCIAMENTO DE TICKETS (whatsapp_tickets) ===
+
+async function ensureTicketOpen(supabase: any, conversationId: string, contactPhone: string, userMessage: string) {
+  try {
+    // Verificar se já existe ticket aberto para esta conversa
+    const { data: openTicket } = await supabase
+      .from("whatsapp_tickets")
+      .select("id, message_count")
+      .eq("conversation_id", conversationId)
+      .eq("status", "open")
+      .limit(1)
+      .single();
+
+    if (openTicket) {
+      // Atualizar contagem e último timestamp
+      await supabase
+        .from("whatsapp_tickets")
+        .update({
+          message_count: (openTicket.message_count || 0) + 1,
+          last_message_at: new Date().toISOString(),
+        })
+        .eq("id", openTicket.id);
+      return;
+    }
+
+    // Buscar nome do contato
+    const { data: conv } = await supabase
+      .from("whatsapp_conversations")
+      .select("contact_name")
+      .eq("id", conversationId)
+      .single();
+
+    // Criar novo ticket
+    await supabase.from("whatsapp_tickets").insert({
+      conversation_id: conversationId,
+      contact_phone: contactPhone,
+      contact_name: conv?.contact_name || null,
+      status: "open",
+      subject: userMessage?.substring(0, 120) || "Nova conversa",
+      first_message_at: new Date().toISOString(),
+      last_message_at: new Date().toISOString(),
+      message_count: 1,
+    });
+
+    console.log(`🎫 Ticket aberto para conversa ${conversationId}`);
+  } catch (e) {
+    console.warn("⚠️ Erro ao gerenciar ticket:", e);
   }
+}
+
+async function detectTicketResolution(supabase: any, conversationId: string, aiReply: string) {
+  try {
+    const lowerReply = (aiReply || "").toLowerCase();
+
+    // Padrões que indicam resolução
+    const resolutionPatterns = [
+      "resolvido", "solucionado", "concluído",
+      "problema foi resolvido", "está tudo certo",
+      "foi entregue", "entrega confirmada", "entregue com sucesso",
+      "estorno realizado", "reembolso aprovado", "crédito devolvido",
+      "qualquer dúvida", "estou à disposição", "posso ajudar em mais algo",
+      "foi corrigido", "ajustado com sucesso"
+    ];
+
+    const isResolution = resolutionPatterns.some(p => lowerReply.includes(p));
+    if (!isResolution) return;
+
+    // Buscar ticket aberto
+    const { data: openTicket } = await supabase
+      .from("whatsapp_tickets")
+      .select("id")
+      .eq("conversation_id", conversationId)
+      .eq("status", "open")
+      .limit(1)
+      .single();
+
+    if (!openTicket) return;
+
+    // Fechar ticket
+    await supabase
+      .from("whatsapp_tickets")
+      .update({
+        status: "closed",
+        closed_by: "ai",
+        closed_at: new Date().toISOString(),
+        resolution: aiReply.substring(0, 500),
+      })
+      .eq("id", openTicket.id);
+
+    console.log(`✅ Ticket ${openTicket.id} fechado automaticamente pela IA`);
+  } catch (e) {
+    console.warn("⚠️ Erro ao detectar resolução:", e);
+  }
+}
 }
 
 function getDefaultPrompt(agent: string): string {

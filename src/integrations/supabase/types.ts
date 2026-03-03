@@ -1670,6 +1670,80 @@ export type Database = {
           },
         ]
       }
+      whatsapp_tickets: {
+        Row: {
+          category: string | null
+          closed_at: string | null
+          closed_by: string | null
+          contact_name: string | null
+          contact_phone: string
+          conversation_id: string
+          created_at: string
+          description: string | null
+          first_message_at: string | null
+          id: string
+          last_message_at: string | null
+          message_count: number | null
+          opened_at: string
+          priority: string | null
+          resolution: string | null
+          sentiment: string | null
+          status: string
+          subject: string | null
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          contact_name?: string | null
+          contact_phone: string
+          conversation_id: string
+          created_at?: string
+          description?: string | null
+          first_message_at?: string | null
+          id?: string
+          last_message_at?: string | null
+          message_count?: number | null
+          opened_at?: string
+          priority?: string | null
+          resolution?: string | null
+          sentiment?: string | null
+          status?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          contact_name?: string | null
+          contact_phone?: string
+          conversation_id?: string
+          created_at?: string
+          description?: string | null
+          first_message_at?: string | null
+          id?: string
+          last_message_at?: string | null
+          message_count?: number | null
+          opened_at?: string
+          priority?: string | null
+          resolution?: string | null
+          sentiment?: string | null
+          status?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_tickets_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       integracoes_safe: {
