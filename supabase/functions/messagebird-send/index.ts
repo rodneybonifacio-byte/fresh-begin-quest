@@ -21,9 +21,9 @@ serve(async (req) => {
 
     const { conversationId, message, contentType = "text", mediaUrl } = await req.json();
 
-    if (!conversationId || !message) {
+    if (!conversationId || (!message && !mediaUrl)) {
       return new Response(
-        JSON.stringify({ error: "conversationId e message são obrigatórios" }),
+        JSON.stringify({ error: "conversationId e (message ou mediaUrl) são obrigatórios" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -62,15 +62,18 @@ serve(async (req) => {
       to: conversation.contact_phone,
       from: channel.channel_id,
       type: "text",
-      content: { text: message },
+      content: { text: message || "" },
     };
 
     if (contentType === "image" && mediaUrl) {
       sendPayload.type = "image";
-      sendPayload.content = { image: { url: mediaUrl } };
+      sendPayload.content = { image: { url: mediaUrl }, text: message || undefined };
     } else if ((contentType === "audio" || contentType === "voice") && mediaUrl) {
       sendPayload.type = "audio";
       sendPayload.content = { audio: { url: mediaUrl } };
+    } else if (contentType === "file" && mediaUrl) {
+      sendPayload.type = "file";
+      sendPayload.content = { file: { url: mediaUrl } };
     }
 
     // Enviar via MessageBird
