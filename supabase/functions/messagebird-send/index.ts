@@ -68,7 +68,7 @@ serve(async (req) => {
     if (contentType === "image" && mediaUrl) {
       sendPayload.type = "image";
       sendPayload.content = { image: { url: mediaUrl } };
-    } else if (contentType === "audio" && mediaUrl) {
+    } else if ((contentType === "audio" || contentType === "voice") && mediaUrl) {
       sendPayload.type = "audio";
       sendPayload.content = { audio: { url: mediaUrl } };
     }
