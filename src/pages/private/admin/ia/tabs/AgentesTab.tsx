@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { aiManagementQuery, aiManagementUpdate } from '@/services/aiManagementApi';
-import { Bot, Save, ToggleLeft, ToggleRight, Pencil, Volume2, VolumeX, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Bot, Save, ToggleLeft, ToggleRight, Pencil, Volume2, VolumeX, X, ChevronDown, ChevronUp, Play, Square } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface AiAgent {
@@ -61,7 +61,50 @@ const AgentesTab: React.FC = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<AiAgent>>({});
   const [expandedSection, setExpandedSection] = useState<string>('prompt');
+  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  const playVoicePreview = (voiceId: string) => {
+    if (playingVoiceId === voiceId) {
+      audioRef.current?.pause();
+      audioRef.current = null;
+      setPlayingVoiceId(null);
+      return;
+    }
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    // Use ElevenLabs sample URLs
+    const sampleUrls: Record<string, string> = {
+      'FGY2WhTYpPnrIDTdsKH5': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/FGY2WhTYpPnrIDTdsKH5/preview.mp3',
+      'EXAVITQu4vr4xnSDxMaL': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/EXAVITQu4vr4xnSDxMaL/preview.mp3',
+      'TX3LPaxmHKxFdv7VOQHJ': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/TX3LPaxmHKxFdv7VOQHJ/preview.mp3',
+      'JBFqnCBsd6RMkjVDRZzb': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/JBFqnCBsd6RMkjVDRZzb/preview.mp3',
+      'XrExE9yKIg1WjnnlVkGX': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/XrExE9yKIg1WjnnlVkGX/preview.mp3',
+      'pFZP5JQG7iQjIQuC4Bku': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/pFZP5JQG7iQjIQuC4Bku/preview.mp3',
+      'onwK4e9ZLuTAKqWW03F9': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/onwK4e9ZLuTAKqWW03F9/preview.mp3',
+      'iP95p4xoKVk53GoZ742B': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/iP95p4xoKVk53GoZ742B/preview.mp3',
+      'cgSgspJ2msm6clMCkdW9': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/cgSgspJ2msm6clMCkdW9/preview.mp3',
+      'nPczCjzI2devNBz1zQrb': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/nPczCjzI2devNBz1zQrb/preview.mp3',
+      'N2lVS1w4EtoT3dr4eOWO': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/N2lVS1w4EtoT3dr4eOWO/preview.mp3',
+      'SAz9YHcvj6GT2YYXdXww': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/SAz9YHcvj6GT2YYXdXww/preview.mp3',
+      'Xb7hH8MSUJpSbSDYk0k2': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/Xb7hH8MSUJpSbSDYk0k2/preview.mp3',
+      'CwhRBWXzGAHq8TQ4Fs17': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/CwhRBWXzGAHq8TQ4Fs17/preview.mp3',
+      'IKne3meq5aSn9XLyUdCD': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/IKne3meq5aSn9XLyUdCD/preview.mp3',
+      'bIHbv24MWmeRgasZH58o': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/bIHbv24MWmeRgasZH58o/preview.mp3',
+      'cjVigY5qzO86Huf0OWal': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/cjVigY5qzO86Huf0OWal/preview.mp3',
+      'pqHfZKP75CvOlQylNhV4': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/pqHfZKP75CvOlQylNhV4/preview.mp3',
+    };
+    const url = sampleUrls[voiceId];
+    if (!url) { toast.error('Preview não disponível para esta voz'); return; }
+    const audio = new Audio(url);
+    audio.onended = () => { setPlayingVoiceId(null); audioRef.current = null; };
+    audio.onerror = () => { toast.error('Erro ao reproduzir preview'); setPlayingVoiceId(null); audioRef.current = null; };
+    audioRef.current = audio;
+    setPlayingVoiceId(voiceId);
+    audio.play();
+  };
   const { data: agents, isLoading } = useQuery({
     queryKey: ['ai-agents'],
     queryFn: () => aiManagementQuery<AiAgent>({
@@ -147,7 +190,7 @@ const AgentesTab: React.FC = () => {
           {editingId === agent.id ? (
             <div className="p-5 border-t border-border space-y-1">
               {/* Section: Identidade */}
-              <SectionHeader title="🤖 Identidade" section="identity" current={expandedSection} toggle={toggleSection} />
+              <SectionHeader title="Identidade" section="identity" current={expandedSection} toggle={toggleSection} />
               {expandedSection === 'identity' && (
                 <div className="p-4 space-y-4 bg-muted/20 rounded-xl">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -168,7 +211,7 @@ const AgentesTab: React.FC = () => {
               )}
 
               {/* Section: Prompt */}
-              <SectionHeader title="📝 Prompt do Sistema" section="prompt" current={expandedSection} toggle={toggleSection} />
+              <SectionHeader title="Prompt do Sistema" section="prompt" current={expandedSection} toggle={toggleSection} />
               {expandedSection === 'prompt' && (
                 <div className="p-4 bg-muted/20 rounded-xl">
                   <textarea
@@ -182,7 +225,7 @@ const AgentesTab: React.FC = () => {
               )}
 
               {/* Section: Modelo IA */}
-              <SectionHeader title="🧠 Modelo de IA" section="model" current={expandedSection} toggle={toggleSection} />
+              <SectionHeader title="Modelo de IA" section="model" current={expandedSection} toggle={toggleSection} />
               {expandedSection === 'model' && (
                 <div className="p-4 bg-muted/20 rounded-xl">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -213,7 +256,7 @@ const AgentesTab: React.FC = () => {
               )}
 
               {/* Section: Voz / TTS */}
-              <SectionHeader title="🔊 Voz (ElevenLabs)" section="voice" current={expandedSection} toggle={toggleSection} />
+              <SectionHeader title="Voz (ElevenLabs)" section="voice" current={expandedSection} toggle={toggleSection} />
               {expandedSection === 'voice' && (
                 <div className="p-4 bg-muted/20 rounded-xl space-y-4">
                   <div className="flex items-center gap-4">
@@ -240,6 +283,14 @@ const AgentesTab: React.FC = () => {
                               <option key={v.id} value={v.id}>{v.name} ({v.gender} · {v.lang})</option>
                             ))}
                           </select>
+                          <button
+                            type="button"
+                            onClick={() => playVoicePreview(editForm.voice_id || 'FGY2WhTYpPnrIDTdsKH5')}
+                            className={`mt-2 flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-colors ${playingVoiceId === (editForm.voice_id || 'FGY2WhTYpPnrIDTdsKH5') ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-primary/10 text-primary hover:bg-primary/20'}`}
+                          >
+                            {playingVoiceId === (editForm.voice_id || 'FGY2WhTYpPnrIDTdsKH5') ? <Square className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+                            {playingVoiceId === (editForm.voice_id || 'FGY2WhTYpPnrIDTdsKH5') ? 'Parar' : 'Ouvir voz'}
+                          </button>
                         </div>
                         <div>
                           <label className="block text-xs font-medium text-foreground mb-1">Modelo TTS</label>

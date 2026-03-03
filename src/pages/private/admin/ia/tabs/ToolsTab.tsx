@@ -42,28 +42,28 @@ const riskLabels: Record<string, string> = {
 };
 
 const categoryLabels: Record<string, string> = {
-  emissao: '📦 Emissão',
-  remetente: '👤 Remetente',
-  rastreio: '🔍 Rastreio',
-  financeiro: '💰 Financeiro',
-  fatura: '🧾 Faturas',
-  boleto: '🏦 Boletos / Banco Inter',
-  clientes: '👥 Gestão de Clientes',
-  integracao: '🔗 Integrações E-commerce',
-  crm: '💬 CRM / WhatsApp',
-  ia: '🧠 Gestão da IA',
-  parceiro: '🤝 Conecta+ (Parceiros)',
-  ferramenta: '🔧 Ferramentas Admin',
-  plano: '🏷️ Planos / Precificação',
-  promocao: '🎁 Promoções',
-  cron: '⏰ Automações (Cron)',
-  sistema: '⚙️ Sistema',
-  geral: '📋 Geral',
-  rastreamento: '📦 Rastreamento',
-  cadastro: '👤 Cadastro',
-  comercial: '🏷️ Comercial',
-  operacional: '⚙️ Operacional',
-  suporte: '🎧 Suporte',
+  emissao: 'Emissão',
+  remetente: 'Remetente',
+  rastreio: 'Rastreio',
+  financeiro: 'Financeiro',
+  fatura: 'Faturas',
+  boleto: 'Boletos / Banco Inter',
+  clientes: 'Gestão de Clientes',
+  integracao: 'Integrações E-commerce',
+  crm: 'CRM / WhatsApp',
+  ia: 'Gestão da IA',
+  parceiro: 'Conecta+ (Parceiros)',
+  ferramenta: 'Ferramentas Admin',
+  plano: 'Planos / Precificação',
+  promocao: 'Promoções',
+  cron: 'Automações (Cron)',
+  sistema: 'Sistema',
+  geral: 'Geral',
+  rastreamento: 'Rastreamento',
+  cadastro: 'Cadastro',
+  comercial: 'Comercial',
+  operacional: 'Operacional',
+  suporte: 'Suporte',
 };
 
 const ToolsTab: React.FC = () => {
@@ -216,13 +216,13 @@ const ToolsTab: React.FC = () => {
           onClick={() => setActiveSection('tools')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeSection === 'tools' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
         >
-          🛠️ Funções ({tools?.length || 0})
+          Funções ({tools?.length || 0})
         </button>
         <button
           onClick={() => setActiveSection('rules')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeSection === 'rules' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
         >
-          📱 Regras por Telefone ({phoneRules?.length || 0})
+          Regras por Telefone ({phoneRules?.length || 0})
         </button>
       </div>
 
@@ -309,7 +309,7 @@ const ToolsTab: React.FC = () => {
       {activeSection === 'rules' && (
         <div className="space-y-4">
           <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-            <h3 className="font-medium text-blue-800 dark:text-blue-300 text-sm mb-1">📱 Regras por Telefone</h3>
+            <h3 className="font-medium text-blue-800 dark:text-blue-300 text-sm mb-1 flex items-center gap-2"><Phone className="w-4 h-4" /> Regras por Telefone</h3>
             <p className="text-xs text-blue-600 dark:text-blue-400">
               Defina quais números de telefone podem executar todas as funções da IA automaticamente, sem necessidade de aprovação humana.
             </p>
@@ -369,12 +369,12 @@ const ToolsTab: React.FC = () => {
                       <div className="flex gap-2 flex-wrap mt-1">
                         {rule.allow_all && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 font-medium">
-                            ✅ Acesso Total
+                            Acesso Total
                           </span>
                         )}
                         {rule.skip_approval && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 font-medium">
-                            ⚡ Sem Aprovação
+                            Sem Aprovação
                           </span>
                         )}
                       </div>
