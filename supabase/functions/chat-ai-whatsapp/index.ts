@@ -68,13 +68,40 @@ serve(async (req) => {
       }
     }
 
-    // === IMAGEM → Gemini ===
+    // === IMAGEM → Gemini (análise completa + extração de código de rastreio) ===
     if (contentType === "image" && mediaUrl) {
       const geminiKey = Deno.env.get("GEMINI_API_KEY");
       if (geminiKey) {
         try {
-          const imageContext = await interpretImageWithGemini(mediaUrl, geminiKey);
-          messages.push({ role: "user", content: `[O cliente enviou uma imagem. Descrição: ${imageContext}]\n\n${message || "O que você vê nesta imagem?"}` });
+          const imageAnalysis = await analyzeImageWithGemini(mediaUrl, geminiKey);
+          console.log("🖼️ Análise Gemini:", JSON.stringify(imageAnalysis).substring(0, 200));
+
+          let imageContext = `[O cliente enviou uma imagem]\n\n📷 Análise da imagem:\n${imageAnalysis.description}`;
+
+          // Se Gemini encontrou código de rastreio na imagem, consultar API
+          if (imageAnalysis.trackingCode) {
+            console.log("📦 Código de rastreio extraído da imagem:", imageAnalysis.trackingCode);
+            try {
+              const trackingData = await fetchTrackingData(imageAnalysis.trackingCode);
+              if (trackingData) {
+                const trackingInfo = formatTrackingForAI(trackingData);
+                imageContext += `\n\n📦 Código de rastreio identificado na imagem: ${imageAnalysis.trackingCode}\n\nDados do rastreio consultados automaticamente:\n${trackingInfo}`;
+                imageContext += `\n\nInstruções: Informe ao cliente que você identificou o código de rastreio na imagem e apresente as informações de rastreio de forma clara e amigável. Diga a localização atual, status e previsão de entrega se disponível.`;
+              } else {
+                imageContext += `\n\n📦 Código de rastreio identificado: ${imageAnalysis.trackingCode}, mas a consulta não retornou dados. Informe o cliente e pergunte se o código está correto.`;
+              }
+            } catch (trackErr) {
+              console.warn("⚠️ Erro ao consultar rastreio da imagem:", trackErr);
+              imageContext += `\n\n📦 Código de rastreio identificado: ${imageAnalysis.trackingCode}, mas houve erro na consulta. Informe o cliente e sugira enviar o código por texto.`;
+            }
+          } else {
+            // Sem código de rastreio - descrever normalmente
+            imageContext += `\n\nResponda ao cliente sobre o conteúdo da imagem de forma útil e amigável.`;
+          }
+
+          if (message) imageContext += `\n\nMensagem do cliente: "${message}"`;
+
+          messages.push({ role: "user", content: imageContext });
         } catch (e) {
           console.warn("⚠️ Erro Gemini imagem:", e);
           messages.push({ role: "user", content: message || "[imagem não interpretada]" });
@@ -382,12 +409,22 @@ Responda sempre em português brasileiro, de forma acolhedora e clara.
 Use emojis com moderação. Se não souber a resposta, encaminhe para um atendente humano.`;
 }
 
-async function interpretImageWithGemini(imageUrl: string, geminiKey: string): Promise<string> {
+async function analyzeImageWithGemini(imageUrl: string, geminiKey: string): Promise<{ description: string; trackingCode: string | null }> {
   const imageResponse = await fetch(imageUrl);
   if (!imageResponse.ok) throw new Error(`Erro ao baixar imagem: ${imageResponse.status}`);
   const imageBuffer = await imageResponse.arrayBuffer();
   const base64Image = base64Encode(imageBuffer);
   const mimeType = (imageResponse.headers.get("content-type") || "image/jpeg").split(";")[0].trim();
+
+  const prompt = `Analise esta imagem detalhadamente em português. Faça o seguinte:
+
+1. Descreva TODO o conteúdo visível da imagem (textos, logos, códigos de barras, QR codes, endereços, nomes, etc.)
+2. Se for uma etiqueta de envio/postagem/correios, extraia TODOS os dados visíveis: remetente, destinatário, CEP, endereço, código de rastreio, serviço, peso, etc.
+3. IMPORTANTE: Se houver um código de rastreio dos Correios (formato: 2 letras + 9 números + 2 letras, ex: AA123456789BR, SS987654321BR), extraia-o EXATAMENTE.
+
+Responda no seguinte formato:
+DESCRIÇÃO: [descrição completa da imagem]
+CODIGO_RASTREIO: [código se encontrado, ou NENHUM se não houver]`;
 
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
@@ -396,7 +433,7 @@ async function interpretImageWithGemini(imageUrl: string, geminiKey: string): Pr
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [
-          { text: "Descreva brevemente o conteúdo desta imagem em português. Seja objetivo:" },
+          { text: prompt },
           { inline_data: { mime_type: mimeType, data: base64Image } },
         ] }],
       }),
@@ -409,7 +446,30 @@ async function interpretImageWithGemini(imageUrl: string, geminiKey: string): Pr
   }
 
   const data = await response.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || "Imagem não identificada";
+  const fullText = data.candidates?.[0]?.content?.parts?.[0]?.text || "Imagem não identificada";
+
+  // Extrair código de rastreio da resposta do Gemini
+  let trackingCode: string | null = null;
+  
+  // Tentar extrair do formato estruturado
+  const codigoMatch = fullText.match(/CODIGO_RASTREIO:\s*([A-Z]{2}\d{9}[A-Z]{2})/i);
+  if (codigoMatch) {
+    trackingCode = codigoMatch[1].toUpperCase();
+  }
+  
+  // Fallback: buscar padrão de código de rastreio em qualquer lugar do texto
+  if (!trackingCode) {
+    const genericMatch = fullText.match(/\b([A-Z]{2}\d{9}[A-Z]{2})\b/);
+    if (genericMatch) {
+      trackingCode = genericMatch[1].toUpperCase();
+    }
+  }
+
+  // Extrair descrição limpa
+  const descMatch = fullText.match(/DESCRI[CÇ][AÃ]O:\s*([\s\S]*?)(?=CODIGO_RASTREIO:|$)/i);
+  const description = descMatch ? descMatch[1].trim() : fullText;
+
+  return { description, trackingCode };
 }
 
 async function transcribeAudioWithElevenLabs(audioUrl: string, apiKey: string): Promise<string> {
