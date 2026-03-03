@@ -26,6 +26,16 @@ function isValidName(name: string | null | undefined): boolean {
   return !invalidPatterns.some(p => p.test(lower));
 }
 
+function normalizeMessageStatus(status: string | null | undefined): "sent" | "delivered" | "read" | "failed" | null {
+  if (!status) return null;
+  const s = status.toLowerCase();
+  if (s.includes("read") || s.includes("seen")) return "read";
+  if (s.includes("delivered")) return "delivered";
+  if (s.includes("failed") || s.includes("undeliverable") || s.includes("rejected")) return "failed";
+  if (s.includes("sent") || s.includes("accepted") || s.includes("queued")) return "sent";
+  return null;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -41,8 +51,10 @@ serve(async (req) => {
     console.log("📩 Webhook recebido:", JSON.stringify(body).substring(0, 500));
 
     const eventType = body.type || body.event;
-    
-    if (!eventType || (!eventType.includes("message.created") && !eventType.includes("message.updated"))) {
+    const isMessageCreated = !!eventType && eventType.includes("message.created");
+    const isMessageUpdated = !!eventType && eventType.includes("message.updated");
+
+    if (!isMessageCreated && !isMessageUpdated) {
       console.log("⏭️ Evento ignorado:", eventType);
       return new Response(JSON.stringify({ ok: true, skipped: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -50,22 +62,57 @@ serve(async (req) => {
     }
 
     const message = body.message || body.data || body;
+    const messageBirdId = message.id || body.id || message.messageId || body.messageId;
+
+    // message.updated geralmente vem sem telefone; tratamos apenas atualização de status
+    if (isMessageUpdated) {
+      const rawStatus = String(message.status || body.status || message.message?.status || "");
+      const normalizedStatus = normalizeMessageStatus(rawStatus);
+
+      if (!messageBirdId || !normalizedStatus) {
+        console.log("⏭️ update sem id/status utilizável", { messageBirdId, rawStatus });
+        return new Response(JSON.stringify({ ok: true, skipped: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: updatedRows, error: updateError } = await supabase
+        .from("whatsapp_messages")
+        .update({ status: normalizedStatus })
+        .eq("messagebird_id", messageBirdId)
+        .select("id");
+
+      if (updateError) {
+        console.error("⚠️ Falha ao atualizar status da mensagem:", updateError);
+      }
+
+      console.log("✅ Status atualizado", {
+        messageBirdId,
+        status: normalizedStatus,
+        updated: updatedRows?.length ?? 0,
+      });
+
+      return new Response(JSON.stringify({ ok: true, updated: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const channelId = message.channelId || message.channel_id || body.channelId;
-    const rawPhone = message.from || body.contact?.msisdn || message.contact?.msisdn || message.originator;
+    const direction = message.direction === "received" || message.direction === "incoming" ? "inbound" : "outbound";
+    const rawPhone = direction === "inbound"
+      ? (message.from || body.contact?.msisdn || message.contact?.msisdn || message.originator)
+      : (message.to || body.contact?.msisdn || message.contact?.msisdn || message.destination || message.originator);
     const contactPhone = rawPhone ? String(rawPhone) : null;
     const whatsappDisplayName = body.contact?.displayName || body.contact?.firstName || message.contact?.displayName || message.contact?.firstName || null;
     const messageContent = message.content?.text || message.body || message.content?.html || "";
-    const messageBirdId = message.id || body.id;
-    const direction = message.direction === "received" || message.direction === "incoming" ? "inbound" : "outbound";
     const rawContentType = message.content?.type || message.type || "text";
     const contentType = (message.content?.audio || rawContentType === "audio" || rawContentType === "voice") ? "audio" : rawContentType;
     const mediaUrl = message.content?.media?.url || message.content?.image?.url || message.content?.audio?.url || null;
     const mediaType = message.content?.media?.contentType || message.content?.audio?.contentType || null;
 
     if (!contactPhone) {
-      console.error("❌ Telefone do contato não encontrado no payload");
-      return new Response(JSON.stringify({ error: "Missing contact phone" }), {
-        status: 400,
+      console.warn("⚠️ Evento sem telefone do contato, ignorando sem falhar");
+      return new Response(JSON.stringify({ ok: true, skipped: true, reason: "missing_contact_phone" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -308,6 +355,8 @@ serve(async (req) => {
       }
     }
 
+    const initialStatus = direction === "inbound" ? "delivered" : "sent";
+
     const { error: msgError } = await supabase.from("whatsapp_messages").insert({
       conversation_id: conversation.id,
       messagebird_id: messageBirdId,
@@ -316,7 +365,7 @@ serve(async (req) => {
       content: messageContent,
       media_url: finalMediaUrl,
       media_type: mediaType,
-      status: "delivered",
+      status: initialStatus,
       sent_by: direction === "inbound" ? "contact" : "system",
       ai_generated: false,
       metadata: { raw_event: body },
