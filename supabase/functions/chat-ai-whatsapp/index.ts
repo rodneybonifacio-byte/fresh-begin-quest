@@ -133,7 +133,25 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
         if (!clienteId) return "Não encontrei nenhum cliente. Peça e-mail ou CPF/CNPJ.";
 
         await persistConversationClienteId(supabase, conversationId, clienteId);
-        return `Cliente encontrado: ID ${clienteId}`;
+
+        // Buscar dados completos do cliente na API
+        const clienteDetails = await fetchClienteDetails(clienteId);
+        if (clienteDetails) {
+          return `Cliente identificado! Nome: ${clienteDetails.nome}, Email: ${clienteDetails.email || "N/A"}, Telefone: ${clienteDetails.telefone || "N/A"}, CPF/CNPJ: ${clienteDetails.cpfCnpj || "N/A"}, ID: ${clienteId}`;
+        }
+
+        // Fallback: buscar nome em tabelas locais
+        const { data: remLocal } = await supabase
+          .from("remetentes")
+          .select("nome, email, telefone, celular")
+          .eq("cliente_id", clienteId)
+          .limit(1)
+          .single();
+        if (remLocal?.nome) {
+          return `Cliente identificado! Nome: ${remLocal.nome}, Email: ${remLocal.email || "N/A"}, Telefone: ${remLocal.celular || remLocal.telefone || "N/A"}, ID: ${clienteId}`;
+        }
+
+        return `Cliente encontrado (ID: ${clienteId}), mas não consegui obter os dados detalhados.`;
       }
 
       // ── Emissões em atraso ──
@@ -719,6 +737,28 @@ async function persistConversationClienteId(supabase: any, conversationId: strin
 
   if (error) {
     console.warn("⚠️ Não foi possível persistir cliente_id na conversa:", error.message);
+  }
+}
+
+async function fetchClienteDetails(clienteId: string): Promise<{ nome: string; email?: string; telefone?: string; cpfCnpj?: string } | null> {
+  try {
+    const token = await getAdminToken();
+    if (!token) return null;
+    const BASE_API_URL = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br";
+    const resp = await fetch(`${BASE_API_URL}/clientes/${clienteId}`, {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const cliente = data?.data || data;
+    return {
+      nome: cliente.nomeEmpresa || cliente.nomResponsavel || cliente.nome || "Desconhecido",
+      email: cliente.email,
+      telefone: cliente.telefone || cliente.celular,
+      cpfCnpj: cliente.cpfCnpj,
+    };
+  } catch {
+    return null;
   }
 }
 
