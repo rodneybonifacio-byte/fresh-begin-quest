@@ -76,31 +76,28 @@ serve(async (req) => {
           const imageAnalysis = await analyzeImageWithGemini(mediaUrl, geminiKey);
           console.log("🖼️ Análise Gemini:", JSON.stringify(imageAnalysis).substring(0, 200));
 
-          let imageContext = `[O cliente enviou uma imagem]\n\n📷 Análise da imagem:\n${imageAnalysis.description}`;
+          let imageContext = `[CONTEXTO INTERNO - NÃO mencione que recebeu imagem, o cliente já sabe. Responda direto sobre o conteúdo.]\n\nConteúdo identificado: ${imageAnalysis.description}`;
 
-          // Se Gemini encontrou código de rastreio na imagem, consultar API
           if (imageAnalysis.trackingCode) {
             console.log("📦 Código de rastreio extraído da imagem:", imageAnalysis.trackingCode);
             try {
               const trackingData = await fetchTrackingData(imageAnalysis.trackingCode);
               if (trackingData) {
                 const trackingInfo = formatTrackingForAI(trackingData);
-                imageContext += `\n\n📦 Código de rastreio identificado na imagem: ${imageAnalysis.trackingCode}\n\nDados do rastreio consultados automaticamente:\n${trackingInfo}`;
-                imageContext += `\n\nInstruções: Informe ao cliente que você identificou o código de rastreio na imagem e apresente as informações de rastreio de forma clara e amigável. Diga a localização atual, status e previsão de entrega se disponível.`;
+                imageContext += `\n\nCódigo de rastreio encontrado: ${imageAnalysis.trackingCode}\nDados:\n${trackingInfo}`;
+                imageContext += `\n\n[INSTRUÇÃO: Vá direto ao ponto. Diga o status do pacote, onde tá e previsão. Sem dizer "identifiquei na imagem" ou "analisei sua foto". O cliente sabe o que mandou.]`;
               } else {
-                imageContext += `\n\n📦 Código de rastreio identificado: ${imageAnalysis.trackingCode}, mas a consulta não retornou dados. Informe o cliente e pergunte se o código está correto.`;
+                imageContext += `\n\nCódigo ${imageAnalysis.trackingCode} encontrado mas sem dados. [INSTRUÇÃO: Pergunte se o código tá certo, sem mencionar "na imagem".]`;
               }
             } catch (trackErr) {
               console.warn("⚠️ Erro ao consultar rastreio da imagem:", trackErr);
-              imageContext += `\n\n📦 Código de rastreio identificado: ${imageAnalysis.trackingCode}, mas houve erro na consulta. Informe o cliente e sugira enviar o código por texto.`;
+              imageContext += `\n\nCódigo ${imageAnalysis.trackingCode} encontrado mas erro na consulta. [INSTRUÇÃO: Diga que não conseguiu consultar agora e peça pra mandar o código por texto.]`;
             }
           } else {
-            // Sem código de rastreio - descrever normalmente
-            imageContext += `\n\nResponda ao cliente sobre o conteúdo da imagem de forma útil e amigável.`;
+            imageContext += `\n\n[INSTRUÇÃO: Responda sobre o conteúdo diretamente, sem dizer "recebi sua imagem" ou "analisando a foto". Seja natural.]`;
           }
 
-          if (message) imageContext += `\n\nMensagem do cliente: "${message}"`;
-
+          if (message) imageContext += `\n\nCliente disse: "${message}"`;
           messages.push({ role: "user", content: imageContext });
         } catch (e) {
           console.warn("⚠️ Erro Gemini imagem:", e);
