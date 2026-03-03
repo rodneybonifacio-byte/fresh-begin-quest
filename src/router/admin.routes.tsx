@@ -186,6 +186,10 @@ export const adminRoutesConfig: ProtectedRouteItem[] = [
         path: 'crm',
         component: () => import('../pages/private/admin/crm/CrmWhatsApp'),
     },
+    {
+        path: 'gestao-ia',
+        component: () => import('../pages/private/admin/ia/GestaoIA'),
+    },
 ];
 
 export const AdminRoutes = generateProtectedRoutes(adminRoutesConfig);

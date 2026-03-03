@@ -14,6 +14,262 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_agents: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          description: string | null
+          display_name: string
+          id: string
+          is_active: boolean
+          max_tokens: number
+          model: string
+          name: string
+          personality: string | null
+          provider: string
+          system_prompt: string
+          temperature: number
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          description?: string | null
+          display_name: string
+          id?: string
+          is_active?: boolean
+          max_tokens?: number
+          model?: string
+          name: string
+          personality?: string | null
+          provider?: string
+          system_prompt: string
+          temperature?: number
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          description?: string | null
+          display_name?: string
+          id?: string
+          is_active?: boolean
+          max_tokens?: number
+          model?: string
+          name?: string
+          personality?: string | null
+          provider?: string
+          system_prompt?: string
+          temperature?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ai_interaction_logs: {
+        Row: {
+          agent_name: string
+          content_type: string
+          conversation_id: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          input_tokens: number | null
+          model: string | null
+          output_tokens: number | null
+          provider: string | null
+          response_time_ms: number | null
+          success: boolean
+          tool_approved: boolean | null
+          tool_used: string | null
+        }
+        Insert: {
+          agent_name: string
+          content_type?: string
+          conversation_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          input_tokens?: number | null
+          model?: string | null
+          output_tokens?: number | null
+          provider?: string | null
+          response_time_ms?: number | null
+          success?: boolean
+          tool_approved?: boolean | null
+          tool_used?: string | null
+        }
+        Update: {
+          agent_name?: string
+          content_type?: string
+          conversation_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          input_tokens?: number | null
+          model?: string | null
+          output_tokens?: number | null
+          provider?: string | null
+          response_time_ms?: number | null
+          success?: boolean
+          tool_approved?: boolean | null
+          tool_used?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_interaction_logs_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_providers: {
+        Row: {
+          config: Json | null
+          created_at: string
+          display_name: string
+          id: string
+          is_active: boolean
+          name: string
+          provider_type: string
+          secret_key_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string
+          display_name: string
+          id?: string
+          is_active?: boolean
+          name: string
+          provider_type: string
+          secret_key_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string
+          display_name?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          provider_type?: string
+          secret_key_name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ai_support_pipeline: {
+        Row: {
+          assigned_to: string | null
+          category: string
+          contact_name: string | null
+          contact_phone: string | null
+          conversation_id: string | null
+          created_at: string
+          description: string | null
+          detected_by: string | null
+          id: string
+          priority: string
+          resolution: string | null
+          sentiment: string | null
+          status: string
+          subject: string | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          category?: string
+          contact_name?: string | null
+          contact_phone?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          description?: string | null
+          detected_by?: string | null
+          id?: string
+          priority?: string
+          resolution?: string | null
+          sentiment?: string | null
+          status?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          category?: string
+          contact_name?: string | null
+          contact_phone?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          description?: string | null
+          detected_by?: string | null
+          id?: string
+          priority?: string
+          resolution?: string | null
+          sentiment?: string | null
+          status?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_support_pipeline_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_tools: {
+        Row: {
+          allowed_agents: string[] | null
+          category: string
+          created_at: string
+          description: string
+          display_name: string
+          edge_function: string | null
+          id: string
+          is_enabled: boolean
+          name: string
+          parameters: Json | null
+          requires_approval: boolean
+          risk_level: string
+          updated_at: string
+        }
+        Insert: {
+          allowed_agents?: string[] | null
+          category?: string
+          created_at?: string
+          description: string
+          display_name: string
+          edge_function?: string | null
+          id?: string
+          is_enabled?: boolean
+          name: string
+          parameters?: Json | null
+          requires_approval?: boolean
+          risk_level?: string
+          updated_at?: string
+        }
+        Update: {
+          allowed_agents?: string[] | null
+          category?: string
+          created_at?: string
+          description?: string
+          display_name?: string
+          edge_function?: string | null
+          id?: string
+          is_enabled?: boolean
+          name?: string
+          parameters?: Json | null
+          requires_approval?: boolean
+          risk_level?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       audit_integracoes_access: {
         Row: {
           accessed_at: string | null

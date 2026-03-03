@@ -14,6 +14,8 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const startTime = Date.now();
+
   try {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -29,7 +31,21 @@ serve(async (req) => {
       );
     }
 
-    console.log(`🤖 Chat AI conversa ${conversationId}, agente: ${agent}, tipo: ${contentType}`);
+    const agentName = agent || "maya";
+    console.log(`🤖 Chat AI conversa ${conversationId}, agente: ${agentName}, tipo: ${contentType}`);
+
+    // === BUSCAR CONFIG DO AGENTE NO BANCO ===
+    const { data: agentConfig } = await supabase
+      .from("ai_agents")
+      .select("*")
+      .eq("name", agentName)
+      .eq("is_active", true)
+      .single();
+
+    const systemPrompt = agentConfig?.system_prompt || getDefaultPrompt(agentName);
+    const modelName = agentConfig?.model || "gpt-4o";
+    const temperature = agentConfig?.temperature || 0.7;
+    const maxTokens = agentConfig?.max_tokens || 500;
 
     // Buscar histórico (últimas 20 mensagens)
     const { data: history } = await supabase
@@ -39,7 +55,6 @@ serve(async (req) => {
       .order("created_at", { ascending: true })
       .limit(20);
 
-    const systemPrompt = getSystemPrompt(agent || "maya");
     const messages: any[] = [{ role: "system", content: systemPrompt }];
 
     if (history) {
@@ -76,7 +91,6 @@ serve(async (req) => {
           messages.push({ role: "user", content: `[O cliente enviou um áudio. Transcrição: "${transcription}"]\n\nResponda ao que o cliente disse no áudio.` });
         } catch (e) {
           console.warn("⚠️ Erro ElevenLabs STT:", e);
-          // Fallback para Gemini
           const geminiKey = Deno.env.get("GEMINI_API_KEY");
           if (geminiKey) {
             try {
@@ -94,7 +108,7 @@ serve(async (req) => {
         messages.push({ role: "user", content: message || "[áudio enviado]" });
       }
     }
-    // === TEXTO → direto ===
+    // === TEXTO ===
     else {
       messages.push({ role: "user", content: message });
     }
@@ -116,23 +130,54 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: modelName,
         messages,
-        max_tokens: 500,
-        temperature: 0.7,
+        max_tokens: maxTokens,
+        temperature,
       }),
     });
 
     if (!aiResponse.ok) {
       const errText = await aiResponse.text();
       console.error("❌ OpenAI error:", aiResponse.status, errText);
+
+      // Log de erro
+      await logInteraction(supabase, {
+        conversation_id: conversationId,
+        agent_name: agentName,
+        content_type: contentType || "text",
+        provider: "openai",
+        model: modelName,
+        success: false,
+        error_message: `OpenAI ${aiResponse.status}: ${errText.substring(0, 200)}`,
+        response_time_ms: Date.now() - startTime,
+      });
+
       throw new Error(`OpenAI error: ${aiResponse.status}`);
     }
 
     const aiData = await aiResponse.json();
     const aiReply = aiData.choices?.[0]?.message?.content || "Desculpe, não consegui processar sua mensagem.";
+    const inputTokens = aiData.usage?.prompt_tokens;
+    const outputTokens = aiData.usage?.completion_tokens;
 
     console.log("🤖 Resposta OpenAI:", aiReply.substring(0, 100));
+
+    // === DETECTAR RECLAMAÇÃO E CRIAR TICKET ===
+    await detectAndCreateSupportTicket(supabase, conversationId, contactPhone, message, aiReply, agentName);
+
+    // Log de sucesso
+    await logInteraction(supabase, {
+      conversation_id: conversationId,
+      agent_name: agentName,
+      content_type: contentType || "text",
+      provider: "openai",
+      model: modelName,
+      success: true,
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
+      response_time_ms: Date.now() - startTime,
+    });
 
     // Enviar resposta via MessageBird
     const channel = await resolveChannelForConversation(conversationId);
@@ -163,7 +208,7 @@ serve(async (req) => {
         content_type: "text",
         content: aiReply,
         status: "sent",
-        sent_by: agent || "maya",
+        sent_by: agentName,
         ai_generated: true,
       });
 
@@ -189,37 +234,84 @@ serve(async (req) => {
   }
 });
 
-function getSystemPrompt(agent: string): string {
+// === HELPERS ===
+
+async function logInteraction(supabase: any, data: any) {
+  try {
+    await supabase.from("ai_interaction_logs").insert(data);
+  } catch (e) {
+    console.warn("⚠️ Erro ao logar interação:", e);
+  }
+}
+
+async function detectAndCreateSupportTicket(supabase: any, conversationId: string, contactPhone: string, userMessage: string, _aiReply: string, agentName: string) {
+  try {
+    const negativePhrases = [
+      "reclamar", "reclamação", "problema", "péssimo", "horrível", "absurdo",
+      "insatisfeito", "insatisfação", "não chegou", "extraviou", "extraviado",
+      "demora", "atraso", "atrasado", "danificado", "quebrado", "roubado",
+      "furto", "procon", "processo", "advogado", "nunca mais", "pior empresa",
+    ];
+
+    const lowerMsg = (userMessage || "").toLowerCase();
+    const isComplaint = negativePhrases.some(p => lowerMsg.includes(p));
+
+    if (!isComplaint) return;
+
+    // Verificar se já existe ticket aberto para esta conversa
+    const { data: existing } = await supabase
+      .from("ai_support_pipeline")
+      .select("id")
+      .eq("conversation_id", conversationId)
+      .in("status", ["aberto", "em_andamento"])
+      .limit(1);
+
+    if (existing && existing.length > 0) return;
+
+    // Buscar nome do contato
+    const { data: conv } = await supabase
+      .from("whatsapp_conversations")
+      .select("contact_name")
+      .eq("id", conversationId)
+      .single();
+
+    // Determinar sentimento
+    const strongNegative = ["péssimo", "horrível", "absurdo", "procon", "processo", "advogado", "pior empresa"];
+    const sentiment = strongNegative.some(p => lowerMsg.includes(p)) ? "muito_negativo" : "negativo";
+
+    await supabase.from("ai_support_pipeline").insert({
+      conversation_id: conversationId,
+      contact_phone: contactPhone,
+      contact_name: conv?.contact_name,
+      category: "reclamacao",
+      priority: sentiment === "muito_negativo" ? "urgente" : "alta",
+      status: "aberto",
+      subject: `Reclamação detectada: ${userMessage.substring(0, 80)}`,
+      description: userMessage,
+      sentiment,
+      detected_by: agentName,
+    });
+
+    console.log("🎫 Ticket de suporte criado para conversa:", conversationId);
+  } catch (e) {
+    console.warn("⚠️ Erro ao detectar reclamação:", e);
+  }
+}
+
+function getDefaultPrompt(agent: string): string {
   if (agent === "felipe") {
     return `Você é Felipe, assistente virtual da BRHUB Envios. Você é direto, profissional e eficiente.
-Você ajuda clientes com:
-- Rastreamento de encomendas
-- Informações sobre serviços de frete
-- Dúvidas sobre preços e prazos
-- Suporte geral sobre envios
 Responda sempre em português brasileiro, de forma concisa e útil.
 Se não souber a resposta, diga que vai encaminhar para um atendente humano.`;
   }
-
   return `Você é Maya, assistente virtual da BRHUB Envios. Você é simpática, prestativa e empática.
-Você ajuda clientes com:
-- Rastreamento de encomendas
-- Informações sobre serviços de frete e transportadoras
-- Dúvidas sobre preços, prazos e embalagens
-- Suporte geral sobre envios e logística
-- Reclamações e problemas com entregas
 Responda sempre em português brasileiro, de forma acolhedora e clara.
-Use emojis com moderação para tornar a conversa mais amigável.
-Se não souber a resposta, diga que vai encaminhar para um atendente humano.
-Quando o cliente enviar um áudio, responda normalmente ao conteúdo transcrito.
-Quando o cliente enviar uma imagem, comente sobre o conteúdo da imagem e ajude no que for necessário.`;
+Use emojis com moderação. Se não souber a resposta, encaminhe para um atendente humano.`;
 }
 
-/** Imagem → Gemini Vision (baixa, converte base64, envia) */
 async function interpretImageWithGemini(imageUrl: string, geminiKey: string): Promise<string> {
   const imageResponse = await fetch(imageUrl);
   if (!imageResponse.ok) throw new Error(`Erro ao baixar imagem: ${imageResponse.status}`);
-
   const imageBuffer = await imageResponse.arrayBuffer();
   const base64Image = base64Encode(imageBuffer);
   const mimeType = (imageResponse.headers.get("content-type") || "image/jpeg").split(";")[0].trim();
@@ -230,12 +322,10 @@ async function interpretImageWithGemini(imageUrl: string, geminiKey: string): Pr
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: "Descreva brevemente o conteúdo desta imagem em português. Seja objetivo e mencione detalhes relevantes:" },
-            { inline_data: { mime_type: mimeType, data: base64Image } },
-          ],
-        }],
+        contents: [{ parts: [
+          { text: "Descreva brevemente o conteúdo desta imagem em português. Seja objetivo:" },
+          { inline_data: { mime_type: mimeType, data: base64Image } },
+        ] }],
       }),
     }
   );
@@ -249,16 +339,12 @@ async function interpretImageWithGemini(imageUrl: string, geminiKey: string): Pr
   return data.candidates?.[0]?.content?.parts?.[0]?.text || "Imagem não identificada";
 }
 
-/** Áudio → ElevenLabs Scribe STT */
 async function transcribeAudioWithElevenLabs(audioUrl: string, apiKey: string): Promise<string> {
-  // Baixar o áudio
   const audioResponse = await fetch(audioUrl);
   if (!audioResponse.ok) throw new Error(`Erro ao baixar áudio: ${audioResponse.status}`);
-
   const audioBlob = await audioResponse.blob();
   const contentType = audioResponse.headers.get("content-type") || "audio/ogg";
 
-  // Enviar para ElevenLabs STT
   const formData = new FormData();
   formData.append("file", new File([audioBlob], "audio.ogg", { type: contentType }));
   formData.append("model_id", "scribe_v2");
@@ -266,9 +352,7 @@ async function transcribeAudioWithElevenLabs(audioUrl: string, apiKey: string): 
 
   const response = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
     method: "POST",
-    headers: {
-      "xi-api-key": apiKey,
-    },
+    headers: { "xi-api-key": apiKey },
     body: formData,
   });
 
@@ -281,14 +365,12 @@ async function transcribeAudioWithElevenLabs(audioUrl: string, apiKey: string): 
   return data.text || "Áudio não transcrito";
 }
 
-/** Fallback: Áudio → Gemini */
 async function transcribeAudioWithGemini(audioUrl: string, geminiKey: string): Promise<string> {
   const audioResponse = await fetch(audioUrl);
   if (!audioResponse.ok) throw new Error(`Erro ao baixar áudio: ${audioResponse.status}`);
-
   const audioBuffer = await audioResponse.arrayBuffer();
   const base64Audio = base64Encode(audioBuffer);
-  let mimeType = (audioResponse.headers.get("content-type") || "audio/ogg").split(";")[0].trim();
+  const mimeType = (audioResponse.headers.get("content-type") || "audio/ogg").split(";")[0].trim();
 
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
@@ -296,12 +378,10 @@ async function transcribeAudioWithGemini(audioUrl: string, geminiKey: string): P
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: "Transcreva o conteúdo deste áudio em português. Retorne APENAS a transcrição:" },
-            { inline_data: { mime_type: mimeType, data: base64Audio } },
-          ],
-        }],
+        contents: [{ parts: [
+          { text: "Transcreva o conteúdo deste áudio em português. Retorne APENAS a transcrição:" },
+          { inline_data: { mime_type: mimeType, data: base64Audio } },
+        ] }],
       }),
     }
   );
