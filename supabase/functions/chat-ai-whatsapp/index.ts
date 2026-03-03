@@ -68,7 +68,7 @@ serve(async (req) => {
       }
     }
 
-    // === IMAGEM → Gemini (análise completa + extração de código de rastreio) ===
+    // === IMAGEM → Gemini (análise focada + extração de código de rastreio) ===
     if (contentType === "image" && mediaUrl) {
       const geminiKey = Deno.env.get("GEMINI_API_KEY");
       if (geminiKey) {
@@ -76,7 +76,7 @@ serve(async (req) => {
           const imageAnalysis = await analyzeImageWithGemini(mediaUrl, geminiKey);
           console.log("🖼️ Análise Gemini:", JSON.stringify(imageAnalysis).substring(0, 200));
 
-          let imageContext = `[CONTEXTO INTERNO - NÃO mencione que recebeu imagem, o cliente já sabe. Responda direto sobre o conteúdo.]\n\nConteúdo identificado: ${imageAnalysis.description}`;
+          let imageContext = "";
 
           if (imageAnalysis.trackingCode) {
             console.log("📦 Código de rastreio extraído da imagem:", imageAnalysis.trackingCode);
@@ -84,17 +84,17 @@ serve(async (req) => {
               const trackingData = await fetchTrackingData(imageAnalysis.trackingCode);
               if (trackingData) {
                 const trackingInfo = formatTrackingForAI(trackingData);
-                imageContext += `\n\nCódigo de rastreio encontrado: ${imageAnalysis.trackingCode}\nDados:\n${trackingInfo}`;
-                imageContext += `\n\n[INSTRUÇÃO: Vá direto ao ponto. Diga o status do pacote, onde tá e previsão. Sem dizer "identifiquei na imagem" ou "analisei sua foto". O cliente sabe o que mandou.]`;
+                imageContext = `[CONTEXTO INTERNO - O cliente mandou uma foto com o código de rastreio ${imageAnalysis.trackingCode}. Dados do rastreio:\n${trackingInfo}]\n\n[INSTRUÇÃO: Diga o status atual do pacote em 1-2 frases curtas. Ex: "Seu pacote tá em trânsito, saiu de SP e previsão é dia X 📦". NÃO descreva a imagem, NÃO liste dados da etiqueta. Só o status do rastreio.]`;
               } else {
-                imageContext += `\n\nCódigo ${imageAnalysis.trackingCode} encontrado mas sem dados. [INSTRUÇÃO: Pergunte se o código tá certo, sem mencionar "na imagem".]`;
+                imageContext = `[CONTEXTO INTERNO - O cliente mandou uma foto com código ${imageAnalysis.trackingCode} mas não retornou dados.]\n\n[INSTRUÇÃO: Diga que consultou o código ${imageAnalysis.trackingCode} mas ainda não tem movimentação. Peça pra aguardar ou confirmar se tá certo. Máximo 2 frases.]`;
               }
             } catch (trackErr) {
               console.warn("⚠️ Erro ao consultar rastreio da imagem:", trackErr);
-              imageContext += `\n\nCódigo ${imageAnalysis.trackingCode} encontrado mas erro na consulta. [INSTRUÇÃO: Diga que não conseguiu consultar agora e peça pra mandar o código por texto.]`;
+              imageContext = `[CONTEXTO INTERNO - Código ${imageAnalysis.trackingCode} encontrado na foto mas erro na consulta.]\n\n[INSTRUÇÃO: Diga que não conseguiu consultar o rastreio agora e que vai tentar de novo. Máximo 2 frases.]`;
             }
           } else {
-            imageContext += `\n\n[INSTRUÇÃO: Responda sobre o conteúdo diretamente, sem dizer "recebi sua imagem" ou "analisando a foto". Seja natural.]`;
+            // Imagem sem código de rastreio - responder brevemente sobre o conteúdo
+            imageContext = `[CONTEXTO INTERNO - Cliente enviou uma imagem. Resumo: ${imageAnalysis.description}]\n\n[INSTRUÇÃO: Responda de forma ULTRA CURTA (1-2 frases) sobre o que viu. NÃO descreva a imagem em detalhe. NÃO liste dados como remetente, destinatário, endereço. Pergunte como pode ajudar. Se for etiqueta sem código legível, peça o código por texto.]`;
           }
 
           if (message) imageContext += `\n\nCliente disse: "${message}"`;
@@ -688,15 +688,15 @@ async function analyzeImageWithGemini(imageUrl: string, geminiKey: string): Prom
   const base64Image = base64Encode(imageBuffer);
   const mimeType = (imageResponse.headers.get("content-type") || "image/jpeg").split(";")[0].trim();
 
-  const prompt = `Analise esta imagem detalhadamente em português. Faça o seguinte:
+  const prompt = `Analise esta imagem. Foco principal: encontrar código de rastreio dos Correios (formato: 2 letras + 9 números + 2 letras, ex: AA123456789BR).
 
-1. Descreva TODO o conteúdo visível da imagem (textos, logos, códigos de barras, QR codes, endereços, nomes, etc.)
-2. Se for uma etiqueta de envio/postagem/correios, extraia TODOS os dados visíveis: remetente, destinatário, CEP, endereço, código de rastreio, serviço, peso, etc.
-3. IMPORTANTE: Se houver um código de rastreio dos Correios (formato: 2 letras + 9 números + 2 letras, ex: AA123456789BR, SS987654321BR), extraia-o EXATAMENTE.
+Se encontrar código de rastreio, retorne:
+DESCRIÇÃO: etiqueta de envio
+CODIGO_RASTREIO: [código exato]
 
-Responda no seguinte formato:
-DESCRIÇÃO: [descrição completa da imagem]
-CODIGO_RASTREIO: [código se encontrado, ou NENHUM se não houver]`;
+Se NÃO encontrar código de rastreio, descreva em UMA frase curta o que é a imagem.
+DESCRIÇÃO: [uma frase]
+CODIGO_RASTREIO: NENHUM`;
 
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
