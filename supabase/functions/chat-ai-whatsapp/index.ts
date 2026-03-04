@@ -353,6 +353,7 @@ serve(async (req) => {
       const phoneVariants = [normalized];
       if (normalized.startsWith("55") && normalized.length > 11) phoneVariants.push(normalized.substring(2));
       if (!normalized.startsWith("55")) phoneVariants.push(`55${normalized}`);
+      console.log("🔍 Auto-identificação: telefone normalizado:", normalized, "variantes:", phoneVariants);
 
       // 1. Verificar cliente_id já persistido na conversa
       const { data: convData } = await supabase
@@ -364,15 +365,48 @@ serve(async (req) => {
       let clienteId = convData?.cliente_id || null;
       let contactName: string | null = null;
       let contactEmail: string | null = null;
-      let contactRole: string | null = null; // "cliente", "remetente", "destinatario"
+      let contactRole: string | null = null;
+      console.log("🔍 Conversa existente - cliente_id:", clienteId, "contact_name:", convData?.contact_name);
 
       // 2. Se já tem cliente_id, buscar dados completos
       if (clienteId) {
         const details = await fetchClienteDetails(clienteId);
+        console.log("🔍 fetchClienteDetails resultado:", details ? details.nome : "NULL/falhou");
         if (details) {
           contactName = details.nome;
           contactEmail = details.email || null;
           contactRole = "cliente";
+        } else {
+          // Fallback: buscar nome local nos remetentes do cliente
+          const { data: remLocal } = await supabase
+            .from("remetentes")
+            .select("nome, email")
+            .eq("cliente_id", clienteId)
+            .limit(5);
+          if (remLocal && remLocal.length > 0) {
+            // Filtrar nomes genéricos
+            const validRem = remLocal.find((r: any) => {
+              const n = (r.nome || "").toUpperCase().trim();
+              return n.length >= 3 && !n.includes('CADASTRO') && !n.includes('NOLASTNAME') && !/^[0-9a-f-]{36}$/i.test(n);
+            });
+            if (validRem) {
+              contactName = validRem.nome;
+              contactEmail = validRem.email || null;
+              contactRole = "remetente";
+              console.log("🔍 Nome via remetente local (fallback API):", contactName);
+            }
+          }
+        }
+      }
+
+      // 2b. Se contact_name já está na conversa e é válido, usar como fallback
+      if (!contactName && convData?.contact_name) {
+        const cn = convData.contact_name.toUpperCase().trim();
+        const isValid = cn.length >= 3 && !cn.includes('CADASTRO') && !cn.includes('NOLASTNAME') && !/^[0-9]+$/.test(cn);
+        if (isValid) {
+          contactName = convData.contact_name;
+          contactRole = "cliente";
+          console.log("🔍 Nome via contact_name da conversa:", contactName);
         }
       }
 
@@ -535,6 +569,7 @@ serve(async (req) => {
     } catch (e) {
       console.warn("⚠️ Erro na auto-identificação:", e);
     }
+    console.log("👤 Contexto de contato:", contactContext ? contactContext.substring(0, 120) : "NENHUM (não identificado)");
 
     const enrichedSystemPrompt = systemPrompt + contactContext;
     const messages: any[] = [{ role: "system", content: enrichedSystemPrompt }];
