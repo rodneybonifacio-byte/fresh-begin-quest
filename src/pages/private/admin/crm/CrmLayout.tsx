@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { MessageSquare, Columns3 } from 'lucide-react';
+import { MessageSquare, Columns3, Bell } from 'lucide-react';
 import CrmWhatsApp from './CrmWhatsApp';
 import CrmPipelineKanban from './CrmPipelineKanban';
+import CrmNotificationTemplates from './CrmNotificationTemplates';
 
 const CrmLayout = () => {
-  const [activeTab, setActiveTab] = useState<'conversas' | 'pipeline'>('conversas');
+  const [activeTab, setActiveTab] = useState<'conversas' | 'pipeline' | 'notificacoes'>('conversas');
 
   return (
     <div className="h-full flex flex-col">
@@ -32,11 +33,24 @@ const CrmLayout = () => {
           <Columns3 className="w-4 h-4" />
           Pipeline
         </button>
+        <button
+          onClick={() => setActiveTab('notificacoes')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-xl border-b-2 transition-all ${
+            activeTab === 'notificacoes'
+              ? 'border-amber-500 text-amber-600 bg-amber-500/5'
+              : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
+          }`}
+        >
+          <Bell className="w-4 h-4" />
+          Mensagens Ativas
+        </button>
       </div>
 
       {/* Content */}
       <div className="flex-1 min-h-0 px-4 pb-4">
-        {activeTab === 'conversas' ? <CrmWhatsApp /> : <CrmPipelineKanban />}
+        {activeTab === 'conversas' && <CrmWhatsApp />}
+        {activeTab === 'pipeline' && <CrmPipelineKanban />}
+        {activeTab === 'notificacoes' && <CrmNotificationTemplates />}
       </div>
     </div>
   );

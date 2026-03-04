@@ -1748,6 +1748,62 @@ export type Database = {
           },
         ]
       }
+      whatsapp_notification_templates: {
+        Row: {
+          channel_id: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          send_delay_minutes: number
+          template_language: string
+          template_name: string
+          template_namespace: string | null
+          trigger_description: string | null
+          trigger_key: string
+          trigger_label: string
+          updated_at: string
+          variables: Json
+        }
+        Insert: {
+          channel_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          send_delay_minutes?: number
+          template_language?: string
+          template_name: string
+          template_namespace?: string | null
+          trigger_description?: string | null
+          trigger_key: string
+          trigger_label: string
+          updated_at?: string
+          variables?: Json
+        }
+        Update: {
+          channel_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          send_delay_minutes?: number
+          template_language?: string
+          template_name?: string
+          template_namespace?: string | null
+          trigger_description?: string | null
+          trigger_key?: string
+          trigger_label?: string
+          updated_at?: string
+          variables?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_notification_templates_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_tickets: {
         Row: {
           category: string | null
