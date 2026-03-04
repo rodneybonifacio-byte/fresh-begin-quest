@@ -343,7 +343,60 @@ serve(async (req) => {
       .order("created_at", { ascending: true })
       .limit(20);
 
-    const messages: any[] = [{ role: "system", content: systemPrompt }];
+    // ═══════════════════════════════════════════════════════════
+    // AUTO-IDENTIFICAÇÃO: resolver contato pelo telefone
+    // ═══════════════════════════════════════════════════════════
+    let contactContext = "";
+    try {
+      // 1. Tentar pegar cliente_id já persistido na conversa
+      const { data: convData } = await supabase
+        .from("whatsapp_conversations")
+        .select("cliente_id, contact_name")
+        .eq("id", conversationId)
+        .single();
+
+      let clienteId = convData?.cliente_id || null;
+
+      // 2. Se não tem, resolver pelo telefone
+      if (!clienteId) {
+        clienteId = await resolveClienteId(supabase, contactPhone);
+        if (clienteId) {
+          await persistConversationClienteId(supabase, conversationId, clienteId);
+        }
+      }
+
+      // 3. Se encontrou, buscar dados completos
+      if (clienteId) {
+        const details = await fetchClienteDetails(clienteId);
+        if (details) {
+          const nome = details.nome || "Desconhecido";
+          contactContext = `\n\n[CONTEXTO DO CONTATO ATUAL]\nO cliente que está falando com você agora é: ${nome}. Email: ${details.email || "N/A"}. Telefone: ${details.telefone || contactPhone}. CPF/CNPJ: ${details.cpfCnpj || "N/A"}. ID interno: ${clienteId}.\nIMPORTANTE: Chame o cliente pelo PRIMEIRO NOME de forma pessoal e simpática. Não peça identificação novamente, você já sabe quem é.`;
+          
+          // Atualizar contact_name na conversa se não tiver
+          if (!convData?.contact_name || convData.contact_name === contactPhone) {
+            await supabase.from("whatsapp_conversations")
+              .update({ contact_name: nome })
+              .eq("id", conversationId);
+          }
+        } else {
+          // Fallback: buscar nos remetentes
+          const { data: remLocal } = await supabase
+            .from("remetentes")
+            .select("nome, email, celular")
+            .eq("cliente_id", clienteId)
+            .limit(1)
+            .single();
+          if (remLocal?.nome) {
+            contactContext = `\n\n[CONTEXTO DO CONTATO ATUAL]\nO cliente que está falando com você agora é: ${remLocal.nome}. Email: ${remLocal.email || "N/A"}. ID interno: ${clienteId}.\nIMPORTANTE: Chame o cliente pelo PRIMEIRO NOME de forma pessoal e simpática. Não peça identificação novamente.`;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("⚠️ Erro na auto-identificação:", e);
+    }
+
+    const enrichedSystemPrompt = systemPrompt + contactContext;
+    const messages: any[] = [{ role: "system", content: enrichedSystemPrompt }];
 
     if (history) {
       for (const msg of history) {
