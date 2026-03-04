@@ -344,11 +344,17 @@ serve(async (req) => {
       .limit(20);
 
     // ═══════════════════════════════════════════════════════════
-    // AUTO-IDENTIFICAÇÃO: resolver contato pelo telefone
+    // AUTO-IDENTIFICAÇÃO: resolver contato pelo telefone (ampla)
     // ═══════════════════════════════════════════════════════════
     let contactContext = "";
     try {
-      // 1. Tentar pegar cliente_id já persistido na conversa
+      const normalized = (contactPhone || "").replace(/\D/g, "");
+      const phoneSuffix = normalized.length > 8 ? normalized.slice(-8) : normalized;
+      const phoneVariants = [normalized];
+      if (normalized.startsWith("55") && normalized.length > 11) phoneVariants.push(normalized.substring(2));
+      if (!normalized.startsWith("55")) phoneVariants.push(`55${normalized}`);
+
+      // 1. Verificar cliente_id já persistido na conversa
       const { data: convData } = await supabase
         .from("whatsapp_conversations")
         .select("cliente_id, contact_name")
@@ -356,38 +362,173 @@ serve(async (req) => {
         .single();
 
       let clienteId = convData?.cliente_id || null;
+      let contactName: string | null = null;
+      let contactEmail: string | null = null;
+      let contactRole: string | null = null; // "cliente", "remetente", "destinatario"
 
-      // 2. Se não tem, resolver pelo telefone
-      if (!clienteId) {
-        clienteId = await resolveClienteId(supabase, contactPhone);
-        if (clienteId) {
-          await persistConversationClienteId(supabase, conversationId, clienteId);
-        }
-      }
-
-      // 3. Se encontrou, buscar dados completos
+      // 2. Se já tem cliente_id, buscar dados completos
       if (clienteId) {
         const details = await fetchClienteDetails(clienteId);
         if (details) {
-          const nome = details.nome || "Desconhecido";
-          contactContext = `\n\n[CONTEXTO DO CONTATO ATUAL]\nO cliente que está falando com você agora é: ${nome}. Email: ${details.email || "N/A"}. Telefone: ${details.telefone || contactPhone}. CPF/CNPJ: ${details.cpfCnpj || "N/A"}. ID interno: ${clienteId}.\nIMPORTANTE: Chame o cliente pelo PRIMEIRO NOME de forma pessoal e simpática. Não peça identificação novamente, você já sabe quem é.`;
-          
-          // Atualizar contact_name na conversa se não tiver
-          if (!convData?.contact_name || convData.contact_name === contactPhone) {
-            await supabase.from("whatsapp_conversations")
-              .update({ contact_name: nome })
-              .eq("id", conversationId);
+          contactName = details.nome;
+          contactEmail = details.email || null;
+          contactRole = "cliente";
+        }
+      }
+
+      // 3. Se não identificou ainda, buscar pelo telefone em TODAS as tabelas
+      if (!contactName) {
+        // 3a. Remetentes (celular/telefone)
+        for (const pv of phoneVariants) {
+          const { data: rem } = await supabase
+            .from("remetentes")
+            .select("nome, email, celular, telefone, cliente_id")
+            .or(`celular.ilike.%${pv}%,telefone.ilike.%${pv}%`)
+            .limit(1)
+            .single();
+          if (rem?.nome) {
+            contactName = rem.nome;
+            contactEmail = rem.email || null;
+            contactRole = "remetente";
+            if (!clienteId && rem.cliente_id) {
+              clienteId = rem.cliente_id;
+              await persistConversationClienteId(supabase, conversationId, clienteId);
+            }
+            break;
           }
+        }
+      }
+
+      if (!contactName) {
+        // 3b. Cadastros de origem (telefone_cliente)
+        const { data: cadastro } = await supabase
+          .from("cadastros_origem")
+          .select("nome_cliente, email_cliente, cliente_id")
+          .or(`telefone_cliente.ilike.%${normalized}%`)
+          .limit(1)
+          .single();
+        if (cadastro?.nome_cliente) {
+          contactName = cadastro.nome_cliente;
+          contactEmail = cadastro.email_cliente || null;
+          contactRole = "cliente";
+          if (!clienteId && cadastro.cliente_id) {
+            clienteId = cadastro.cliente_id;
+            await persistConversationClienteId(supabase, conversationId, clienteId);
+          }
+        }
+      }
+
+      if (!contactName) {
+        // 3c. Pedidos importados - destinatário (telefone do destinatário)
+        for (const pv of phoneVariants) {
+          const { data: pedido } = await supabase
+            .from("pedidos_importados")
+            .select("destinatario_nome, destinatario_email, destinatario_telefone")
+            .or(`destinatario_telefone.ilike.%${pv}%`)
+            .not("destinatario_nome", "is", null)
+            .limit(1)
+            .single();
+          if (pedido?.destinatario_nome) {
+            contactName = pedido.destinatario_nome;
+            contactEmail = pedido.destinatario_email || null;
+            contactRole = "destinatário";
+            break;
+          }
+        }
+      }
+
+      if (!contactName) {
+        // 3d. Etiquetas pendentes de correção (celular do destinatário)
+        for (const pv of phoneVariants) {
+          const { data: etq } = await supabase
+            .from("etiquetas_pendentes_correcao")
+            .select("destinatario_nome, destinatario_celular")
+            .or(`destinatario_celular.ilike.%${pv}%`)
+            .not("destinatario_nome", "is", null)
+            .limit(1)
+            .single();
+          if (etq?.destinatario_nome) {
+            contactName = etq.destinatario_nome;
+            contactRole = "destinatário";
+            break;
+          }
+        }
+      }
+
+      if (!contactName) {
+        // 3e. Notificações de aguardando retirada
+        for (const pv of phoneVariants) {
+          const { data: notif } = await supabase
+            .from("notificacoes_aguardando_retirada")
+            .select("destinatario_nome, destinatario_celular")
+            .or(`destinatario_celular.ilike.%${pv}%`)
+            .not("destinatario_nome", "is", null)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .single();
+          if (notif?.destinatario_nome) {
+            contactName = notif.destinatario_nome;
+            contactRole = "destinatário";
+            break;
+          }
+        }
+      }
+
+      // 4. Se não encontrou por telefone mas tem cliente_id, tentar via API
+      if (!contactName && clienteId) {
+        const details = await fetchClienteDetails(clienteId);
+        if (details) {
+          contactName = details.nome;
+          contactEmail = details.email || null;
+          contactRole = "cliente";
         } else {
-          // Fallback: buscar nos remetentes
           const { data: remLocal } = await supabase
             .from("remetentes")
-            .select("nome, email, celular")
+            .select("nome, email")
             .eq("cliente_id", clienteId)
             .limit(1)
             .single();
           if (remLocal?.nome) {
-            contactContext = `\n\n[CONTEXTO DO CONTATO ATUAL]\nO cliente que está falando com você agora é: ${remLocal.nome}. Email: ${remLocal.email || "N/A"}. ID interno: ${clienteId}.\nIMPORTANTE: Chame o cliente pelo PRIMEIRO NOME de forma pessoal e simpática. Não peça identificação novamente.`;
+            contactName = remLocal.nome;
+            contactEmail = remLocal.email || null;
+            contactRole = "remetente";
+          }
+        }
+      }
+
+      // 5. Se não achou clienteId mas precisamos, resolver pelo telefone
+      if (!clienteId) {
+        clienteId = await resolveClienteId(supabase, contactPhone);
+        if (clienteId) {
+          await persistConversationClienteId(supabase, conversationId, clienteId);
+          if (!contactName) {
+            const details = await fetchClienteDetails(clienteId);
+            if (details) {
+              contactName = details.nome;
+              contactEmail = details.email || null;
+              contactRole = "cliente";
+            }
+          }
+        }
+      }
+
+      // 6. Montar contexto
+      if (contactName) {
+        // Filtrar nomes genéricos/lixo
+        const nomeUpper = contactName.toUpperCase().trim();
+        const isGeneric = nomeUpper.length < 3 || nomeUpper.includes('CADASTRO') || nomeUpper.includes('NOLASTNAME') || /^[0-9a-f-]{36}$/i.test(nomeUpper);
+
+        if (!isGeneric) {
+          const roleLabel = contactRole === "destinatário" ? "um destinatário de envio" 
+                          : contactRole === "remetente" ? "um remetente cadastrado"
+                          : "um cliente da plataforma";
+          contactContext = `\n\n[CONTEXTO DO CONTATO ATUAL]\nO contato que está falando com você se chama: ${contactName}. Tipo: ${roleLabel}. Email: ${contactEmail || "N/A"}. Telefone: ${contactPhone}.${clienteId ? ` ID cliente: ${clienteId}.` : ""}\nIMPORTANTE: Chame a pessoa pelo PRIMEIRO NOME de forma pessoal e simpática. Não peça identificação novamente, você já sabe quem é.`;
+
+          // Atualizar contact_name na conversa
+          if (!convData?.contact_name || convData.contact_name === contactPhone || convData.contact_name === normalized) {
+            await supabase.from("whatsapp_conversations")
+              .update({ contact_name: contactName })
+              .eq("id", conversationId);
           }
         }
       }
