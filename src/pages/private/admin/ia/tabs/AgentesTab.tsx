@@ -98,12 +98,32 @@ const AgentesTab: React.FC = () => {
     };
     const url = sampleUrls[voiceId];
     if (!url) { toast.error('Preview não disponível para esta voz'); return; }
-    const audio = new Audio(url);
+    
+    // Create and unlock audio element immediately in user gesture context
+    const audio = new Audio();
+    audio.crossOrigin = 'anonymous';
+    audio.preload = 'auto';
     audio.onended = () => { setPlayingVoiceId(null); audioRef.current = null; };
-    audio.onerror = () => { toast.error('Erro ao reproduzir preview'); setPlayingVoiceId(null); audioRef.current = null; };
+    audio.onerror = (e) => { 
+      console.error('Erro audio preview:', e);
+      // Fallback: try without crossOrigin
+      const fallbackAudio = new Audio(url);
+      fallbackAudio.onended = () => { setPlayingVoiceId(null); audioRef.current = null; };
+      fallbackAudio.onerror = () => { toast.error('Erro ao reproduzir preview'); setPlayingVoiceId(null); audioRef.current = null; };
+      audioRef.current = fallbackAudio;
+      fallbackAudio.play().catch(() => { toast.error('Erro ao reproduzir preview'); setPlayingVoiceId(null); });
+    };
     audioRef.current = audio;
     setPlayingVoiceId(voiceId);
-    audio.play();
+    audio.src = url;
+    audio.play().catch(() => {
+      // If CORS blocks, retry without crossOrigin
+      const fallbackAudio = new Audio(url);
+      fallbackAudio.onended = () => { setPlayingVoiceId(null); audioRef.current = null; };
+      fallbackAudio.onerror = () => { toast.error('Erro ao reproduzir preview'); setPlayingVoiceId(null); audioRef.current = null; };
+      audioRef.current = fallbackAudio;
+      fallbackAudio.play().catch(() => { toast.error('Erro ao reproduzir preview'); setPlayingVoiceId(null); });
+    });
   };
   const { data: agents, isLoading } = useQuery({
     queryKey: ['ai-agents'],
