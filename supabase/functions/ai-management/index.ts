@@ -39,8 +39,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Verificar expiração
-    if (payload.exp && payload.exp * 1000 < Date.now()) {
+    // Verificar expiração com grace period de 24h para sessões admin longas
+    const gracePeriodMs = 24 * 60 * 60 * 1000;
+    if (payload.exp && (payload.exp * 1000 + gracePeriodMs) < Date.now()) {
       return new Response(JSON.stringify({ error: "Token expirado" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -61,6 +62,8 @@ Deno.serve(async (req) => {
       "ai_interaction_logs",
       "ai_support_pipeline",
       "ai_tool_phone_rules",
+      "whatsapp_notification_templates",
+      "whatsapp_channels",
     ];
 
     if (!allowedTables.includes(table)) {
