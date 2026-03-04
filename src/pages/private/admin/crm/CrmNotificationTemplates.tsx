@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { aiManagementQuery, aiManagementUpdate } from '@/services/aiManagementApi';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,7 +6,8 @@ import { toast } from 'sonner';
 import {
   Tag, Truck, PackageCheck, Star, AlertTriangle, Building2,
   Bell, ToggleLeft, ToggleRight, ChevronDown, ChevronUp,
-  Save, RefreshCw, Globe, Variable, Clock, Download, Check, X, Loader2
+  Save, RefreshCw, Variable, Clock, Download, Check, X, Loader2,
+  Link2, Eye, Zap, Search
 } from 'lucide-react';
 
 interface NotificationTemplate {
@@ -17,7 +18,7 @@ interface NotificationTemplate {
   template_name: string;
   template_language: string;
   template_namespace: string | null;
-  variables: { key: string; label: string }[];
+  variables: { key: string; label: string; system_field?: string }[];
   channel_id: string | null;
   is_active: boolean;
   send_delay_minutes: number;
@@ -40,6 +41,48 @@ interface MetaTemplate {
   components: any[];
 }
 
+// Campos disponíveis do sistema para cada gatilho
+const systemFieldsByTrigger: Record<string, { value: string; label: string; description: string }[]> = {
+  etiqueta_criada: [
+    { value: 'nome_destinatario', label: 'Nome do Destinatário', description: 'Nome completo do destinatário' },
+    { value: 'codigo_rastreio', label: 'Código de Rastreio', description: 'Código do objeto para rastreio' },
+    { value: 'nome_remetente', label: 'Nome do Remetente', description: 'Nome de quem está enviando' },
+    { value: 'servico', label: 'Serviço', description: 'Nome do serviço de envio (SEDEX, PAC, etc.)' },
+    { value: 'previsao_entrega', label: 'Previsão de Entrega', description: 'Data estimada de entrega' },
+  ],
+  objeto_postado: [
+    { value: 'nome_destinatario', label: 'Nome do Destinatário', description: 'Nome completo do destinatário' },
+    { value: 'codigo_rastreio', label: 'Código de Rastreio', description: 'Código do objeto para rastreio' },
+    { value: 'nome_remetente', label: 'Nome do Remetente', description: 'Nome de quem está enviando' },
+    { value: 'servico', label: 'Serviço', description: 'Serviço de envio utilizado' },
+    { value: 'data_postagem', label: 'Data de Postagem', description: 'Data em que o objeto foi postado' },
+  ],
+  saiu_para_entrega: [
+    { value: 'nome_destinatario', label: 'Nome do Destinatário', description: 'Nome completo do destinatário' },
+    { value: 'codigo_rastreio', label: 'Código de Rastreio', description: 'Código do objeto' },
+    { value: 'nome_remetente', label: 'Nome do Remetente', description: 'Nome de quem enviou' },
+  ],
+  avaliacao: [
+    { value: 'nome_destinatario', label: 'Nome do Destinatário', description: 'Nome do destinatário' },
+    { value: 'codigo_rastreio', label: 'Código de Rastreio', description: 'Código do objeto' },
+    { value: 'nome_remetente', label: 'Nome do Remetente', description: 'Nome de quem enviou' },
+    { value: 'link_avaliacao', label: 'Link de Avaliação', description: 'URL para avaliar o envio' },
+  ],
+  atraso: [
+    { value: 'nome_destinatario', label: 'Nome do Destinatário', description: 'Nome do destinatário' },
+    { value: 'codigo_rastreio', label: 'Código de Rastreio', description: 'Código do objeto' },
+    { value: 'nome_remetente', label: 'Nome do Remetente', description: 'Nome de quem enviou' },
+    { value: 'dias_atraso', label: 'Dias de Atraso', description: 'Quantidade de dias em atraso' },
+    { value: 'previsao_original', label: 'Previsão Original', description: 'Data original de entrega' },
+  ],
+  retirada_agencia: [
+    { value: 'nome_destinatario', label: 'Nome do Destinatário', description: 'Nome do destinatário' },
+    { value: 'codigo_rastreio', label: 'Código de Rastreio', description: 'Código do objeto' },
+    { value: 'nome_remetente', label: 'Nome do Remetente', description: 'Nome de quem enviou' },
+    { value: 'endereco_agencia', label: 'Endereço da Agência', description: 'Endereço da agência para retirada' },
+  ],
+};
+
 const triggerIcons: Record<string, any> = {
   etiqueta_criada: Tag,
   objeto_postado: Truck,
@@ -58,6 +101,22 @@ const triggerColors: Record<string, { text: string; bg: string; border: string }
   retirada_agencia: { text: 'text-sky-500', bg: 'bg-sky-500/10', border: 'border-sky-500/30' },
 };
 
+const getTemplateBodyText = (components: any[]): string => {
+  const body = components?.find((c: any) => c.type === 'BODY' || c.type === 'body');
+  return body?.text || '';
+};
+
+const getTemplateHeaderText = (components: any[]): string => {
+  const header = components?.find((c: any) => c.type === 'HEADER' || c.type === 'header');
+  if (header?.format === 'TEXT' || header?.format === 'text') return header.text || '';
+  return '';
+};
+
+const getTemplateFooterText = (components: any[]): string => {
+  const footer = components?.find((c: any) => c.type === 'FOOTER' || c.type === 'footer');
+  return footer?.text || '';
+};
+
 const CrmNotificationTemplates = () => {
   const queryClient = useQueryClient();
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -66,6 +125,8 @@ const CrmNotificationTemplates = () => {
   const [showMetaModal, setShowMetaModal] = useState(false);
   const [isFetchingMeta, setIsFetchingMeta] = useState(false);
   const [selectingForId, setSelectingForId] = useState<string | null>(null);
+  const [metaSearch, setMetaSearch] = useState('');
+  const [showPreview, setShowPreview] = useState<string | null>(null);
 
   const { data: templates, isLoading } = useQuery({
     queryKey: ['notification-templates'],
@@ -90,7 +151,7 @@ const CrmNotificationTemplates = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notification-templates'] });
-      toast.success('Template atualizado!');
+      toast.success('Template atualizado com sucesso!');
     },
     onError: (err: any) => toast.error('Erro: ' + err.message),
   });
@@ -137,25 +198,58 @@ const CrmNotificationTemplates = () => {
   };
 
   const selectMetaTemplate = (meta: MetaTemplate, templateId: string) => {
-    // Extract body component variables
-    const bodyComponent = meta.components?.find((c: any) => c.type === 'BODY' || c.type === 'body');
-    const bodyText = bodyComponent?.text || '';
+    const template = templates?.find(t => t.id === templateId);
+    if (!template) return;
+
+    const bodyText = getTemplateBodyText(meta.components || []);
     const varMatches = bodyText.match(/\{\{(\d+)\}\}/g) || [];
+    const availableFields = systemFieldsByTrigger[template.trigger_key] || [];
+
+    // Auto-map variables to system fields when possible
     const variables = varMatches.map((_: string, i: number) => ({
       key: `var_${i + 1}`,
       label: `Variável ${i + 1}`,
+      system_field: availableFields[i]?.value || '',
     }));
 
     setField(templateId, 'template_name', meta.name);
     setField(templateId, 'template_language', meta.language);
     setField(templateId, 'template_namespace', meta.namespace || null);
-    if (variables.length > 0) {
-      setField(templateId, 'variables', variables);
-    }
+    setField(templateId, 'variables', variables);
 
     setSelectingForId(null);
     setShowMetaModal(false);
-    toast.success(`Template "${meta.name}" selecionado! Salve para confirmar.`);
+    toast.success(`Template "${meta.name}" associado! Configure as variáveis e salve.`);
+  };
+
+  const updateVariableMapping = (templateId: string, varIndex: number, systemField: string) => {
+    const template = templates?.find(t => t.id === templateId);
+    if (!template) return;
+    const currentVars = [...(getEditing(templateId, 'variables', template.variables) || [])];
+    const availableFields = systemFieldsByTrigger[template.trigger_key] || [];
+    const fieldInfo = availableFields.find(f => f.value === systemField);
+
+    currentVars[varIndex] = {
+      ...currentVars[varIndex],
+      key: systemField || currentVars[varIndex].key,
+      label: fieldInfo?.label || currentVars[varIndex].label,
+      system_field: systemField,
+    };
+    setField(templateId, 'variables', currentVars);
+  };
+
+  const filteredMetaTemplates = useMemo(() => {
+    if (!metaSearch.trim()) return metaTemplates;
+    const search = metaSearch.toLowerCase();
+    return metaTemplates.filter(t =>
+      t.name.toLowerCase().includes(search) ||
+      t.category?.toLowerCase().includes(search)
+    );
+  }, [metaTemplates, metaSearch]);
+
+  // Find the selected meta template for preview
+  const getMetaForTemplate = (templateName: string) => {
+    return metaTemplates.find(m => m.name === templateName);
   };
 
   if (isLoading) {
@@ -177,7 +271,7 @@ const CrmNotificationTemplates = () => {
           <Bell className="w-5 h-5 text-primary" />
           <div>
             <h2 className="text-lg font-semibold text-foreground">Mensagens Ativas</h2>
-            <p className="text-xs text-muted-foreground">Templates Meta aprovados para notificações automáticas</p>
+            <p className="text-xs text-muted-foreground">Associe templates Meta aprovados a cada gatilho e mapeie as variáveis</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -195,61 +289,95 @@ const CrmNotificationTemplates = () => {
           </button>
           <div className="text-xs text-muted-foreground flex items-center gap-1.5">
             <RefreshCw className="w-3.5 h-3.5" />
-            {templates?.length || 0} gatilhos configurados
+            {templates?.length || 0} gatilhos
           </div>
         </div>
       </div>
 
-      {/* Meta Templates Modal */}
+      {/* Meta Templates Selection Modal */}
       {showMetaModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { setShowMetaModal(false); setSelectingForId(null); }}>
-          <div className="bg-background rounded-xl border border-border max-w-2xl w-full max-h-[70vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+          <div className="bg-background rounded-xl border border-border max-w-3xl w-full max-h-[80vh] overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b border-border">
               <div>
                 <h3 className="font-semibold text-foreground">Templates Aprovados na Meta</h3>
-                <p className="text-xs text-muted-foreground">{metaTemplates.length} templates encontrados via MessageBird</p>
+                <p className="text-xs text-muted-foreground">{filteredMetaTemplates.length} de {metaTemplates.length} templates</p>
               </div>
-              <button onClick={() => { setShowMetaModal(false); setSelectingForId(null); }} className="p-1 rounded hover:bg-muted">
+              <button onClick={() => { setShowMetaModal(false); setSelectingForId(null); }} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {selectingForId && (
-              <div className="px-4 py-2 bg-primary/5 border-b border-border text-xs text-primary font-medium">
-                Selecione um template para: {templates?.find(t => t.id === selectingForId)?.trigger_label}
+              <div className="px-4 py-2.5 bg-primary/5 border-b border-border flex items-center gap-2">
+                <Link2 className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs text-primary font-medium">
+                  Associar template ao gatilho: <strong>{templates?.find(t => t.id === selectingForId)?.trigger_label}</strong>
+                </span>
               </div>
             )}
 
+            {/* Search */}
+            <div className="px-4 py-3 border-b border-border">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Buscar por nome do template..."
+                  value={metaSearch}
+                  onChange={e => setMetaSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:ring-2 focus:ring-primary/30 outline-none"
+                />
+              </div>
+            </div>
+
             <div className="overflow-y-auto max-h-[55vh] p-4 space-y-2">
-              {metaTemplates.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">Nenhum template aprovado encontrado</p>
+              {filteredMetaTemplates.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">Nenhum template encontrado</p>
               ) : (
-                metaTemplates.map((meta, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-mono font-medium text-foreground">{meta.name}</span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-                          {meta.status}
-                        </span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                          {meta.language}
-                        </span>
+                filteredMetaTemplates.map((meta, i) => {
+                  const bodyText = getTemplateBodyText(meta.components || []);
+                  const varCount = (bodyText.match(/\{\{(\d+)\}\}/g) || []).length;
+
+                  return (
+                    <div key={i} className="p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-mono font-semibold text-foreground">{meta.name}</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 uppercase">
+                              {meta.status}
+                            </span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                              {meta.language}
+                            </span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                              {meta.category}
+                            </span>
+                            {varCount > 0 && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 border border-blue-500/20">
+                                {varCount} variáve{varCount > 1 ? 'is' : 'l'}
+                              </span>
+                            )}
+                          </div>
+                          {bodyText && (
+                            <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2 font-mono leading-relaxed">
+                              {bodyText}
+                            </p>
+                          )}
+                        </div>
+                        {selectingForId && (
+                          <button
+                            onClick={() => selectMetaTemplate(meta, selectingForId)}
+                            className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors"
+                          >
+                            <Check className="w-3 h-3" /> Associar
+                          </button>
+                        )}
                       </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">{meta.category}</p>
                     </div>
-                    {selectingForId ? (
-                      <button
-                        onClick={() => selectMetaTemplate(meta, selectingForId)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors"
-                      >
-                        <Check className="w-3 h-3" /> Usar
-                      </button>
-                    ) : (
-                      <span className="text-[10px] text-muted-foreground">{meta.namespace ? '✓ namespace' : ''}</span>
-                    )}
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
@@ -263,6 +391,12 @@ const CrmNotificationTemplates = () => {
           const colors = triggerColors[template.trigger_key] || triggerColors.etiqueta_criada;
           const isExpanded = expandedId === template.id;
           const hasChanges = !!editingData[template.id];
+          const currentVars = getEditing(template.id, 'variables', template.variables) || [];
+          const currentTemplateName = getEditing(template.id, 'template_name', template.template_name);
+          const availableFields = systemFieldsByTrigger[template.trigger_key] || [];
+          const metaInfo = getMetaForTemplate(currentTemplateName);
+          const allVarsMapped = currentVars.length === 0 || currentVars.every((v: any) => v.system_field);
+          const isConfigured = currentTemplateName && currentTemplateName !== 'template_name' && allVarsMapped;
 
           return (
             <div
@@ -289,14 +423,23 @@ const CrmNotificationTemplates = () => {
                           {template.send_delay_minutes}min
                         </span>
                       )}
+                      {isConfigured ? (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 flex items-center gap-1">
+                          <Check className="w-3 h-3" /> Configurado
+                        </span>
+                      ) : (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 border border-amber-500/20 flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3" /> Pendente
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground">{template.trigger_description}</p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <span className="text-[10px] font-mono px-2 py-1 rounded bg-foreground/5 text-muted-foreground">
-                    {template.template_name}
+                  <span className="text-[10px] font-mono px-2 py-1 rounded bg-foreground/5 text-muted-foreground max-w-[200px] truncate">
+                    {currentTemplateName}
                   </span>
                   <button
                     onClick={(e) => { e.stopPropagation(); toggleActive(template); }}
@@ -318,121 +461,191 @@ const CrmNotificationTemplates = () => {
 
               {/* Expanded details */}
               {isExpanded && (
-                <div className="px-4 pb-4 space-y-4 border-t border-border/50 pt-4">
-                  {/* Sync from Meta button */}
-                  <div className="flex justify-end">
-                    <button
-                      onClick={() => {
-                        setSelectingForId(template.id);
-                        if (metaTemplates.length > 0) {
-                          setShowMetaModal(true);
-                        } else {
-                          fetchMetaTemplates().then(() => setSelectingForId(template.id));
-                        }
-                      }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 transition-colors"
-                    >
-                      <Download className="w-3 h-3" />
-                      Buscar template da Meta
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1.5">
-                        <Globe className="w-3 h-3" /> Nome do Template Meta
-                      </label>
-                      <input
-                        type="text"
-                        value={getEditing(template.id, 'template_name', template.template_name)}
-                        onChange={(e) => setField(template.id, 'template_name', e.target.value)}
-                        className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:ring-2 focus:ring-primary/30 outline-none"
-                        placeholder="nome_do_template"
-                      />
+                <div className="px-4 pb-4 space-y-5 border-t border-border/50 pt-4">
+                  {/* Step 1: Select Template */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-white text-[10px] font-bold">1</div>
+                      <h4 className="text-sm font-semibold text-foreground">Selecionar Template Meta</h4>
                     </div>
-                    <div>
-                      <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1.5">
-                        <Globe className="w-3 h-3" /> Idioma
-                      </label>
-                      <select
-                        value={getEditing(template.id, 'template_language', template.template_language)}
-                        onChange={(e) => setField(template.id, 'template_language', e.target.value)}
-                        className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:ring-2 focus:ring-primary/30 outline-none"
+
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => {
+                          setSelectingForId(template.id);
+                          if (metaTemplates.length > 0) {
+                            setShowMetaModal(true);
+                          } else {
+                            fetchMetaTemplates().then(() => setSelectingForId(template.id));
+                          }
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-lg border border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 transition-colors"
                       >
-                        <option value="pt_BR">Português (BR)</option>
-                        <option value="en">English</option>
-                        <option value="es">Español</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1.5">
-                        <Bell className="w-3 h-3" /> Canal WhatsApp
-                      </label>
-                      <select
-                        value={getEditing(template.id, 'channel_id', template.channel_id || '')}
-                        onChange={(e) => setField(template.id, 'channel_id', e.target.value || null)}
-                        className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:ring-2 focus:ring-primary/30 outline-none"
-                      >
-                        <option value="">Canal padrão</option>
-                        {channels?.map(ch => (
-                          <option key={ch.id} value={ch.id}>{ch.name} ({ch.phone_number})</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
+                        <Download className="w-3.5 h-3.5" />
+                        {currentTemplateName ? 'Trocar template' : 'Selecionar template'}
+                      </button>
 
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1.5">
-                      <Variable className="w-3 h-3" /> Namespace do Template (opcional)
-                    </label>
-                    <input
-                      type="text"
-                      value={getEditing(template.id, 'template_namespace', template.template_namespace || '')}
-                      onChange={(e) => setField(template.id, 'template_namespace', e.target.value || null)}
-                      className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:ring-2 focus:ring-primary/30 outline-none"
-                      placeholder="ex: ab12cd34_ef56_..."
-                    />
-                  </div>
-
-                  <div className="max-w-xs">
-                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1.5">
-                      <Clock className="w-3 h-3" /> Delay de envio (minutos)
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={getEditing(template.id, 'send_delay_minutes', template.send_delay_minutes)}
-                      onChange={(e) => setField(template.id, 'send_delay_minutes', parseInt(e.target.value) || 0)}
-                      className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:ring-2 focus:ring-primary/30 outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-2">
-                      <Variable className="w-3 h-3" /> Variáveis Dinâmicas
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      {(getEditing(template.id, 'variables', template.variables) || []).map((v: any, i: number) => (
-                        <span
-                          key={i}
-                          className={`text-xs px-2.5 py-1 rounded-full ${colors.bg} ${colors.text} border ${colors.border} font-mono`}
+                      {currentTemplateName && metaInfo && (
+                        <button
+                          onClick={() => setShowPreview(showPreview === template.id ? null : template.id)}
+                          className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border border-border hover:bg-muted transition-colors text-muted-foreground"
                         >
-                          {`{{${i + 1}}} `}
-                          <span className="font-sans text-muted-foreground">{v.label}</span>
-                        </span>
-                      ))}
+                          <Eye className="w-3.5 h-3.5" />
+                          {showPreview === template.id ? 'Ocultar preview' : 'Ver preview'}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Template Info */}
+                    {currentTemplateName && (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div>
+                          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1 block">Template</label>
+                          <div className="px-3 py-2 text-sm rounded-lg border border-border bg-muted/30 text-foreground font-mono">
+                            {currentTemplateName}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1 block">Idioma</label>
+                          <select
+                            value={getEditing(template.id, 'template_language', template.template_language)}
+                            onChange={(e) => setField(template.id, 'template_language', e.target.value)}
+                            className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:ring-2 focus:ring-primary/30 outline-none"
+                          >
+                            <option value="pt_BR">Português (BR)</option>
+                            <option value="en">English</option>
+                            <option value="es">Español</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1 block">Canal</label>
+                          <select
+                            value={getEditing(template.id, 'channel_id', template.channel_id || '')}
+                            onChange={(e) => setField(template.id, 'channel_id', e.target.value || null)}
+                            className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:ring-2 focus:ring-primary/30 outline-none"
+                          >
+                            <option value="">Canal padrão</option>
+                            {channels?.map(ch => (
+                              <option key={ch.id} value={ch.id}>{ch.name} ({ch.phone_number})</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Preview */}
+                    {showPreview === template.id && metaInfo && (
+                      <div className="rounded-lg border border-border bg-emerald-50/50 dark:bg-emerald-950/20 p-4 space-y-2">
+                        <div className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Preview do Template</div>
+                        {getTemplateHeaderText(metaInfo.components || []) && (
+                          <p className="text-sm font-bold text-foreground">{getTemplateHeaderText(metaInfo.components || [])}</p>
+                        )}
+                        <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-mono">
+                          {getTemplateBodyText(metaInfo.components || [])}
+                        </p>
+                        {getTemplateFooterText(metaInfo.components || []) && (
+                          <p className="text-xs text-muted-foreground italic">{getTemplateFooterText(metaInfo.components || [])}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Step 2: Map Variables */}
+                  {currentVars.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-white text-[10px] font-bold">2</div>
+                        <h4 className="text-sm font-semibold text-foreground">Mapear Variáveis</h4>
+                        <span className="text-[10px] text-muted-foreground ml-1">Associe cada variável do template a um campo do sistema</span>
+                      </div>
+
+                      <div className="space-y-2">
+                        {currentVars.map((v: any, i: number) => (
+                          <div key={i} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-background">
+                            <div className={`flex-shrink-0 text-xs font-mono font-bold px-2.5 py-1 rounded ${colors.bg} ${colors.text} border ${colors.border}`}>
+                              {`{{${i + 1}}}`}
+                            </div>
+                            <div className="flex items-center text-muted-foreground">
+                              <Zap className="w-3.5 h-3.5" />
+                            </div>
+                            <select
+                              value={v.system_field || ''}
+                              onChange={(e) => updateVariableMapping(template.id, i, e.target.value)}
+                              className={`flex-1 px-3 py-2 text-sm rounded-lg border bg-background text-foreground focus:ring-2 focus:ring-primary/30 outline-none ${
+                                v.system_field ? 'border-emerald-500/30' : 'border-amber-500/30'
+                              }`}
+                            >
+                              <option value="">-- Selecione o campo --</option>
+                              {availableFields.map(field => (
+                                <option key={field.value} value={field.value}>
+                                  {field.label} — {field.description}
+                                </option>
+                              ))}
+                            </select>
+                            {v.system_field ? (
+                              <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                            ) : (
+                              <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Step 3: Additional settings */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-center w-5 h-5 rounded-full bg-primary text-white text-[10px] font-bold">3</div>
+                      <h4 className="text-sm font-semibold text-foreground">Configurações Adicionais</h4>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1 mb-1">
+                          <Variable className="w-3 h-3" /> Namespace (opcional)
+                        </label>
+                        <input
+                          type="text"
+                          value={getEditing(template.id, 'template_namespace', template.template_namespace || '')}
+                          onChange={(e) => setField(template.id, 'template_namespace', e.target.value || null)}
+                          className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:ring-2 focus:ring-primary/30 outline-none"
+                          placeholder="Preenchido automaticamente ao selecionar template"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1 mb-1">
+                          <Clock className="w-3 h-3" /> Delay de envio (minutos)
+                        </label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={getEditing(template.id, 'send_delay_minutes', template.send_delay_minutes)}
+                          onChange={(e) => setField(template.id, 'send_delay_minutes', parseInt(e.target.value) || 0)}
+                          className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:ring-2 focus:ring-primary/30 outline-none"
+                        />
+                      </div>
                     </div>
                   </div>
 
+                  {/* Save */}
                   {hasChanges && (
-                    <div className="flex justify-end">
+                    <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                      <div className="text-xs text-muted-foreground">
+                        {!allVarsMapped && (
+                          <span className="text-amber-600 flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" />
+                            Algumas variáveis não estão mapeadas
+                          </span>
+                        )}
+                      </div>
                       <button
                         onClick={() => handleSave(template.id)}
                         disabled={updateMutation.isPending}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+                        className="flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
                       >
                         <Save className="w-4 h-4" />
-                        Salvar alterações
+                        Salvar configuração
                       </button>
                     </div>
                   )}

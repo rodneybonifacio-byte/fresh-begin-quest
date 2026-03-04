@@ -90,10 +90,10 @@ Deno.serve(async (req) => {
     }
 
     // Build template params
-    const templateVars = (template.variables || []) as { key: string; label: string }[];
-    const params = templateVars.map((v: { key: string }) => ({
+    const templateVars = (template.variables || []) as { key: string; label: string; system_field?: string }[];
+    const params = templateVars.map((v: { key: string; system_field?: string }) => ({
       type: "text",
-      text: variables[v.key] || "",
+      text: variables[v.system_field || v.key] || variables[v.key] || "",
     }));
 
     // Build MessageBird HSM payload
