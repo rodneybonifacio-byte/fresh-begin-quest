@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { aiManagementQuery, aiManagementUpdate } from '@/services/aiManagementApi';
+import { supabase } from '@/integrations/supabase/client';
 import { Bot, Save, ToggleLeft, ToggleRight, Pencil, Volume2, VolumeX, X, ChevronDown, ChevronUp, Play, Square } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -64,66 +65,59 @@ const AgentesTab: React.FC = () => {
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const playVoicePreview = (voiceId: string) => {
+  const playVoicePreview = async (voiceId: string) => {
     if (playingVoiceId === voiceId) {
       audioRef.current?.pause();
       audioRef.current = null;
       setPlayingVoiceId(null);
       return;
     }
+
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
     }
-    // Use ElevenLabs sample URLs
-    const sampleUrls: Record<string, string> = {
-      'FGY2WhTYpPnrIDTdsKH5': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/FGY2WhTYpPnrIDTdsKH5/preview.mp3',
-      'EXAVITQu4vr4xnSDxMaL': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/EXAVITQu4vr4xnSDxMaL/preview.mp3',
-      'TX3LPaxmHKxFdv7VOQHJ': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/TX3LPaxmHKxFdv7VOQHJ/preview.mp3',
-      'JBFqnCBsd6RMkjVDRZzb': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/JBFqnCBsd6RMkjVDRZzb/preview.mp3',
-      'XrExE9yKIg1WjnnlVkGX': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/XrExE9yKIg1WjnnlVkGX/preview.mp3',
-      'pFZP5JQG7iQjIQuC4Bku': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/pFZP5JQG7iQjIQuC4Bku/preview.mp3',
-      'onwK4e9ZLuTAKqWW03F9': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/onwK4e9ZLuTAKqWW03F9/preview.mp3',
-      'iP95p4xoKVk53GoZ742B': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/iP95p4xoKVk53GoZ742B/preview.mp3',
-      'cgSgspJ2msm6clMCkdW9': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/cgSgspJ2msm6clMCkdW9/preview.mp3',
-      'nPczCjzI2devNBz1zQrb': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/nPczCjzI2devNBz1zQrb/preview.mp3',
-      'N2lVS1w4EtoT3dr4eOWO': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/N2lVS1w4EtoT3dr4eOWO/preview.mp3',
-      'SAz9YHcvj6GT2YYXdXww': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/SAz9YHcvj6GT2YYXdXww/preview.mp3',
-      'Xb7hH8MSUJpSbSDYk0k2': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/Xb7hH8MSUJpSbSDYk0k2/preview.mp3',
-      'CwhRBWXzGAHq8TQ4Fs17': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/CwhRBWXzGAHq8TQ4Fs17/preview.mp3',
-      'IKne3meq5aSn9XLyUdCD': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/IKne3meq5aSn9XLyUdCD/preview.mp3',
-      'bIHbv24MWmeRgasZH58o': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/bIHbv24MWmeRgasZH58o/preview.mp3',
-      'cjVigY5qzO86Huf0OWal': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/cjVigY5qzO86Huf0OWal/preview.mp3',
-      'pqHfZKP75CvOlQylNhV4': 'https://storage.googleapis.com/eleven-public-prod/premade/voices/pqHfZKP75CvOlQylNhV4/preview.mp3',
-    };
-    const url = sampleUrls[voiceId];
-    if (!url) { toast.error('Preview não disponível para esta voz'); return; }
-    
-    // Create and unlock audio element immediately in user gesture context
-    const audio = new Audio();
-    audio.crossOrigin = 'anonymous';
-    audio.preload = 'auto';
-    audio.onended = () => { setPlayingVoiceId(null); audioRef.current = null; };
-    audio.onerror = (e) => { 
-      console.error('Erro audio preview:', e);
-      // Fallback: try without crossOrigin
-      const fallbackAudio = new Audio(url);
-      fallbackAudio.onended = () => { setPlayingVoiceId(null); audioRef.current = null; };
-      fallbackAudio.onerror = () => { toast.error('Erro ao reproduzir preview'); setPlayingVoiceId(null); audioRef.current = null; };
-      audioRef.current = fallbackAudio;
-      fallbackAudio.play().catch(() => { toast.error('Erro ao reproduzir preview'); setPlayingVoiceId(null); });
-    };
-    audioRef.current = audio;
+
     setPlayingVoiceId(voiceId);
-    audio.src = url;
-    audio.play().catch(() => {
-      // If CORS blocks, retry without crossOrigin
-      const fallbackAudio = new Audio(url);
-      fallbackAudio.onended = () => { setPlayingVoiceId(null); audioRef.current = null; };
-      fallbackAudio.onerror = () => { toast.error('Erro ao reproduzir preview'); setPlayingVoiceId(null); audioRef.current = null; };
-      audioRef.current = fallbackAudio;
-      fallbackAudio.play().catch(() => { toast.error('Erro ao reproduzir preview'); setPlayingVoiceId(null); });
-    });
+
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-voice-preview', {
+        body: {
+          voiceId,
+          model: editForm.tts_model || 'eleven_multilingual_v2',
+          text: 'Olá! Este é um teste da voz configurada para este agente.',
+          voiceSettings: {
+            stability: editForm.voice_stability ?? 0.5,
+            similarity_boost: editForm.voice_similarity_boost ?? 0.75,
+            style: editForm.voice_style ?? 0,
+            speed: editForm.voice_speed ?? 1,
+          },
+        },
+      });
+
+      if (error) throw new Error(error.message || 'Falha ao buscar preview');
+      if (!data?.audioContent) throw new Error(data?.error || 'Preview sem áudio');
+
+      const audio = new Audio(`data:${data.mimeType || 'audio/mpeg'};base64,${data.audioContent}`);
+      audio.preload = 'auto';
+      audio.onended = () => {
+        setPlayingVoiceId(null);
+        audioRef.current = null;
+      };
+      audio.onerror = () => {
+        toast.error('Erro ao reproduzir preview');
+        setPlayingVoiceId(null);
+        audioRef.current = null;
+      };
+
+      audioRef.current = audio;
+      await audio.play();
+    } catch (err: any) {
+      console.error('Erro audio preview:', err);
+      toast.error(`Erro ao reproduzir preview${err?.message ? `: ${err.message}` : ''}`);
+      setPlayingVoiceId(null);
+      audioRef.current = null;
+    }
   };
   const { data: agents, isLoading } = useQuery({
     queryKey: ['ai-agents'],
