@@ -12,11 +12,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const {
-      trigger_key,
-      phone,
-      variables,
-    }: {
+    const { trigger_key, phone, variables }: {
       trigger_key: string;
       phone: string;
       variables: Record<string, string>;
@@ -64,7 +60,6 @@ Deno.serve(async (req) => {
         channelId = ch.channel_id;
         accessKey = ch.access_key;
       } else {
-        // Fallback to default
         const { data: def } = await supabase
           .from("whatsapp_channels")
           .select("channel_id, access_key")
@@ -89,12 +84,62 @@ Deno.serve(async (req) => {
       normalizedPhone = "55" + normalizedPhone;
     }
 
-    // Build template params
-    const templateVars = (template.variables || []) as { key: string; label: string; system_field?: string }[];
-    const params = templateVars.map((v: { key: string; system_field?: string }) => ({
+    // Build template components with variables grouped by component_type
+    const templateVars = (template.variables || []) as {
+      key: string;
+      label: string;
+      system_field?: string;
+      component_type?: string;
+      component_var_index?: number;
+    }[];
+
+    // Group variables by component type
+    const headerVars = templateVars.filter(v => v.component_type === 'HEADER');
+    const bodyVars = templateVars.filter(v => v.component_type === 'BODY' || !v.component_type);
+    const buttonVars = templateVars.filter(v => v.component_type === 'BUTTONS');
+
+    const resolveVar = (v: { system_field?: string; key: string }) => ({
       type: "text",
       text: variables[v.system_field || v.key] || variables[v.key] || "",
-    }));
+    });
+
+    const components: any[] = [];
+
+    // Header component parameters
+    if (headerVars.length > 0) {
+      components.push({
+        type: "header",
+        parameters: headerVars.map(resolveVar),
+      });
+    }
+
+    // Body component parameters
+    if (bodyVars.length > 0) {
+      components.push({
+        type: "body",
+        parameters: bodyVars.map(resolveVar),
+      });
+    }
+
+    // Button component parameters (each button is a separate component entry)
+    if (buttonVars.length > 0) {
+      // Group button vars by their component_var_index (button index)
+      const buttonGroups: Record<number, typeof buttonVars> = {};
+      buttonVars.forEach(v => {
+        const idx = v.component_var_index || 0;
+        if (!buttonGroups[idx]) buttonGroups[idx] = [];
+        buttonGroups[idx].push(v);
+      });
+
+      Object.entries(buttonGroups).forEach(([btnIdx, vars]) => {
+        components.push({
+          type: "button",
+          sub_type: "url",
+          index: parseInt(btnIdx),
+          parameters: vars.map(resolveVar),
+        });
+      });
+    }
 
     // Build MessageBird HSM payload
     const payload: any = {
@@ -109,17 +154,12 @@ Deno.serve(async (req) => {
             policy: "deterministic",
             code: template.template_language,
           },
-          components: [
-            {
-              type: "body",
-              parameters: params,
-            },
-          ],
+          components,
         },
       },
     };
 
-    console.log(`Sending template '${template.template_name}' to ${normalizedPhone}`);
+    console.log(`Sending template '${template.template_name}' to ${normalizedPhone}`, JSON.stringify(components));
 
     const response = await fetch("https://conversations.messagebird.com/v1/send", {
       method: "POST",
