@@ -91,6 +91,8 @@ Deno.serve(async (req) => {
       system_field?: string;
       component_type?: string;
       component_var_index?: number;
+      button_position?: number;
+      button_sub_type?: string;
     }[];
 
     // Group variables by component type
@@ -121,20 +123,25 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Button component parameters (each button is a separate component entry)
+    // Button component parameters - use button_position (0-based) for the index
     if (buttonVars.length > 0) {
-      // Group button vars by their component_var_index (button index)
-      const buttonGroups: Record<number, typeof buttonVars> = {};
+      // Group button vars by their actual button position (0-based)
+      const buttonGroups: Record<number, { vars: typeof buttonVars; sub_type: string }> = {};
       buttonVars.forEach(v => {
-        const idx = v.component_var_index || 0;
-        if (!buttonGroups[idx]) buttonGroups[idx] = [];
-        buttonGroups[idx].push(v);
+        // Use button_position if available, otherwise fall back to component_var_index - 1 (convert from 1-based to 0-based)
+        const btnPos = v.button_position !== undefined && v.button_position !== null
+          ? v.button_position
+          : Math.max(0, (v.component_var_index || 1) - 1);
+        if (!buttonGroups[btnPos]) {
+          buttonGroups[btnPos] = { vars: [], sub_type: v.button_sub_type || 'url' };
+        }
+        buttonGroups[btnPos].vars.push(v);
       });
 
-      Object.entries(buttonGroups).forEach(([btnIdx, vars]) => {
+      Object.entries(buttonGroups).forEach(([btnIdx, { vars, sub_type }]) => {
         components.push({
           type: "button",
-          sub_type: "url",
+          sub_type: sub_type,
           index: parseInt(btnIdx),
           parameters: vars.map(resolveVar),
         });
