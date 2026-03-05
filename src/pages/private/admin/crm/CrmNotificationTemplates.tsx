@@ -122,8 +122,8 @@ const getTemplateHeader = (components: any[]): any | null => {
 };
 
 // Extract ALL variables from all components (header, body, buttons)
-const extractAllVariables = (components: any[]): { component_type: string; index: number; context: string }[] => {
-  const vars: { component_type: string; index: number; context: string }[] = [];
+const extractAllVariables = (components: any[]): { component_type: string; index: number; button_position?: number; button_sub_type?: string; context: string }[] => {
+  const vars: { component_type: string; index: number; button_position?: number; button_sub_type?: string; context: string }[] = [];
 
   for (const comp of (components || [])) {
     const type = (comp.type || '').toUpperCase();
@@ -146,20 +146,19 @@ const extractAllVariables = (components: any[]): { component_type: string; index
 
     if (type === 'BUTTONS') {
       const buttons = comp.buttons || [];
-      buttons.forEach((btn: any) => {
+      buttons.forEach((btn: any, btnPos: number) => {
         if (btn.type === 'URL' || btn.type === 'url') {
           const urlMatches = (btn.url || '').match(/\{\{(\d+)\}\}/g) || [];
           urlMatches.forEach((m: string) => {
             const idx = parseInt(m.replace(/[{}]/g, ''));
-            vars.push({ component_type: 'BUTTONS', index: idx, context: `Botão "${btn.text}" {{${idx}}}` });
+            vars.push({ component_type: 'BUTTONS', index: idx, button_position: btnPos, button_sub_type: 'url', context: `Botão "${btn.text}" {{${idx}}} (posição ${btnPos})` });
           });
         }
-        // QUICK_REPLY buttons with payload variables
         if (btn.type === 'QUICK_REPLY' || btn.type === 'quick_reply') {
           const payloadMatches = (btn.payload || '').match(/\{\{(\d+)\}\}/g) || [];
           payloadMatches.forEach((m: string) => {
             const idx = parseInt(m.replace(/[{}]/g, ''));
-            vars.push({ component_type: 'BUTTONS', index: idx, context: `Botão "${btn.text}" payload {{${idx}}}` });
+            vars.push({ component_type: 'BUTTONS', index: idx, button_position: btnPos, button_sub_type: 'quick_reply', context: `Botão "${btn.text}" payload {{${idx}}} (posição ${btnPos})` });
           });
         }
       });
@@ -263,6 +262,8 @@ const CrmNotificationTemplates = () => {
       system_field: availableFields[i]?.value || '',
       component_type: v.component_type,
       component_var_index: v.index,
+      button_position: v.button_position ?? undefined,
+      button_sub_type: v.button_sub_type ?? undefined,
     }));
 
     setField(templateId, 'template_name', meta.name);
