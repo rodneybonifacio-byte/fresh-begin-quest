@@ -7,7 +7,7 @@ import {
   Tag, Truck, PackageCheck, Star, AlertTriangle, Building2,
   Bell, ToggleLeft, ToggleRight, ChevronDown, ChevronUp,
   Save, RefreshCw, Variable, Clock, Download, Check, X, Loader2,
-  Link2, Eye, Zap, Search
+  Link2, Eye, Zap, Search, MousePointerClick, Image, FileText
 } from 'lucide-react';
 
 interface NotificationTemplate {
@@ -18,7 +18,7 @@ interface NotificationTemplate {
   template_name: string;
   template_language: string;
   template_namespace: string | null;
-  variables: { key: string; label: string; system_field?: string }[];
+  variables: { key: string; label: string; system_field?: string; component_type?: string }[];
   channel_id: string | null;
   is_active: boolean;
   send_delay_minutes: number;
@@ -101,20 +101,72 @@ const triggerColors: Record<string, { text: string; bg: string; border: string }
   retirada_agencia: { text: 'text-sky-500', bg: 'bg-sky-500/10', border: 'border-sky-500/30' },
 };
 
-const getTemplateBodyText = (components: any[]): string => {
-  const body = components?.find((c: any) => c.type === 'BODY' || c.type === 'body');
-  return body?.text || '';
+const componentTypeLabels: Record<string, { label: string; icon: any; color: string }> = {
+  HEADER: { label: 'Cabeçalho', icon: FileText, color: 'text-indigo-500 bg-indigo-500/10 border-indigo-500/30' },
+  BODY: { label: 'Corpo', icon: FileText, color: 'text-blue-500 bg-blue-500/10 border-blue-500/30' },
+  BUTTONS: { label: 'Botão', icon: MousePointerClick, color: 'text-violet-500 bg-violet-500/10 border-violet-500/30' },
 };
 
-const getTemplateHeaderText = (components: any[]): string => {
-  const header = components?.find((c: any) => c.type === 'HEADER' || c.type === 'header');
-  if (header?.format === 'TEXT' || header?.format === 'text') return header.text || '';
-  return '';
+const getComponentText = (components: any[], type: string): string => {
+  const comp = components?.find((c: any) => (c.type || '').toUpperCase() === type.toUpperCase());
+  return comp?.text || '';
 };
 
-const getTemplateFooterText = (components: any[]): string => {
-  const footer = components?.find((c: any) => c.type === 'FOOTER' || c.type === 'footer');
-  return footer?.text || '';
+const getTemplateButtons = (components: any[]): any[] => {
+  const btnComp = components?.find((c: any) => (c.type || '').toUpperCase() === 'BUTTONS');
+  return btnComp?.buttons || [];
+};
+
+const getTemplateHeader = (components: any[]): any | null => {
+  return components?.find((c: any) => (c.type || '').toUpperCase() === 'HEADER') || null;
+};
+
+// Extract ALL variables from all components (header, body, buttons)
+const extractAllVariables = (components: any[]): { component_type: string; index: number; context: string }[] => {
+  const vars: { component_type: string; index: number; context: string }[] = [];
+
+  for (const comp of (components || [])) {
+    const type = (comp.type || '').toUpperCase();
+
+    if (type === 'HEADER' && (comp.format === 'TEXT' || comp.format === 'text')) {
+      const matches = (comp.text || '').match(/\{\{(\d+)\}\}/g) || [];
+      matches.forEach((m: string) => {
+        const idx = parseInt(m.replace(/[{}]/g, ''));
+        vars.push({ component_type: 'HEADER', index: idx, context: `Cabeçalho {{${idx}}}` });
+      });
+    }
+
+    if (type === 'BODY') {
+      const matches = (comp.text || '').match(/\{\{(\d+)\}\}/g) || [];
+      matches.forEach((m: string) => {
+        const idx = parseInt(m.replace(/[{}]/g, ''));
+        vars.push({ component_type: 'BODY', index: idx, context: `Corpo {{${idx}}}` });
+      });
+    }
+
+    if (type === 'BUTTONS') {
+      const buttons = comp.buttons || [];
+      buttons.forEach((btn: any) => {
+        if (btn.type === 'URL' || btn.type === 'url') {
+          const urlMatches = (btn.url || '').match(/\{\{(\d+)\}\}/g) || [];
+          urlMatches.forEach((m: string) => {
+            const idx = parseInt(m.replace(/[{}]/g, ''));
+            vars.push({ component_type: 'BUTTONS', index: idx, context: `Botão "${btn.text}" {{${idx}}}` });
+          });
+        }
+        // QUICK_REPLY buttons with payload variables
+        if (btn.type === 'QUICK_REPLY' || btn.type === 'quick_reply') {
+          const payloadMatches = (btn.payload || '').match(/\{\{(\d+)\}\}/g) || [];
+          payloadMatches.forEach((m: string) => {
+            const idx = parseInt(m.replace(/[{}]/g, ''));
+            vars.push({ component_type: 'BUTTONS', index: idx, context: `Botão "${btn.text}" payload {{${idx}}}` });
+          });
+        }
+      });
+    }
+  }
+
+  return vars;
 };
 
 const CrmNotificationTemplates = () => {
@@ -201,15 +253,16 @@ const CrmNotificationTemplates = () => {
     const template = templates?.find(t => t.id === templateId);
     if (!template) return;
 
-    const bodyText = getTemplateBodyText(meta.components || []);
-    const varMatches = bodyText.match(/\{\{(\d+)\}\}/g) || [];
+    const allVars = extractAllVariables(meta.components || []);
     const availableFields = systemFieldsByTrigger[template.trigger_key] || [];
 
-    // Auto-map variables to system fields when possible
-    const variables = varMatches.map((_: string, i: number) => ({
+    // Build variables with component_type info for correct HSM payload
+    const variables = allVars.map((v, i) => ({
       key: `var_${i + 1}`,
-      label: `Variável ${i + 1}`,
+      label: v.context,
       system_field: availableFields[i]?.value || '',
+      component_type: v.component_type,
+      component_var_index: v.index,
     }));
 
     setField(templateId, 'template_name', meta.name);
@@ -226,13 +279,10 @@ const CrmNotificationTemplates = () => {
     const template = templates?.find(t => t.id === templateId);
     if (!template) return;
     const currentVars = [...(getEditing(templateId, 'variables', template.variables) || [])];
-    const availableFields = systemFieldsByTrigger[template.trigger_key] || [];
-    const fieldInfo = availableFields.find(f => f.value === systemField);
 
     currentVars[varIndex] = {
       ...currentVars[varIndex],
       key: systemField || currentVars[varIndex].key,
-      label: fieldInfo?.label || currentVars[varIndex].label,
       system_field: systemField,
     };
     setField(templateId, 'variables', currentVars);
@@ -247,7 +297,6 @@ const CrmNotificationTemplates = () => {
     );
   }, [metaTemplates, metaSearch]);
 
-  // Find the selected meta template for preview
   const getMetaForTemplate = (templateName: string) => {
     return metaTemplates.find(m => m.name === templateName);
   };
@@ -297,7 +346,7 @@ const CrmNotificationTemplates = () => {
       {/* Meta Templates Selection Modal */}
       {showMetaModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { setShowMetaModal(false); setSelectingForId(null); }}>
-          <div className="bg-background rounded-xl border border-border max-w-3xl w-full max-h-[80vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+          <div className="bg-background rounded-xl border border-border max-w-4xl w-full max-h-[85vh] overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b border-border">
               <div>
                 <h3 className="font-semibold text-foreground">Templates Aprovados na Meta</h3>
@@ -331,19 +380,26 @@ const CrmNotificationTemplates = () => {
               </div>
             </div>
 
-            <div className="overflow-y-auto max-h-[55vh] p-4 space-y-2">
+            <div className="overflow-y-auto max-h-[60vh] p-4 space-y-3">
               {filteredMetaTemplates.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">Nenhum template encontrado</p>
               ) : (
                 filteredMetaTemplates.map((meta, i) => {
-                  const bodyText = getTemplateBodyText(meta.components || []);
-                  const varCount = (bodyText.match(/\{\{(\d+)\}\}/g) || []).length;
+                  const allVars = extractAllVariables(meta.components || []);
+                  const bodyText = getComponentText(meta.components || [], 'BODY');
+                  const headerComp = getTemplateHeader(meta.components || []);
+                  const footerText = getComponentText(meta.components || [], 'FOOTER');
+                  const buttons = getTemplateButtons(meta.components || []);
+                  const headerVars = allVars.filter(v => v.component_type === 'HEADER').length;
+                  const bodyVars = allVars.filter(v => v.component_type === 'BODY').length;
+                  const buttonVars = allVars.filter(v => v.component_type === 'BUTTONS').length;
 
                   return (
-                    <div key={i} className="p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors">
+                    <div key={i} className="p-4 rounded-lg border border-border hover:bg-muted/30 transition-colors">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
+                          {/* Template name & badges */}
+                          <div className="flex items-center gap-2 flex-wrap mb-2">
                             <span className="text-sm font-mono font-semibold text-foreground">{meta.name}</span>
                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 uppercase">
                               {meta.status}
@@ -354,17 +410,75 @@ const CrmNotificationTemplates = () => {
                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
                               {meta.category}
                             </span>
-                            {varCount > 0 && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 border border-blue-500/20">
-                                {varCount} variáve{varCount > 1 ? 'is' : 'l'}
+                          </div>
+
+                          {/* Variable badges by component */}
+                          <div className="flex items-center gap-2 flex-wrap mb-2">
+                            {headerVars > 0 && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600 border border-indigo-500/20 flex items-center gap-1">
+                                <FileText className="w-2.5 h-2.5" /> Cabeçalho: {headerVars} var
+                              </span>
+                            )}
+                            {bodyVars > 0 && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 border border-blue-500/20 flex items-center gap-1">
+                                <FileText className="w-2.5 h-2.5" /> Corpo: {bodyVars} var
+                              </span>
+                            )}
+                            {buttonVars > 0 && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-600 border border-violet-500/20 flex items-center gap-1">
+                                <MousePointerClick className="w-2.5 h-2.5" /> Botões: {buttonVars} var
+                              </span>
+                            )}
+                            {buttons.length > 0 && buttonVars === 0 && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-600 border border-violet-500/20 flex items-center gap-1">
+                                <MousePointerClick className="w-2.5 h-2.5" /> {buttons.length} botão(ões)
+                              </span>
+                            )}
+                            {allVars.length === 0 && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                                Sem variáveis
                               </span>
                             )}
                           </div>
-                          {bodyText && (
-                            <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2 font-mono leading-relaxed">
-                              {bodyText}
-                            </p>
-                          )}
+
+                          {/* Template preview */}
+                          <div className="space-y-1.5 bg-muted/30 rounded-lg p-3 border border-border/50">
+                            {/* Header */}
+                            {headerComp && (
+                              <div className="text-xs">
+                                {headerComp.format === 'TEXT' || headerComp.format === 'text' ? (
+                                  <p className="font-bold text-foreground">{headerComp.text}</p>
+                                ) : (
+                                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                                    <Image className="w-3 h-3" />
+                                    <span className="text-[10px] italic">Cabeçalho: {headerComp.format?.toLowerCase()} (mídia)</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {/* Body */}
+                            {bodyText && (
+                              <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap font-mono line-clamp-3">
+                                {bodyText}
+                              </p>
+                            )}
+                            {/* Footer */}
+                            {footerText && (
+                              <p className="text-[10px] text-muted-foreground italic">{footerText}</p>
+                            )}
+                            {/* Buttons */}
+                            {buttons.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 mt-1.5 pt-1.5 border-t border-border/50">
+                                {buttons.map((btn: any, bi: number) => (
+                                  <span key={bi} className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded-md bg-primary/10 text-primary border border-primary/20 font-medium">
+                                    <MousePointerClick className="w-2.5 h-2.5" />
+                                    {btn.text}
+                                    {btn.type === 'URL' && <span className="text-[9px] opacity-70">↗</span>}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
                         {selectingForId && (
                           <button
@@ -533,19 +647,81 @@ const CrmNotificationTemplates = () => {
                       </div>
                     )}
 
-                    {/* Preview */}
+                    {/* Full Preview */}
                     {showPreview === template.id && metaInfo && (
-                      <div className="rounded-lg border border-border bg-emerald-50/50 dark:bg-emerald-950/20 p-4 space-y-2">
-                        <div className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Preview do Template</div>
-                        {getTemplateHeaderText(metaInfo.components || []) && (
-                          <p className="text-sm font-bold text-foreground">{getTemplateHeaderText(metaInfo.components || [])}</p>
+                      <div className="rounded-lg border border-border bg-emerald-50/50 dark:bg-emerald-950/20 p-4 space-y-3">
+                        <div className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Preview Completo do Template</div>
+                        
+                        {/* Header */}
+                        {(() => {
+                          const header = getTemplateHeader(metaInfo.components || []);
+                          if (!header) return null;
+                          return (
+                            <div className="space-y-1">
+                              <span className="text-[9px] uppercase tracking-wider text-indigo-500 font-semibold flex items-center gap-1">
+                                <FileText className="w-2.5 h-2.5" /> Cabeçalho
+                              </span>
+                              {header.format === 'TEXT' || header.format === 'text' ? (
+                                <p className="text-sm font-bold text-foreground">{header.text}</p>
+                              ) : (
+                                <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                                  <Image className="w-3.5 h-3.5" />
+                                  <span>Mídia: {header.format?.toLowerCase()}</span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+
+                        {/* Body */}
+                        {getComponentText(metaInfo.components || [], 'BODY') && (
+                          <div className="space-y-1">
+                            <span className="text-[9px] uppercase tracking-wider text-blue-500 font-semibold flex items-center gap-1">
+                              <FileText className="w-2.5 h-2.5" /> Corpo
+                            </span>
+                            <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-mono">
+                              {getComponentText(metaInfo.components || [], 'BODY')}
+                            </p>
+                          </div>
                         )}
-                        <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap font-mono">
-                          {getTemplateBodyText(metaInfo.components || [])}
-                        </p>
-                        {getTemplateFooterText(metaInfo.components || []) && (
-                          <p className="text-xs text-muted-foreground italic">{getTemplateFooterText(metaInfo.components || [])}</p>
+
+                        {/* Footer */}
+                        {getComponentText(metaInfo.components || [], 'FOOTER') && (
+                          <div className="space-y-1">
+                            <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">Rodapé</span>
+                            <p className="text-xs text-muted-foreground italic">
+                              {getComponentText(metaInfo.components || [], 'FOOTER')}
+                            </p>
+                          </div>
                         )}
+
+                        {/* Buttons */}
+                        {(() => {
+                          const buttons = getTemplateButtons(metaInfo.components || []);
+                          if (buttons.length === 0) return null;
+                          return (
+                            <div className="space-y-1.5">
+                              <span className="text-[9px] uppercase tracking-wider text-violet-500 font-semibold flex items-center gap-1">
+                                <MousePointerClick className="w-2.5 h-2.5" /> Botões
+                              </span>
+                              <div className="flex flex-wrap gap-2">
+                                {buttons.map((btn: any, bi: number) => (
+                                  <div key={bi} className="flex flex-col gap-0.5">
+                                    <span className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-primary/10 text-primary border border-primary/20 font-medium">
+                                      <MousePointerClick className="w-3 h-3" />
+                                      {btn.text}
+                                    </span>
+                                    <span className="text-[9px] text-muted-foreground pl-1">
+                                      Tipo: {btn.type}
+                                      {btn.url && ` — ${btn.url}`}
+                                      {btn.phone_number && ` — ${btn.phone_number}`}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
                   </div>
@@ -559,37 +735,65 @@ const CrmNotificationTemplates = () => {
                         <span className="text-[10px] text-muted-foreground ml-1">Associe cada variável do template a um campo do sistema</span>
                       </div>
 
-                      <div className="space-y-2">
-                        {currentVars.map((v: any, i: number) => (
-                          <div key={i} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-background">
-                            <div className={`flex-shrink-0 text-xs font-mono font-bold px-2.5 py-1 rounded ${colors.bg} ${colors.text} border ${colors.border}`}>
-                              {`{{${i + 1}}}`}
+                      {/* Group variables by component type */}
+                      {(() => {
+                        const headerVars = currentVars.filter((v: any) => v.component_type === 'HEADER');
+                        const bodyVars = currentVars.filter((v: any) => v.component_type === 'BODY' || !v.component_type);
+                        const buttonVars = currentVars.filter((v: any) => v.component_type === 'BUTTONS');
+
+                        const renderVarGroup = (vars: any[], groupLabel: string, groupInfo: typeof componentTypeLabels.HEADER | null) => {
+                          if (vars.length === 0) return null;
+                          const GroupIcon = groupInfo?.icon || FileText;
+                          return (
+                            <div className="space-y-2" key={groupLabel}>
+                              <div className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider ${groupInfo?.color?.split(' ')[0] || 'text-muted-foreground'}`}>
+                                <GroupIcon className="w-3 h-3" />
+                                {groupLabel}
+                              </div>
+                              {vars.map((v: any) => {
+                                const globalIdx = currentVars.indexOf(v);
+                                return (
+                                  <div key={globalIdx} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-background">
+                                    <div className={`flex-shrink-0 text-xs font-mono font-bold px-2.5 py-1 rounded ${groupInfo?.color || `${colors.bg} ${colors.text} ${colors.border}`}`}>
+                                      {v.label || `{{${v.component_var_index || globalIdx + 1}}}`}
+                                    </div>
+                                    <div className="flex items-center text-muted-foreground">
+                                      <Zap className="w-3.5 h-3.5" />
+                                    </div>
+                                    <select
+                                      value={v.system_field || ''}
+                                      onChange={(e) => updateVariableMapping(template.id, globalIdx, e.target.value)}
+                                      className={`flex-1 px-3 py-2 text-sm rounded-lg border bg-background text-foreground focus:ring-2 focus:ring-primary/30 outline-none ${
+                                        v.system_field ? 'border-emerald-500/30' : 'border-amber-500/30'
+                                      }`}
+                                    >
+                                      <option value="">-- Selecione o campo --</option>
+                                      {availableFields.map(field => (
+                                        <option key={field.value} value={field.value}>
+                                          {field.label} — {field.description}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    {v.system_field ? (
+                                      <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                                    ) : (
+                                      <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
-                            <div className="flex items-center text-muted-foreground">
-                              <Zap className="w-3.5 h-3.5" />
-                            </div>
-                            <select
-                              value={v.system_field || ''}
-                              onChange={(e) => updateVariableMapping(template.id, i, e.target.value)}
-                              className={`flex-1 px-3 py-2 text-sm rounded-lg border bg-background text-foreground focus:ring-2 focus:ring-primary/30 outline-none ${
-                                v.system_field ? 'border-emerald-500/30' : 'border-amber-500/30'
-                              }`}
-                            >
-                              <option value="">-- Selecione o campo --</option>
-                              {availableFields.map(field => (
-                                <option key={field.value} value={field.value}>
-                                  {field.label} — {field.description}
-                                </option>
-                              ))}
-                            </select>
-                            {v.system_field ? (
-                              <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                            ) : (
-                              <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                            )}
+                          );
+                        };
+
+                        return (
+                          <div className="space-y-4">
+                            {renderVarGroup(headerVars, 'Variáveis do Cabeçalho', componentTypeLabels.HEADER)}
+                            {renderVarGroup(bodyVars, 'Variáveis do Corpo', componentTypeLabels.BODY)}
+                            {renderVarGroup(buttonVars, 'Variáveis dos Botões', componentTypeLabels.BUTTONS)}
                           </div>
-                        ))}
-                      </div>
+                        );
+                      })()}
                     </div>
                   )}
 
