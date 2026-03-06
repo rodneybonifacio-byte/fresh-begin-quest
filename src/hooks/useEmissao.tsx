@@ -12,12 +12,25 @@ import { supabase } from "../integrations/supabase/client";
  */
 async function dispararNotificacaoEtiquetaCriada(emissaoResponse: any, emissaoInput: any) {
   try {
-    const data = emissaoResponse?.data || emissaoResponse;
-    const status = String(data?.status || '').toUpperCase().replace(/-/g, '_');
+    console.log('🔍 [NotifEtiqueta] Response recebida:', JSON.stringify(emissaoResponse).substring(0, 500));
+    console.log('🔍 [NotifEtiqueta] Input original:', JSON.stringify(emissaoInput).substring(0, 500));
 
-    // Só dispara para PRE_POSTADO
-    if (status !== 'PRE_POSTADO') {
-      console.log('ℹ️ Notificação ignorada — status:', status);
+    const data = emissaoResponse?.data || emissaoResponse;
+    
+    // Tentar extrair status de múltiplos caminhos possíveis
+    const rawStatus = data?.status || data?.statusDescricao || data?.statusEmissao || emissaoResponse?.status || '';
+    const status = String(rawStatus).toUpperCase().replace(/[-\s]/g, '_');
+
+    console.log('🔍 [NotifEtiqueta] Status extraído:', status, '| rawStatus:', rawStatus);
+
+    // Aceitar qualquer status que indique emissão bem-sucedida
+    const statusValidos = ['PRE_POSTADO', 'PREPOSTADO', 'CRIADO', 'EMITIDO', 'POSTADO'];
+    const emissaoBemSucedida = statusValidos.some(s => status.includes(s)) || 
+                                // Se não tem status mas tem código de rastreio, foi emitida com sucesso
+                                !!(data?.codigoObjeto || data?.codigo_objeto);
+    
+    if (!emissaoBemSucedida) {
+      console.log('ℹ️ Notificação ignorada — status não reconhecido:', status);
       return;
     }
 
@@ -44,8 +57,11 @@ async function dispararNotificacaoEtiquetaCriada(emissaoResponse: any, emissaoIn
     const remetenteNome = String(
       data?.remetente?.nome ||
       emissaoInput?.remetente?.nome ||
+      emissaoInput?.remetenteNome ||
       'Remetente'
     ).trim();
+
+    console.log('🔍 [NotifEtiqueta] Dados extraídos:', { codigoRastreio, destinatarioPhone, destinatarioNome, remetenteNome });
 
     if (!destinatarioPhone || !codigoRastreio) {
       console.log('ℹ️ Notificação etiqueta_criada ignorada (telefone ou rastreio ausente)', {
