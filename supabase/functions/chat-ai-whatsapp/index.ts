@@ -2086,7 +2086,7 @@ async function performHandoffToVeronica(
   channel: { channel_id: string; access_key: string }
 ) {
   try {
-    const handoffMessage = "Sem problemas! Vou te passar pra Veronica agora, ela vai continuar te atendendo. Um momento 😊";
+    const handoffMessage = "*Felipe:*\n\nSem problemas! Vou te passar pra Veronica agora, ela vai continuar te atendendo. Um momento 😊";
 
     await fetch("https://conversations.messagebird.com/v1/send", {
       method: "POST",
@@ -2100,7 +2100,8 @@ async function performHandoffToVeronica(
       });
     });
 
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    // Delay profissional para transição natural
+    await new Promise(resolve => setTimeout(resolve, 5000));
 
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) return;
@@ -2128,7 +2129,8 @@ Tom amigável, informal, acolhedor. Máximo 2-3 frases. Use emojis moderados.`;
 
     if (!veronicaResponse.ok) return;
     const veronicaData = await veronicaResponse.json();
-    const veronicaReply = veronicaData.choices?.[0]?.message?.content || `Oi ${greeting}, aqui é a Veronica de novo! Como posso te ajudar? 😊`;
+    const veronicaRaw = veronicaData.choices?.[0]?.message?.content || `Oi ${greeting}, aqui é a Veronica de novo! Como posso te ajudar? 😊`;
+    const veronicaReply = `*Veronica:*\n\n${veronicaRaw}`;
 
     const mbText = await fetch("https://conversations.messagebird.com/v1/send", {
       method: "POST",
@@ -2179,7 +2181,8 @@ async function performHandoffToFelipe(
       });
     });
 
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Delay profissional para transição natural
+    await new Promise(resolve => setTimeout(resolve, 5000));
 
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) return;
@@ -2207,7 +2210,8 @@ Tom calmo, confiante, informal. Máximo 3-4 frases. SEM emojis (vai virar áudio
 
     if (!felipeResponse.ok) return;
     const felipeData = await felipeResponse.json();
-    const felipeReply = felipeData.choices?.[0]?.message?.content || "E aí, aqui é o Felipe. A Veronica me passou sua situação e vou te ajudar a resolver.";
+    const felipeRaw = felipeData.choices?.[0]?.message?.content || "E aí, aqui é o Felipe. A Veronica me passou sua situação e vou te ajudar a resolver.";
+    const felipeReply = `*Felipe:*\n\n${felipeRaw}`;
 
     let audioSent = false;
     const elevenLabsKey = Deno.env.get("ELEVENLABS_API_KEY");
