@@ -2036,13 +2036,14 @@ async function updateConversationTags(supabase: any, conversationId: string, use
 async function ensureTicketOpen(supabase: any, conversationId: string, contactPhone: string, userMessage: string) {
   try {
     // Verificar se tem ticket open OU pending_close
-    const { data: existingTicket } = await supabase
+    const { data: ticketList } = await supabase
       .from("whatsapp_tickets")
       .select("id, message_count, status")
       .eq("conversation_id", conversationId)
       .in("status", ["open", "pending_close"])
-      .limit(1)
-      .single();
+      .limit(1);
+
+    const existingTicket = ticketList?.[0] || null;
 
     if (existingTicket) {
       const updates: any = {
