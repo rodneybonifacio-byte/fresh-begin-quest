@@ -1445,18 +1445,27 @@ async function logInteraction(supabase: any, data: any) {
 async function detectAndCreateSupportTicket(supabase: any, conversationId: string, contactPhone: string, userMessage: string, _aiReply: string, agentName: string) {
   try {
     const lowerMsg = (userMessage || "").toLowerCase();
+    
+    // Regras de categorização por keyword
     const categoryRules: { keywords: string[]; category: string; priority: string }[] = [
-      { keywords: ["procon", "processo", "advogado", "pior empresa", "denúncia"], category: "reclamacao", priority: "urgente" },
-      { keywords: ["péssimo", "horrível", "absurdo", "lixo", "nunca mais"], category: "reclamacao", priority: "urgente" },
+      { keywords: ["procon", "processo", "advogado", "pior empresa", "denúncia", "reclame aqui"], category: "reclamacao", priority: "urgente" },
+      { keywords: ["péssimo", "horrível", "absurdo", "lixo", "nunca mais", "vou processar"], category: "reclamacao", priority: "urgente" },
       { keywords: ["reclamar", "reclamação", "insatisfeito", "problema grave"], category: "reclamacao", priority: "alta" },
-      { keywords: ["extraviou", "extraviado", "roubado", "furto", "sumiu", "perdido"], category: "rastreio", priority: "urgente" },
-      { keywords: ["não chegou", "demora", "atraso", "atrasado"], category: "rastreio", priority: "alta" },
-      { keywords: ["danificado", "quebrado", "avariado", "amassado"], category: "reclamacao", priority: "alta" },
+      { keywords: ["extraviou", "extraviado", "roubado", "furto", "sumiu", "perdido", "perdida"], category: "rastreio", priority: "urgente" },
+      { keywords: ["não chegou", "nao chegou", "demora", "atraso", "atrasado", "atrasada", "demorando"], category: "rastreio", priority: "alta" },
+      { keywords: ["rastreio", "rastrear", "rastreamento", "código", "cadê", "cade", "onde tá", "onde ta", "quando chega"], category: "rastreio", priority: "normal" },
+      { keywords: ["danificado", "quebrado", "avariado", "amassado", "destruído"], category: "reclamacao", priority: "alta" },
+      { keywords: ["apreendido", "apreensão", "retido", "retida", "retenção"], category: "rastreio", priority: "urgente" },
       { keywords: ["cancelar", "cancelamento", "estornar", "estorno", "reembolso"], category: "cancelamento", priority: "alta" },
-      { keywords: ["cobrado errado", "cobrança indevida", "valor errado"], category: "financeiro", priority: "alta" },
+      { keywords: ["cobrado errado", "cobrança indevida", "valor errado", "fatura", "boleto"], category: "financeiro", priority: "alta" },
+      { keywords: ["saldo", "crédito", "recarga", "pix", "pagamento"], category: "financeiro", priority: "normal" },
+      { keywords: ["etiqueta", "emitir", "emissão", "planilha", "importar"], category: "operacional", priority: "normal" },
+      { keywords: ["cadastro", "senha", "login", "acesso", "conta"], category: "acesso", priority: "normal" },
+      { keywords: ["cotação", "cotacao", "preço", "frete", "simular"], category: "comercial", priority: "normal" },
+      { keywords: ["elogio", "parabéns", "excelente", "ótimo", "muito bom", "nota 10"], category: "elogio", priority: "baixa" },
     ];
 
-    let matchedCategory: string | null = null;
+    let matchedCategory = "duvida"; // default: se não matchou nada, é dúvida geral
     let matchedPriority = "normal";
     for (const rule of categoryRules) {
       if (rule.keywords.some(k => lowerMsg.includes(k))) {
@@ -1465,15 +1474,29 @@ async function detectAndCreateSupportTicket(supabase: any, conversationId: strin
         break;
       }
     }
-    if (!matchedCategory) return;
 
+    // Verificar se já existe card aberto para esta conversa
     const { data: existing } = await supabase
       .from("ai_support_pipeline")
-      .select("id")
+      .select("id, status, category")
       .eq("conversation_id", conversationId)
-      .in("status", ["novo", "em_atendimento", "aguardando", "aberto", "em_andamento"])
+      .not("status", "eq", "concluido")
+      .not("status", "eq", "entregue")
+      .not("status", "eq", "cancelado")
+      .not("status", "eq", "fechado")
       .limit(1);
-    if (existing && existing.length > 0) return;
+
+    if (existing && existing.length > 0) {
+      // Card já existe — atualizar sentimento se necessário
+      const negativePatterns = ["péssimo", "horrível", "absurdo", "pior", "lixo", "nunca mais"];
+      const positivePatterns = ["obrigado", "obrigada", "valeu", "muito bom", "excelente", "parabéns"];
+      if (negativePatterns.some(p => lowerMsg.includes(p))) {
+        await supabase.from("ai_support_pipeline").update({ sentiment: "muito_negativo", updated_at: new Date().toISOString() }).eq("id", existing[0].id);
+      } else if (positivePatterns.some(p => lowerMsg.includes(p))) {
+        await supabase.from("ai_support_pipeline").update({ sentiment: "positivo", updated_at: new Date().toISOString() }).eq("id", existing[0].id);
+      }
+      return;
+    }
 
     const { data: conv } = await supabase
       .from("whatsapp_conversations")
@@ -1481,7 +1504,15 @@ async function detectAndCreateSupportTicket(supabase: any, conversationId: strin
       .eq("id", conversationId)
       .single();
 
-    const sentiment = matchedPriority === "urgente" ? "muito_negativo" : "negativo";
+    // Determinar sentimento inicial
+    const negPatterns = ["péssimo", "horrível", "absurdo", "pior", "lixo", "procon", "processo"];
+    const sentiment = negPatterns.some(p => lowerMsg.includes(p)) ? "muito_negativo"
+      : matchedPriority === "urgente" ? "negativo"
+      : matchedPriority === "alta" ? "negativo"
+      : matchedCategory === "elogio" ? "positivo"
+      : "neutro";
+
+    console.log("📋 Criando card pipeline:", { category: matchedCategory, priority: matchedPriority, sentiment });
 
     await supabase.from("ai_support_pipeline").insert({
       conversation_id: conversationId,
@@ -1495,6 +1526,7 @@ async function detectAndCreateSupportTicket(supabase: any, conversationId: strin
       sentiment,
       detected_by: agentName,
     });
+    console.log("✅ Card pipeline criado para conversa:", conversationId);
   } catch (e) {
     console.warn("⚠️ Erro pipeline:", e);
   }
@@ -1534,6 +1566,7 @@ async function ensureTicketOpen(supabase: any, conversationId: string, contactPh
       last_message_at: new Date().toISOString(),
       message_count: 1,
     });
+    console.log("🎫 Ticket criado para conversa:", conversationId);
   } catch (e) {
     console.warn("⚠️ Erro ticket:", e);
   }
@@ -1544,6 +1577,11 @@ const PIPELINE_FLOWS: Record<string, string[]> = {
   rastreio: ["novo", "verificando", "localizado", "em_transito", "entregue"],
   cancelamento: ["novo", "analise", "processamento", "aprovado", "concluido"],
   financeiro: ["novo", "analise", "processamento", "aprovado", "concluido"],
+  operacional: ["novo", "em_andamento", "concluido"],
+  acesso: ["novo", "em_andamento", "concluido"],
+  comercial: ["novo", "em_andamento", "concluido"],
+  duvida: ["novo", "respondido", "concluido"],
+  elogio: ["novo", "concluido"],
 };
 
 async function progressPipelineStatus(supabase: any, conversationId: string, userMessage: string, aiReply: string) {
@@ -1552,15 +1590,18 @@ async function progressPipelineStatus(supabase: any, conversationId: string, use
       .from("ai_support_pipeline")
       .select("*")
       .eq("conversation_id", conversationId)
-      .not("status", "in", '("concluido","entregue","cancelado")')
+      .not("status", "eq", "concluido")
+      .not("status", "eq", "entregue")
+      .not("status", "eq", "cancelado")
+      .not("status", "eq", "fechado")
       .order("created_at", { ascending: false })
       .limit(1)
       .single();
 
     if (!pipeline) return;
 
-    const category = pipeline.category || "reclamacao";
-    const flow = PIPELINE_FLOWS[category] || PIPELINE_FLOWS.reclamacao;
+    const category = pipeline.category || "duvida";
+    const flow = PIPELINE_FLOWS[category] || PIPELINE_FLOWS.duvida;
     const currentIdx = flow.indexOf(pipeline.status);
     if (currentIdx === -1 || currentIdx >= flow.length - 1) return;
 
@@ -1571,53 +1612,83 @@ async function progressPipelineStatus(supabase: any, conversationId: string, use
     let progressReason = "";
 
     if (category === "rastreio") {
-      if (pipeline.status === "novo" && lowerReply.includes("rastr")) {
+      if (pipeline.status === "novo" && (lowerReply.includes("rastr") || lowerReply.includes("verific") || lowerReply.includes("consult"))) {
         shouldProgress = true; newStatus = "verificando"; progressReason = "IA verificou rastreio";
-      } else if (pipeline.status === "verificando" && (lowerReply.includes("localizado") || lowerReply.includes("encontr"))) {
+      } else if (pipeline.status === "verificando" && (lowerReply.includes("localizado") || lowerReply.includes("encontr") || lowerReply.includes("em trânsito") || lowerReply.includes("em transito"))) {
         shouldProgress = true; newStatus = "localizado"; progressReason = "Pacote localizado";
-      } else if (lowerReply.includes("entregue") || lowerReply.includes("entrega confirmada")) {
+      } else if ((lowerReply.includes("entregue") || lowerReply.includes("entrega confirmada") || lowerReply.includes("foi entregue"))) {
         shouldProgress = true; newStatus = "entregue"; progressReason = "Entrega confirmada";
       }
     } else if (category === "reclamacao") {
       if (pipeline.status === "novo" && lowerReply.length > 50) {
-        shouldProgress = true; newStatus = "triagem"; progressReason = "Triagem inicial";
+        shouldProgress = true; newStatus = "triagem"; progressReason = "Triagem inicial pela IA";
+      } else if (pipeline.status === "triagem" && (lowerReply.includes("investigar") || lowerReply.includes("verificar") || lowerReply.includes("analis"))) {
+        shouldProgress = true; newStatus = "investigacao"; progressReason = "Em investigação";
+      }
+    } else if (category === "duvida") {
+      if (pipeline.status === "novo" && lowerReply.length > 30) {
+        shouldProgress = true; newStatus = "respondido"; progressReason = "Dúvida respondida pela IA";
+      }
+    } else {
+      // Categorias genéricas (operacional, acesso, comercial, financeiro, cancelamento)
+      if (pipeline.status === "novo" && lowerReply.length > 30) {
+        shouldProgress = true; newStatus = flow[1]; progressReason = "Em andamento";
       }
     }
 
-    const resolutionPatterns = ["resolvido", "solucionado", "concluído", "foi corrigido"];
+    // Detectar resolução por keywords
+    const resolutionPatterns = ["resolvido", "solucionado", "concluído", "foi corrigido", "problema resolvido", "tudo certo", "está tudo ok"];
     if (resolutionPatterns.some(p => lowerReply.includes(p))) {
-      shouldProgress = true; newStatus = flow[flow.length - 1]; progressReason = "Resolução detectada";
+      shouldProgress = true; newStatus = flow[flow.length - 1]; progressReason = "Resolução detectada pela IA";
+    }
+
+    // Detectar resolução por agradecimento do cliente (indica satisfação)
+    const gratitudePatterns = ["obrigado", "obrigada", "valeu", "muito obrigado", "agradeço", "perfeito"];
+    if (gratitudePatterns.some(p => lowerMsg.includes(p)) && currentIdx >= 1) {
+      shouldProgress = true; newStatus = flow[flow.length - 1]; progressReason = "Cliente agradeceu — caso resolvido";
     }
 
     if (shouldProgress && newStatus) {
+      console.log("📋 Pipeline progredindo:", { from: pipeline.status, to: newStatus, reason: progressReason });
       await supabase.from("ai_support_pipeline").update({
         status: newStatus,
         resolution: progressReason,
         updated_at: new Date().toISOString(),
       }).eq("id", pipeline.id);
 
-      if (lowerMsg.includes("obrigad") || lowerMsg.includes("valeu")) {
+      // Atualizar sentimento se positivo
+      if (gratitudePatterns.some(p => lowerMsg.includes(p))) {
         await supabase.from("ai_support_pipeline").update({ sentiment: "positivo" }).eq("id", pipeline.id);
       }
     }
   } catch (e) {
-    console.warn("⚠️ Erro pipeline:", e);
+    console.warn("⚠️ Erro pipeline progress:", e);
   }
 }
 
 async function detectTicketResolution(supabase: any, conversationId: string, aiReply: string) {
   try {
     const lowerReply = (aiReply || "").toLowerCase();
-    const resolutionPatterns = ["resolvido", "solucionado", "concluído", "foi entregue", "entregue com sucesso", "estorno realizado"];
-    const isStrong = resolutionPatterns.some(p => lowerReply.includes(p));
+    
+    // Padrões de resolução na resposta da IA
+    const strongPatterns = ["resolvido", "solucionado", "concluído", "foi entregue", "entregue com sucesso", "estorno realizado", "problema corrigido"];
+    // Padrões de finalização mais suaves
+    const softPatterns = ["mais alguma coisa", "posso ajudar em algo mais", "precisa de mais alguma", "qualquer dúvida", "estou à disposição"];
+    
+    const isStrong = strongPatterns.some(p => lowerReply.includes(p));
+    
     if (!isStrong) return;
 
-    await supabase.from("whatsapp_tickets").update({
+    const { data: updated } = await supabase.from("whatsapp_tickets").update({
       status: "resolved",
       resolution: aiReply.substring(0, 200),
       closed_at: new Date().toISOString(),
       closed_by: "ai",
-    }).eq("conversation_id", conversationId).eq("status", "open");
+    }).eq("conversation_id", conversationId).eq("status", "open").select("id");
+
+    if (updated && updated.length > 0) {
+      console.log("🎫 Ticket resolvido automaticamente:", updated[0].id);
+    }
   } catch (e) {
     console.warn("⚠️ Erro ticket resolution:", e);
   }
