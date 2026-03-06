@@ -856,6 +856,8 @@ serve(async (req) => {
       
       // Combinar códigos únicos para contexto
       const allCodes = [...new Set([...historyCodes, ...currentCodes])];
+
+      if (lastCode && allCodes.length > 0) {
         console.log(`📦 Códigos detectados: ${allCodes.join(", ")} | Referência principal: ${lastCode}`);
         
         // Buscar dados detalhados do último código (referência primária)
@@ -900,10 +902,12 @@ serve(async (req) => {
           trackingContext += `\nCódigo: ${lastCode} (não encontrado no banco — pode ser de outra transportadora ou ainda não registrado)`;
         }
         
-        if (allCodes.length > 1) {
-          trackingContext += `\n\n⚠️ O cliente mencionou MAIS DE UM código nesta conversa: ${allCodes.join(", ")}. O código de referência atual é ${lastCode}. Se o cliente enviar uma pergunta genérica (ex: "cadê meu pacote?"), PERGUNTE sobre qual etiqueta ele está se referindo, listando os códigos mencionados. Só responda sobre uma etiqueta específica quando o cliente confirmar.`;
+        if (allCodes.length > 1 && currentCodes.length > 0) {
+          trackingContext += `\n\n⚠️ ATENÇÃO: O cliente ACABOU DE INFORMAR o código ${currentCodes[currentCodes.length - 1]}. USE ESTE CÓDIGO como referência principal, independente de códigos anteriores no histórico.`;
+        } else if (allCodes.length > 1) {
+          trackingContext += `\n\n⚠️ Múltiplos códigos no histórico: ${allCodes.join(", ")}. Referência atual: ${lastCode}. Se o cliente fizer pergunta genérica, pergunte qual código.`;
         } else {
-          trackingContext += `\n\nEste é o código de referência para este atendimento. Todas as perguntas do cliente devem ser respondidas com base nesta etiqueta, a menos que ele informe outro código.`;
+          trackingContext += `\nEste é o código de referência para este atendimento.`;
         }
       }
     } catch (trackErr) {
