@@ -24,7 +24,17 @@ export const useRecargaPixRealtime = ({
       return;
     }
 
-    console.log('🔔 Iniciando listener de pagamentos PIX em tempo real...');
+    // Obter o token JWT customizado para autenticar no Realtime
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.log('⚠️ Sem token JWT, não é possível monitorar pagamentos PIX em tempo real');
+      return;
+    }
+
+    console.log('🔔 Iniciando listener de pagamentos PIX em tempo real (com JWT customizado)...');
+
+    // Definir o token no Realtime para que as políticas RLS funcionem
+    supabase.realtime.setAuth(token);
 
     const channel = supabase
       .channel('recargas-pix-changes')
