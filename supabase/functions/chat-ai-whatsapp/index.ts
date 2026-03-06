@@ -1963,6 +1963,76 @@ async function detectAndCreateSupportTicket(supabase: any, conversationId: strin
   }
 }
 
+// ═══════════════════════════════════════════════════════════
+// HELPER: Tags de Conversa
+// ═══════════════════════════════════════════════════════════
+
+async function updateConversationTags(supabase: any, conversationId: string, userMessage: string, aiReply: string, detectedCategory: string) {
+  try {
+    const lowerMsg = (userMessage || "").toLowerCase();
+    const lowerReply = (aiReply || "").toLowerCase();
+    
+    // Buscar tags atuais
+    const { data: conv } = await supabase
+      .from("whatsapp_conversations")
+      .select("tags")
+      .eq("id", conversationId)
+      .maybeSingle();
+    
+    const currentTags: string[] = conv?.tags || [];
+    const newTags = new Set(currentTags);
+    
+    // Tag por categoria detectada
+    if (detectedCategory && detectedCategory !== "duvida") {
+      newTags.add(detectedCategory);
+    }
+    
+    // Tags por keywords na mensagem do usuário
+    const tagRules: { keywords: string[]; tag: string }[] = [
+      { keywords: ["rastreio", "rastrear", "rastreamento", "cadê", "cade", "onde tá", "onde ta", "quando chega"], tag: "rastreio" },
+      { keywords: ["atraso", "atrasado", "atrasada", "demorando", "não chegou", "nao chegou", "demora"], tag: "atraso" },
+      { keywords: ["extraviou", "extraviado", "sumiu", "perdido", "perdida", "roubado"], tag: "extravio" },
+      { keywords: ["danificado", "quebrado", "avariado", "amassado", "destruído"], tag: "avaria" },
+      { keywords: ["apreendido", "apreensão", "retido", "retida", "retenção"], tag: "retido" },
+      { keywords: ["manifestação", "manifestacao", "reclamação", "reclamacao", "reclamar"], tag: "reclamacao" },
+      { keywords: ["cancelar", "cancelamento", "estornar", "estorno", "reembolso"], tag: "cancelamento" },
+      { keywords: ["etiqueta", "emitir", "emissão", "planilha"], tag: "etiqueta" },
+      { keywords: ["saldo", "crédito", "recarga", "pix", "pagamento"], tag: "financeiro" },
+      { keywords: ["cotação", "cotacao", "preço", "frete", "simular"], tag: "comercial" },
+    ];
+    
+    for (const rule of tagRules) {
+      if (rule.keywords.some(k => lowerMsg.includes(k))) {
+        newTags.add(rule.tag);
+      }
+    }
+    
+    // Tags por resultado da IA
+    if (lowerReply.includes("entregue") || lowerReply.includes("foi entregue")) {
+      newTags.add("entregue");
+      newTags.delete("atraso"); // Remover atraso se já entregou
+    }
+    if (lowerReply.includes("em trânsito") || lowerReply.includes("em transito")) {
+      newTags.add("em_transito");
+    }
+    if (lowerReply.includes("aguardando retirada")) {
+      newTags.add("aguardando_retirada");
+    }
+    
+    // Só atualizar se houve mudança
+    const finalTags = Array.from(newTags);
+    if (JSON.stringify(finalTags.sort()) !== JSON.stringify(currentTags.sort())) {
+      await supabase
+        .from("whatsapp_conversations")
+        .update({ tags: finalTags, updated_at: new Date().toISOString() })
+        .eq("id", conversationId);
+      console.log("🏷️ Tags atualizadas:", finalTags);
+    }
+  } catch (e) {
+    console.warn("⚠️ Erro ao atualizar tags:", e);
+  }
+}
+
 async function ensureTicketOpen(supabase: any, conversationId: string, contactPhone: string, userMessage: string) {
   try {
     // Verificar se tem ticket open OU pending_close
