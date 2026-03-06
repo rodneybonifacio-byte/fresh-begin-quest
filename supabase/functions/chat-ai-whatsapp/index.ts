@@ -1089,9 +1089,10 @@ serve(async (req) => {
 
     console.log("🤖 Resposta final:", aiReply.substring(0, 150));
 
-    // === PIPELINE & TICKETS ===
+    // === PIPELINE & TICKETS & TAGS ===
     await ensureTicketOpen(supabase, conversationId, contactPhone, message);
-    await detectAndCreateSupportTicket(supabase, conversationId, contactPhone, message, aiReply, agentName);
+    const detectedCategory = await detectAndCreateSupportTicket(supabase, conversationId, contactPhone, message, aiReply, agentName);
+    await updateConversationTags(supabase, conversationId, message, aiReply, detectedCategory);
     await progressPipelineStatus(supabase, conversationId, message, aiReply);
     await detectTicketResolution(supabase, conversationId, aiReply);
 
