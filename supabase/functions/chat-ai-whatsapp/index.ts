@@ -279,6 +279,122 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
         return result;
       }
 
+      // ── Abrir manifestação/reclamação interna com dados da etiqueta ──
+      case "abrir_manifestacao": {
+        const codigoObjeto = (args.codigo_rastreio || "").trim().toUpperCase();
+        if (!codigoObjeto) return "Preciso do código de rastreio para abrir a manifestação.";
+        const motivo = args.motivo || "Reclamação do destinatário";
+        const descricaoExtra = args.descricao || "";
+
+        // 1. Buscar em pedidos_importados
+        let shipmentData: any = null;
+        const { data: pedido } = await supabase
+          .from("pedidos_importados")
+          .select("destinatario_nome, destinatario_telefone, destinatario_cep, destinatario_cidade, destinatario_estado, destinatario_logradouro, destinatario_numero, destinatario_bairro, remetente_id, cliente_id, servico_frete, numero_pedido")
+          .eq("codigo_rastreio", codigoObjeto)
+          .limit(1)
+          .single();
+
+        if (pedido) {
+          shipmentData = { source: "pedidos_importados", ...pedido };
+        }
+
+        // 2. Fallback: buscar em emissoes_externas
+        if (!shipmentData) {
+          const { data: emissao } = await supabase
+            .from("emissoes_externas")
+            .select("destinatario_nome, destinatario_cep, destinatario_cidade, destinatario_uf, destinatario_logradouro, destinatario_numero, destinatario_bairro, remetente_id, cliente_id, servico, codigo_objeto")
+            .eq("codigo_objeto", codigoObjeto)
+            .limit(1)
+            .single();
+
+          if (emissao) {
+            shipmentData = { source: "emissoes_externas", ...emissao };
+          }
+        }
+
+        if (!shipmentData) return `Não encontrei nenhuma etiqueta com o código ${codigoObjeto}. Verifique se o código está correto.`;
+
+        // 3. Buscar dados do remetente
+        let remetenteNome = "N/A";
+        let remetenteTelefone = "N/A";
+        let remetenteEmail = "N/A";
+        if (shipmentData.remetente_id) {
+          const { data: rem } = await supabase
+            .from("remetentes")
+            .select("nome, celular, telefone, email, localidade, uf")
+            .eq("id", shipmentData.remetente_id)
+            .single();
+          if (rem) {
+            remetenteNome = rem.nome || "N/A";
+            remetenteTelefone = rem.celular || rem.telefone || "N/A";
+            remetenteEmail = rem.email || "N/A";
+          }
+        }
+
+        // 4. Montar descrição completa
+        const destNome = shipmentData.destinatario_nome || "N/A";
+        const destTel = shipmentData.destinatario_telefone || contactPhone || "N/A";
+        const destCidade = shipmentData.destinatario_cidade || "N/A";
+        const destUF = shipmentData.destinatario_estado || shipmentData.destinatario_uf || "N/A";
+        const servico = shipmentData.servico_frete || shipmentData.servico || "N/A";
+
+        const descricaoCompleta = `📦 MANIFESTAÇÃO — ${codigoObjeto}\n` +
+          `Motivo: ${motivo}\n` +
+          `${descricaoExtra ? `Detalhes: ${descricaoExtra}\n` : ""}` +
+          `\n👤 DESTINATÁRIO:\n` +
+          `Nome: ${destNome}\nTelefone: ${destTel}\nCidade: ${destCidade}-${destUF}\n` +
+          `\n📤 REMETENTE:\n` +
+          `Nome: ${remetenteNome}\nTelefone: ${remetenteTelefone}\nEmail: ${remetenteEmail}\n` +
+          `\n🚚 Serviço: ${servico}`;
+
+        // 5. Criar card no pipeline
+        const { data: conv } = await supabase
+          .from("whatsapp_conversations")
+          .select("contact_name")
+          .eq("id", conversationId)
+          .single();
+
+        await supabase.from("ai_support_pipeline").insert({
+          conversation_id: conversationId,
+          contact_phone: contactPhone,
+          contact_name: conv?.contact_name || destNome,
+          category: "reclamacao",
+          priority: "alta",
+          status: "novo",
+          subject: `Manifestação: ${codigoObjeto} — ${motivo.substring(0, 80)}`,
+          description: descricaoCompleta.substring(0, 1000),
+          sentiment: "negativo",
+          detected_by: "tool_manifestacao",
+        });
+
+        // 6. Também criar/atualizar ticket
+        const { data: existingTicket } = await supabase
+          .from("whatsapp_tickets")
+          .select("id")
+          .eq("conversation_id", conversationId)
+          .eq("status", "open")
+          .limit(1)
+          .single();
+
+        if (!existingTicket) {
+          await supabase.from("whatsapp_tickets").insert({
+            conversation_id: conversationId,
+            contact_phone: contactPhone,
+            contact_name: conv?.contact_name || destNome,
+            status: "open",
+            category: "reclamacao",
+            priority: "alta",
+            subject: `Manifestação: ${codigoObjeto}`,
+            description: descricaoCompleta.substring(0, 500),
+          });
+        }
+
+        return `Manifestação registrada com sucesso!\n\n` +
+          `Código: ${codigoObjeto}\nDestinatário: ${destNome}\nRemetente: ${remetenteNome}\nServiço: ${servico}\nMotivo: ${motivo}\n\n` +
+          `A equipe vai analisar e dar retorno.`;
+      }
+
       default:
         return `Ferramenta "${toolName}" não tem executor implementado.`;
     }
@@ -1398,7 +1514,12 @@ REGRA CRÍTICA — VOCÊ É A BRHUB:
 - NUNCA diga "entre em contato com os Correios", "fale com a transportadora", "ligue para os Correios", "procure a Secretaria da Fazenda" ou qualquer variação.
 - NUNCA terceirize a resolução. O problema é NOSSO e NÓS vamos resolver.
 - Se houver apreensão, extravio, atraso ou qualquer incidente: demonstre que você vai cuidar pessoalmente. Ex: "vou verificar direto com a operação e te dou um retorno", "já estou acompanhando isso aqui".
-- Se for algo fora do seu alcance imediato: "vou escalar pro nosso time de operações e te retorno com uma posição, tá?". NUNCA mande o cliente resolver sozinho.`;
+- Se for algo fora do seu alcance imediato: "vou escalar pro nosso time de operações e te retorno com uma posição, tá?". NUNCA mande o cliente resolver sozinho.
+
+MANIFESTAÇÃO / RECLAMAÇÃO:
+- Se o destinatário informar um código de rastreio e pedir para abrir manifestação ou reclamação, use a ferramenta "abrir_manifestacao" com o código e o motivo.
+- A ferramenta vai consultar automaticamente os dados do envio (destinatário, remetente, serviço) e registrar tudo no pipeline.
+- Após usar a ferramenta, confirme ao cliente que a manifestação foi registrada e que você está acompanhando pessoalmente.`;
   }
   return `Você é a Veronica, do Time de Suporte da BRHUB Envios — plataforma de logística com fretes até 70% mais baratos via contratos com Correios, Jadlog, Loggi e Azul.
 
@@ -1420,6 +1541,11 @@ REGRA CRÍTICA — VOCÊ É A BRHUB:
 - NUNCA terceirize a resolução do problema. O problema é NOSSO e NÓS vamos resolver.
 - Se houver apreensão, extravio, atraso ou qualquer incidente: assuma a responsabilidade. Ex: "vou verificar isso pra vc", "já estou vendo o que aconteceu".
 - Se for algo fora do seu alcance: "vou acionar nosso time de operações e te retorno 😊". NUNCA mande o cliente resolver sozinho.
+
+MANIFESTAÇÃO / RECLAMAÇÃO:
+- Se o destinatário informar um código de rastreio e pedir para abrir manifestação ou reclamação, use a ferramenta "abrir_manifestacao" com o código e o motivo.
+- A ferramenta vai consultar automaticamente os dados do envio (destinatário, remetente, serviço) e registrar tudo no pipeline.
+- Após usar a ferramenta, confirme ao cliente que a manifestação foi registrada e que a equipe vai analisar.
 
 TRANSFERÊNCIA PRO FELIPE:
 - Se o cliente tiver problema GRAVE (extravio, dano, cobrança errada, reclamação forte, ameaça jurídica), demonstre empatia. O sistema transfere automaticamente.
@@ -1451,6 +1577,7 @@ async function detectAndCreateSupportTicket(supabase: any, conversationId: strin
       { keywords: ["procon", "processo", "advogado", "pior empresa", "denúncia", "reclame aqui"], category: "reclamacao", priority: "urgente" },
       { keywords: ["péssimo", "horrível", "absurdo", "lixo", "nunca mais", "vou processar"], category: "reclamacao", priority: "urgente" },
       { keywords: ["reclamar", "reclamação", "insatisfeito", "problema grave"], category: "reclamacao", priority: "alta" },
+      { keywords: ["manifestação", "manifestacao", "abrir manifestação", "abrir manifestacao", "abrir reclamação", "abrir reclamacao", "registrar reclamação", "registrar reclamacao"], category: "reclamacao", priority: "alta" },
       { keywords: ["extraviou", "extraviado", "roubado", "furto", "sumiu", "perdido", "perdida"], category: "rastreio", priority: "urgente" },
       { keywords: ["não chegou", "nao chegou", "demora", "atraso", "atrasado", "atrasada", "demorando"], category: "rastreio", priority: "alta" },
       { keywords: ["rastreio", "rastrear", "rastreamento", "código", "cadê", "cade", "onde tá", "onde ta", "quando chega"], category: "rastreio", priority: "normal" },
