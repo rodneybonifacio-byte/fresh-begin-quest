@@ -17,19 +17,79 @@ async function dispararNotificacaoEtiquetaCriada(emissaoResponse: any, emissaoIn
     console.log('🔍 [NotifEtiqueta] Input original:', JSON.stringify(emissaoInput).substring(0, 500));
 
     const data = emissaoResponse?.data || emissaoResponse;
-    
-    // Tentar extrair status de múltiplos caminhos possíveis
-    const rawStatus = data?.status || data?.statusDescricao || data?.statusEmissao || emissaoResponse?.status || '';
-    const status = String(rawStatus).toUpperCase().replace(/[-\s]/g, '_');
+    const freteItem =
+      (Array.isArray(data?.frete) && data.frete[0]) ||
+      (Array.isArray(emissaoResponse?.frete) && emissaoResponse.frete[0]) ||
+      null;
 
-    console.log('🔍 [NotifEtiqueta] Status extraído:', status, '| rawStatus:', rawStatus);
+    const normalizeStatus = (raw: any) => String(raw ?? '').toUpperCase().replace(/[-\s]/g, '_');
+
+    let status = normalizeStatus(
+      data?.status ||
+      data?.statusDescricao ||
+      data?.statusEmissao ||
+      freteItem?.status ||
+      freteItem?.statusDescricao ||
+      freteItem?.statusEmissao ||
+      emissaoResponse?.status ||
+      ''
+    );
+
+    const emissaoId = String(data?.id || emissaoResponse?.id || '').trim();
+
+    let codigoRastreio = String(
+      data?.codigoObjeto ||
+      data?.codigo_objeto ||
+      freteItem?.codigoObjeto ||
+      freteItem?.codigo_objeto ||
+      ''
+    ).trim();
+
+    if (!codigoRastreio && emissaoId) {
+      try {
+        for (let tentativa = 1; tentativa <= 3 && !codigoRastreio; tentativa++) {
+          if (tentativa > 1) {
+            await new Promise((resolve) => setTimeout(resolve, 700));
+          }
+
+          const emissaoDetalhe = await new EmissaoService().getById(emissaoId);
+          const detalhe: any = emissaoDetalhe?.data || emissaoDetalhe;
+
+          codigoRastreio = String(
+            detalhe?.codigoObjeto ||
+            detalhe?.codigo_objeto ||
+            ''
+          ).trim();
+
+          if (!status) {
+            status = normalizeStatus(
+              detalhe?.status ||
+              detalhe?.statusDescricao ||
+              detalhe?.statusEmissao ||
+              ''
+            );
+          }
+
+          console.log('🔍 [NotifEtiqueta] Tentativa de busca por ID:', {
+            emissaoId,
+            tentativa,
+            codigoRastreio,
+            status,
+          });
+        }
+      } catch (lookupErr) {
+        console.warn('⚠️ [NotifEtiqueta] Falha ao buscar emissão por ID para obter rastreio:', lookupErr);
+      }
+    }
+
+    console.log('🔍 [NotifEtiqueta] Status extraído:', status);
 
     // Aceitar qualquer status que indique emissão bem-sucedida
     const statusValidos = ['PRE_POSTADO', 'PREPOSTADO', 'CRIADO', 'EMITIDO'];
-    const emissaoBemSucedida = statusValidos.some(s => status.includes(s)) || 
+    const emissaoBemSucedida = statusValidos.some(s => status.includes(s)) ||
                                 // Se não tem status mas tem código de rastreio, foi emitida com sucesso
-                                (!status.includes('POSTADO') && !!(data?.codigoObjeto || data?.codigo_objeto));
-    
+                                (!status.includes('POSTADO') && !!codigoRastreio);
+
     if (!emissaoBemSucedida) {
       console.log('ℹ️ Notificação ignorada — status não reconhecido:', status);
       return;
@@ -37,11 +97,9 @@ async function dispararNotificacaoEtiquetaCriada(emissaoResponse: any, emissaoIn
 
     const digitsOnly = (v: any) => String(v ?? '').replace(/\D/g, '');
 
-    const codigoRastreio = String(
-      data?.codigoObjeto || data?.codigo_objeto || ''
-    ).trim();
-
     const destinatarioPhone = digitsOnly(
+      freteItem?.destinatario?.celular ||
+      freteItem?.destinatario?.telefone ||
       data?.destinatario?.celular ||
       data?.destinatario?.telefone ||
       emissaoInput?.destinatario?.celular ||
@@ -50,6 +108,7 @@ async function dispararNotificacaoEtiquetaCriada(emissaoResponse: any, emissaoIn
     );
 
     const destinatarioNome = String(
+      freteItem?.destinatario?.nome ||
       data?.destinatario?.nome ||
       emissaoInput?.destinatario?.nome ||
       'Cliente'
