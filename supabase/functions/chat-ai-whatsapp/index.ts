@@ -1145,9 +1145,11 @@ serve(async (req) => {
         })
         .eq("id", conversationId);
 
-      // === HANDOFF VERONICA → FELIPE ===
+      // === HANDOFF VERONICA → FELIPE (pós-resposta, só se NÃO veio do pré-handoff) ===
+      // O pré-handoff já fez a transição com mensagem profissional, não duplicar
       if (agentName === "veronica" && detectHandoffTrigger(message, aiReply)) {
-        console.log("🔄 Handoff: Veronica → Felipe");
+        // Se chegou aqui como veronica, o pré-handoff NÃO disparou (edge case)
+        console.log("🔄 Handoff pós-resposta: Veronica → Felipe");
         await performHandoffToFelipe(supabase, conversationId, contactPhone, message, channel);
       }
 
