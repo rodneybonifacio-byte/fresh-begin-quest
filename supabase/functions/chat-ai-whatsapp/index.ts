@@ -839,20 +839,23 @@ serve(async (req) => {
       // Detectar códigos na mensagem atual
       const currentCodes = (userContent || "").match(trackingRegex) || [];
       
-      // Detectar códigos no histórico recente (últimas 10 mensagens inbound)
+      // Detectar códigos no histórico recente (últimas 5 mensagens inbound apenas)
       const historyCodes: string[] = [];
       if (history) {
-        for (const msg of history.filter((m: any) => m.direction === "inbound").slice(-10)) {
+        for (const msg of history.filter((m: any) => m.direction === "inbound").slice(-5)) {
           const codes = (msg.content || "").match(trackingRegex) || [];
           historyCodes.push(...codes);
         }
       }
       
-      // Combinar: códigos únicos, priorizando o mais recente
-      const allCodes = [...new Set([...historyCodes, ...currentCodes])];
+      // PRIORIDADE: código da mensagem ATUAL sempre vence
+      // Se o cliente mencionou um código agora, esse é o código de referência
+      const lastCode = currentCodes.length > 0 
+        ? currentCodes[currentCodes.length - 1] 
+        : (historyCodes.length > 0 ? historyCodes[historyCodes.length - 1] : null);
       
-      if (allCodes.length > 0) {
-        const lastCode = currentCodes.length > 0 ? currentCodes[currentCodes.length - 1] : allCodes[allCodes.length - 1];
+      // Combinar códigos únicos para contexto
+      const allCodes = [...new Set([...historyCodes, ...currentCodes])];
         console.log(`📦 Códigos detectados: ${allCodes.join(", ")} | Referência principal: ${lastCode}`);
         
         // Buscar dados detalhados do último código (referência primária)
