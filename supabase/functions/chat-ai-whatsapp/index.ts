@@ -433,7 +433,7 @@ serve(async (req) => {
 
     let agentName = agent || "veronica";
 
-    // === PRÉ-HANDOFF: Se Veronica e mensagem contém keywords de atraso/problema grave → Felipe assume ANTES de responder ===
+    // === PRÉ-HANDOFF: Se Veronica e mensagem contém keywords de atraso/problema grave → Felipe assume COM aviso profissional ===
     if (agentName === "veronica" && message) {
       const lowerMsg = (message || "").toLowerCase();
       const preHandoffKeywords = [
@@ -449,7 +449,36 @@ serve(async (req) => {
         "danificado", "danificada", "quebrado", "quebrada", "avariado", "avariada",
       ];
       if (preHandoffKeywords.some(k => lowerMsg.includes(k))) {
-        console.log(`🔄 PRÉ-HANDOFF: Keyword detectada em "${message.substring(0, 50)}..." → Felipe assume`);
+        console.log(`🔄 PRÉ-HANDOFF: Keyword detectada em "${message.substring(0, 50)}..." → Veronica avisa e Felipe assume`);
+
+        // Resolver canal para enviar mensagem de transição da Veronica
+        const preHandoffChannel = await resolveChannelForConversation(conversationId);
+        if (preHandoffChannel) {
+          // Buscar nome do contato para personalizar
+          const { data: convPre } = await supabase.from("whatsapp_conversations")
+            .select("contact_name").eq("id", conversationId).single();
+          const firstName = convPre?.contact_name ? convPre.contact_name.split(" ")[0] : "";
+          const nameGreeting = firstName ? `${firstName}, ` : "";
+
+          // Mensagem profissional da Veronica explicando a transferência
+          const veronicaHandoffMsg = `*Veronica:*\n\n${nameGreeting}entendi sua situação! Para esse tipo de caso, nosso time de Suporte Nível 2 é quem cuida diretamente. Vou te passar pro Felipe, que é nosso especialista em resoluções — ele vai analisar tudo e te dar um retorno completo, tá? Um instante 😊`;
+
+          await fetch("https://conversations.messagebird.com/v1/send", {
+            method: "POST",
+            headers: { Authorization: `AccessKey ${preHandoffChannel.access_key}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ to: contactPhone, from: preHandoffChannel.channel_id, type: "text", content: { text: veronicaHandoffMsg } }),
+          }).then(r => r.json()).then(async (mbResult) => {
+            await supabase.from("whatsapp_messages").insert({
+              conversation_id: conversationId, messagebird_id: mbResult.id || null,
+              direction: "outbound", content_type: "text", content: veronicaHandoffMsg,
+              status: "sent", sent_by: "veronica", ai_generated: true,
+            });
+          });
+
+          // Delay profissional para transição (3 segundos)
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+
         agentName = "felipe";
         await supabase.from("whatsapp_conversations")
           .update({ active_agent: "felipe" })
@@ -1561,18 +1590,75 @@ function formatTrackingForAI(rastreioData: any): string {
   if (dados?.codigoObjeto) result += `Código: ${dados.codigoObjeto}\n`;
   if (dados?.servico) result += `Serviço: ${dados.servico}\n`;
   if (dados?.dataPrevisaoEntrega) result += `Previsão de entrega: ${dados.dataPrevisaoEntrega}\n`;
+
+  // Extrair endereço de retirada/entrega do último evento (se aguardando retirada)
+  if (dados?.enderecoRetirada) {
+    result += `📍 Endereço de retirada: ${dados.enderecoRetirada}\n`;
+  }
+
   if (eventos.length > 0) {
     result += `Últimos eventos:\n`;
-    for (const ev of eventos.slice(0, 5)) {
+    for (const ev of eventos.slice(0, 8)) {
       const local = ev.unidade?.cidadeUf || "";
       result += `- ${ev.dataCompleta || ev.date || ""} ${ev.horario || ""}: ${ev.descricao || ""}`;
+
+      // Endereço completo da unidade (se disponível)
+      const unidade = ev.unidade || {};
+      if (unidade.endereco?.logradouro || unidade.endereco?.bairro) {
+        const end = unidade.endereco;
+        const endCompleto = [end.logradouro, end.numero, end.bairro, end.localidade, end.uf, end.cep].filter(Boolean).join(", ");
+        if (endCompleto) result += ` | Endereço: ${endCompleto}`;
+      } else if (unidade.nome && unidade.nome !== local) {
+        result += ` | Unidade: ${unidade.nome}`;
+      }
+
       if (local) result += ` (${local})`;
       if (ev.unidadeDestino?.cidadeUf) result += ` → ${ev.unidadeDestino.cidadeUf}`;
+      
+      // Detalhes adicionais do evento (endereço de retirada, observações)
+      if (ev.detalhe) result += ` — ${ev.detalhe}`;
+      if (ev.enderecoRetirada) result += ` | 📍 Local de retirada: ${ev.enderecoRetirada}`;
+      
+      // Endereço completo do destino (se presente)
+      const dest = ev.unidadeDestino || {};
+      if (dest.endereco?.logradouro) {
+        const endDest = dest.endereco;
+        const endDestCompleto = [endDest.logradouro, endDest.numero, endDest.bairro, endDest.localidade, endDest.uf, endDest.cep].filter(Boolean).join(", ");
+        if (endDestCompleto) result += ` | End. destino: ${endDestCompleto}`;
+      }
+      
       result += "\n";
+    }
+
+    // Extrair endereço de retirada do evento mais recente que indica aguardando retirada
+    const eventoRetirada = eventos.find((ev: any) => {
+      const desc = (ev.descricao || "").toLowerCase();
+      return desc.includes("aguardando retirada") || desc.includes("disponível para retirada") || desc.includes("saiu para entrega");
+    });
+    if (eventoRetirada) {
+      const unidadeRet = eventoRetirada.unidade || {};
+      const endRet = unidadeRet.endereco || {};
+      const enderecoCompleto = [endRet.logradouro, endRet.numero, endRet.bairro, endRet.localidade, endRet.uf, endRet.cep].filter(Boolean).join(", ");
+      if (enderecoCompleto) {
+        result += `\n📍 LOCAL PARA RETIRADA: ${unidadeRet.nome ? unidadeRet.nome + " — " : ""}${enderecoCompleto}\n`;
+      } else if (unidadeRet.nome) {
+        result += `\n📍 LOCAL PARA RETIRADA: ${unidadeRet.nome} (${unidadeRet.cidadeUf || ""})\n`;
+      }
     }
   } else {
     result += "Nenhum evento de rastreio encontrado.\n";
   }
+
+  // Dados adicionais que podem conter endereço
+  if (dados?.destinatario) {
+    const d = dados.destinatario;
+    result += `\nDestinatário: ${d.nome || "N/A"}`;
+    if (d.logradouro || d.localidade) {
+      result += ` | End: ${[d.logradouro, d.numero, d.bairro, d.localidade, d.uf, d.cep].filter(Boolean).join(", ")}`;
+    }
+    result += "\n";
+  }
+
   return result;
 }
 
