@@ -475,8 +475,8 @@ serve(async (req) => {
             });
           });
 
-          // Delay profissional para transição (3 segundos)
-          await new Promise(resolve => setTimeout(resolve, 3000));
+          // Delay profissional para transição natural (5 segundos)
+          await new Promise(resolve => setTimeout(resolve, 5000));
         }
 
         agentName = "felipe";
