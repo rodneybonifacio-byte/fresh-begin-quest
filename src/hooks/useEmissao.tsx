@@ -24,10 +24,10 @@ async function dispararNotificacaoEtiquetaCriada(emissaoResponse: any, emissaoIn
     console.log('🔍 [NotifEtiqueta] Status extraído:', status, '| rawStatus:', rawStatus);
 
     // Aceitar qualquer status que indique emissão bem-sucedida
-    const statusValidos = ['PRE_POSTADO', 'PREPOSTADO', 'CRIADO', 'EMITIDO', 'POSTADO'];
+    const statusValidos = ['PRE_POSTADO', 'PREPOSTADO', 'CRIADO', 'EMITIDO'];
     const emissaoBemSucedida = statusValidos.some(s => status.includes(s)) || 
                                 // Se não tem status mas tem código de rastreio, foi emitida com sucesso
-                                !!(data?.codigoObjeto || data?.codigo_objeto);
+                                (!status.includes('POSTADO') && !!(data?.codigoObjeto || data?.codigo_objeto));
     
     if (!emissaoBemSucedida) {
       console.log('ℹ️ Notificação ignorada — status não reconhecido:', status);
