@@ -2383,7 +2383,7 @@ Tom amigável, informal, acolhedor. Máximo 2-3 frases CURTAS. SEM emojis (vai v
     const veronicaIntroRaw = veronicaIntroData.choices?.[0]?.message?.content || `Oi ${greeting}, aqui é a Veronica de novo! O Felipe me passou sua situação. Como posso te ajudar?`;
     const veronicaIntroReply = `*Veronica:*\n\n${veronicaIntroRaw}`;
 
-    // Sempre enviar intro como ÁUDIO
+    // Sempre enviar intro: texto com nome + áudio sem nome
     let introAudioSent = false;
     const elevenLabsKey = Deno.env.get("ELEVENLABS_API_KEY");
     if (elevenLabsKey) {
@@ -2396,8 +2396,24 @@ Tom amigável, informal, acolhedor. Máximo 2-3 frases CURTAS. SEM emojis (vai v
           style: veronicaConfig?.voice_style ?? 0.0,
           speed: veronicaConfig?.voice_speed ?? 1.0,
         };
-        const audioUrl = await generateTTSAudio(veronicaIntroReply, elevenLabsKey, voiceConfig);
+        // TTS só com o conteúdo, sem o prefixo do nome
+        const audioUrl = await generateTTSAudio(veronicaIntroRaw, elevenLabsKey, voiceConfig);
         if (audioUrl) {
+          // 1. Texto com nome do agente
+          const agentLabel = "*Veronica:*";
+          const mbLabelResp = await fetch("https://conversations.messagebird.com/v1/send", {
+            method: "POST",
+            headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: agentLabel } }),
+          });
+          const mbLabelResult = await mbLabelResp.json();
+          await supabase.from("whatsapp_messages").insert({
+            conversation_id: conversationId, messagebird_id: mbLabelResult.id || null,
+            direction: "outbound", content_type: "text", content: agentLabel,
+            status: "sent", sent_by: "veronica", ai_generated: true,
+          });
+
+          // 2. Áudio sem o nome
           const mbAudio = await fetch("https://conversations.messagebird.com/v1/send", {
             method: "POST",
             headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
@@ -2406,7 +2422,7 @@ Tom amigável, informal, acolhedor. Máximo 2-3 frases CURTAS. SEM emojis (vai v
           const mbAudioResult = await mbAudio.json();
           await supabase.from("whatsapp_messages").insert({
             conversation_id: conversationId, messagebird_id: mbAudioResult.id || null,
-            direction: "outbound", content_type: "voice", content: veronicaIntroReply,
+            direction: "outbound", content_type: "voice", content: veronicaIntroRaw,
             media_url: audioUrl, status: "sent", sent_by: "veronica", ai_generated: true,
           });
           introAudioSent = true;
@@ -2499,7 +2515,7 @@ Tom calmo, confiante, informal. Máximo 2-3 frases CURTAS. SEM emojis (vai virar
     const felipeIntroRaw = felipeIntroData.choices?.[0]?.message?.content || `E aí ${greeting}, aqui é o Felipe. A Veronica me passou sua situação e já analisei tudo. Vou te mandar os detalhes agora.`;
     const felipeIntroReply = `*Felipe:*\n\n${felipeIntroRaw}`;
 
-    // Sempre enviar intro como ÁUDIO
+    // Sempre enviar intro: texto com nome + áudio sem nome
     let introAudioSent = false;
     const elevenLabsKey = Deno.env.get("ELEVENLABS_API_KEY");
     if (elevenLabsKey) {
@@ -2512,8 +2528,24 @@ Tom calmo, confiante, informal. Máximo 2-3 frases CURTAS. SEM emojis (vai virar
           style: felipeConfig?.voice_style ?? 0.2,
           speed: felipeConfig?.voice_speed ?? 1.0,
         };
-        const audioUrl = await generateTTSAudio(felipeIntroReply, elevenLabsKey, voiceConfig);
+        // TTS só com o conteúdo, sem o prefixo do nome
+        const audioUrl = await generateTTSAudio(felipeIntroRaw, elevenLabsKey, voiceConfig);
         if (audioUrl) {
+          // 1. Texto com nome do agente
+          const agentLabel = "*Felipe:*";
+          const mbLabelResp = await fetch("https://conversations.messagebird.com/v1/send", {
+            method: "POST",
+            headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: agentLabel } }),
+          });
+          const mbLabelResult = await mbLabelResp.json();
+          await supabase.from("whatsapp_messages").insert({
+            conversation_id: conversationId, messagebird_id: mbLabelResult.id || null,
+            direction: "outbound", content_type: "text", content: agentLabel,
+            status: "sent", sent_by: "felipe", ai_generated: true,
+          });
+
+          // 2. Áudio sem o nome
           const mbAudio = await fetch("https://conversations.messagebird.com/v1/send", {
             method: "POST",
             headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
@@ -2522,7 +2554,7 @@ Tom calmo, confiante, informal. Máximo 2-3 frases CURTAS. SEM emojis (vai virar
           const mbAudioResult = await mbAudio.json();
           await supabase.from("whatsapp_messages").insert({
             conversation_id: conversationId, messagebird_id: mbAudioResult.id || null,
-            direction: "outbound", content_type: "voice", content: felipeIntroReply,
+            direction: "outbound", content_type: "voice", content: felipeIntroRaw,
             media_url: audioUrl, status: "sent", sent_by: "felipe", ai_generated: true,
           });
           introAudioSent = true;
