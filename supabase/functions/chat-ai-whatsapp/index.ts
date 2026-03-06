@@ -795,7 +795,7 @@ serve(async (req) => {
     }
 
     // === SANITIZAR: Remover códigos de objeto e URLs da resposta ===
-    aiReply = sanitizeAgentReply(aiReply);
+    aiReply = sanitizeAgentReply(aiReply, contentType || "text");
 
     // === PREFIXO DO AGENTE ===
     const agentDisplayName = agentConfig?.display_name || (agentName === "felipe" ? "Felipe" : "Veronica");
