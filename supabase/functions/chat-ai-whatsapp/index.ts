@@ -2116,26 +2116,26 @@ async function progressPipelineStatus(supabase: any, conversationId: string, use
     let progressReason = "";
 
     if (category === "rastreio") {
-      if (pipeline.status === "novo" && (lowerReply.includes("rastr") || lowerReply.includes("verific") || lowerReply.includes("consult"))) {
-        shouldProgress = true; newStatus = "verificando"; progressReason = "IA verificou rastreio";
-      } else if (pipeline.status === "verificando" && (lowerReply.includes("localizado") || lowerReply.includes("encontr") || lowerReply.includes("em trânsito") || lowerReply.includes("em transito"))) {
-        shouldProgress = true; newStatus = "localizado"; progressReason = "Pacote localizado";
+      if (pipeline.status === "aberto" && (lowerReply.includes("rastr") || lowerReply.includes("verific") || lowerReply.includes("consult"))) {
+        shouldProgress = true; newStatus = "em_andamento"; progressReason = "IA verificou rastreio";
+      } else if (pipeline.status === "em_andamento" && (lowerReply.includes("localizado") || lowerReply.includes("encontr") || lowerReply.includes("em trânsito") || lowerReply.includes("em transito"))) {
+        shouldProgress = true; newStatus = "aguardando_cliente"; progressReason = "Pacote localizado, aguardando cliente";
       } else if ((lowerReply.includes("entregue") || lowerReply.includes("entrega confirmada") || lowerReply.includes("foi entregue"))) {
-        shouldProgress = true; newStatus = "entregue"; progressReason = "Entrega confirmada";
+        shouldProgress = true; newStatus = "resolvido"; progressReason = "Entrega confirmada";
       }
     } else if (category === "reclamacao") {
-      if (pipeline.status === "novo" && lowerReply.length > 50) {
-        shouldProgress = true; newStatus = "triagem"; progressReason = "Triagem inicial pela IA";
-      } else if (pipeline.status === "triagem" && (lowerReply.includes("investigar") || lowerReply.includes("verificar") || lowerReply.includes("analis"))) {
-        shouldProgress = true; newStatus = "investigacao"; progressReason = "Em investigação";
+      if (pipeline.status === "aberto" && lowerReply.length > 50) {
+        shouldProgress = true; newStatus = "em_andamento"; progressReason = "Triagem inicial pela IA";
+      } else if (pipeline.status === "em_andamento" && (lowerReply.includes("investigar") || lowerReply.includes("verificar") || lowerReply.includes("analis"))) {
+        shouldProgress = true; newStatus = "aguardando_cliente"; progressReason = "Em investigação";
       }
     } else if (category === "duvida") {
-      if (pipeline.status === "novo" && lowerReply.length > 30) {
-        shouldProgress = true; newStatus = "respondido"; progressReason = "Dúvida respondida pela IA";
+      if (pipeline.status === "aberto" && lowerReply.length > 30) {
+        shouldProgress = true; newStatus = "resolvido"; progressReason = "Dúvida respondida pela IA";
       }
     } else {
       // Categorias genéricas (operacional, acesso, comercial, financeiro, cancelamento)
-      if (pipeline.status === "novo" && lowerReply.length > 30) {
+      if (pipeline.status === "aberto" && lowerReply.length > 30) {
         shouldProgress = true; newStatus = flow[1]; progressReason = "Em andamento";
       }
     }
