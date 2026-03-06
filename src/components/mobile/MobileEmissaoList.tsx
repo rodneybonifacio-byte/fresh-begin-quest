@@ -163,7 +163,7 @@ export const MobileEmissaoList = () => {
             <PackageSearch className="w-6 h-6 text-white" />
           </div>
           <div className="flex-1">
-            <h1 className="text-xl font-bold text-white">Pré-Postagem</h1>
+            <h1 className="text-xl font-bold text-white">Minhas Etiquetas</h1>
             <p className="text-white/70 text-sm">Gerencie seus envios</p>
           </div>
         </div>

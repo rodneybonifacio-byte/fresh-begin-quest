@@ -179,7 +179,7 @@ export const ListaEmissoes = () => {
                                 <Package className="h-6 w-6 text-primary-foreground text-slate-50" />
                             </div>
                             <div>
-                                <h1 className="text-2xl font-bold text-foreground tracking-tight">Pré-Postagem</h1>
+                                <h1 className="text-2xl font-bold text-foreground tracking-tight">Minhas Etiquetas</h1>
                                 <p className="text-sm text-muted-foreground">Gerencie e acompanhe seus envios</p>
                             </div>
                         </div>
