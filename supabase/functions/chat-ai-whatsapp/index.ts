@@ -1561,6 +1561,12 @@ function detectHandoffTrigger(userMessage: string, _aiReply: string): boolean {
     "cancelar tudo", "quero cancelar", "cancela minha conta",
     "nunca mais", "vou processar", "vou denunciar", "que vergonha",
     "muita raiva", "revoltado",
+    // Atraso / demora
+    "atrasado", "atraso", "atrasou", "demora", "demorando", "demorou",
+    "não chegou", "nao chegou", "não chegando", "cadê meu", "cade meu",
+    "tá demorando", "ta demorando", "prazo estourou", "prazo vencido",
+    "passou do prazo", "fora do prazo", "entrega atrasada",
+    "não recebi", "nao recebi", "quando chega", "quando vai chegar",
   ];
   return escalationKeywords.some(k => lowerMsg.includes(k));
 }
