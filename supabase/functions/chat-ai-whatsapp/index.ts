@@ -2165,7 +2165,7 @@ async function performHandoffToFelipe(
   channel: { channel_id: string; access_key: string }
 ) {
   try {
-    const handoffMessage = "Entendi a situação, vou te transferir pro Felipe que é nosso especialista e vai te ajudar a resolver isso, tá? Um momento 😊";
+    const handoffMessage = "*Veronica:*\n\nEntendi a situação! Para esse tipo de caso, nosso time de Suporte Nível 2 é quem cuida diretamente. Vou te passar pro Felipe, que é nosso especialista em resoluções — ele vai analisar tudo e te dar um retorno completo, tá? Um instante 😊";
 
     await fetch("https://conversations.messagebird.com/v1/send", {
       method: "POST",
