@@ -1000,9 +1000,16 @@ serve(async (req) => {
         messages.push(choice.message); // Adicionar a mensagem com tool_calls
 
         for (const tc of toolCalls) {
-          const toolName = tc.function.name;
-          let toolArgs = {};
+          let toolName = tc.function.name;
+          let toolArgs: any = {};
           try { toolArgs = JSON.parse(tc.function.arguments); } catch {}
+          
+          // === SAFEGUARD: Se a IA escolheu buscar_emissoes_atraso mas temos um código de rastreio, forçar rastrear_objeto ===
+          if (toolName === "buscar_emissoes_atraso" && toolArgs.codigo_objeto) {
+            console.log(`⚠️ SAFEGUARD: IA escolheu buscar_emissoes_atraso com código ${toolArgs.codigo_objeto} → forçando rastrear_objeto`);
+            toolName = "rastrear_objeto";
+            toolArgs = { codigo_rastreio: toolArgs.codigo_objeto };
+          }
           
           console.log(`🔧 Tool call: ${toolName}(${JSON.stringify(toolArgs)})`);
           toolsUsed.push(toolName);
