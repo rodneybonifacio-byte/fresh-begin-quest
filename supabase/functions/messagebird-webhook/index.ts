@@ -420,6 +420,9 @@ serve(async (req) => {
     if (direction === "inbound" && conversation.ai_enabled && channel?.ai_enabled) {
       try {
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const isMediaMsg = contentType === "audio" || contentType === "voice" || contentType === "ptt" || contentType === "image" || contentType === "video";
+        console.log("🤖 Chamando chat-ai:", { contentType, isMediaMsg, hasMediaUrl: !!finalMediaUrl, messageLen: messageContent?.length || 0 });
+        
         const response = await fetch(`${supabaseUrl}/functions/v1/chat-ai-whatsapp`, {
           method: "POST",
           headers: {
@@ -440,6 +443,8 @@ serve(async (req) => {
       } catch (aiError) {
         console.error("⚠️ Erro ao chamar chat-ai (não crítico):", aiError);
       }
+    } else {
+      console.log("⏭️ Não chamou chat-ai:", { direction, ai_enabled: conversation.ai_enabled, channel_ai: channel?.ai_enabled });
     }
 
     return new Response(JSON.stringify({ ok: true, conversationId: conversation.id }), {
