@@ -1120,8 +1120,39 @@ serve(async (req) => {
               style: agentConfig?.voice_style ?? 0.0,
               speed: agentConfig?.voice_speed ?? 1.0,
             };
-            const audioUrl = await generateTTSAudio(aiReply, elevenLabsKey, voiceConfig);
+            // Extrair texto SEM o prefixo do agente para o TTS (não falar o nome)
+            const agentPrefixPattern = /^\*[^*]+:\*\n\n/;
+            const ttsText = aiReply.replace(agentPrefixPattern, "");
+            const audioUrl = await generateTTSAudio(ttsText, elevenLabsKey, voiceConfig);
             if (audioUrl) {
+              // 1. Enviar texto com nome do agente em negrito primeiro
+              const agentLabel = `*${agentDisplayName}:*`;
+              const mbTextResponse = await fetch("https://conversations.messagebird.com/v1/send", {
+                method: "POST",
+                headers: {
+                  Authorization: `AccessKey ${channel.access_key}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  to: contactPhone,
+                  from: channel.channel_id,
+                  type: "text",
+                  content: { text: agentLabel },
+                }),
+              });
+              const mbTextResult = await mbTextResponse.json();
+              await supabase.from("whatsapp_messages").insert({
+                conversation_id: conversationId,
+                messagebird_id: mbTextResult.id || null,
+                direction: "outbound",
+                content_type: "text",
+                content: agentLabel,
+                status: "sent",
+                sent_by: agentName,
+                ai_generated: true,
+              });
+
+              // 2. Enviar áudio logo em seguida
               const mbAudioResponse = await fetch("https://conversations.messagebird.com/v1/send", {
                 method: "POST",
                 headers: {
@@ -1142,7 +1173,7 @@ serve(async (req) => {
                 messagebird_id: mbAudioResult.id || null,
                 direction: "outbound",
                 content_type: "voice",
-                content: aiReply,
+                content: ttsText,
                 media_url: audioUrl,
                 status: "sent",
                 sent_by: agentName,
