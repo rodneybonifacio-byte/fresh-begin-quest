@@ -48,7 +48,15 @@ serve(async (req) => {
     );
 
     const body = await req.json();
-    console.log("📩 Webhook recebido:", JSON.stringify(body).substring(0, 500));
+    const bodyStr = JSON.stringify(body);
+    console.log("📩 Webhook recebido:", bodyStr.substring(0, 500));
+
+    // Log extra para mídia — payload completo (até 2000 chars)
+    const hasMediaHint = bodyStr.includes("audio") || bodyStr.includes("voice") || bodyStr.includes("ptt") || bodyStr.includes("video") || bodyStr.includes("image") || bodyStr.includes("document") || bodyStr.includes("sticker");
+    if (hasMediaHint) {
+      console.log("🎵 PAYLOAD MÍDIA COMPLETO:", bodyStr.substring(0, 2000));
+      if (bodyStr.length > 2000) console.log("🎵 PAYLOAD MÍDIA (cont):", bodyStr.substring(2000, 4000));
+    }
 
     const eventType = body.type || body.event;
     const isMessageCreated = !!eventType && eventType.includes("message.created");
@@ -104,11 +112,41 @@ serve(async (req) => {
       : (message.to || body.contact?.msisdn || message.contact?.msisdn || message.destination || message.originator);
     const contactPhone = rawPhone ? String(rawPhone) : null;
     const whatsappDisplayName = body.contact?.displayName || body.contact?.firstName || message.contact?.displayName || message.contact?.firstName || null;
-    const messageContent = message.content?.text || message.body || message.content?.html || "";
+    const messageContent = message.content?.text || message.body || message.content?.html || message.content?.caption || "";
+
+    // === DETECÇÃO ROBUSTA DE CONTENT TYPE ===
     const rawContentType = message.content?.type || message.type || "text";
-    const contentType = (message.content?.audio || rawContentType === "audio" || rawContentType === "voice") ? "audio" : rawContentType;
-    const mediaUrl = message.content?.media?.url || message.content?.image?.url || message.content?.audio?.url || null;
-    const mediaType = message.content?.media?.contentType || message.content?.audio?.contentType || null;
+    // Detecção por presença de campos no content
+    let contentType = rawContentType;
+    if (message.content?.audio || rawContentType === "audio" || rawContentType === "voice" || rawContentType === "ptt") {
+      contentType = "audio";
+    } else if (message.content?.image || rawContentType === "image") {
+      contentType = "image";
+    } else if (message.content?.video || rawContentType === "video") {
+      contentType = "video";
+    } else if (message.content?.document || rawContentType === "document" || rawContentType === "file") {
+      contentType = "document";
+    }
+
+    // === EXTRAÇÃO ROBUSTA DE MEDIA URL ===
+    const mediaUrl = message.content?.audio?.url
+      || message.content?.voice?.url
+      || message.content?.image?.url
+      || message.content?.video?.url
+      || message.content?.document?.url
+      || message.content?.media?.url
+      || message.content?.file?.url
+      || message.content?.url
+      || null;
+    const mediaType = message.content?.audio?.contentType
+      || message.content?.voice?.contentType
+      || message.content?.media?.contentType
+      || message.content?.image?.contentType
+      || message.content?.video?.contentType
+      || message.content?.document?.contentType
+      || null;
+
+    console.log("📋 Parsed:", { direction, contentType, rawContentType, hasMedia: !!mediaUrl, mediaUrl: mediaUrl?.substring(0, 80) || "null" });
 
     if (!contactPhone) {
       console.warn("⚠️ Evento sem telefone do contato, ignorando sem falhar");
