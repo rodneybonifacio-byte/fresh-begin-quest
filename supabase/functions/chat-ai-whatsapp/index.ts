@@ -335,10 +335,35 @@ serve(async (req) => {
       if (preHandoffKeywords.some(k => lowerMsg.includes(k))) {
         console.log(`🔄 PRÉ-HANDOFF: Keyword detectada em "${message.substring(0, 50)}..." → Felipe assume`);
         agentName = "felipe";
-        // Atualizar active_agent na conversa
         await supabase.from("whatsapp_conversations")
           .update({ active_agent: "felipe" })
           .eq("id", conversationId);
+      }
+    }
+
+    // === PRÉ-HANDOFF: Se Felipe e cliente pede para voltar pra Veronica ===
+    if (agentName === "felipe" && message) {
+      const lowerMsg = (message || "").toLowerCase();
+      const backToVeronicaKeywords = [
+        "quero falar com a veronica", "quero a veronica", "volta pra veronica",
+        "transfere pra veronica", "transferir pra veronica", "transfere para veronica",
+        "transferir para veronica", "passa pra veronica", "passar pra veronica",
+        "chama a veronica", "falar com veronica", "cadê a veronica", "cade a veronica",
+        "prefiro a veronica", "quero voltar pra veronica", "me passa pra veronica",
+        "pode me transferir pra veronica", "veronica por favor",
+      ];
+      if (backToVeronicaKeywords.some(k => lowerMsg.includes(k))) {
+        console.log(`🔄 PRÉ-HANDOFF: Cliente pediu Veronica → transferindo de volta`);
+        agentName = "veronica";
+        await supabase.from("whatsapp_conversations")
+          .update({ active_agent: "veronica" })
+          .eq("id", conversationId);
+        // Realizar handoff completo com mensagem
+        await performHandoffToVeronica(supabase, conversationId, contactPhone, message, channel);
+        return new Response(
+          JSON.stringify({ ok: true, reply: "Handoff Felipe → Veronica realizado", tools_used: [] }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
     }
 
@@ -887,6 +912,12 @@ serve(async (req) => {
       if (agentName === "veronica" && detectHandoffTrigger(message, aiReply)) {
         console.log("🔄 Handoff: Veronica → Felipe");
         await performHandoffToFelipe(supabase, conversationId, contactPhone, message, channel);
+      }
+
+      // === HANDOFF FELIPE → VERONICA (pós-resposta, caso detecte pedido) ===
+      if (agentName === "felipe" && detectBackToVeronicaTrigger(message)) {
+        console.log("🔄 Handoff: Felipe → Veronica");
+        await performHandoffToVeronica(supabase, conversationId, contactPhone, message, channel);
       }
     }
 
@@ -1615,6 +1646,96 @@ function detectHandoffTrigger(userMessage: string, _aiReply: string): boolean {
   return escalationKeywords.some(k => lowerMsg.includes(k));
 }
 
+function detectBackToVeronicaTrigger(userMessage: string): boolean {
+  const lowerMsg = (userMessage || "").toLowerCase();
+  const keywords = [
+    "quero falar com a veronica", "quero a veronica", "volta pra veronica",
+    "transfere pra veronica", "transferir pra veronica", "transfere para veronica",
+    "passa pra veronica", "chama a veronica", "falar com veronica",
+    "prefiro a veronica", "me passa pra veronica", "veronica por favor",
+  ];
+  return keywords.some(k => lowerMsg.includes(k));
+}
+
+async function performHandoffToVeronica(
+  supabase: any, conversationId: string, contactPhone: string, userMessage: string,
+  channel: { channel_id: string; access_key: string }
+) {
+  try {
+    const handoffMessage = "Sem problemas! Vou te passar pra Veronica agora, ela vai continuar te atendendo. Um momento 😊";
+
+    await fetch("https://conversations.messagebird.com/v1/send", {
+      method: "POST",
+      headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: handoffMessage } }),
+    }).then(r => r.json()).then(async (mbResult) => {
+      await supabase.from("whatsapp_messages").insert({
+        conversation_id: conversationId, messagebird_id: mbResult.id || null,
+        direction: "outbound", content_type: "text", content: handoffMessage,
+        status: "sent", sent_by: "felipe", ai_generated: true,
+      });
+    });
+
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) return;
+
+    const { data: veronicaConfig } = await supabase.from("ai_agents").select("*").eq("name", "veronica").eq("is_active", true).single();
+    const { data: conv } = await supabase.from("whatsapp_conversations").select("contact_name").eq("id", conversationId).single();
+
+    const contactName = conv?.contact_name || "";
+    const greeting = contactName ? contactName.split(" ")[0] : "tudo bem";
+
+    const veronicaIntroPrompt = `Você é a Veronica, atendente virtual da BRHUB Envios. O Felipe te transferiu o cliente de volta.
+O cliente disse: "${userMessage}"
+Se apresente de volta: "Oi ${greeting}, aqui é a Veronica de novo!". Pergunte como pode ajudar.
+Tom amigável, informal, acolhedor. Máximo 2-3 frases. Use emojis moderados.`;
+
+    const veronicaResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: veronicaConfig?.model || "gpt-4o",
+        messages: [{ role: "system", content: veronicaIntroPrompt }, { role: "user", content: userMessage }],
+        max_tokens: 150, temperature: 0.8,
+      }),
+    });
+
+    if (!veronicaResponse.ok) return;
+    const veronicaData = await veronicaResponse.json();
+    const veronicaReply = veronicaData.choices?.[0]?.message?.content || `Oi ${greeting}, aqui é a Veronica de novo! Como posso te ajudar? 😊`;
+
+    const mbText = await fetch("https://conversations.messagebird.com/v1/send", {
+      method: "POST",
+      headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: veronicaReply } }),
+    });
+    const mbTextResult = await mbText.json();
+    await supabase.from("whatsapp_messages").insert({
+      conversation_id: conversationId, messagebird_id: mbTextResult.id || null,
+      direction: "outbound", content_type: "text", content: veronicaReply,
+      status: "sent", sent_by: "veronica", ai_generated: true,
+    });
+
+    await supabase.from("whatsapp_conversations").update({
+      active_agent: "veronica",
+      last_message_at: new Date().toISOString(),
+      last_message_preview: veronicaReply.substring(0, 100),
+    }).eq("id", conversationId);
+
+    await logInteraction(supabase, {
+      conversation_id: conversationId, agent_name: "veronica", content_type: "text",
+      provider: "openai", model: veronicaConfig?.model || "gpt-4o", success: true,
+      response_time_ms: 0, tool_used: "handoff_from_felipe",
+    });
+
+    console.log("✅ Handoff Felipe → Veronica concluído");
+  } catch (e) {
+    console.error("❌ Erro handoff Felipe → Veronica:", e);
+  }
+}
+
 async function performHandoffToFelipe(
   supabase: any, conversationId: string, contactPhone: string, userMessage: string,
   channel: { channel_id: string; access_key: string }
@@ -1664,7 +1785,6 @@ Tom calmo, confiante, informal. Máximo 3-4 frases. SEM emojis (vai virar áudio
     const felipeData = await felipeResponse.json();
     const felipeReply = felipeData.choices?.[0]?.message?.content || "E aí, aqui é o Felipe. A Veronica me passou sua situação e vou te ajudar a resolver.";
 
-    // Tentar enviar como áudio
     let audioSent = false;
     const elevenLabsKey = Deno.env.get("ELEVENLABS_API_KEY");
     if (elevenLabsKey) {
