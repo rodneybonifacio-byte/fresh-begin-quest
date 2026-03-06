@@ -1009,6 +1009,55 @@ serve(async (req) => {
 
           const toolResult = await executeTool(toolName, toolArgs, contactPhone, conversationId);
           
+          // === POST-TOOL HANDOFF: Se o resultado da tool contém indicadores de problema grave E estamos com Veronica, escalar pro Felipe ===
+          if (agentName === "veronica" && toolName === "rastrear_objeto") {
+            const toolLower = toolResult.toLowerCase();
+            const problemKeywords = ["avariado", "avariada", "danificado", "extraviado", "roubado", "apreendido", "retido", "devolvido ao remetente", "objeto não localizado"];
+            const hasProblem = problemKeywords.some(k => toolLower.includes(k));
+            if (hasProblem) {
+              console.log("🔄 POST-TOOL HANDOFF: Resultado do rastreio indica problema grave → Felipe assume");
+              
+              const preHandoffChannel = await resolveChannelForConversation(conversationId);
+              if (preHandoffChannel) {
+                const { data: convPre } = await supabase.from("whatsapp_conversations")
+                  .select("contact_name").eq("id", conversationId).single();
+                const firstName = convPre?.contact_name ? convPre.contact_name.split(" ")[0] : "";
+                const nameGreeting = firstName ? `${firstName}, ` : "";
+
+                const veronicaHandoffMsg = `*Veronica:*\n\n${nameGreeting}vi aqui que rolou um problema com seu pacote. Esse tipo de caso é tratado pelo Felipe, nosso especialista do Suporte Nível 2 — ele tem acesso direto à operação e vai te dar um retorno completo. Vou te transferir agora, um instante! 😊`;
+
+                await fetch("https://conversations.messagebird.com/v1/send", {
+                  method: "POST",
+                  headers: { Authorization: `AccessKey ${preHandoffChannel.access_key}`, "Content-Type": "application/json" },
+                  body: JSON.stringify({ to: contactPhone, from: preHandoffChannel.channel_id, type: "text", content: { text: veronicaHandoffMsg } }),
+                }).then(r => r.json()).then(async (mbResult) => {
+                  await supabase.from("whatsapp_messages").insert({
+                    conversation_id: conversationId, messagebird_id: mbResult.id || null,
+                    direction: "outbound", content_type: "text", content: veronicaHandoffMsg,
+                    status: "sent", sent_by: "veronica", ai_generated: true,
+                  });
+                });
+
+                // Delay profissional
+                await new Promise(resolve => setTimeout(resolve, 5000));
+              }
+
+              // Trocar agente para Felipe e reinjetar contexto
+              agentName = "felipe";
+              await supabase.from("whatsapp_conversations")
+                .update({ active_agent: "felipe" })
+                .eq("id", conversationId);
+
+              // Recarregar config do Felipe e atualizar system prompt
+              const { data: felipeConf } = await supabase.from("ai_agents").select("*").eq("name", "felipe").eq("is_active", true).single();
+              if (felipeConf) {
+                messages[0].content = (felipeConf.system_prompt || getDefaultPrompt("felipe")) + (trackingContext || "");
+              } else {
+                messages[0].content = getDefaultPrompt("felipe") + (trackingContext || "");
+              }
+            }
+          }
+
           messages.push({
             role: "tool",
             tool_call_id: tc.id,
@@ -2024,18 +2073,29 @@ async function detectTicketResolution(supabase: any, conversationId: string, aiR
 
 function sanitizeAgentReply(reply: string, contentType: string): string {
   // Códigos de rastreio só são removidos em respostas de ÁUDIO (TTS)
-  // Em texto, o código de rastreio fica visível normalmente
   if (contentType === "audio" || contentType === "voice" || contentType === "ptt") {
     reply = reply.replace(/\b[A-Z]{2}\d{9,13}[A-Z]{2}\b/g, "[código de rastreio informado]");
   }
 
-  // URLs sempre removidas (evitar leitura de links)
+  // URLs sempre removidas
   reply = reply.replace(/https?:\/\/[^\s)>\]]+/gi, "[link removido]");
   reply = reply.replace(/www\.[^\s)>\]]+/gi, "[link removido]");
 
   // Remover múltiplos placeholders seguidos
   reply = reply.replace(/(\[código de rastreio informado\]\s*,?\s*){2,}/g, "[código de rastreio informado]");
   reply = reply.replace(/(\[link removido\]\s*,?\s*){2,}/g, "[link removido]");
+
+  // Remover bullet points e formatação de lista que a IA insiste em usar
+  reply = reply.replace(/^[\s]*[•·●○▪▸►▹–—]\s*/gm, "");
+  reply = reply.replace(/^\s*[-]\s+/gm, "");
+  reply = reply.replace(/^\s*\d+[.)]\s+/gm, "");
+  // Remover linhas com formato "**Label:** valor" mantendo o conteúdo natural
+  reply = reply.replace(/\*\*([^*]+):\*\*\s*/g, "$1: ");
+  // Remover CEPs soltos sem contexto (8 dígitos que não são parte de endereço)
+  // Manter CEPs que já estão formatados (XXXXX-XXX) ou precedidos por "CEP"
+  
+  // Limpar linhas vazias duplas
+  reply = reply.replace(/\n{3,}/g, "\n\n");
 
   return reply.trim();
 }
