@@ -225,12 +225,20 @@ Deno.serve(async (req) => {
       });
 
       // Update conversation last message
+      const convUpdate: Record<string, any> = {
+        last_message_at: new Date().toISOString(),
+        last_message_preview: `📋 ${template.trigger_label}`,
+      };
+
+      // Se for atraso, Felipe assume automaticamente a conversa
+      if (trigger_key === "atraso") {
+        convUpdate.active_agent = "felipe";
+        console.log(`🔄 Auto-assign Felipe para conversa ${existingConv.id} (atraso detectado)`);
+      }
+
       await supabase
         .from("whatsapp_conversations")
-        .update({
-          last_message_at: new Date().toISOString(),
-          last_message_preview: `📋 ${template.trigger_label}`,
-        })
+        .update(convUpdate)
         .eq("id", existingConv.id);
 
       // === Pipeline automático: criar/atualizar card baseado no trigger ===
