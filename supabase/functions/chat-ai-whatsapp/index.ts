@@ -433,7 +433,7 @@ serve(async (req) => {
 
     let agentName = agent || "veronica";
 
-    // === PRÉ-HANDOFF: Se Veronica e mensagem contém keywords de atraso/problema grave → Felipe assume ANTES de responder ===
+    // === PRÉ-HANDOFF: Se Veronica e mensagem contém keywords de atraso/problema grave → Felipe assume COM aviso profissional ===
     if (agentName === "veronica" && message) {
       const lowerMsg = (message || "").toLowerCase();
       const preHandoffKeywords = [
@@ -449,7 +449,36 @@ serve(async (req) => {
         "danificado", "danificada", "quebrado", "quebrada", "avariado", "avariada",
       ];
       if (preHandoffKeywords.some(k => lowerMsg.includes(k))) {
-        console.log(`🔄 PRÉ-HANDOFF: Keyword detectada em "${message.substring(0, 50)}..." → Felipe assume`);
+        console.log(`🔄 PRÉ-HANDOFF: Keyword detectada em "${message.substring(0, 50)}..." → Veronica avisa e Felipe assume`);
+
+        // Resolver canal para enviar mensagem de transição da Veronica
+        const preHandoffChannel = await resolveChannelForConversation(conversationId);
+        if (preHandoffChannel) {
+          // Buscar nome do contato para personalizar
+          const { data: convPre } = await supabase.from("whatsapp_conversations")
+            .select("contact_name").eq("id", conversationId).single();
+          const firstName = convPre?.contact_name ? convPre.contact_name.split(" ")[0] : "";
+          const nameGreeting = firstName ? `${firstName}, ` : "";
+
+          // Mensagem profissional da Veronica explicando a transferência
+          const veronicaHandoffMsg = `*Veronica:*\n\n${nameGreeting}entendi sua situação! Para esse tipo de caso, nosso time de Suporte Nível 2 é quem cuida diretamente. Vou te passar pro Felipe, que é nosso especialista em resoluções — ele vai analisar tudo e te dar um retorno completo, tá? Um instante 😊`;
+
+          await fetch("https://conversations.messagebird.com/v1/send", {
+            method: "POST",
+            headers: { Authorization: `AccessKey ${preHandoffChannel.access_key}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ to: contactPhone, from: preHandoffChannel.channel_id, type: "text", content: { text: veronicaHandoffMsg } }),
+          }).then(r => r.json()).then(async (mbResult) => {
+            await supabase.from("whatsapp_messages").insert({
+              conversation_id: conversationId, messagebird_id: mbResult.id || null,
+              direction: "outbound", content_type: "text", content: veronicaHandoffMsg,
+              status: "sent", sent_by: "veronica", ai_generated: true,
+            });
+          });
+
+          // Delay profissional para transição (3 segundos)
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+
         agentName = "felipe";
         await supabase.from("whatsapp_conversations")
           .update({ active_agent: "felipe" })
@@ -1116,9 +1145,11 @@ serve(async (req) => {
         })
         .eq("id", conversationId);
 
-      // === HANDOFF VERONICA → FELIPE ===
+      // === HANDOFF VERONICA → FELIPE (pós-resposta, só se NÃO veio do pré-handoff) ===
+      // O pré-handoff já fez a transição com mensagem profissional, não duplicar
       if (agentName === "veronica" && detectHandoffTrigger(message, aiReply)) {
-        console.log("🔄 Handoff: Veronica → Felipe");
+        // Se chegou aqui como veronica, o pré-handoff NÃO disparou (edge case)
+        console.log("🔄 Handoff pós-resposta: Veronica → Felipe");
         await performHandoffToFelipe(supabase, conversationId, contactPhone, message, channel);
       }
 
@@ -1561,18 +1592,75 @@ function formatTrackingForAI(rastreioData: any): string {
   if (dados?.codigoObjeto) result += `Código: ${dados.codigoObjeto}\n`;
   if (dados?.servico) result += `Serviço: ${dados.servico}\n`;
   if (dados?.dataPrevisaoEntrega) result += `Previsão de entrega: ${dados.dataPrevisaoEntrega}\n`;
+
+  // Extrair endereço de retirada/entrega do último evento (se aguardando retirada)
+  if (dados?.enderecoRetirada) {
+    result += `📍 Endereço de retirada: ${dados.enderecoRetirada}\n`;
+  }
+
   if (eventos.length > 0) {
     result += `Últimos eventos:\n`;
-    for (const ev of eventos.slice(0, 5)) {
+    for (const ev of eventos.slice(0, 8)) {
       const local = ev.unidade?.cidadeUf || "";
       result += `- ${ev.dataCompleta || ev.date || ""} ${ev.horario || ""}: ${ev.descricao || ""}`;
+
+      // Endereço completo da unidade (se disponível)
+      const unidade = ev.unidade || {};
+      if (unidade.endereco?.logradouro || unidade.endereco?.bairro) {
+        const end = unidade.endereco;
+        const endCompleto = [end.logradouro, end.numero, end.bairro, end.localidade, end.uf, end.cep].filter(Boolean).join(", ");
+        if (endCompleto) result += ` | Endereço: ${endCompleto}`;
+      } else if (unidade.nome && unidade.nome !== local) {
+        result += ` | Unidade: ${unidade.nome}`;
+      }
+
       if (local) result += ` (${local})`;
       if (ev.unidadeDestino?.cidadeUf) result += ` → ${ev.unidadeDestino.cidadeUf}`;
+      
+      // Detalhes adicionais do evento (endereço de retirada, observações)
+      if (ev.detalhe) result += ` — ${ev.detalhe}`;
+      if (ev.enderecoRetirada) result += ` | 📍 Local de retirada: ${ev.enderecoRetirada}`;
+      
+      // Endereço completo do destino (se presente)
+      const dest = ev.unidadeDestino || {};
+      if (dest.endereco?.logradouro) {
+        const endDest = dest.endereco;
+        const endDestCompleto = [endDest.logradouro, endDest.numero, endDest.bairro, endDest.localidade, endDest.uf, endDest.cep].filter(Boolean).join(", ");
+        if (endDestCompleto) result += ` | End. destino: ${endDestCompleto}`;
+      }
+      
       result += "\n";
+    }
+
+    // Extrair endereço de retirada do evento mais recente que indica aguardando retirada
+    const eventoRetirada = eventos.find((ev: any) => {
+      const desc = (ev.descricao || "").toLowerCase();
+      return desc.includes("aguardando retirada") || desc.includes("disponível para retirada") || desc.includes("saiu para entrega");
+    });
+    if (eventoRetirada) {
+      const unidadeRet = eventoRetirada.unidade || {};
+      const endRet = unidadeRet.endereco || {};
+      const enderecoCompleto = [endRet.logradouro, endRet.numero, endRet.bairro, endRet.localidade, endRet.uf, endRet.cep].filter(Boolean).join(", ");
+      if (enderecoCompleto) {
+        result += `\n📍 LOCAL PARA RETIRADA: ${unidadeRet.nome ? unidadeRet.nome + " — " : ""}${enderecoCompleto}\n`;
+      } else if (unidadeRet.nome) {
+        result += `\n📍 LOCAL PARA RETIRADA: ${unidadeRet.nome} (${unidadeRet.cidadeUf || ""})\n`;
+      }
     }
   } else {
     result += "Nenhum evento de rastreio encontrado.\n";
   }
+
+  // Dados adicionais que podem conter endereço
+  if (dados?.destinatario) {
+    const d = dados.destinatario;
+    result += `\nDestinatário: ${d.nome || "N/A"}`;
+    if (d.logradouro || d.localidade) {
+      result += ` | End: ${[d.logradouro, d.numero, d.bairro, d.localidade, d.uf, d.cep].filter(Boolean).join(", ")}`;
+    }
+    result += "\n";
+  }
+
   return result;
 }
 
@@ -1582,12 +1670,12 @@ function formatTrackingForAI(rastreioData: any): string {
 
 function getDefaultPrompt(agent: string): string {
   if (agent === "felipe") {
-    return `Você é Felipe, especialista de resolução de problemas da BRHUB Envios. Fale como um humano real no WhatsApp.
+    return `Você é Felipe, especialista de resolução de problemas (Suporte Nível 2) da BRHUB Envios. Fale como um profissional experiente no WhatsApp.
 
 REGRAS OBRIGATÓRIAS:
-- Respostas CURTAS: máximo 2-3 frases. Nunca mais que 4 linhas.
-- Fale como gente de verdade. Use linguagem natural e informal (mas educada).
-- Vá direto ao ponto. Sem saudações genéricas.
+- Respostas CURTAS mas COMPLETAS: 2-4 frases. Inclua TODOS os dados relevantes.
+- Fale como gente de verdade. Linguagem natural, informal mas profissional.
+- Vá direto ao ponto. Sem saudações genéricas após a primeira mensagem.
 - Use 1 emoji no máximo por mensagem.
 - Se não souber, diga "vou verificar com o time" e pronto.
 - NUNCA use bullet points, listas ou formatação elaborada. É WhatsApp.
@@ -1599,29 +1687,43 @@ ETIQUETA COMO CHAVE DO ATENDIMENTO:
 - Se o cliente mencionar mais de um código, PERGUNTE sobre qual etiqueta ele quer tratar.
 - Se o cliente quiser abrir manifestação/reclamação, use "abrir_manifestacao" com o código de referência.
 
+REGRA CRÍTICA — DADOS COMPLETOS:
+- SEMPRE forneça endereços COMPLETOS quando disponíveis (logradouro, número, bairro, cidade, UF, CEP).
+- Se o pacote está aguardando retirada, informe o ENDEREÇO COMPLETO do local de retirada. Nunca diga apenas "no endereço indicado" ou "verifique o local". Passe o endereço.
+- Se o rastreio trouxer dados de endereço nos eventos, REPASSE ao cliente de forma clara.
+- Se não tiver endereço no rastreio, use a tool rastrear_objeto para buscar dados completos antes de responder.
+- NUNCA dê respostas vagas como "verifique o local" ou "no endereço indicado". Se vc tem o dado, PASSA pro cliente. Se não tem, diz que vai verificar.
+
 REGRA CRÍTICA — VOCÊ É A BRHUB:
 - A BRHUB é representante oficial dos Correios, Jadlog, Loggi e Azul. Para o cliente, NÓS somos os responsáveis pelo envio.
 - NUNCA diga "entre em contato com os Correios", "fale com a transportadora", "ligue para os Correios", "procure a Secretaria da Fazenda" ou qualquer variação.
 - NUNCA terceirize a resolução. O problema é NOSSO e NÓS vamos resolver.
-- Se houver apreensão, extravio, atraso ou qualquer incidente: demonstre que você vai cuidar pessoalmente. Ex: "vou verificar direto com a operação e te dou um retorno", "já estou acompanhando isso aqui".
+- Se houver apreensão, extravio, atraso ou qualquer incidente: demonstre que você vai cuidar pessoalmente.
 - Se for algo fora do seu alcance imediato: "vou escalar pro nosso time de operações e te retorno com uma posição, tá?". NUNCA mande o cliente resolver sozinho.
 
 MANIFESTAÇÃO / RECLAMAÇÃO:
 - Se o destinatário informar um código de rastreio e pedir para abrir manifestação ou reclamação, use a ferramenta "abrir_manifestacao" com o código e o motivo.
-- A ferramenta vai consultar automaticamente os dados do envio (destinatário, remetente, serviço) e registrar tudo no pipeline.
-- Após usar a ferramenta, confirme ao cliente que a manifestação foi registrada e que você está acompanhando pessoalmente.`;
+- Após usar a ferramenta, confirme ao cliente que a manifestação foi registrada e que você está acompanhando pessoalmente.
+
+APRENDIZADO CONTÍNUO:
+- Analise o contexto da conversa e aprenda com as interações. Se o cliente mencionou um problema, confirme que entendeu antes de agir.
+- Sempre use as ferramentas disponíveis para buscar dados REAIS. Nunca invente informações.`;
   }
   return `Você é a Veronica, do Time de Suporte da BRHUB Envios — plataforma de logística com fretes até 70% mais baratos via contratos com Correios, Jadlog, Loggi e Azul.
 
 APRESENTAÇÃO: Na PRIMEIRA mensagem: "Oi! Sou a Veronica do Time de Suporte da BRHUB Envios 😊". Depois não repita.
 
-FERRAMENTAS: Você tem acesso a ferramentas reais (rastrear pacote, cotar frete, consultar saldo). SEMPRE use a ferramenta certa ao invés de inventar dados. Se o cliente enviar código de rastreio ou foto de etiqueta, use rastrear_pacote. Se perguntar preço, use cotar_frete. Se perguntar saldo, use consultar_saldo.
+FERRAMENTAS: Você tem acesso a ferramentas reais (rastrear pacote, cotar frete, consultar saldo). SEMPRE use a ferramenta certa ao invés de inventar dados.
 
 ETIQUETA COMO CHAVE DO ATENDIMENTO:
 - O código de rastreio é a CHAVE PRIMÁRIA do atendimento. Use sempre a última etiqueta informada como referência.
 - Se o cliente mencionar mais de um código na mesma conversa, PERGUNTE sobre qual etiqueta ele quer tratar antes de responder.
 - Se o cliente perguntar algo genérico (ex: "cadê meu pacote?"), use a etiqueta de referência que está no contexto.
-- Se o cliente quiser abrir manifestação ou reclamação, use a ferramenta "abrir_manifestacao" com o código de referência.
+
+REGRA CRÍTICA — DADOS COMPLETOS:
+- SEMPRE forneça informações completas quando disponíveis. Endereços, datas, status detalhados.
+- Se o pacote está aguardando retirada, informe o endereço completo do local.
+- NUNCA dê respostas vagas. Se vc tem o dado, passa pro cliente.
 
 REGRAS:
 - Respostas CURTAS: máximo 2-3 frases. NUNCA mais que 4 linhas.
@@ -1633,19 +1735,18 @@ REGRAS:
 
 REGRA CRÍTICA — VOCÊ É A BRHUB:
 - A BRHUB é representante oficial dos Correios, Jadlog, Loggi e Azul. Para o cliente, NÓS somos os responsáveis pelo envio.
-- NUNCA diga "entre em contato com os Correios", "fale com a transportadora", "ligue para os Correios", "procure a Secretaria da Fazenda" ou qualquer variação.
-- NUNCA terceirize a resolução do problema. O problema é NOSSO e NÓS vamos resolver.
-- Se houver apreensão, extravio, atraso ou qualquer incidente: assuma a responsabilidade. Ex: "vou verificar isso pra vc", "já estou vendo o que aconteceu".
+- NUNCA diga "entre em contato com os Correios", "fale com a transportadora" ou qualquer variação.
+- NUNCA terceirize a resolução. O problema é NOSSO e NÓS vamos resolver.
 - Se for algo fora do seu alcance: "vou acionar nosso time de operações e te retorno 😊". NUNCA mande o cliente resolver sozinho.
 
 MANIFESTAÇÃO / RECLAMAÇÃO:
 - Se o destinatário informar um código de rastreio e pedir para abrir manifestação ou reclamação, use a ferramenta "abrir_manifestacao" com o código e o motivo.
-- A ferramenta vai consultar automaticamente os dados do envio (destinatário, remetente, serviço) e registrar tudo no pipeline.
 - Após usar a ferramenta, confirme ao cliente que a manifestação foi registrada e que a equipe vai analisar.
 
-TRANSFERÊNCIA PRO FELIPE:
-- Se o cliente tiver problema GRAVE (extravio, dano, cobrança errada, reclamação forte, ameaça jurídica), demonstre empatia. O sistema transfere automaticamente.
-- NÃO diga "vou transferir", apenas reconheça a gravidade.`;
+TRANSFERÊNCIA PRO FELIPE (SUPORTE NÍVEL 2):
+- Casos de atraso, extravio, dano, apreensão e problemas graves são tratados pelo Felipe do Suporte Nível 2.
+- O sistema transfere automaticamente COM uma mensagem profissional de transição — você NÃO precisa avisar manualmente.
+- Apenas demonstre empatia e reconheça a situação do cliente.`;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2064,7 +2165,7 @@ async function performHandoffToFelipe(
   channel: { channel_id: string; access_key: string }
 ) {
   try {
-    const handoffMessage = "Entendi a situação, vou te transferir pro Felipe que é nosso especialista e vai te ajudar a resolver isso, tá? Um momento 😊";
+    const handoffMessage = "*Veronica:*\n\nEntendi a situação! Para esse tipo de caso, nosso time de Suporte Nível 2 é quem cuida diretamente. Vou te passar pro Felipe, que é nosso especialista em resoluções — ele vai analisar tudo e te dar um retorno completo, tá? Um instante 😊";
 
     await fetch("https://conversations.messagebird.com/v1/send", {
       method: "POST",
