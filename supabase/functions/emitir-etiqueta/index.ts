@@ -651,62 +651,7 @@ serve(async (req) => {
         console.log('🎯 Grupo de regras atualizado - primeira etiqueta marcada');
       }
 
-      // Disparo automático de notificação ativa: etiqueta criada
-      try {
-        const codigoRastreio = String(codigoObjeto || emissaoData?.data?.codigoObjeto || emissaoData?.codigoObjeto || '').trim();
-        const destinatarioNome = String(
-          emissaoPayload?.destinatario?.nome ||
-          emissaoData?.data?.destinatario?.nome ||
-          emissaoData?.destinatario?.nome ||
-          'Cliente'
-        ).trim();
 
-        const destinatarioPhone = digitsOnly(
-          emissaoPayload?.destinatario?.celular ||
-          emissaoData?.data?.destinatario?.celular ||
-          emissaoData?.destinatario?.celular ||
-          emissaoData?.data?.destinatario?.telefone ||
-          emissaoData?.destinatario?.telefone ||
-          ''
-        );
-
-        let remetenteNome = String(emissaoPayload?.remetente?.nome || '').trim();
-        if (!remetenteNome && emissaoPayload?.remetenteId) {
-          const { data: remetenteDb } = await supabaseClient
-            .from('remetentes')
-            .select('nome')
-            .eq('id', emissaoPayload.remetenteId)
-            .maybeSingle();
-          remetenteNome = String(remetenteDb?.nome || '').trim();
-        }
-
-        if (destinatarioPhone && codigoRastreio) {
-          const { data: whatsappResult, error: whatsappError } = await supabaseClient.functions.invoke('send-whatsapp-template', {
-            body: {
-              trigger_key: 'etiqueta_criada',
-              phone: destinatarioPhone,
-              variables: {
-                nome_destinatario: destinatarioNome,
-                nome_remetente: remetenteNome || 'Remetente',
-                codigo_rastreio: codigoRastreio,
-              },
-            },
-          });
-
-          if (whatsappError) {
-            console.error('⚠️ Falha ao disparar etiqueta_criada (não bloqueia emissão):', whatsappError);
-          } else {
-            console.log('📲 Notificação etiqueta_criada disparada:', whatsappResult);
-          }
-        } else {
-          console.log('ℹ️ Notificação etiqueta_criada ignorada (telefone ou código de rastreio ausente)', {
-            destinatarioPhone,
-            codigoRastreio,
-          });
-        }
-      } catch (notifyError) {
-        console.error('⚠️ Erro no disparo da notificação etiqueta_criada (não bloqueia emissão):', notifyError);
-      }
     } catch (creditError) {
       console.error('⚠️ Erro ao processar créditos (não impede emissão):', creditError);
     }
