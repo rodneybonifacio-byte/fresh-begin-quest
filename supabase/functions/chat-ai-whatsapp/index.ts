@@ -475,8 +475,8 @@ serve(async (req) => {
             });
           });
 
-          // Delay profissional para transição natural (5 segundos)
-          await new Promise(resolve => setTimeout(resolve, 5000));
+          // Delay de 1 minuto para transição natural (simula tempo de análise)
+          await new Promise(resolve => setTimeout(resolve, 60000));
         }
 
         agentName = "felipe";
@@ -1045,8 +1045,8 @@ serve(async (req) => {
                   });
                 });
 
-                // Delay profissional
-                await new Promise(resolve => setTimeout(resolve, 5000));
+                // Delay de 1 minuto para transição natural
+                await new Promise(resolve => setTimeout(resolve, 60000));
               }
 
               // Trocar agente para Felipe e reinjetar contexto
