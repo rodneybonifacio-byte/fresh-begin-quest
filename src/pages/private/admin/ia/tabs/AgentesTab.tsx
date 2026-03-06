@@ -32,7 +32,26 @@ interface AiAgent {
 }
 
 const ELEVENLABS_VOICES = [
+  // PT-BR Masculino
+  { id: '96cLX3dkyNUmTHwkNXeS', name: 'Thiago Realista', gender: 'Masculino', lang: 'PT-BR' },
+  { id: 'Libc4Ixlrn2thn1XQaDL', name: 'Higor Bourges', gender: 'Masculino', lang: 'PT-BR' },
+  { id: '36rVQA1AOIPwpA3Hg1tC', name: 'Matheus (Energético)', gender: 'Masculino', lang: 'PT-BR' },
+  { id: '29Pm0vQJJRoVfMCsUKB6', name: 'Márcio (Grave)', gender: 'Masculino', lang: 'PT-BR' },
+  { id: 'tlcdlAx9D2VUpCZ2etQ7', name: 'Guilherme (Conversador)', gender: 'Masculino', lang: 'PT-BR' },
+  { id: 'cQAY19cNx1hXYCYZV4ae', name: 'Deluca', gender: 'Masculino', lang: 'PT-BR' },
+  { id: 'nd1z1vC7yrh6u3ZztpCd', name: 'Renato', gender: 'Masculino', lang: 'PT-BR' },
+  { id: 'xWdpADtEio43ew1zGxUQ', name: 'Matheus Santos', gender: 'Masculino', lang: 'PT-BR' },
+  { id: 'ojFdI32rbZHI2rxgzrEw', name: 'Nando Andrade', gender: 'Masculino', lang: 'PT-BR' },
+  { id: 'SVgp5d1fyFQRW1eQbwkq', name: 'Lucas (Informativo)', gender: 'Masculino', lang: 'PT-BR' },
+  { id: 'qarDw4DEvUqP3FBlpO0T', name: 'Jon Oliveira', gender: 'Masculino', lang: 'PT-BR' },
+  { id: 'IKpiSijWzlhOL6uX83EH', name: 'Will (Institucional)', gender: 'Masculino', lang: 'PT-BR' },
+  { id: '13auRs13gEKuqxX054G2', name: 'Gustavo Barros', gender: 'Masculino', lang: 'PT-BR' },
+  { id: 'NGS0ZsC7j4t4dCWbPdgO', name: 'Dhyogo Azevedo', gender: 'Masculino', lang: 'PT-BR' },
+  { id: 'AaeZyyi87RCxtFnHPS3e', name: 'Prof. Campanholi', gender: 'Masculino', lang: 'PT-BR' },
+  { id: 'wOCZZnsBoGOFlQRdxeRb', name: 'Peter (O Profeta)', gender: 'Masculino', lang: 'PT-BR' },
+  // PT-BR Feminino
   { id: 'FGY2WhTYpPnrIDTdsKH5', name: 'Laura', gender: 'Feminino', lang: 'PT-BR' },
+  // EN
   { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah', gender: 'Feminino', lang: 'EN' },
   { id: 'TX3LPaxmHKxFdv7VOQHJ', name: 'Liam', gender: 'Masculino', lang: 'EN' },
   { id: 'JBFqnCBsd6RMkjVDRZzb', name: 'George', gender: 'Masculino', lang: 'EN' },
