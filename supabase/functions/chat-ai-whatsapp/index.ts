@@ -1922,19 +1922,31 @@ async function detectAndCreateSupportTicket(supabase: any, conversationId: strin
 
 async function ensureTicketOpen(supabase: any, conversationId: string, contactPhone: string, userMessage: string) {
   try {
-    const { data: openTicket } = await supabase
+    // Verificar se tem ticket open OU pending_close
+    const { data: existingTicket } = await supabase
       .from("whatsapp_tickets")
-      .select("id, message_count")
+      .select("id, message_count, status")
       .eq("conversation_id", conversationId)
-      .eq("status", "open")
+      .in("status", ["open", "pending_close"])
       .limit(1)
       .single();
 
-    if (openTicket) {
-      await supabase.from("whatsapp_tickets").update({
-        message_count: (openTicket.message_count || 0) + 1,
+    if (existingTicket) {
+      const updates: any = {
+        message_count: (existingTicket.message_count || 0) + 1,
         last_message_at: new Date().toISOString(),
-      }).eq("id", openTicket.id);
+      };
+      
+      // Se estava em pending_close, reabrir
+      if (existingTicket.status === "pending_close") {
+        updates.status = "open";
+        updates.closed_at = null;
+        updates.closed_by = null;
+        updates.resolution = null;
+        console.log("🔄 Ticket reaberto (cliente respondeu durante pending_close):", existingTicket.id);
+      }
+      
+      await supabase.from("whatsapp_tickets").update(updates).eq("id", existingTicket.id);
       return;
     }
 
@@ -2058,24 +2070,52 @@ async function detectTicketResolution(supabase: any, conversationId: string, aiR
   try {
     const lowerReply = (aiReply || "").toLowerCase();
     
-    // Padrões de resolução na resposta da IA
-    const strongPatterns = ["resolvido", "solucionado", "concluído", "foi entregue", "entregue com sucesso", "estorno realizado", "problema corrigido"];
-    // Padrões de finalização mais suaves
-    const softPatterns = ["mais alguma coisa", "posso ajudar em algo mais", "precisa de mais alguma", "qualquer dúvida", "estou à disposição"];
+    // Padrões FORTES de resolução → fecha imediatamente
+    const strongPatterns = [
+      "resolvido", "solucionado", "concluído", "foi entregue", "entregue com sucesso",
+      "estorno realizado", "problema corrigido", "manifestação registrada",
+      "já foi entregue", "entregue ao destinatário", "encomenda entregue",
+    ];
+    
+    // Padrões SOFT → marca como "pending_close" (fecha se cliente não responder em 2h)
+    const softPatterns = [
+      "mais alguma coisa", "posso ajudar em algo mais", "precisa de mais alguma",
+      "qualquer dúvida", "estou à disposição", "fico à disposição",
+      "qualquer coisa estou aqui", "precisar estou aqui", "pode contar comigo",
+      "tudo certo", "espero ter ajudado", "fico no aguardo",
+      "se precisar", "estou aqui pra ajudar", "alguma outra dúvida",
+    ];
     
     const isStrong = strongPatterns.some(p => lowerReply.includes(p));
+    const isSoft = softPatterns.some(p => lowerReply.includes(p));
     
-    if (!isStrong) return;
+    if (!isStrong && !isSoft) return;
 
-    const { data: updated } = await supabase.from("whatsapp_tickets").update({
-      status: "resolved",
-      resolution: aiReply.substring(0, 200),
-      closed_at: new Date().toISOString(),
-      closed_by: "ai",
-    }).eq("conversation_id", conversationId).eq("status", "open").select("id");
+    if (isStrong) {
+      // Fechamento imediato
+      const { data: updated } = await supabase.from("whatsapp_tickets").update({
+        status: "resolved",
+        resolution: aiReply.substring(0, 200),
+        closed_at: new Date().toISOString(),
+        closed_by: "ai",
+      }).eq("conversation_id", conversationId).eq("status", "open").select("id");
 
-    if (updated && updated.length > 0) {
-      console.log("🎫 Ticket resolvido automaticamente:", updated[0].id);
+      if (updated && updated.length > 0) {
+        console.log("🎫 Ticket resolvido (critério forte):", updated[0].id);
+      }
+    } else if (isSoft) {
+      // Marcar para fechamento pendente (será fechado pelo CRON se sem resposta em 2h)
+      const softCloseAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(); // +2h
+      const { data: updated } = await supabase.from("whatsapp_tickets").update({
+        status: "pending_close",
+        resolution: aiReply.substring(0, 200),
+        closed_at: softCloseAt, // Data agendada de fechamento
+        closed_by: "ai_soft",
+      }).eq("conversation_id", conversationId).eq("status", "open").select("id");
+
+      if (updated && updated.length > 0) {
+        console.log("🎫 Ticket marcado para fechamento soft (2h):", updated[0].id);
+      }
     }
   } catch (e) {
     console.warn("⚠️ Erro ticket resolution:", e);
