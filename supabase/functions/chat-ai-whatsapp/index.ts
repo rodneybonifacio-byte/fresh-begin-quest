@@ -529,7 +529,7 @@ serve(async (req) => {
     const systemPrompt = agentConfig?.system_prompt || getDefaultPrompt(agentName);
     const modelName = agentConfig?.model || "gpt-4o";
     const temperature = agentConfig?.temperature || 0.7;
-    const maxTokens = agentConfig?.max_tokens || 300;
+    const maxTokens = Math.min(agentConfig?.max_tokens || 200, 250);
 
     // === BUSCAR HISTÓRICO ===
     const { data: history } = await supabase
