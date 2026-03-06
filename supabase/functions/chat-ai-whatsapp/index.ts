@@ -794,6 +794,13 @@ serve(async (req) => {
       break;
     }
 
+    // === SANITIZAR: Remover códigos de objeto e URLs da resposta ===
+    aiReply = sanitizeAgentReply(aiReply);
+
+    // === PREFIXO DO AGENTE ===
+    const agentDisplayName = agentConfig?.display_name || (agentName === "felipe" ? "Felipe" : "Veronica");
+    aiReply = `*${agentDisplayName}:* ${aiReply}`;
+
     console.log("🤖 Resposta final:", aiReply.substring(0, 150));
 
     // === PIPELINE & TICKETS ===
@@ -1614,6 +1621,27 @@ async function detectTicketResolution(supabase: any, conversationId: string, aiR
   } catch (e) {
     console.warn("⚠️ Erro ticket resolution:", e);
   }
+}
+
+// ═══════════════════════════════════════════════════════════
+// SANITIZAR RESPOSTA: Remover códigos de rastreio e URLs
+// ═══════════════════════════════════════════════════════════
+
+function sanitizeAgentReply(reply: string): string {
+  // Remover códigos de rastreio dos Correios (ex: AD149519672BR, SS987654321BR)
+  reply = reply.replace(/\b[A-Z]{2}\d{9,13}[A-Z]{2}\b/g, (match) => {
+    return "[código de rastreio informado]";
+  });
+
+  // Remover URLs (http, https, www)
+  reply = reply.replace(/https?:\/\/[^\s)>\]]+/gi, "[link removido]");
+  reply = reply.replace(/www\.[^\s)>\]]+/gi, "[link removido]");
+
+  // Remover múltiplos placeholders seguidos
+  reply = reply.replace(/(\[código de rastreio informado\]\s*,?\s*){2,}/g, "[código de rastreio informado]");
+  reply = reply.replace(/(\[link removido\]\s*,?\s*){2,}/g, "[link removido]");
+
+  return reply.trim();
 }
 
 // ═══════════════════════════════════════════════════════════
