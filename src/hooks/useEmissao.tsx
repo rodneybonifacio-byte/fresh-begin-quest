@@ -114,12 +114,39 @@ async function dispararNotificacaoEtiquetaCriada(emissaoResponse: any, emissaoIn
       'Cliente'
     ).trim();
 
-    const remetenteNome = String(
+    const remetenteId = String(
+      data?.remetenteId ||
+      emissaoInput?.remetenteId ||
+      ''
+    ).trim();
+
+    let remetenteNome = String(
       data?.remetente?.nome ||
       emissaoInput?.remetente?.nome ||
       emissaoInput?.remetenteNome ||
-      'Remetente'
+      ''
     ).trim();
+
+    // Fallback: resolve nome do remetente pelo ID quando veio genérico/vazio
+    if ((!remetenteNome || remetenteNome.toLowerCase() === 'remetente') && remetenteId) {
+      try {
+        const { data: remetenteRow, error: remetenteErr } = await supabase
+          .from('remetentes')
+          .select('nome')
+          .eq('id', remetenteId)
+          .maybeSingle();
+
+        if (!remetenteErr && remetenteRow?.nome) {
+          remetenteNome = String(remetenteRow.nome).trim();
+        }
+      } catch (remetenteLookupErr) {
+        console.warn('⚠️ [NotifEtiqueta] Falha ao resolver nome do remetente por ID:', remetenteLookupErr);
+      }
+    }
+
+    if (!remetenteNome) {
+      remetenteNome = 'Remetente';
+    }
 
     console.log('🔍 [NotifEtiqueta] Dados extraídos:', { codigoRastreio, destinatarioPhone, destinatarioNome, remetenteNome });
 
