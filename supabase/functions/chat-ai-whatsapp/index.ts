@@ -2319,8 +2319,8 @@ async function performHandoffToVeronica(
       });
     });
 
-    // Delay profissional para transição natural
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    // Delay de 1 minuto para transição natural (simula tempo de preparação da Veronica)
+    await new Promise(resolve => setTimeout(resolve, 60000));
 
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) return;
@@ -2331,51 +2331,86 @@ async function performHandoffToVeronica(
     const contactName = conv?.contact_name || "";
     const greeting = contactName ? contactName.split(" ")[0] : "tudo bem";
 
+    // === ETAPA 1: ÁUDIO DE APRESENTAÇÃO (sempre manda áudio na intro) ===
     const veronicaIntroPrompt = `Você é a Veronica, atendente virtual da BRHUB Envios. O Felipe te transferiu o cliente de volta.
 O cliente disse: "${userMessage}"
-Se apresente de volta: "Oi ${greeting}, aqui é a Veronica de novo!". Pergunte como pode ajudar.
-Tom amigável, informal, acolhedor. Máximo 2-3 frases. Use emojis moderados.`;
+Se apresente de volta: "Oi ${greeting}, aqui é a Veronica de novo!". Diga que o Felipe te passou a situação e pergunte como pode ajudar.
+Tom amigável, informal, acolhedor. Máximo 2-3 frases CURTAS. SEM emojis (vai virar áudio). SEM detalhes técnicos — só a apresentação.`;
 
-    const veronicaResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const veronicaIntroResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: veronicaConfig?.model || "gpt-4o",
         messages: [{ role: "system", content: veronicaIntroPrompt }, { role: "user", content: userMessage }],
-        max_tokens: 150, temperature: 0.8,
+        max_tokens: 100, temperature: 0.8,
       }),
     });
 
-    if (!veronicaResponse.ok) return;
-    const veronicaData = await veronicaResponse.json();
-    const veronicaRaw = veronicaData.choices?.[0]?.message?.content || `Oi ${greeting}, aqui é a Veronica de novo! Como posso te ajudar? 😊`;
-    const veronicaReply = `*Veronica:*\n\n${veronicaRaw}`;
+    if (!veronicaIntroResponse.ok) return;
+    const veronicaIntroData = await veronicaIntroResponse.json();
+    const veronicaIntroRaw = veronicaIntroData.choices?.[0]?.message?.content || `Oi ${greeting}, aqui é a Veronica de novo! O Felipe me passou sua situação. Como posso te ajudar?`;
+    const veronicaIntroReply = `*Veronica:*\n\n${veronicaIntroRaw}`;
 
-    const mbText = await fetch("https://conversations.messagebird.com/v1/send", {
-      method: "POST",
-      headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: veronicaReply } }),
-    });
-    const mbTextResult = await mbText.json();
-    await supabase.from("whatsapp_messages").insert({
-      conversation_id: conversationId, messagebird_id: mbTextResult.id || null,
-      direction: "outbound", content_type: "text", content: veronicaReply,
-      status: "sent", sent_by: "veronica", ai_generated: true,
-    });
+    // Sempre enviar intro como ÁUDIO
+    let introAudioSent = false;
+    const elevenLabsKey = Deno.env.get("ELEVENLABS_API_KEY");
+    if (elevenLabsKey) {
+      try {
+        const voiceConfig: VoiceConfig = {
+          voiceId: veronicaConfig?.voice_id || "FGY2WhTYpPnrIDTdsKH5",
+          model: veronicaConfig?.tts_model || "eleven_multilingual_v2",
+          stability: veronicaConfig?.voice_stability ?? 0.5,
+          similarityBoost: veronicaConfig?.voice_similarity_boost ?? 0.75,
+          style: veronicaConfig?.voice_style ?? 0.0,
+          speed: veronicaConfig?.voice_speed ?? 1.0,
+        };
+        const audioUrl = await generateTTSAudio(veronicaIntroReply, elevenLabsKey, voiceConfig);
+        if (audioUrl) {
+          const mbAudio = await fetch("https://conversations.messagebird.com/v1/send", {
+            method: "POST",
+            headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "audio", content: { audio: { url: audioUrl } } }),
+          });
+          const mbAudioResult = await mbAudio.json();
+          await supabase.from("whatsapp_messages").insert({
+            conversation_id: conversationId, messagebird_id: mbAudioResult.id || null,
+            direction: "outbound", content_type: "voice", content: veronicaIntroReply,
+            media_url: audioUrl, status: "sent", sent_by: "veronica", ai_generated: true,
+          });
+          introAudioSent = true;
+        }
+      } catch (e) { console.warn("⚠️ TTS Veronica intro:", e); }
+    }
+
+    // Fallback: se áudio falhou, manda texto
+    if (!introAudioSent) {
+      const mbText = await fetch("https://conversations.messagebird.com/v1/send", {
+        method: "POST",
+        headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: veronicaIntroReply } }),
+      });
+      const mbTextResult = await mbText.json();
+      await supabase.from("whatsapp_messages").insert({
+        conversation_id: conversationId, messagebird_id: mbTextResult.id || null,
+        direction: "outbound", content_type: "text", content: veronicaIntroReply,
+        status: "sent", sent_by: "veronica", ai_generated: true,
+      });
+    }
 
     await supabase.from("whatsapp_conversations").update({
       active_agent: "veronica",
       last_message_at: new Date().toISOString(),
-      last_message_preview: veronicaReply.substring(0, 100),
+      last_message_preview: veronicaIntroReply.substring(0, 100),
     }).eq("id", conversationId);
 
     await logInteraction(supabase, {
-      conversation_id: conversationId, agent_name: "veronica", content_type: "text",
+      conversation_id: conversationId, agent_name: "veronica", content_type: introAudioSent ? "voice" : "text",
       provider: "openai", model: veronicaConfig?.model || "gpt-4o", success: true,
       response_time_ms: 0, tool_used: "handoff_from_felipe",
     });
 
-    console.log("✅ Handoff Felipe → Veronica concluído");
+    console.log("✅ Handoff Felipe → Veronica concluído (áudio intro)");
   } catch (e) {
     console.error("❌ Erro handoff Felipe → Veronica:", e);
   }
