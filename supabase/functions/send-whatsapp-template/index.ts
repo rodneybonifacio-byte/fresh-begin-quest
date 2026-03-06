@@ -232,6 +232,76 @@ Deno.serve(async (req) => {
           last_message_preview: `📋 ${template.trigger_label}`,
         })
         .eq("id", existingConv.id);
+
+      // === Pipeline automático: criar/atualizar card baseado no trigger ===
+      const triggerToPipelineStage: Record<string, { category: string; status: string }> = {
+        etiqueta_criada: { category: "rastreio", status: "verificando" },
+        objeto_postado: { category: "rastreio", status: "em_transito" },
+        saiu_para_entrega: { category: "rastreio", status: "em_transito" },
+        atraso: { category: "rastreio", status: "localizado" },
+        aguardando_retirada: { category: "rastreio", status: "localizado" },
+        avaliacao: { category: "elogio", status: "recebido" },
+      };
+
+      const pipelineMapping = triggerToPipelineStage[trigger_key];
+      if (pipelineMapping) {
+        const codigoRastreio = variables.codigo_rastreio || variables.tracking_code || "";
+        const nomeDestinatario = variables.nome_destinatario || variables.recipient_name || "";
+        const nomeRemetente = variables.nome_remetente || variables.sender_name || "";
+
+        // Check if card already exists for this conversation (same object/conversation)
+        const { data: existingCard } = await supabase
+          .from("ai_support_pipeline")
+          .select("id, status, category")
+          .eq("conversation_id", existingConv.id)
+          .eq("category", "rastreio")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (existingCard) {
+          // Update existing card to new stage (only advance, don't go backwards)
+          const stageOrder = ["verificando", "localizado", "em_transito", "entregue"];
+          const currentIdx = stageOrder.indexOf(existingCard.status);
+          const newIdx = stageOrder.indexOf(pipelineMapping.status);
+
+          if (newIdx > currentIdx || pipelineMapping.category !== "rastreio") {
+            await supabase
+              .from("ai_support_pipeline")
+              .update({
+                status: pipelineMapping.status,
+                category: pipelineMapping.category,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", existingCard.id);
+            console.log(`Pipeline card ${existingCard.id} updated to ${pipelineMapping.category}/${pipelineMapping.status}`);
+          }
+        } else {
+          // Create new pipeline card
+          const { error: pipeErr } = await supabase
+            .from("ai_support_pipeline")
+            .insert({
+              conversation_id: existingConv.id,
+              contact_phone: normalizedPhone,
+              contact_name: nomeDestinatario,
+              category: pipelineMapping.category,
+              status: pipelineMapping.status,
+              priority: trigger_key === "atraso" ? "alta" : "normal",
+              subject: codigoRastreio
+                ? `Rastreio ${codigoRastreio}`
+                : `${template.trigger_label}`,
+              description: `Notificação automática: ${template.trigger_label}${nomeRemetente ? ` | Remetente: ${nomeRemetente}` : ""}${codigoRastreio ? ` | Código: ${codigoRastreio}` : ""}`,
+              detected_by: "notificacao_ativa",
+              sentiment: trigger_key === "avaliacao" ? "positivo" : "neutro",
+            });
+
+          if (pipeErr) {
+            console.error("Error creating pipeline card:", pipeErr);
+          } else {
+            console.log(`Pipeline card created: ${pipelineMapping.category}/${pipelineMapping.status} for ${normalizedPhone}`);
+          }
+        }
+      }
     }
 
     return new Response(
