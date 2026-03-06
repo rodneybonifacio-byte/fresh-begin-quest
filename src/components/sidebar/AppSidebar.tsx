@@ -57,7 +57,7 @@ const AppSidebar = observer(({
             submenu: [
                 {
                     icon: FileSpreadsheet,
-                    label: 'Pre-Postagem',
+                    label: 'Minhas Etiquetas',
                     to: '/app/emissao',
                     active: isPathActive('/app/emissao')
                 },
