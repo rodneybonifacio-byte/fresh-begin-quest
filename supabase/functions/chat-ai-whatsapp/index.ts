@@ -529,7 +529,7 @@ serve(async (req) => {
     const systemPrompt = agentConfig?.system_prompt || getDefaultPrompt(agentName);
     const modelName = agentConfig?.model || "gpt-4o";
     const temperature = agentConfig?.temperature || 0.7;
-    const maxTokens = agentConfig?.max_tokens || 300;
+    const maxTokens = Math.min(agentConfig?.max_tokens || 200, 250);
 
     // === BUSCAR HISTÓRICO ===
     const { data: history } = await supabase
@@ -839,20 +839,25 @@ serve(async (req) => {
       // Detectar códigos na mensagem atual
       const currentCodes = (userContent || "").match(trackingRegex) || [];
       
-      // Detectar códigos no histórico recente (últimas 10 mensagens inbound)
+      // Detectar códigos no histórico recente (últimas 5 mensagens inbound apenas)
       const historyCodes: string[] = [];
       if (history) {
-        for (const msg of history.filter((m: any) => m.direction === "inbound").slice(-10)) {
+        for (const msg of history.filter((m: any) => m.direction === "inbound").slice(-5)) {
           const codes = (msg.content || "").match(trackingRegex) || [];
           historyCodes.push(...codes);
         }
       }
       
-      // Combinar: códigos únicos, priorizando o mais recente
-      const allCodes = [...new Set([...historyCodes, ...currentCodes])];
+      // PRIORIDADE: código da mensagem ATUAL sempre vence
+      // Se o cliente mencionou um código agora, esse é o código de referência
+      const lastCode = currentCodes.length > 0 
+        ? currentCodes[currentCodes.length - 1] 
+        : (historyCodes.length > 0 ? historyCodes[historyCodes.length - 1] : null);
       
-      if (allCodes.length > 0) {
-        const lastCode = currentCodes.length > 0 ? currentCodes[currentCodes.length - 1] : allCodes[allCodes.length - 1];
+      // Combinar códigos únicos para contexto
+      const allCodes = [...new Set([...historyCodes, ...currentCodes])];
+
+      if (lastCode && allCodes.length > 0) {
         console.log(`📦 Códigos detectados: ${allCodes.join(", ")} | Referência principal: ${lastCode}`);
         
         // Buscar dados detalhados do último código (referência primária)
@@ -897,10 +902,12 @@ serve(async (req) => {
           trackingContext += `\nCódigo: ${lastCode} (não encontrado no banco — pode ser de outra transportadora ou ainda não registrado)`;
         }
         
-        if (allCodes.length > 1) {
-          trackingContext += `\n\n⚠️ O cliente mencionou MAIS DE UM código nesta conversa: ${allCodes.join(", ")}. O código de referência atual é ${lastCode}. Se o cliente enviar uma pergunta genérica (ex: "cadê meu pacote?"), PERGUNTE sobre qual etiqueta ele está se referindo, listando os códigos mencionados. Só responda sobre uma etiqueta específica quando o cliente confirmar.`;
+        if (allCodes.length > 1 && currentCodes.length > 0) {
+          trackingContext += `\n\n⚠️ ATENÇÃO: O cliente ACABOU DE INFORMAR o código ${currentCodes[currentCodes.length - 1]}. USE ESTE CÓDIGO como referência principal, independente de códigos anteriores no histórico.`;
+        } else if (allCodes.length > 1) {
+          trackingContext += `\n\n⚠️ Múltiplos códigos no histórico: ${allCodes.join(", ")}. Referência atual: ${lastCode}. Se o cliente fizer pergunta genérica, pergunte qual código.`;
         } else {
-          trackingContext += `\n\nEste é o código de referência para este atendimento. Todas as perguntas do cliente devem ser respondidas com base nesta etiqueta, a menos que ele informe outro código.`;
+          trackingContext += `\nEste é o código de referência para este atendimento.`;
         }
       }
     } catch (trackErr) {
