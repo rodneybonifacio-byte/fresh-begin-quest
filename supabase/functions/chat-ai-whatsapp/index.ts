@@ -270,6 +270,15 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
         return "Cadastro realizado com sucesso! O cliente já pode acessar a plataforma.";
       }
 
+      // ── Listar objetos do cliente (etiquetas/envios pendentes) ──
+      case "listar_objetos_cliente": {
+        let clienteId = args.cliente_id;
+        if (!clienteId) clienteId = await resolveClienteId(supabase, contactPhone);
+        if (!clienteId) return "Não consegui identificar o cliente.";
+        const result = await fetchClienteShipments(clienteId, args.apenas_pendentes !== false);
+        return result;
+      }
+
       default:
         return `Ferramenta "${toolName}" não tem executor implementado.`;
     }
@@ -557,6 +566,21 @@ serve(async (req) => {
                           : contactRole === "remetente" ? "um remetente cadastrado"
                           : "um cliente da plataforma";
           contactContext = `\n\n[CONTEXTO DO CONTATO ATUAL]\nO contato que está falando com você se chama: ${contactName}. Tipo: ${roleLabel}. Email: ${contactEmail || "N/A"}. Telefone: ${contactPhone}.${clienteId ? ` ID cliente: ${clienteId}.` : ""}\nIMPORTANTE: Chame a pessoa pelo PRIMEIRO NOME de forma pessoal e simpática. Não peça identificação novamente, você já sabe quem é.`;
+
+          // 7. AUTO-INJECT: Buscar envios pendentes do cliente automaticamente
+          if (clienteId) {
+            try {
+              const shipmentContext = await fetchClienteShipments(clienteId, true);
+              if (shipmentContext && !shipmentContext.includes("Nenhum") && !shipmentContext.includes("Erro") && !shipmentContext.includes("Todos os envios")) {
+                contactContext += `\n\n[ENVIOS PENDENTES DO CLIENTE]\n${shipmentContext}\nUse estas informações para ser PROATIVA: se o cliente perguntar sobre um envio, você já tem os dados. Pode informar status, previsão de entrega e código de rastreio sem precisar que o cliente forneça. Se achar relevante, mencione brevemente que há envios em andamento.`;
+              } else if (shipmentContext.includes("Todos os envios")) {
+                contactContext += `\n\n[ENVIOS DO CLIENTE]\nTodos os envios desse cliente já foram entregues. Nenhum envio pendente no momento.`;
+              }
+              console.log("📦 Auto-inject envios:", shipmentContext.substring(0, 150));
+            } catch (shipErr) {
+              console.warn("⚠️ Erro ao buscar envios para contexto:", shipErr);
+            }
+          }
 
           // Atualizar contact_name na conversa
           if (!convData?.contact_name || convData.contact_name === contactPhone || convData.contact_name === normalized) {
@@ -988,6 +1012,54 @@ async function fetchClienteDetails(clienteId: string): Promise<{ nome: string; e
     };
   } catch {
     return null;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// BUSCAR ENVIOS DO CLIENTE NA API EXTERNA
+// ═══════════════════════════════════════════════════════════
+
+const SHIPMENT_STATUS_DELIVERED = ["ENTREGUE", "DELIVERED", "DEVOLVIDO"];
+
+async function fetchClienteShipments(clienteId: string, onlyPending = true): Promise<string> {
+  try {
+    const token = await getAdminToken();
+    if (!token) return "Erro interno ao consultar envios.";
+    const BASE_API_URL = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br";
+    const resp = await fetch(`${BASE_API_URL}/emissoes?clienteId=${clienteId}&size=30&sort=dataCriacao,desc`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!resp.ok) return `Erro ao consultar envios: ${resp.status}`;
+    const raw = await resp.json();
+    const items = raw?.data?.content || raw?.data || raw?.content || [];
+    if (!Array.isArray(items) || items.length === 0) return "Nenhum envio encontrado para esse cliente.";
+
+    let filtered = items;
+    if (onlyPending) {
+      filtered = items.filter((e: any) => {
+        const status = String(e.status || e.statusDescricao || "").toUpperCase().replace(/[-\s]/g, "_");
+        return !SHIPMENT_STATUS_DELIVERED.some(s => status.includes(s));
+      });
+    }
+
+    if (filtered.length === 0) return "Todos os envios desse cliente já foram entregues. Nenhum pendente.";
+
+    let result = `Envios pendentes do cliente (${filtered.length}):\n`;
+    for (const e of filtered.slice(0, 10)) {
+      const codigo = e.codigoObjeto || e.codigo_objeto || "sem código";
+      const destNome = e.destinatario?.nome || e.destinatarioNome || "?";
+      const destCidade = e.destinatario?.localidade || e.destinatario?.cidade || "";
+      const destUf = e.destinatario?.uf || "";
+      const status = e.statusDescricao || e.status || "?";
+      const previsao = e.previsaoEntrega || e.dataPrevisaoEntrega || "";
+      const servico = e.nomeServico || e.servico || "";
+      result += `- ${codigo} → ${destNome}${destCidade ? ` (${destCidade}-${destUf})` : ""} | Status: ${status}${previsao ? ` | Previsão: ${previsao}` : ""}${servico ? ` | ${servico}` : ""}\n`;
+    }
+    if (filtered.length > 10) result += `... e mais ${filtered.length - 10} envios.`;
+    return result;
+  } catch (e: any) {
+    console.error("❌ Erro fetchClienteShipments:", e);
+    return "Erro ao buscar envios do cliente.";
   }
 }
 
