@@ -1009,6 +1009,55 @@ serve(async (req) => {
 
           const toolResult = await executeTool(toolName, toolArgs, contactPhone, conversationId);
           
+          // === POST-TOOL HANDOFF: Se o resultado da tool contém indicadores de problema grave E estamos com Veronica, escalar pro Felipe ===
+          if (agentName === "veronica" && toolName === "rastrear_objeto") {
+            const toolLower = toolResult.toLowerCase();
+            const problemKeywords = ["avariado", "avariada", "danificado", "extraviado", "roubado", "apreendido", "retido", "devolvido ao remetente", "objeto não localizado"];
+            const hasProblem = problemKeywords.some(k => toolLower.includes(k));
+            if (hasProblem) {
+              console.log("🔄 POST-TOOL HANDOFF: Resultado do rastreio indica problema grave → Felipe assume");
+              
+              const preHandoffChannel = await resolveChannelForConversation(conversationId);
+              if (preHandoffChannel) {
+                const { data: convPre } = await supabase.from("whatsapp_conversations")
+                  .select("contact_name").eq("id", conversationId).single();
+                const firstName = convPre?.contact_name ? convPre.contact_name.split(" ")[0] : "";
+                const nameGreeting = firstName ? `${firstName}, ` : "";
+
+                const veronicaHandoffMsg = `*Veronica:*\n\n${nameGreeting}vi aqui que rolou um problema com seu pacote. Esse tipo de caso é tratado pelo Felipe, nosso especialista do Suporte Nível 2 — ele tem acesso direto à operação e vai te dar um retorno completo. Vou te transferir agora, um instante! 😊`;
+
+                await fetch("https://conversations.messagebird.com/v1/send", {
+                  method: "POST",
+                  headers: { Authorization: `AccessKey ${preHandoffChannel.access_key}`, "Content-Type": "application/json" },
+                  body: JSON.stringify({ to: contactPhone, from: preHandoffChannel.channel_id, type: "text", content: { text: veronicaHandoffMsg } }),
+                }).then(r => r.json()).then(async (mbResult) => {
+                  await supabase.from("whatsapp_messages").insert({
+                    conversation_id: conversationId, messagebird_id: mbResult.id || null,
+                    direction: "outbound", content_type: "text", content: veronicaHandoffMsg,
+                    status: "sent", sent_by: "veronica", ai_generated: true,
+                  });
+                });
+
+                // Delay profissional
+                await new Promise(resolve => setTimeout(resolve, 5000));
+              }
+
+              // Trocar agente para Felipe e reinjetar contexto
+              agentName = "felipe";
+              await supabase.from("whatsapp_conversations")
+                .update({ active_agent: "felipe" })
+                .eq("id", conversationId);
+
+              // Recarregar config do Felipe e atualizar system prompt
+              const { data: felipeConf } = await supabase.from("ai_agents").select("*").eq("name", "felipe").eq("is_active", true).single();
+              if (felipeConf) {
+                messages[0].content = (felipeConf.system_prompt || getDefaultPrompt("felipe")) + (trackingContext || "");
+              } else {
+                messages[0].content = getDefaultPrompt("felipe") + (trackingContext || "");
+              }
+            }
+          }
+
           messages.push({
             role: "tool",
             tool_call_id: tc.id,
@@ -1678,9 +1727,17 @@ REGRAS OBRIGATÓRIAS:
 - Vá direto ao ponto. Sem saudações genéricas após a primeira mensagem.
 - Use 1 emoji no máximo por mensagem.
 - Se não souber, diga "vou verificar com o time" e pronto.
-- NUNCA use bullet points, listas ou formatação elaborada. É WhatsApp.
 - Português brasileiro natural. Pode usar "vc", "tá", "pra".
 - Você tem acesso a ferramentas (rastreio, cotação, saldo). USE-AS quando o contexto pedir, não invente dados.
+
+FORMATO — IMPORTANTÍSSIMO, SIGA À RISCA:
+- ESCREVA COMO SE FOSSE UMA MENSAGEM NORMAL DE WHATSAPP. Texto corrido, como uma pessoa real digitando.
+- PROIBIDO: bullet points (•, -, *, ●, ▸), listas numeradas (1. 2. 3.), formatação "Situação Atual:", "Ação Necessária:" ou qualquer estrutura de email/relatório.
+- PROIBIDO: separar informações em tópicos. Tudo deve ser texto corrido natural.
+- NUNCA use formatação elaborada. É WhatsApp, não email.
+
+EXEMPLO CORRETO: "E aí, dei uma olhada no seu pacote AB123456789BR. Ele tá aguardando retirada na Rua Edson Luiz Rigonatto, 1199, Jardim Metonopolis em Campinas-SP. Vou acionar a operação pra entender o que houve com a avaria e te retorno."
+EXEMPLO ERRADO: "• Situação Atual: Avariado\\n• Ação Necessária: Retirar no endereço..."
 
 ETIQUETA COMO CHAVE DO ATENDIMENTO:
 - O código de rastreio é a CHAVE PRIMÁRIA do atendimento. Use sempre a última etiqueta informada como referência.
@@ -1697,6 +1754,7 @@ REGRA CRÍTICA — DADOS COMPLETOS:
 REGRA CRÍTICA — VOCÊ É A BRHUB:
 - A BRHUB é representante oficial dos Correios, Jadlog, Loggi e Azul. Para o cliente, NÓS somos os responsáveis pelo envio.
 - NUNCA diga "entre em contato com os Correios", "fale com a transportadora", "ligue para os Correios", "procure a Secretaria da Fazenda" ou qualquer variação.
+- NUNCA diga "recomendo que você vá até", "sugiro que verifique" ou "vá ao endereço". NÓS damos o endereço e NÓS acionamos a operação.
 - NUNCA terceirize a resolução. O problema é NOSSO e NÓS vamos resolver.
 - Se houver apreensão, extravio, atraso ou qualquer incidente: demonstre que você vai cuidar pessoalmente.
 - Se for algo fora do seu alcance imediato: "vou escalar pro nosso time de operações e te retorno com uma posição, tá?". NUNCA mande o cliente resolver sozinho.
@@ -1725,18 +1783,24 @@ REGRA CRÍTICA — DADOS COMPLETOS:
 - Se o pacote está aguardando retirada, informe o endereço completo do local.
 - NUNCA dê respostas vagas. Se vc tem o dado, passa pro cliente.
 
-REGRAS:
-- Respostas CURTAS: máximo 2-3 frases. NUNCA mais que 4 linhas.
-- NUNCA use bullet points, listas ou formatação de email. É WhatsApp.
+FORMATO — IMPORTANTÍSSIMO, SIGA À RISCA:
+- ESCREVA COMO SE FOSSE UMA MENSAGEM NORMAL DE WHATSAPP. Texto corrido, como uma pessoa real digitando.
+- PROIBIDO: bullet points (•, -, *, ●, ▸), listas numeradas (1. 2. 3.), formatação "Situação Atual:", "Ação Necessária:" ou qualquer estrutura de email/relatório.
+- PROIBIDO: separar informações em tópicos. Tudo deve ser texto corrido natural.
+- Máximo 2-3 frases. NUNCA mais que 4 linhas.
 - Use 1-2 emojis naturalmente. Português informal: "vc", "tá", "pra".
 - Vá direto ao ponto. Seja proativa e carinhosa.
 - Quando usar uma ferramenta e tiver resultado, responda de forma natural e curta com os dados.
 - Se não souber: "vou chamar alguém do time pra te ajudar 😊"
 
+EXEMPLO CORRETO: "Oi! Seu pacote AB123456789BR tá em Campinas-SP aguardando retirada na Rua Tal, 123, Bairro X. Vc pode buscar lá ou quer que eu acione a operação? 😊"
+EXEMPLO ERRADO: "• Situação Atual: Aguardando retirada\\n• Endereço: Rua Tal..."
+
 REGRA CRÍTICA — VOCÊ É A BRHUB:
 - A BRHUB é representante oficial dos Correios, Jadlog, Loggi e Azul. Para o cliente, NÓS somos os responsáveis pelo envio.
 - NUNCA diga "entre em contato com os Correios", "fale com a transportadora" ou qualquer variação.
 - NUNCA terceirize a resolução. O problema é NOSSO e NÓS vamos resolver.
+- NUNCA diga "recomendo que você vá até", "verifique o local" ou "procure o endereço". NÓS informamos o endereço completo e oferecemos ajuda.
 - Se for algo fora do seu alcance: "vou acionar nosso time de operações e te retorno 😊". NUNCA mande o cliente resolver sozinho.
 
 MANIFESTAÇÃO / RECLAMAÇÃO:
@@ -2024,18 +2088,29 @@ async function detectTicketResolution(supabase: any, conversationId: string, aiR
 
 function sanitizeAgentReply(reply: string, contentType: string): string {
   // Códigos de rastreio só são removidos em respostas de ÁUDIO (TTS)
-  // Em texto, o código de rastreio fica visível normalmente
   if (contentType === "audio" || contentType === "voice" || contentType === "ptt") {
     reply = reply.replace(/\b[A-Z]{2}\d{9,13}[A-Z]{2}\b/g, "[código de rastreio informado]");
   }
 
-  // URLs sempre removidas (evitar leitura de links)
+  // URLs sempre removidas
   reply = reply.replace(/https?:\/\/[^\s)>\]]+/gi, "[link removido]");
   reply = reply.replace(/www\.[^\s)>\]]+/gi, "[link removido]");
 
   // Remover múltiplos placeholders seguidos
   reply = reply.replace(/(\[código de rastreio informado\]\s*,?\s*){2,}/g, "[código de rastreio informado]");
   reply = reply.replace(/(\[link removido\]\s*,?\s*){2,}/g, "[link removido]");
+
+  // Remover bullet points e formatação de lista que a IA insiste em usar
+  reply = reply.replace(/^[\s]*[•·●○▪▸►▹–—]\s*/gm, "");
+  reply = reply.replace(/^\s*[-]\s+/gm, "");
+  reply = reply.replace(/^\s*\d+[.)]\s+/gm, "");
+  // Remover linhas com formato "**Label:** valor" mantendo o conteúdo natural
+  reply = reply.replace(/\*\*([^*]+):\*\*\s*/g, "$1: ");
+  // Remover CEPs soltos sem contexto (8 dígitos que não são parte de endereço)
+  // Manter CEPs que já estão formatados (XXXXX-XXX) ou precedidos por "CEP"
+  
+  // Limpar linhas vazias duplas
+  reply = reply.replace(/\n{3,}/g, "\n\n");
 
   return reply.trim();
 }
