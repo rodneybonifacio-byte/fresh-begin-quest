@@ -248,6 +248,7 @@ Deno.serve(async (req) => {
         const codigoRastreio = variables.codigo_rastreio || variables.tracking_code || "";
         const nomeDestinatario = variables.nome_destinatario || variables.recipient_name || "";
         const nomeRemetente = variables.nome_remetente || variables.sender_name || "";
+        const dataPrevisao = variables.data_previsao || variables.data_previsao_entrega || "";
 
         // Check if card already exists for this conversation (same object/conversation)
         const { data: existingCard } = await supabase
