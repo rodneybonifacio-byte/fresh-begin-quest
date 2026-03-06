@@ -316,6 +316,32 @@ serve(async (req) => {
     }
 
     let agentName = agent || "veronica";
+
+    // === PRÉ-HANDOFF: Se Veronica e mensagem contém keywords de atraso/problema grave → Felipe assume ANTES de responder ===
+    if (agentName === "veronica" && message) {
+      const lowerMsg = (message || "").toLowerCase();
+      const preHandoffKeywords = [
+        "atrasado", "atrasada", "atrasados", "atrasadas", "atraso", "atrasou",
+        "demora", "demorando", "demorou", "demorada",
+        "não chegou", "nao chegou", "não chegando", "nao chegando",
+        "cadê meu", "cade meu", "cadê minha", "cade minha",
+        "tá demorando", "ta demorando", "prazo estourou", "prazo vencido",
+        "passou do prazo", "fora do prazo", "entrega atrasada",
+        "não recebi", "nao recebi", "quando chega", "quando vai chegar",
+        "apreendido", "apreensão", "apreensao", "retido", "retida", "retenção", "retencao",
+        "extraviou", "extraviado", "extraviada", "sumiu", "perdido", "perdida",
+        "danificado", "danificada", "quebrado", "quebrada", "avariado", "avariada",
+      ];
+      if (preHandoffKeywords.some(k => lowerMsg.includes(k))) {
+        console.log(`🔄 PRÉ-HANDOFF: Keyword detectada em "${message.substring(0, 50)}..." → Felipe assume`);
+        agentName = "felipe";
+        // Atualizar active_agent na conversa
+        await supabase.from("whatsapp_conversations")
+          .update({ active_agent: "felipe" })
+          .eq("id", conversationId);
+      }
+    }
+
     console.log(`🤖 Chat AI conversa ${conversationId}, agente: ${agentName}, tipo: ${contentType}`);
 
     // === BUSCAR CONFIG DO AGENTE ===
