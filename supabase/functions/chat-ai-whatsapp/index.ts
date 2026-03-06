@@ -810,6 +810,90 @@ serve(async (req) => {
       userContent = transcription || message || "[áudio não transcrito]";
     }
 
+    // ═══════════════════════════════════════════════════════════
+    // DETECÇÃO DE ETIQUETAS: código de rastreio como chave do atendimento
+    // ═══════════════════════════════════════════════════════════
+    let trackingContext = "";
+    try {
+      const trackingRegex = /\b[A-Z]{2}\d{9,13}[A-Z]{2}\b/g;
+      
+      // Detectar códigos na mensagem atual
+      const currentCodes = (userContent || "").match(trackingRegex) || [];
+      
+      // Detectar códigos no histórico recente (últimas 10 mensagens inbound)
+      const historyCodes: string[] = [];
+      if (history) {
+        for (const msg of history.filter((m: any) => m.direction === "inbound").slice(-10)) {
+          const codes = (msg.content || "").match(trackingRegex) || [];
+          historyCodes.push(...codes);
+        }
+      }
+      
+      // Combinar: códigos únicos, priorizando o mais recente
+      const allCodes = [...new Set([...historyCodes, ...currentCodes])];
+      
+      if (allCodes.length > 0) {
+        const lastCode = currentCodes.length > 0 ? currentCodes[currentCodes.length - 1] : allCodes[allCodes.length - 1];
+        console.log(`📦 Códigos detectados: ${allCodes.join(", ")} | Referência principal: ${lastCode}`);
+        
+        // Buscar dados detalhados do último código (referência primária)
+        let shipmentDetail = "";
+        const { data: pedido } = await supabase
+          .from("pedidos_importados")
+          .select("destinatario_nome, destinatario_telefone, destinatario_cep, destinatario_cidade, destinatario_estado, remetente_id, cliente_id, servico_frete, numero_pedido, status")
+          .eq("codigo_rastreio", lastCode)
+          .limit(1)
+          .single();
+        
+        if (pedido) {
+          let remNome = "N/A";
+          if (pedido.remetente_id) {
+            const { data: rem } = await supabase.from("remetentes").select("nome, localidade, uf").eq("id", pedido.remetente_id).single();
+            if (rem) remNome = `${rem.nome} (${rem.localidade || ""}/${rem.uf || ""})`;
+          }
+          shipmentDetail = `Código: ${lastCode}\nDestinatário: ${pedido.destinatario_nome || "N/A"}\nTelefone dest.: ${pedido.destinatario_telefone || "N/A"}\nCidade: ${pedido.destinatario_cidade || "N/A"}-${pedido.destinatario_estado || "N/A"}\nRemetente: ${remNome}\nServiço: ${pedido.servico_frete || "N/A"}\nPedido: ${pedido.numero_pedido || "N/A"}\nStatus: ${pedido.status || "N/A"}`;
+        } else {
+          // Tentar emissoes_externas
+          const { data: emissao } = await supabase
+            .from("emissoes_externas")
+            .select("destinatario_nome, destinatario_cep, destinatario_cidade, destinatario_uf, remetente_id, servico, status")
+            .eq("codigo_objeto", lastCode)
+            .limit(1)
+            .single();
+          
+          if (emissao) {
+            let remNome = "N/A";
+            if (emissao.remetente_id) {
+              const { data: rem } = await supabase.from("remetentes").select("nome, localidade, uf").eq("id", emissao.remetente_id).single();
+              if (rem) remNome = `${rem.nome} (${rem.localidade || ""}/${rem.uf || ""})`;
+            }
+            shipmentDetail = `Código: ${lastCode}\nDestinatário: ${emissao.destinatario_nome || "N/A"}\nCidade: ${emissao.destinatario_cidade || "N/A"}-${emissao.destinatario_uf || "N/A"}\nRemetente: ${remNome}\nServiço: ${emissao.servico || "N/A"}\nStatus: ${emissao.status || "N/A"}`;
+          }
+        }
+        
+        trackingContext = `\n\n[ETIQUETA DE REFERÊNCIA — CHAVE DO ATENDIMENTO]`;
+        if (shipmentDetail) {
+          trackingContext += `\n${shipmentDetail}`;
+        } else {
+          trackingContext += `\nCódigo: ${lastCode} (não encontrado no banco — pode ser de outra transportadora ou ainda não registrado)`;
+        }
+        
+        if (allCodes.length > 1) {
+          trackingContext += `\n\n⚠️ O cliente mencionou MAIS DE UM código nesta conversa: ${allCodes.join(", ")}. O código de referência atual é ${lastCode}. Se o cliente enviar uma pergunta genérica (ex: "cadê meu pacote?"), PERGUNTE sobre qual etiqueta ele está se referindo, listando os códigos mencionados. Só responda sobre uma etiqueta específica quando o cliente confirmar.`;
+        } else {
+          trackingContext += `\n\nEste é o código de referência para este atendimento. Todas as perguntas do cliente devem ser respondidas com base nesta etiqueta, a menos que ele informe outro código.`;
+        }
+      }
+    } catch (trackErr) {
+      console.warn("⚠️ Erro ao detectar etiquetas:", trackErr);
+    }
+
+    // Injetar contexto de etiqueta no sistema
+    if (trackingContext) {
+      // Inserir o tracking context logo após o sistema prompt base
+      messages[0].content = messages[0].content + trackingContext;
+    }
+
     messages.push({ role: "user", content: userContent });
 
     // ═══════════════════════════════════════════════════════════
@@ -1510,6 +1594,11 @@ REGRAS OBRIGATÓRIAS:
 - Português brasileiro natural. Pode usar "vc", "tá", "pra".
 - Você tem acesso a ferramentas (rastreio, cotação, saldo). USE-AS quando o contexto pedir, não invente dados.
 
+ETIQUETA COMO CHAVE DO ATENDIMENTO:
+- O código de rastreio é a CHAVE PRIMÁRIA do atendimento. Use sempre a última etiqueta informada como referência.
+- Se o cliente mencionar mais de um código, PERGUNTE sobre qual etiqueta ele quer tratar.
+- Se o cliente quiser abrir manifestação/reclamação, use "abrir_manifestacao" com o código de referência.
+
 REGRA CRÍTICA — VOCÊ É A BRHUB:
 - A BRHUB é representante oficial dos Correios, Jadlog, Loggi e Azul. Para o cliente, NÓS somos os responsáveis pelo envio.
 - NUNCA diga "entre em contato com os Correios", "fale com a transportadora", "ligue para os Correios", "procure a Secretaria da Fazenda" ou qualquer variação.
@@ -1527,6 +1616,12 @@ MANIFESTAÇÃO / RECLAMAÇÃO:
 APRESENTAÇÃO: Na PRIMEIRA mensagem: "Oi! Sou a Veronica do Time de Suporte da BRHUB Envios 😊". Depois não repita.
 
 FERRAMENTAS: Você tem acesso a ferramentas reais (rastrear pacote, cotar frete, consultar saldo). SEMPRE use a ferramenta certa ao invés de inventar dados. Se o cliente enviar código de rastreio ou foto de etiqueta, use rastrear_pacote. Se perguntar preço, use cotar_frete. Se perguntar saldo, use consultar_saldo.
+
+ETIQUETA COMO CHAVE DO ATENDIMENTO:
+- O código de rastreio é a CHAVE PRIMÁRIA do atendimento. Use sempre a última etiqueta informada como referência.
+- Se o cliente mencionar mais de um código na mesma conversa, PERGUNTE sobre qual etiqueta ele quer tratar antes de responder.
+- Se o cliente perguntar algo genérico (ex: "cadê meu pacote?"), use a etiqueta de referência que está no contexto.
+- Se o cliente quiser abrir manifestação ou reclamação, use a ferramenta "abrir_manifestacao" com o código de referência.
 
 REGRAS:
 - Respostas CURTAS: máximo 2-3 frases. NUNCA mais que 4 linhas.
