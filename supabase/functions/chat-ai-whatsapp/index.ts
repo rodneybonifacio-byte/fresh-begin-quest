@@ -1853,7 +1853,7 @@ async function logInteraction(supabase: any, data: any) {
 // HELPERS: Tickets & Pipeline
 // ═══════════════════════════════════════════════════════════
 
-async function detectAndCreateSupportTicket(supabase: any, conversationId: string, contactPhone: string, userMessage: string, _aiReply: string, agentName: string) {
+async function detectAndCreateSupportTicket(supabase: any, conversationId: string, contactPhone: string, userMessage: string, _aiReply: string, agentName: string): Promise<string> {
   try {
     const lowerMsg = (userMessage || "").toLowerCase();
     
@@ -1877,7 +1877,7 @@ async function detectAndCreateSupportTicket(supabase: any, conversationId: strin
       { keywords: ["elogio", "parabéns", "excelente", "ótimo", "muito bom", "nota 10"], category: "elogio", priority: "baixa" },
     ];
 
-    let matchedCategory = "duvida"; // default: se não matchou nada, é dúvida geral
+    let matchedCategory = "duvida";
     let matchedPriority = "normal";
     for (const rule of categoryRules) {
       if (rule.keywords.some(k => lowerMsg.includes(k))) {
@@ -1887,8 +1887,8 @@ async function detectAndCreateSupportTicket(supabase: any, conversationId: strin
       }
     }
 
-    // Verificar se já existe card aberto para esta conversa
-    const { data: existing } = await supabase
+    // Verificar se já existe card aberto para esta conversa (usar maybeSingle para evitar erro)
+    const { data: existingList } = await supabase
       .from("ai_support_pipeline")
       .select("id, status, category")
       .eq("conversation_id", conversationId)
@@ -1898,23 +1898,34 @@ async function detectAndCreateSupportTicket(supabase: any, conversationId: strin
       .not("status", "eq", "fechado")
       .limit(1);
 
-    if (existing && existing.length > 0) {
-      // Card já existe — atualizar sentimento se necessário
+    if (existingList && existingList.length > 0) {
+      // Card já existe — atualizar sentimento e categoria se necessário
+      const existing = existingList[0];
       const negativePatterns = ["péssimo", "horrível", "absurdo", "pior", "lixo", "nunca mais"];
       const positivePatterns = ["obrigado", "obrigada", "valeu", "muito bom", "excelente", "parabéns"];
+      const updates: any = { updated_at: new Date().toISOString() };
+      
       if (negativePatterns.some(p => lowerMsg.includes(p))) {
-        await supabase.from("ai_support_pipeline").update({ sentiment: "muito_negativo", updated_at: new Date().toISOString() }).eq("id", existing[0].id);
+        updates.sentiment = "muito_negativo";
       } else if (positivePatterns.some(p => lowerMsg.includes(p))) {
-        await supabase.from("ai_support_pipeline").update({ sentiment: "positivo", updated_at: new Date().toISOString() }).eq("id", existing[0].id);
+        updates.sentiment = "positivo";
       }
-      return;
+      
+      // Atualizar categoria se a nova for mais específica que "duvida"
+      if (existing.category === "duvida" && matchedCategory !== "duvida") {
+        updates.category = matchedCategory;
+        updates.priority = matchedPriority;
+      }
+      
+      await supabase.from("ai_support_pipeline").update(updates).eq("id", existing.id);
+      return existing.category !== "duvida" ? existing.category : matchedCategory;
     }
 
     const { data: conv } = await supabase
       .from("whatsapp_conversations")
       .select("contact_name")
       .eq("id", conversationId)
-      .single();
+      .maybeSingle();
 
     // Determinar sentimento inicial
     const negPatterns = ["péssimo", "horrível", "absurdo", "pior", "lixo", "procon", "processo"];
@@ -1926,7 +1937,7 @@ async function detectAndCreateSupportTicket(supabase: any, conversationId: strin
 
     console.log("📋 Criando card pipeline:", { category: matchedCategory, priority: matchedPriority, sentiment });
 
-    await supabase.from("ai_support_pipeline").insert({
+    const { error: insertError } = await supabase.from("ai_support_pipeline").insert({
       conversation_id: conversationId,
       contact_phone: contactPhone,
       contact_name: conv?.contact_name || null,
@@ -1938,9 +1949,17 @@ async function detectAndCreateSupportTicket(supabase: any, conversationId: strin
       sentiment,
       detected_by: agentName,
     });
-    console.log("✅ Card pipeline criado para conversa:", conversationId);
+    
+    if (insertError) {
+      console.error("❌ Erro ao inserir card pipeline:", insertError);
+    } else {
+      console.log("✅ Card pipeline criado para conversa:", conversationId);
+    }
+    
+    return matchedCategory;
   } catch (e) {
-    console.warn("⚠️ Erro pipeline:", e);
+    console.error("❌ Erro pipeline:", e);
+    return "duvida";
   }
 }
 
