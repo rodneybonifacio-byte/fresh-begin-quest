@@ -799,7 +799,7 @@ serve(async (req) => {
 
     // === PREFIXO DO AGENTE ===
     const agentDisplayName = agentConfig?.display_name || (agentName === "felipe" ? "Felipe" : "Veronica");
-    aiReply = `*${agentDisplayName}:* ${aiReply}`;
+    aiReply = `*${agentDisplayName}:*\n\n${aiReply}`;
 
     console.log("🤖 Resposta final:", aiReply.substring(0, 150));
 
@@ -1698,13 +1698,14 @@ async function detectTicketResolution(supabase: any, conversationId: string, aiR
 // SANITIZAR RESPOSTA: Remover códigos de rastreio e URLs
 // ═══════════════════════════════════════════════════════════
 
-function sanitizeAgentReply(reply: string): string {
-  // Remover códigos de rastreio dos Correios (ex: AD149519672BR, SS987654321BR)
-  reply = reply.replace(/\b[A-Z]{2}\d{9,13}[A-Z]{2}\b/g, (match) => {
-    return "[código de rastreio informado]";
-  });
+function sanitizeAgentReply(reply: string, contentType: string): string {
+  // Códigos de rastreio só são removidos em respostas de ÁUDIO (TTS)
+  // Em texto, o código de rastreio fica visível normalmente
+  if (contentType === "audio" || contentType === "voice" || contentType === "ptt") {
+    reply = reply.replace(/\b[A-Z]{2}\d{9,13}[A-Z]{2}\b/g, "[código de rastreio informado]");
+  }
 
-  // Remover URLs (http, https, www)
+  // URLs sempre removidas (evitar leitura de links)
   reply = reply.replace(/https?:\/\/[^\s)>\]]+/gi, "[link removido]");
   reply = reply.replace(/www\.[^\s)>\]]+/gi, "[link removido]");
 
