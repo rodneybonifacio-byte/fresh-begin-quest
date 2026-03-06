@@ -1922,19 +1922,31 @@ async function detectAndCreateSupportTicket(supabase: any, conversationId: strin
 
 async function ensureTicketOpen(supabase: any, conversationId: string, contactPhone: string, userMessage: string) {
   try {
-    const { data: openTicket } = await supabase
+    // Verificar se tem ticket open OU pending_close
+    const { data: existingTicket } = await supabase
       .from("whatsapp_tickets")
-      .select("id, message_count")
+      .select("id, message_count, status")
       .eq("conversation_id", conversationId)
-      .eq("status", "open")
+      .in("status", ["open", "pending_close"])
       .limit(1)
       .single();
 
-    if (openTicket) {
-      await supabase.from("whatsapp_tickets").update({
-        message_count: (openTicket.message_count || 0) + 1,
+    if (existingTicket) {
+      const updates: any = {
+        message_count: (existingTicket.message_count || 0) + 1,
         last_message_at: new Date().toISOString(),
-      }).eq("id", openTicket.id);
+      };
+      
+      // Se estava em pending_close, reabrir
+      if (existingTicket.status === "pending_close") {
+        updates.status = "open";
+        updates.closed_at = null;
+        updates.closed_by = null;
+        updates.resolution = null;
+        console.log("🔄 Ticket reaberto (cliente respondeu durante pending_close):", existingTicket.id);
+      }
+      
+      await supabase.from("whatsapp_tickets").update(updates).eq("id", existingTicket.id);
       return;
     }
 
