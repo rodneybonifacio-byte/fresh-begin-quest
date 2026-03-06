@@ -794,6 +794,13 @@ serve(async (req) => {
       break;
     }
 
+    // === SANITIZAR: Remover códigos de objeto e URLs da resposta ===
+    aiReply = sanitizeAgentReply(aiReply);
+
+    // === PREFIXO DO AGENTE ===
+    const agentDisplayName = agentConfig?.display_name || (agentName === "felipe" ? "Felipe" : "Veronica");
+    aiReply = `*${agentDisplayName}:* ${aiReply}`;
+
     console.log("🤖 Resposta final:", aiReply.substring(0, 150));
 
     // === PIPELINE & TICKETS ===
