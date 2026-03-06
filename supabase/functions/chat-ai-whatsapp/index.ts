@@ -474,8 +474,9 @@ serve(async (req) => {
         await supabase.from("whatsapp_conversations")
           .update({ active_agent: "veronica" })
           .eq("id", conversationId);
-        // Realizar handoff completo com mensagem
-        await performHandoffToVeronica(supabase, conversationId, contactPhone, message, channel);
+        // Resolver canal antes do handoff
+        const earlyChannel = await resolveChannelForConversation(conversationId);
+        await performHandoffToVeronica(supabase, conversationId, contactPhone, message, earlyChannel);
         return new Response(
           JSON.stringify({ ok: true, reply: "Handoff Felipe → Veronica realizado", tools_used: [] }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
