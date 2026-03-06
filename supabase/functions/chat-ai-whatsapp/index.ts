@@ -475,8 +475,8 @@ serve(async (req) => {
             });
           });
 
-          // Delay profissional para transição natural (5 segundos)
-          await new Promise(resolve => setTimeout(resolve, 5000));
+          // Delay de 1 minuto para transição natural (simula tempo de análise)
+          await new Promise(resolve => setTimeout(resolve, 60000));
         }
 
         agentName = "felipe";
@@ -1045,8 +1045,8 @@ serve(async (req) => {
                   });
                 });
 
-                // Delay profissional
-                await new Promise(resolve => setTimeout(resolve, 5000));
+                // Delay de 1 minuto para transição natural
+                await new Promise(resolve => setTimeout(resolve, 60000));
               }
 
               // Trocar agente para Felipe e reinjetar contexto
@@ -2319,8 +2319,8 @@ async function performHandoffToFelipe(
       });
     });
 
-    // Delay profissional para transição natural
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    // Delay de 1 minuto para transição natural (simula tempo de análise pelo Felipe)
+    await new Promise(resolve => setTimeout(resolve, 60000));
 
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) return;
@@ -2331,27 +2331,29 @@ async function performHandoffToFelipe(
     const contactName = conv?.contact_name || "";
     const greeting = contactName ? contactName.split(" ")[0] : "tudo bem";
 
+    // === ETAPA 1: ÁUDIO DE APRESENTAÇÃO (sempre manda áudio na intro) ===
     const felipeIntroPrompt = `Você é o Felipe, especialista de resolução de problemas da BRHUB Envios. A Veronica te transferiu um cliente.
 O cliente disse: "${userMessage}"
-Se apresente: "E aí ${greeting}, aqui é o Felipe". Diga que a Veronica te passou a situação. Mostre que entendeu. Tranquilize.
-Tom calmo, confiante, informal. Máximo 3-4 frases. SEM emojis (vai virar áudio). SEM perguntas na primeira mensagem.`;
+Se apresente de forma BREVE: "E aí ${greeting}, aqui é o Felipe". Diga que a Veronica te passou a situação e que você já analisou. Tranquilize dizendo que vai mandar os detalhes.
+Tom calmo, confiante, informal. Máximo 2-3 frases CURTAS. SEM emojis (vai virar áudio). SEM perguntas. SEM detalhes técnicos — só a apresentação.`;
 
-    const felipeResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const felipeIntroResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: felipeConfig?.model || "gpt-4o",
         messages: [{ role: "system", content: felipeIntroPrompt }, { role: "user", content: userMessage }],
-        max_tokens: 150, temperature: 0.8,
+        max_tokens: 100, temperature: 0.8,
       }),
     });
 
-    if (!felipeResponse.ok) return;
-    const felipeData = await felipeResponse.json();
-    const felipeRaw = felipeData.choices?.[0]?.message?.content || "E aí, aqui é o Felipe. A Veronica me passou sua situação e vou te ajudar a resolver.";
-    const felipeReply = `*Felipe:*\n\n${felipeRaw}`;
+    if (!felipeIntroResponse.ok) return;
+    const felipeIntroData = await felipeIntroResponse.json();
+    const felipeIntroRaw = felipeIntroData.choices?.[0]?.message?.content || `E aí ${greeting}, aqui é o Felipe. A Veronica me passou sua situação e já analisei tudo. Vou te mandar os detalhes agora.`;
+    const felipeIntroReply = `*Felipe:*\n\n${felipeIntroRaw}`;
 
-    let audioSent = false;
+    // Sempre enviar intro como ÁUDIO
+    let introAudioSent = false;
     const elevenLabsKey = Deno.env.get("ELEVENLABS_API_KEY");
     if (elevenLabsKey) {
       try {
@@ -2363,7 +2365,7 @@ Tom calmo, confiante, informal. Máximo 3-4 frases. SEM emojis (vai virar áudio
           style: felipeConfig?.voice_style ?? 0.2,
           speed: felipeConfig?.voice_speed ?? 1.0,
         };
-        const audioUrl = await generateTTSAudio(felipeReply, elevenLabsKey, voiceConfig);
+        const audioUrl = await generateTTSAudio(felipeIntroReply, elevenLabsKey, voiceConfig);
         if (audioUrl) {
           const mbAudio = await fetch("https://conversations.messagebird.com/v1/send", {
             method: "POST",
@@ -2373,32 +2375,122 @@ Tom calmo, confiante, informal. Máximo 3-4 frases. SEM emojis (vai virar áudio
           const mbAudioResult = await mbAudio.json();
           await supabase.from("whatsapp_messages").insert({
             conversation_id: conversationId, messagebird_id: mbAudioResult.id || null,
-            direction: "outbound", content_type: "voice", content: felipeReply,
+            direction: "outbound", content_type: "voice", content: felipeIntroReply,
             media_url: audioUrl, status: "sent", sent_by: "felipe", ai_generated: true,
           });
-          audioSent = true;
+          introAudioSent = true;
         }
-      } catch (e) { console.warn("⚠️ TTS Felipe:", e); }
+      } catch (e) { console.warn("⚠️ TTS Felipe intro:", e); }
     }
 
-    if (!audioSent) {
+    // Fallback: se áudio falhou, manda texto
+    if (!introAudioSent) {
       const mbText = await fetch("https://conversations.messagebird.com/v1/send", {
         method: "POST",
         headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: felipeReply } }),
+        body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: felipeIntroReply } }),
       });
       const mbTextResult = await mbText.json();
       await supabase.from("whatsapp_messages").insert({
         conversation_id: conversationId, messagebird_id: mbTextResult.id || null,
-        direction: "outbound", content_type: "text", content: felipeReply,
+        direction: "outbound", content_type: "text", content: felipeIntroReply,
         status: "sent", sent_by: "felipe", ai_generated: true,
       });
+    }
+
+    // === ETAPA 2: ANÁLISE DETALHADA EM TEXTO (após o áudio de intro) ===
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    // Buscar dados de rastreio para análise completa
+    const trackingRegex = /\b[A-Z]{2}\d{9,13}[A-Z]{2}\b/g;
+    const trackingCodes: string[] = (userMessage || "").match(trackingRegex) || [];
+    
+    const { data: recentMsgs } = await supabase.from("whatsapp_messages")
+      .select("content").eq("conversation_id", conversationId).eq("direction", "inbound")
+      .order("created_at", { ascending: false }).limit(10);
+    
+    if (recentMsgs) {
+      for (const msg of recentMsgs) {
+        const codes = (msg.content || "").match(trackingRegex) || [];
+        trackingCodes.push(...codes);
+      }
+    }
+    const uniqueCodes = [...new Set(trackingCodes)];
+    
+    let trackingData = "";
+    if (uniqueCodes.length > 0) {
+      const lastCode = uniqueCodes[uniqueCodes.length - 1];
+      const rawData = await fetchTrackingData(lastCode);
+      if (rawData) {
+        trackingData = formatTrackingForAI(rawData);
+      }
+      
+      const { data: pedido } = await supabase.from("pedidos_importados")
+        .select("destinatario_nome, destinatario_telefone, destinatario_cep, destinatario_cidade, destinatario_estado, remetente_id, servico_frete, numero_pedido, status")
+        .eq("codigo_rastreio", lastCode).limit(1).single();
+      
+      if (pedido) {
+        let remNome = "N/A";
+        if (pedido.remetente_id) {
+          const { data: rem } = await supabase.from("remetentes").select("nome, localidade, uf").eq("id", pedido.remetente_id).single();
+          if (rem) remNome = `${rem.nome} (${rem.localidade || ""}/${rem.uf || ""})`;
+        }
+        trackingData += `\n\nDados da etiqueta:\nDestinatário: ${pedido.destinatario_nome || "N/A"}\nTelefone: ${pedido.destinatario_telefone || "N/A"}\nCidade: ${pedido.destinatario_cidade || "N/A"}-${pedido.destinatario_estado || "N/A"}\nRemetente: ${remNome}\nServiço: ${pedido.servico_frete || "N/A"}\nPedido: ${pedido.numero_pedido || "N/A"}`;
+      }
+    }
+
+    const felipeAnalysisPrompt = `Você é o Felipe, especialista de resolução de problemas da BRHUB Envios. Você já se apresentou por áudio. Agora mande a ANÁLISE COMPLETA por texto.
+
+DADOS DO RASTREIO:
+${trackingData || "Nenhum dado de rastreio disponível."}
+
+MENSAGEM DO CLIENTE: "${userMessage}"
+
+INSTRUÇÕES:
+- Mande uma análise COMPLETA e PROFISSIONAL do caso, com todos os dados relevantes.
+- Inclua: status atual, localização, o que aconteceu, e qual será a próxima ação da equipe.
+- Se houver problema (avaria, extravio, atraso), explique o que VOCÊ vai fazer para resolver.
+- Use endereços completos quando disponíveis.
+- Tom profissional mas acessível. Pode ser mais longo que o normal (5-8 frases ok).
+- PROIBIDO bullet points. Texto corrido natural como WhatsApp.
+- NUNCA terceirize ("entre em contato com os Correios"). NÓS somos os responsáveis.
+- Termine dizendo que está acompanhando pessoalmente.`;
+
+    const felipeAnalysisResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: felipeConfig?.model || "gpt-4o",
+        messages: [{ role: "system", content: felipeAnalysisPrompt }, { role: "user", content: userMessage }],
+        max_tokens: 400, temperature: 0.7,
+      }),
+    });
+
+    let felipeAnalysisReply = "";
+    if (felipeAnalysisResponse.ok) {
+      const analysisData = await felipeAnalysisResponse.json();
+      const analysisRaw = analysisData.choices?.[0]?.message?.content || "";
+      if (analysisRaw) {
+        felipeAnalysisReply = `*Felipe:*\n\n${analysisRaw}`;
+        
+        const mbAnalysis = await fetch("https://conversations.messagebird.com/v1/send", {
+          method: "POST",
+          headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: felipeAnalysisReply } }),
+        });
+        const mbAnalysisResult = await mbAnalysis.json();
+        await supabase.from("whatsapp_messages").insert({
+          conversation_id: conversationId, messagebird_id: mbAnalysisResult.id || null,
+          direction: "outbound", content_type: "text", content: felipeAnalysisReply,
+          status: "sent", sent_by: "felipe", ai_generated: true,
+        });
+      }
     }
 
     await supabase.from("whatsapp_conversations").update({
       active_agent: "felipe",
       last_message_at: new Date().toISOString(),
-      last_message_preview: felipeReply.substring(0, 100),
+      last_message_preview: (felipeAnalysisReply || felipeIntroReply).substring(0, 100),
     }).eq("id", conversationId);
 
     await logInteraction(supabase, {
@@ -2407,7 +2499,7 @@ Tom calmo, confiante, informal. Máximo 3-4 frases. SEM emojis (vai virar áudio
       response_time_ms: 0, tool_used: "handoff_from_veronica",
     });
 
-    console.log("✅ Handoff Veronica → Felipe concluído");
+    console.log("✅ Handoff Veronica → Felipe concluído (áudio intro + texto análise)");
   } catch (e) {
     console.error("❌ Erro handoff:", e);
   }
