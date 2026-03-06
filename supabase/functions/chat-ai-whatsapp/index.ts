@@ -361,7 +361,7 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
           contact_name: conv?.contact_name || destNome,
           category: "reclamacao",
           priority: "alta",
-          status: "novo",
+          status: "aberto",
           subject: `Manifestação: ${codigoObjeto} — ${motivo.substring(0, 80)}`,
           description: descricaoCompleta.substring(0, 1000),
           sentiment: "negativo",
@@ -449,36 +449,26 @@ serve(async (req) => {
         "danificado", "danificada", "quebrado", "quebrada", "avariado", "avariada",
       ];
       if (preHandoffKeywords.some(k => lowerMsg.includes(k))) {
-        console.log(`🔄 PRÉ-HANDOFF: Keyword detectada em "${message.substring(0, 50)}..." → Veronica avisa e Felipe assume`);
+        console.log(`🔄 PRÉ-HANDOFF: Keyword detectada em "${message.substring(0, 50)}..." → Veronica avisa e Felipe assume (com áudio)`);
 
-        // Resolver canal para enviar mensagem de transição da Veronica
+        // Resolver canal para enviar handoff completo (áudio + análise)
         const preHandoffChannel = await resolveChannelForConversation(conversationId);
         if (preHandoffChannel) {
-          // Buscar nome do contato para personalizar
-          const { data: convPre } = await supabase.from("whatsapp_conversations")
-            .select("contact_name").eq("id", conversationId).single();
-          const firstName = convPre?.contact_name ? convPre.contact_name.split(" ")[0] : "";
-          const nameGreeting = firstName ? `${firstName}, ` : "";
+          // Atualizar agente para felipe ANTES do handoff
+          await supabase.from("whatsapp_conversations")
+            .update({ active_agent: "felipe" })
+            .eq("id", conversationId);
 
-          // Mensagem profissional da Veronica explicando a transferência
-          const veronicaHandoffMsg = `*Veronica:*\n\n${nameGreeting}entendi sua situação! Para esse tipo de caso, nosso time de Suporte Nível 2 é quem cuida diretamente. Vou te passar pro Felipe, que é nosso especialista em resoluções — ele vai analisar tudo e te dar um retorno completo, tá? Um instante 😊`;
+          // Chamar performHandoffToFelipe que já faz: msg Veronica → delay 1min → áudio Felipe → texto análise
+          await performHandoffToFelipe(supabase, conversationId, contactPhone, message, preHandoffChannel);
 
-          await fetch("https://conversations.messagebird.com/v1/send", {
-            method: "POST",
-            headers: { Authorization: `AccessKey ${preHandoffChannel.access_key}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ to: contactPhone, from: preHandoffChannel.channel_id, type: "text", content: { text: veronicaHandoffMsg } }),
-          }).then(r => r.json()).then(async (mbResult) => {
-            await supabase.from("whatsapp_messages").insert({
-              conversation_id: conversationId, messagebird_id: mbResult.id || null,
-              direction: "outbound", content_type: "text", content: veronicaHandoffMsg,
-              status: "sent", sent_by: "veronica", ai_generated: true,
-            });
-          });
-
-          // Delay de 1 minuto para transição natural (simula tempo de análise)
-          await new Promise(resolve => setTimeout(resolve, 60000));
+          return new Response(
+            JSON.stringify({ ok: true, reply: "Handoff Veronica → Felipe realizado (áudio + análise)", tools_used: [] }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
         }
 
+        // Fallback se não tem canal: só muda agente e continua no loop normal
         agentName = "felipe";
         await supabase.from("whatsapp_conversations")
           .update({ active_agent: "felipe" })
@@ -1943,7 +1933,7 @@ async function detectAndCreateSupportTicket(supabase: any, conversationId: strin
       contact_name: conv?.contact_name || null,
       category: matchedCategory,
       priority: matchedPriority,
-      status: "novo",
+      status: "aberto",
       subject: (userMessage || "").substring(0, 120),
       description: userMessage?.substring(0, 500) || null,
       sentiment,
@@ -2087,15 +2077,15 @@ async function ensureTicketOpen(supabase: any, conversationId: string, contactPh
 }
 
 const PIPELINE_FLOWS: Record<string, string[]> = {
-  reclamacao: ["novo", "triagem", "investigacao", "resolucao", "concluido"],
-  rastreio: ["novo", "verificando", "localizado", "em_transito", "entregue"],
-  cancelamento: ["novo", "analise", "processamento", "aprovado", "concluido"],
-  financeiro: ["novo", "analise", "processamento", "aprovado", "concluido"],
-  operacional: ["novo", "em_andamento", "concluido"],
-  acesso: ["novo", "em_andamento", "concluido"],
-  comercial: ["novo", "em_andamento", "concluido"],
-  duvida: ["novo", "respondido", "concluido"],
-  elogio: ["novo", "concluido"],
+  reclamacao: ["aberto", "em_andamento", "aguardando_cliente", "resolvido", "fechado"],
+  rastreio: ["aberto", "em_andamento", "aguardando_cliente", "resolvido", "fechado"],
+  cancelamento: ["aberto", "em_andamento", "aguardando_cliente", "resolvido", "fechado"],
+  financeiro: ["aberto", "em_andamento", "aguardando_cliente", "resolvido", "fechado"],
+  operacional: ["aberto", "em_andamento", "resolvido", "fechado"],
+  acesso: ["aberto", "em_andamento", "resolvido", "fechado"],
+  comercial: ["aberto", "em_andamento", "resolvido", "fechado"],
+  duvida: ["aberto", "resolvido", "fechado"],
+  elogio: ["aberto", "fechado"],
 };
 
 async function progressPipelineStatus(supabase: any, conversationId: string, userMessage: string, aiReply: string) {
@@ -2126,26 +2116,26 @@ async function progressPipelineStatus(supabase: any, conversationId: string, use
     let progressReason = "";
 
     if (category === "rastreio") {
-      if (pipeline.status === "novo" && (lowerReply.includes("rastr") || lowerReply.includes("verific") || lowerReply.includes("consult"))) {
-        shouldProgress = true; newStatus = "verificando"; progressReason = "IA verificou rastreio";
-      } else if (pipeline.status === "verificando" && (lowerReply.includes("localizado") || lowerReply.includes("encontr") || lowerReply.includes("em trânsito") || lowerReply.includes("em transito"))) {
-        shouldProgress = true; newStatus = "localizado"; progressReason = "Pacote localizado";
+      if (pipeline.status === "aberto" && (lowerReply.includes("rastr") || lowerReply.includes("verific") || lowerReply.includes("consult"))) {
+        shouldProgress = true; newStatus = "em_andamento"; progressReason = "IA verificou rastreio";
+      } else if (pipeline.status === "em_andamento" && (lowerReply.includes("localizado") || lowerReply.includes("encontr") || lowerReply.includes("em trânsito") || lowerReply.includes("em transito"))) {
+        shouldProgress = true; newStatus = "aguardando_cliente"; progressReason = "Pacote localizado, aguardando cliente";
       } else if ((lowerReply.includes("entregue") || lowerReply.includes("entrega confirmada") || lowerReply.includes("foi entregue"))) {
-        shouldProgress = true; newStatus = "entregue"; progressReason = "Entrega confirmada";
+        shouldProgress = true; newStatus = "resolvido"; progressReason = "Entrega confirmada";
       }
     } else if (category === "reclamacao") {
-      if (pipeline.status === "novo" && lowerReply.length > 50) {
-        shouldProgress = true; newStatus = "triagem"; progressReason = "Triagem inicial pela IA";
-      } else if (pipeline.status === "triagem" && (lowerReply.includes("investigar") || lowerReply.includes("verificar") || lowerReply.includes("analis"))) {
-        shouldProgress = true; newStatus = "investigacao"; progressReason = "Em investigação";
+      if (pipeline.status === "aberto" && lowerReply.length > 50) {
+        shouldProgress = true; newStatus = "em_andamento"; progressReason = "Triagem inicial pela IA";
+      } else if (pipeline.status === "em_andamento" && (lowerReply.includes("investigar") || lowerReply.includes("verificar") || lowerReply.includes("analis"))) {
+        shouldProgress = true; newStatus = "aguardando_cliente"; progressReason = "Em investigação";
       }
     } else if (category === "duvida") {
-      if (pipeline.status === "novo" && lowerReply.length > 30) {
-        shouldProgress = true; newStatus = "respondido"; progressReason = "Dúvida respondida pela IA";
+      if (pipeline.status === "aberto" && lowerReply.length > 30) {
+        shouldProgress = true; newStatus = "resolvido"; progressReason = "Dúvida respondida pela IA";
       }
     } else {
       // Categorias genéricas (operacional, acesso, comercial, financeiro, cancelamento)
-      if (pipeline.status === "novo" && lowerReply.length > 30) {
+      if (pipeline.status === "aberto" && lowerReply.length > 30) {
         shouldProgress = true; newStatus = flow[1]; progressReason = "Em andamento";
       }
     }
