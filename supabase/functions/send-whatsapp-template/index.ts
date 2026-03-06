@@ -189,6 +189,51 @@ Deno.serve(async (req) => {
 
     console.log(`Template sent successfully: ${result.id}`);
 
+    // Save HSM message to whatsapp_messages for conversation history
+    // Find or create conversation for this phone
+    const { data: existingConv } = await supabase
+      .from("whatsapp_conversations")
+      .select("id")
+      .eq("contact_phone", normalizedPhone)
+      .order("last_message_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (existingConv) {
+      // Build readable content from template variables
+      const varSummary = Object.entries(variables || {})
+        .map(([k, v]) => `${k}: ${v}`)
+        .join(", ");
+
+      await supabase.from("whatsapp_messages").insert({
+        conversation_id: existingConv.id,
+        messagebird_id: result.id || null,
+        direction: "outbound",
+        content_type: "hsm",
+        content: `📋 Template: ${template.template_name}`,
+        media_url: null,
+        status: "sent",
+        sent_by: "system",
+        ai_generated: false,
+        metadata: {
+          hsm: true,
+          template_name: template.template_name,
+          trigger_key: template.trigger_key,
+          trigger_label: template.trigger_label,
+          variables: variables || {},
+        },
+      });
+
+      // Update conversation last message
+      await supabase
+        .from("whatsapp_conversations")
+        .update({
+          last_message_at: new Date().toISOString(),
+          last_message_preview: `📋 ${template.trigger_label}`,
+        })
+        .eq("id", existingConv.id);
+    }
+
     return new Response(
       JSON.stringify({ success: true, messageId: result.id, trigger_key }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
