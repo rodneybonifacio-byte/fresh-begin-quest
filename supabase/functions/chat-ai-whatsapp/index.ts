@@ -361,7 +361,7 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
           contact_name: conv?.contact_name || destNome,
           category: "reclamacao",
           priority: "alta",
-          status: "novo",
+          status: "aberto",
           subject: `Manifestação: ${codigoObjeto} — ${motivo.substring(0, 80)}`,
           description: descricaoCompleta.substring(0, 1000),
           sentiment: "negativo",
@@ -449,36 +449,26 @@ serve(async (req) => {
         "danificado", "danificada", "quebrado", "quebrada", "avariado", "avariada",
       ];
       if (preHandoffKeywords.some(k => lowerMsg.includes(k))) {
-        console.log(`🔄 PRÉ-HANDOFF: Keyword detectada em "${message.substring(0, 50)}..." → Veronica avisa e Felipe assume`);
+        console.log(`🔄 PRÉ-HANDOFF: Keyword detectada em "${message.substring(0, 50)}..." → Veronica avisa e Felipe assume (com áudio)`);
 
-        // Resolver canal para enviar mensagem de transição da Veronica
+        // Resolver canal para enviar handoff completo (áudio + análise)
         const preHandoffChannel = await resolveChannelForConversation(conversationId);
         if (preHandoffChannel) {
-          // Buscar nome do contato para personalizar
-          const { data: convPre } = await supabase.from("whatsapp_conversations")
-            .select("contact_name").eq("id", conversationId).single();
-          const firstName = convPre?.contact_name ? convPre.contact_name.split(" ")[0] : "";
-          const nameGreeting = firstName ? `${firstName}, ` : "";
+          // Atualizar agente para felipe ANTES do handoff
+          await supabase.from("whatsapp_conversations")
+            .update({ active_agent: "felipe" })
+            .eq("id", conversationId);
 
-          // Mensagem profissional da Veronica explicando a transferência
-          const veronicaHandoffMsg = `*Veronica:*\n\n${nameGreeting}entendi sua situação! Para esse tipo de caso, nosso time de Suporte Nível 2 é quem cuida diretamente. Vou te passar pro Felipe, que é nosso especialista em resoluções — ele vai analisar tudo e te dar um retorno completo, tá? Um instante 😊`;
+          // Chamar performHandoffToFelipe que já faz: msg Veronica → delay 1min → áudio Felipe → texto análise
+          await performHandoffToFelipe(supabase, conversationId, contactPhone, message, preHandoffChannel);
 
-          await fetch("https://conversations.messagebird.com/v1/send", {
-            method: "POST",
-            headers: { Authorization: `AccessKey ${preHandoffChannel.access_key}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ to: contactPhone, from: preHandoffChannel.channel_id, type: "text", content: { text: veronicaHandoffMsg } }),
-          }).then(r => r.json()).then(async (mbResult) => {
-            await supabase.from("whatsapp_messages").insert({
-              conversation_id: conversationId, messagebird_id: mbResult.id || null,
-              direction: "outbound", content_type: "text", content: veronicaHandoffMsg,
-              status: "sent", sent_by: "veronica", ai_generated: true,
-            });
-          });
-
-          // Delay de 1 minuto para transição natural (simula tempo de análise)
-          await new Promise(resolve => setTimeout(resolve, 60000));
+          return new Response(
+            JSON.stringify({ ok: true, reply: "Handoff Veronica → Felipe realizado (áudio + análise)", tools_used: [] }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
         }
 
+        // Fallback se não tem canal: só muda agente e continua no loop normal
         agentName = "felipe";
         await supabase.from("whatsapp_conversations")
           .update({ active_agent: "felipe" })
@@ -1943,7 +1933,7 @@ async function detectAndCreateSupportTicket(supabase: any, conversationId: strin
       contact_name: conv?.contact_name || null,
       category: matchedCategory,
       priority: matchedPriority,
-      status: "novo",
+      status: "aberto",
       subject: (userMessage || "").substring(0, 120),
       description: userMessage?.substring(0, 500) || null,
       sentiment,
