@@ -2077,15 +2077,15 @@ async function ensureTicketOpen(supabase: any, conversationId: string, contactPh
 }
 
 const PIPELINE_FLOWS: Record<string, string[]> = {
-  reclamacao: ["novo", "triagem", "investigacao", "resolucao", "concluido"],
-  rastreio: ["novo", "verificando", "localizado", "em_transito", "entregue"],
-  cancelamento: ["novo", "analise", "processamento", "aprovado", "concluido"],
-  financeiro: ["novo", "analise", "processamento", "aprovado", "concluido"],
-  operacional: ["novo", "em_andamento", "concluido"],
-  acesso: ["novo", "em_andamento", "concluido"],
-  comercial: ["novo", "em_andamento", "concluido"],
-  duvida: ["novo", "respondido", "concluido"],
-  elogio: ["novo", "concluido"],
+  reclamacao: ["aberto", "em_andamento", "aguardando_cliente", "resolvido", "fechado"],
+  rastreio: ["aberto", "em_andamento", "aguardando_cliente", "resolvido", "fechado"],
+  cancelamento: ["aberto", "em_andamento", "aguardando_cliente", "resolvido", "fechado"],
+  financeiro: ["aberto", "em_andamento", "aguardando_cliente", "resolvido", "fechado"],
+  operacional: ["aberto", "em_andamento", "resolvido", "fechado"],
+  acesso: ["aberto", "em_andamento", "resolvido", "fechado"],
+  comercial: ["aberto", "em_andamento", "resolvido", "fechado"],
+  duvida: ["aberto", "resolvido", "fechado"],
+  elogio: ["aberto", "fechado"],
 };
 
 async function progressPipelineStatus(supabase: any, conversationId: string, userMessage: string, aiReply: string) {
