@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRef } from "react";
 import { toast } from "sonner";
 import { EmissaoService } from "../services/EmissaoService";
 import type { IEmissao } from "../types/IEmissao";
@@ -104,13 +105,13 @@ export const useEmissao = () => {
     const service = new EmissaoService();
     const freteService = new FreteService();
 
-    // Armazena o input para usar no onSuccess
-    let lastEmissaoInput: IEmissao | null = null;
+    // Armazena o input para usar no onSuccess (useRef persiste entre re-renders)
+    const lastEmissaoInputRef = useRef<IEmissao | null>(null);
 
     const mutation = useMutation({
         mutationFn: async (requestData: IEmissao) => {
             console.log('🚀 Mutation: Enviando dados para backend:', requestData);
-            lastEmissaoInput = requestData;
+            lastEmissaoInputRef.current = requestData;
             const response = await freteService.create(requestData);
             console.log('✅ Mutation: Resposta do backend:', response);
             return response;
@@ -121,7 +122,7 @@ export const useEmissao = () => {
             toast.success("Emissão cadastrada com sucesso!", { duration: 5000, position: "top-center" });
 
             // Disparo automático de notificação WhatsApp
-            dispararNotificacaoEtiquetaCriada(data, lastEmissaoInput);
+            dispararNotificacaoEtiquetaCriada(data, lastEmissaoInputRef.current);
         },
         onError: (error) => {
             console.error('❌ Mutation Error:', error);
