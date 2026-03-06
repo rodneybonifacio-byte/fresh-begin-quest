@@ -1089,9 +1089,10 @@ serve(async (req) => {
 
     console.log("🤖 Resposta final:", aiReply.substring(0, 150));
 
-    // === PIPELINE & TICKETS ===
+    // === PIPELINE & TICKETS & TAGS ===
     await ensureTicketOpen(supabase, conversationId, contactPhone, message);
-    await detectAndCreateSupportTicket(supabase, conversationId, contactPhone, message, aiReply, agentName);
+    const detectedCategory = await detectAndCreateSupportTicket(supabase, conversationId, contactPhone, message, aiReply, agentName);
+    await updateConversationTags(supabase, conversationId, message, aiReply, detectedCategory);
     await progressPipelineStatus(supabase, conversationId, message, aiReply);
     await detectTicketResolution(supabase, conversationId, aiReply);
 
@@ -1852,7 +1853,7 @@ async function logInteraction(supabase: any, data: any) {
 // HELPERS: Tickets & Pipeline
 // ═══════════════════════════════════════════════════════════
 
-async function detectAndCreateSupportTicket(supabase: any, conversationId: string, contactPhone: string, userMessage: string, _aiReply: string, agentName: string) {
+async function detectAndCreateSupportTicket(supabase: any, conversationId: string, contactPhone: string, userMessage: string, _aiReply: string, agentName: string): Promise<string> {
   try {
     const lowerMsg = (userMessage || "").toLowerCase();
     
@@ -1876,7 +1877,7 @@ async function detectAndCreateSupportTicket(supabase: any, conversationId: strin
       { keywords: ["elogio", "parabéns", "excelente", "ótimo", "muito bom", "nota 10"], category: "elogio", priority: "baixa" },
     ];
 
-    let matchedCategory = "duvida"; // default: se não matchou nada, é dúvida geral
+    let matchedCategory = "duvida";
     let matchedPriority = "normal";
     for (const rule of categoryRules) {
       if (rule.keywords.some(k => lowerMsg.includes(k))) {
@@ -1886,8 +1887,8 @@ async function detectAndCreateSupportTicket(supabase: any, conversationId: strin
       }
     }
 
-    // Verificar se já existe card aberto para esta conversa
-    const { data: existing } = await supabase
+    // Verificar se já existe card aberto para esta conversa (usar maybeSingle para evitar erro)
+    const { data: existingList } = await supabase
       .from("ai_support_pipeline")
       .select("id, status, category")
       .eq("conversation_id", conversationId)
@@ -1897,23 +1898,34 @@ async function detectAndCreateSupportTicket(supabase: any, conversationId: strin
       .not("status", "eq", "fechado")
       .limit(1);
 
-    if (existing && existing.length > 0) {
-      // Card já existe — atualizar sentimento se necessário
+    if (existingList && existingList.length > 0) {
+      // Card já existe — atualizar sentimento e categoria se necessário
+      const existing = existingList[0];
       const negativePatterns = ["péssimo", "horrível", "absurdo", "pior", "lixo", "nunca mais"];
       const positivePatterns = ["obrigado", "obrigada", "valeu", "muito bom", "excelente", "parabéns"];
+      const updates: any = { updated_at: new Date().toISOString() };
+      
       if (negativePatterns.some(p => lowerMsg.includes(p))) {
-        await supabase.from("ai_support_pipeline").update({ sentiment: "muito_negativo", updated_at: new Date().toISOString() }).eq("id", existing[0].id);
+        updates.sentiment = "muito_negativo";
       } else if (positivePatterns.some(p => lowerMsg.includes(p))) {
-        await supabase.from("ai_support_pipeline").update({ sentiment: "positivo", updated_at: new Date().toISOString() }).eq("id", existing[0].id);
+        updates.sentiment = "positivo";
       }
-      return;
+      
+      // Atualizar categoria se a nova for mais específica que "duvida"
+      if (existing.category === "duvida" && matchedCategory !== "duvida") {
+        updates.category = matchedCategory;
+        updates.priority = matchedPriority;
+      }
+      
+      await supabase.from("ai_support_pipeline").update(updates).eq("id", existing.id);
+      return existing.category !== "duvida" ? existing.category : matchedCategory;
     }
 
     const { data: conv } = await supabase
       .from("whatsapp_conversations")
       .select("contact_name")
       .eq("id", conversationId)
-      .single();
+      .maybeSingle();
 
     // Determinar sentimento inicial
     const negPatterns = ["péssimo", "horrível", "absurdo", "pior", "lixo", "procon", "processo"];
@@ -1925,7 +1937,7 @@ async function detectAndCreateSupportTicket(supabase: any, conversationId: strin
 
     console.log("📋 Criando card pipeline:", { category: matchedCategory, priority: matchedPriority, sentiment });
 
-    await supabase.from("ai_support_pipeline").insert({
+    const { error: insertError } = await supabase.from("ai_support_pipeline").insert({
       conversation_id: conversationId,
       contact_phone: contactPhone,
       contact_name: conv?.contact_name || null,
@@ -1937,22 +1949,101 @@ async function detectAndCreateSupportTicket(supabase: any, conversationId: strin
       sentiment,
       detected_by: agentName,
     });
-    console.log("✅ Card pipeline criado para conversa:", conversationId);
+    
+    if (insertError) {
+      console.error("❌ Erro ao inserir card pipeline:", insertError);
+    } else {
+      console.log("✅ Card pipeline criado para conversa:", conversationId);
+    }
+    
+    return matchedCategory;
   } catch (e) {
-    console.warn("⚠️ Erro pipeline:", e);
+    console.error("❌ Erro pipeline:", e);
+    return "duvida";
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// HELPER: Tags de Conversa
+// ═══════════════════════════════════════════════════════════
+
+async function updateConversationTags(supabase: any, conversationId: string, userMessage: string, aiReply: string, detectedCategory: string) {
+  try {
+    const lowerMsg = (userMessage || "").toLowerCase();
+    const lowerReply = (aiReply || "").toLowerCase();
+    
+    // Buscar tags atuais
+    const { data: conv } = await supabase
+      .from("whatsapp_conversations")
+      .select("tags")
+      .eq("id", conversationId)
+      .maybeSingle();
+    
+    const currentTags: string[] = conv?.tags || [];
+    const newTags = new Set(currentTags);
+    
+    // Tag por categoria detectada
+    if (detectedCategory && detectedCategory !== "duvida") {
+      newTags.add(detectedCategory);
+    }
+    
+    // Tags por keywords na mensagem do usuário
+    const tagRules: { keywords: string[]; tag: string }[] = [
+      { keywords: ["rastreio", "rastrear", "rastreamento", "cadê", "cade", "onde tá", "onde ta", "quando chega"], tag: "rastreio" },
+      { keywords: ["atraso", "atrasado", "atrasada", "demorando", "não chegou", "nao chegou", "demora"], tag: "atraso" },
+      { keywords: ["extraviou", "extraviado", "sumiu", "perdido", "perdida", "roubado"], tag: "extravio" },
+      { keywords: ["danificado", "quebrado", "avariado", "amassado", "destruído"], tag: "avaria" },
+      { keywords: ["apreendido", "apreensão", "retido", "retida", "retenção"], tag: "retido" },
+      { keywords: ["manifestação", "manifestacao", "reclamação", "reclamacao", "reclamar"], tag: "reclamacao" },
+      { keywords: ["cancelar", "cancelamento", "estornar", "estorno", "reembolso"], tag: "cancelamento" },
+      { keywords: ["etiqueta", "emitir", "emissão", "planilha"], tag: "etiqueta" },
+      { keywords: ["saldo", "crédito", "recarga", "pix", "pagamento"], tag: "financeiro" },
+      { keywords: ["cotação", "cotacao", "preço", "frete", "simular"], tag: "comercial" },
+    ];
+    
+    for (const rule of tagRules) {
+      if (rule.keywords.some(k => lowerMsg.includes(k))) {
+        newTags.add(rule.tag);
+      }
+    }
+    
+    // Tags por resultado da IA
+    if (lowerReply.includes("entregue") || lowerReply.includes("foi entregue")) {
+      newTags.add("entregue");
+      newTags.delete("atraso"); // Remover atraso se já entregou
+    }
+    if (lowerReply.includes("em trânsito") || lowerReply.includes("em transito")) {
+      newTags.add("em_transito");
+    }
+    if (lowerReply.includes("aguardando retirada")) {
+      newTags.add("aguardando_retirada");
+    }
+    
+    // Só atualizar se houve mudança
+    const finalTags = Array.from(newTags);
+    if (JSON.stringify(finalTags.sort()) !== JSON.stringify(currentTags.sort())) {
+      await supabase
+        .from("whatsapp_conversations")
+        .update({ tags: finalTags, updated_at: new Date().toISOString() })
+        .eq("id", conversationId);
+      console.log("🏷️ Tags atualizadas:", finalTags);
+    }
+  } catch (e) {
+    console.warn("⚠️ Erro ao atualizar tags:", e);
   }
 }
 
 async function ensureTicketOpen(supabase: any, conversationId: string, contactPhone: string, userMessage: string) {
   try {
     // Verificar se tem ticket open OU pending_close
-    const { data: existingTicket } = await supabase
+    const { data: ticketList } = await supabase
       .from("whatsapp_tickets")
       .select("id, message_count, status")
       .eq("conversation_id", conversationId)
       .in("status", ["open", "pending_close"])
-      .limit(1)
-      .single();
+      .limit(1);
+
+    const existingTicket = ticketList?.[0] || null;
 
     if (existingTicket) {
       const updates: any = {
