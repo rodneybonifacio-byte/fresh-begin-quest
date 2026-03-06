@@ -291,7 +291,7 @@ Deno.serve(async (req) => {
               subject: codigoRastreio
                 ? `Rastreio ${codigoRastreio}`
                 : `${template.trigger_label}`,
-              description: `Notificação automática: ${template.trigger_label}${nomeRemetente ? ` | Remetente: ${nomeRemetente}` : ""}${codigoRastreio ? ` | Código: ${codigoRastreio}` : ""}`,
+              description: `Notificação automática: ${template.trigger_label}${nomeRemetente ? ` | Remetente: ${nomeRemetente}` : ""}${codigoRastreio ? ` | Código: ${codigoRastreio}` : ""}${dataPrevisao ? ` | Previsão de entrega: ${dataPrevisao}` : ""}`,
               detected_by: "notificacao_ativa",
               sentiment: trigger_key === "avaliacao" ? "positivo" : "neutro",
             });
