@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../../../integrations/supabase/client';
-import { MessageSquare, Send, Search, Phone, User, Bot, Clock, ChevronLeft, ToggleLeft, ToggleRight, Smile, Check, CheckCheck, Ticket, Mic, Paperclip, X } from 'lucide-react';
+import { MessageSquare, Send, Search, Phone, User, Bot, Clock, ChevronLeft, ToggleLeft, ToggleRight, Smile, Check, CheckCheck, Ticket, Mic, Paperclip, X, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import TicketHistory from './TicketHistory';
@@ -30,6 +30,7 @@ interface Message {
   sent_by: string | null;
   ai_generated: boolean;
   created_at: string;
+  metadata: Record<string, any> | null;
 }
 
 const CrmWhatsApp = () => {
@@ -532,20 +533,39 @@ const CrmWhatsApp = () => {
                           <span className="text-[10px]">{msg.sent_by || 'IA'}</span>
                         </div>
                       )}
-                      {msg.content_type === 'image' && msg.media_url ? (
-                        <img src={msg.media_url} alt="Imagem" className="rounded-lg max-w-full mb-1" />
-                      ) : null}
-                      {(msg.content_type === 'audio' || msg.content_type === 'voice' || msg.content_type === 'ptt') && msg.media_url ? (
-                        <audio controls className="max-w-full mb-1" preload="metadata">
-                          <source src={msg.media_url} />
-                          Seu navegador não suporta áudio.
-                        </audio>
-                      ) : null}
-                      {msg.content ? (
-                        <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
-                      ) : (msg.content_type !== 'image' && msg.content_type !== 'audio' && msg.content_type !== 'voice' && msg.content_type !== 'ptt') ? (
-                        <p className="text-sm whitespace-pre-wrap break-words">[mídia]</p>
-                      ) : null}
+                      {msg.content_type === 'hsm' && msg.metadata?.hsm ? (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <FileText className="w-3.5 h-3.5 opacity-70" />
+                            <span className="text-[10px] font-medium opacity-70">Mensagem Ativa</span>
+                          </div>
+                          <p className="text-xs font-semibold">{msg.metadata.trigger_label || msg.metadata.template_name}</p>
+                          {msg.metadata.variables && Object.keys(msg.metadata.variables).length > 0 && (
+                            <div className="text-[11px] opacity-80 space-y-0.5 mt-1 border-t border-white/20 pt-1">
+                              {Object.entries(msg.metadata.variables as Record<string, string>).map(([key, val]) => (
+                                <div key={key}><span className="opacity-60">{key}:</span> {val}</div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <>
+                          {msg.content_type === 'image' && msg.media_url ? (
+                            <img src={msg.media_url} alt="Imagem" className="rounded-lg max-w-full mb-1" />
+                          ) : null}
+                          {(msg.content_type === 'audio' || msg.content_type === 'voice' || msg.content_type === 'ptt') && msg.media_url ? (
+                            <audio controls className="max-w-full mb-1" preload="metadata">
+                              <source src={msg.media_url} />
+                              Seu navegador não suporta áudio.
+                            </audio>
+                          ) : null}
+                          {msg.content ? (
+                            <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                          ) : (msg.content_type !== 'image' && msg.content_type !== 'audio' && msg.content_type !== 'voice' && msg.content_type !== 'ptt') ? (
+                            <p className="text-sm whitespace-pre-wrap break-words">[mídia]</p>
+                          ) : null}
+                        </>
+                      )}
                       <div className={`flex items-center justify-end gap-1 mt-1 ${msg.direction === 'outbound' ? 'text-white/60' : 'text-muted-foreground'}`}>
                         <span className="text-[10px]">
                           {format(new Date(msg.created_at), 'HH:mm')}
