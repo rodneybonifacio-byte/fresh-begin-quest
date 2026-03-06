@@ -55,7 +55,7 @@ const systemFieldsByTrigger: Record<string, { value: string; label: string; desc
     { value: 'codigo_rastreio', label: 'Código de Rastreio', description: 'Código do objeto para rastreio' },
     { value: 'nome_remetente', label: 'Nome do Remetente', description: 'Nome de quem está enviando' },
     { value: 'servico', label: 'Serviço', description: 'Serviço de envio utilizado' },
-    { value: 'data_postagem', label: 'Data de Postagem', description: 'Data em que o objeto foi postado' },
+    { value: 'data_previsao_entrega', label: 'Previsão de Entrega', description: 'Data estimada de entrega do objeto' },
   ],
   saiu_para_entrega: [
     { value: 'nome_destinatario', label: 'Nome do Destinatário', description: 'Nome completo do destinatário' },
