@@ -53,6 +53,8 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [showContactPanel, setShowContactPanel] = useState(false);
   const [templateBodies, setTemplateBodies] = useState<Record<string, { body: string; header?: string; footer?: string; buttons?: { text: string }[]; variables?: any[] }>>({});
+  const [conversationTab, setConversationTab] = useState<'sem_atendimento' | 'ia' | 'fechados'>('sem_atendimento');
+  const [closedConversationIds, setClosedConversationIds] = useState<Set<string>>(new Set());
 
   // Load template bodies for HSM rendering
   useEffect(() => {
