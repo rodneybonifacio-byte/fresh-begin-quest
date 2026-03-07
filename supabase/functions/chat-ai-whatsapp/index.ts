@@ -2916,7 +2916,7 @@ NUNCA terceirize ("entre em contato com os Correios"). NÓS somos os responsáve
 
     const felipeAnalysisResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
-      headers: { Authorization: \`Bearer \${OPENAI_API_KEY}\`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: felipeConfig?.model || "gpt-4o",
         messages: [{ role: "system", content: felipeAnalysisPrompt }, { role: "user", content: userMessage }],
