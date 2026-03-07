@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../../../integrations/supabase/client';
-import { MessageSquare, Send, Search, Phone, User, Bot, Clock, ChevronLeft, ToggleLeft, ToggleRight, Smile, Check, CheckCheck, Ticket, Mic, Paperclip, X, FileText } from 'lucide-react';
+import { MessageSquare, Send, Search, Phone, User, Bot, Clock, ChevronLeft, ToggleLeft, ToggleRight, Smile, Check, CheckCheck, Ticket, Mic, Paperclip, X, FileText, UserCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import TicketHistory from './TicketHistory';
+import { ContactIntelligencePanel } from './ContactIntelligencePanel';
 
 interface Conversation {
   id: string;
@@ -50,7 +51,7 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
-
+  const [showContactPanel, setShowContactPanel] = useState(false);
   // Carregar conversas
   const loadConversations = useCallback(async () => {
     const { data, error } = await supabase
@@ -465,7 +466,8 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
       </div>
 
       {/* Área de Chat */}
-      <div className={`flex-1 flex flex-col ${!mobileShowChat ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`flex-1 flex ${!mobileShowChat ? 'hidden md:flex' : 'flex'}`}>
+        <div className="flex-1 flex flex-col min-w-0">
         {selectedConversation ? (
           <>
             {/* Header do Chat */}
@@ -508,6 +510,18 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
               >
                 <Ticket className="w-3.5 h-3.5" />
                 Fechar
+              </button>
+              <button
+                onClick={() => setShowContactPanel(!showContactPanel)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  showContactPanel
+                    ? 'bg-primary/10 text-primary'
+                    : 'bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary'
+                }`}
+                title="Dados do contato"
+              >
+                <UserCircle className="w-3.5 h-3.5" />
+                Perfil
               </button>
             </div>
 
@@ -696,6 +710,17 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
             <h3 className="text-lg font-semibold mb-1">CRM WhatsApp</h3>
             <p className="text-sm">Selecione uma conversa para começar</p>
           </div>
+        )}
+        </div>
+
+        {/* Contact Intelligence Panel */}
+        {showContactPanel && selectedConversation && (
+          <ContactIntelligencePanel
+            contactPhone={selectedConversation.contact_phone}
+            contactName={selectedConversation.contact_name}
+            conversationId={selectedConversation.id}
+            onClose={() => setShowContactPanel(false)}
+          />
         )}
       </div>
     </div>
