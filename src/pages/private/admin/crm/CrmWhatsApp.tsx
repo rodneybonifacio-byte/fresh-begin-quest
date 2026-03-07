@@ -510,6 +510,18 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
                 <Ticket className="w-3.5 h-3.5" />
                 Fechar
               </button>
+              <button
+                onClick={() => setShowContactPanel(!showContactPanel)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  showContactPanel
+                    ? 'bg-primary/10 text-primary'
+                    : 'bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary'
+                }`}
+                title="Dados do contato"
+              >
+                <UserCircle className="w-3.5 h-3.5" />
+                Perfil
+              </button>
             </div>
 
             {/* Ticket History */}
