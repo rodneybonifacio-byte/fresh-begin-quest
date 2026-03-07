@@ -51,6 +51,13 @@ const ELEVENLABS_VOICES = [
   { id: 'wOCZZnsBoGOFlQRdxeRb', name: 'Peter (O Profeta)', gender: 'Masculino', lang: 'PT-BR' },
   // PT-BR Feminino
   { id: 'FGY2WhTYpPnrIDTdsKH5', name: 'Laura', gender: 'Feminino', lang: 'PT-BR' },
+  { id: 'OB6x7EbXYlhG4DDTB1XU', name: 'Michelle', gender: 'Feminino', lang: 'PT-BR' },
+  { id: '33B4UnXyTNbgLmdEDh5P', name: 'Keren', gender: 'Feminino', lang: 'PT-BR' },
+  { id: 'CZD4BJ803C6T0alQxsR7', name: 'Andreia I.', gender: 'Feminino', lang: 'PT-BR' },
+  { id: 'cgSgspJ2msm6clMCkdW9', name: 'Jessica', gender: 'Feminino', lang: 'PT-BR' },
+  { id: 'pFZP5JQG7iQjIQuC4Bku', name: 'Lily', gender: 'Feminino', lang: 'PT-BR' },
+  { id: 'XrExE9yKIg1WjnnlVkGX', name: 'Matilda', gender: 'Feminino', lang: 'PT-BR' },
+  { id: 'Xb7hH8MSUJpSbSDYk0k2', name: 'Alice', gender: 'Feminino', lang: 'PT-BR' },
   // EN
   { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah', gender: 'Feminino', lang: 'EN' },
   { id: 'TX3LPaxmHKxFdv7VOQHJ', name: 'Liam', gender: 'Masculino', lang: 'EN' },
