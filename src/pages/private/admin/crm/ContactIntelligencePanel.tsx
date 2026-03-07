@@ -24,9 +24,21 @@ interface ClientProfile {
   origem: string | null;
 }
 
+interface ShipmentRecord {
+  codigo: string;
+  status: string;
+  servico: string;
+  data: string;
+  destNome: string;
+  destEndereco: string;
+  remetenteNome: string;
+  valorVenda: number;
+}
+
 interface ShipmentSummary {
   total: number;
-  recentes: { codigo: string; status: string; servico: string; data: string; destNome: string }[];
+  totalGasto: number;
+  recentes: ShipmentRecord[];
 }
 
 interface FinancialSummary {
