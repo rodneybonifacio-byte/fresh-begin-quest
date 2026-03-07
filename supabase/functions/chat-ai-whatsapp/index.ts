@@ -635,7 +635,7 @@ serve(async (req) => {
       if (clienteId) {
         const details = await fetchClienteDetails(clienteId);
         console.log("🔍 fetchClienteDetails resultado:", details ? details.nome : "NULL/falhou");
-        if (details) {
+        if (details && details.nome !== "Desconhecido") {
           contactName = details.nome;
           contactEmail = details.email || null;
           contactRole = "cliente";
@@ -816,10 +816,14 @@ serve(async (req) => {
         const isGeneric = nomeUpper.length < 3 || nomeUpper.includes('CADASTRO') || nomeUpper.includes('NOLASTNAME') || /^[0-9a-f-]{36}$/i.test(nomeUpper);
 
         if (!isGeneric) {
+          // Formatar primeiro nome capitalizado (ex: "RODNEY BONIFACIO" → "Rodney")
+          const firstName = contactName.split(/\s+/)[0];
+          const formattedFirstName = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+
           const roleLabel = contactRole === "destinatário" ? "um destinatário de envio" 
                           : contactRole === "remetente" ? "um remetente cadastrado"
                           : "um cliente da plataforma";
-          contactContext = `\n\n[CONTEXTO DO CONTATO ATUAL]\nO contato que está falando com você se chama: ${contactName}. Tipo: ${roleLabel}. Email: ${contactEmail || "N/A"}. Telefone: ${contactPhone}.${clienteId ? ` ID cliente: ${clienteId}.` : ""}\nIMPORTANTE: Chame a pessoa pelo PRIMEIRO NOME de forma pessoal e simpática. Não peça identificação novamente, você já sabe quem é.`;
+          contactContext = `\n\n[CONTEXTO DO CONTATO ATUAL]\nO contato que está falando com você se chama: ${formattedFirstName} (nome completo: ${contactName}). Tipo: ${roleLabel}. Email: ${contactEmail || "N/A"}. Telefone: ${contactPhone}.${clienteId ? ` ID cliente: ${clienteId}.` : ""}\nIMPORTANTE: Chame a pessoa SEMPRE por "${formattedFirstName}" de forma pessoal e simpática na PRIMEIRA mensagem. Não use "Desconhecido", não peça identificação, você já sabe quem é.`;
 
           // 7. AUTO-INJECT: Buscar envios pendentes do cliente automaticamente
           if (clienteId) {
@@ -843,7 +847,7 @@ serve(async (req) => {
             try {
               const recipientPackages = await fetchRecipientPackagesByPhone(supabase, normalized, phoneVariants, conversationId);
               if (recipientPackages) {
-                contactContext += `\n\n[PACOTES ASSOCIADOS A ESTE DESTINATÁRIO]\n${recipientPackages}\nIMPORTANTE: Este contato é um DESTINATÁRIO de encomendas. Informe proativamente o status dos pacotes dele. Se estiver em trânsito, informe a previsão. Se estiver aguardando retirada, informe o endereço. Se estiver atrasado (previsão anterior a hoje ${new Date().toLocaleDateString("pt-BR")}), reconheça o atraso e ofereça ajuda, direcionando ao Felipe (Suporte Nível 2) se necessário.`;
+                contactContext += `\n\n[PACOTES ASSOCIADOS A ESTE DESTINATÁRIO - ATENÇÃO MÁXIMA]\n${recipientPackages}\nREGRA OBRIGATÓRIA: Quando o contato enviar uma saudação simples (oi, olá, bom dia, etc), você DEVE:\n1. Cumprimentar pelo primeiro nome\n2. IMEDIATAMENTE mencionar que identificou os pacotes dele e informar o status atualizado de cada um\n3. NÃO fazer saudação genérica — vá direto ao ponto com as informações dos pacotes\nSe estiver em trânsito, informe a previsão. Se estiver aguardando retirada, informe o endereço. Se estiver atrasado (previsão anterior a hoje ${new Date().toLocaleDateString("pt-BR")}), reconheça o atraso e ofereça ajuda.`;
                 console.log("📦 Auto-inject destinatário:", recipientPackages.substring(0, 150));
               }
             } catch (recipErr) {
