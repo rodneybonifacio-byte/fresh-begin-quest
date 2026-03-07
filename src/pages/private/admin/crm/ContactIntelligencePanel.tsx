@@ -149,26 +149,56 @@ export const ContactIntelligencePanel = ({
         .limit(50) : Promise.resolve({ data: [] as any[] }),
     ]);
 
-    // Extract tracking codes from messages metadata and pipeline descriptions
+    // Extract tracking codes and shipment info from messages metadata and pipeline
     const trackingCodes = new Set<string>();
+    const trackingFromMeta: { codigo: string; status: string; servico: string; data: string; destNome: string }[] = [];
     
     // From messages metadata
     if (messagesRes.data) {
       for (const msg of messagesRes.data) {
         const meta = msg.metadata as any;
         if (meta?.variables?.codigo_rastreio) {
-          trackingCodes.add(meta.variables.codigo_rastreio);
+          const code = meta.variables.codigo_rastreio;
+          if (!trackingCodes.has(code)) {
+            trackingCodes.add(code);
+            trackingFromMeta.push({
+              codigo: code,
+              status: meta.trigger_key === 'etiqueta_criada' ? 'criado' : (meta.trigger_key || 'notificado'),
+              servico: meta.template_name || '—',
+              data: '', // will be filled from pipeline if available
+              destNome: meta.variables.nome_destinatario || contactName || '',
+            });
+          }
         }
       }
     }
     
-    // From pipeline card descriptions/subjects
+    // From pipeline card descriptions/subjects - also build shipment entries
     if (pipelineRes.data) {
       for (const card of pipelineRes.data) {
-        // Extract tracking codes from description (pattern: Código: XXXX or just tracking format)
         const text = `${card.description || ''} ${card.subject || ''}`;
         const matches = text.match(/[A-Z]{2}\d{9,}[A-Z]{2}|[A-Z0-9]{13,}/g);
-        if (matches) matches.forEach(m => trackingCodes.add(m));
+        if (matches) {
+          for (const code of matches) {
+            if (!trackingCodes.has(code)) {
+              trackingCodes.add(code);
+              trackingFromMeta.push({
+                codigo: code,
+                status: card.status || 'verificando',
+                servico: card.category || '—',
+                data: card.created_at || '',
+                destNome: contactName || '',
+              });
+            } else {
+              // Update existing entry with pipeline data (date, status)
+              const existing = trackingFromMeta.find(t => t.codigo === code);
+              if (existing && card.created_at) {
+                existing.data = existing.data || card.created_at;
+                existing.status = card.status || existing.status;
+              }
+            }
+          }
+        }
       }
     }
 
@@ -273,6 +303,23 @@ export const ContactIntelligencePanel = ({
           }
         }
       }
+    } else {
+      // Fallback: extract remetente names from message metadata
+      const metaRemetentes: RemetenteSummary[] = [];
+      const seenNames = new Set<string>();
+      if (messagesRes.data) {
+        for (const msg of messagesRes.data) {
+          const meta = msg.metadata as any;
+          const nome = meta?.variables?.nome_remetente;
+          if (nome && nome !== 'Loja' && nome !== 'Remetente' && nome.length > 2 && !seenNames.has(nome)) {
+            seenNames.add(nome);
+            metaRemetentes.push({ id: '', nome, cpfMasked: '', cidade: null, uf: null });
+          }
+        }
+      }
+      if (metaRemetentes.length > 0) {
+        setRemetentes(metaRemetentes);
+      }
     }
 
     // Update profile with clienteId if discovered via cross-reference
@@ -300,11 +347,19 @@ export const ContactIntelligencePanel = ({
       }
     }
 
-    // Add emissao-based shipments (from tracking codes)
+    // Add emissao-based shipments (from tracking codes in DB)
     for (const e of emissaoShipments) {
       if (!allShipmentCodes.has(e.codigo)) {
         allShipmentCodes.add(e.codigo);
         mergedRecentes.push(e);
+      }
+    }
+
+    // Add shipments discovered from message metadata / pipeline (fallback when DB tables are empty)
+    for (const t of trackingFromMeta) {
+      if (!allShipmentCodes.has(t.codigo)) {
+        allShipmentCodes.add(t.codigo);
+        mergedRecentes.push(t);
       }
     }
 
@@ -388,6 +443,10 @@ export const ContactIntelligencePanel = ({
     em_transito: 'bg-purple-500/10 text-purple-600',
     entregue: 'bg-green-500/10 text-green-600',
     cancelado: 'bg-red-500/10 text-red-600',
+    criado: 'bg-blue-500/10 text-blue-600',
+    verificando: 'bg-amber-500/10 text-amber-600',
+    notificado: 'bg-cyan-500/10 text-cyan-600',
+    etiqueta_criada: 'bg-blue-500/10 text-blue-600',
   };
 
   return (
