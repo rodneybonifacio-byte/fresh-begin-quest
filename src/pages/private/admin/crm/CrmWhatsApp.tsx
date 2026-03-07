@@ -89,6 +89,19 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
     loadConversations();
   }, [loadConversations]);
 
+  // Abrir conversa vinda do Pipeline
+  useEffect(() => {
+    if (initialConversationId && conversations.length > 0) {
+      const conv = conversations.find(c => c.id === initialConversationId);
+      if (conv) {
+        setSelectedConversation(conv);
+        loadMessages(conv.id);
+        setMobileShowChat(true);
+      }
+      onConversationOpened?.();
+    }
+  }, [initialConversationId, conversations, loadMessages, onConversationOpened]);
+
   // Realtime para novas mensagens
   useEffect(() => {
     const convId = selectedConversation?.id;
