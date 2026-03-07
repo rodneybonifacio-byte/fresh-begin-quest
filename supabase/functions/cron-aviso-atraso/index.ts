@@ -1,4 +1,6 @@
 // @ts-nocheck
+// @ts-ignore
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,9 +9,51 @@ const corsHeaders = {
 
 const WEBHOOK_URL = 'https://api.datacrazy.io/v1/crm/api/crm/flows/webhooks/ab52ed88-dd1c-4bd2-a198-d1845e59e058/181d8bbe-a92e-43f1-9660-b2e3acf2632b';
 
+// Inicializar Supabase para resolver nomes de remetentes
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+/**
+ * Resolve o nome real do remetente, evitando o genérico "Remetente".
+ * Tenta buscar na tabela remetentes pelo remetenteId se o nome vier genérico.
+ */
+async function resolverNomeRemetente(remetenteNome: string, remetenteId?: string): Promise<string> {
+  const nomeLimpo = (remetenteNome || '').trim();
+  const genericos = ['remetente', 'loja', ''];
+  
+  if (!genericos.includes(nomeLimpo.toLowerCase()) && nomeLimpo.length > 2) {
+    // Nome já é válido, capitalizar primeiro nome
+    const first = nomeLimpo.split(/\s+/)[0] || nomeLimpo;
+    return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+  }
+  
+  // Tentar resolver pelo ID na tabela remetentes
+  if (remetenteId) {
+    try {
+      const { data: rem } = await supabase
+        .from('remetentes')
+        .select('nome')
+        .eq('id', remetenteId)
+        .maybeSingle();
+      
+      if (rem?.nome && rem.nome.trim().length > 2) {
+        const first = rem.nome.trim().split(/\s+/)[0];
+        console.log(`🔍 Nome remetente resolvido via DB: "${rem.nome}" → "${first}"`);
+        return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+      }
+    } catch (err) {
+      console.warn('⚠️ Erro ao resolver nome remetente via DB:', err);
+    }
+  }
+  
+  return 'Loja';
+}
+
 interface EmissaoEmTransito {
   codigoObjeto: string;
   remetenteNome: string;
+  remetenteId?: string;
   destinatario: {
     nome: string;
     celular: string;
@@ -74,10 +118,11 @@ function isToday(dateString: string): boolean {
 
 async function enviarWebhookAviso(emissao: EmissaoEmTransito): Promise<boolean> {
   try {
+    const nomeRemetente = await resolverNomeRemetente(emissao.remetenteNome || '', emissao.remetenteId);
     const payload = {
       telefone_destinatario: emissao.destinatario?.celular || '',
       nome_destinatario: emissao.destinatario?.nome || '',
-      nome_remetente: emissao.remetenteNome || '',
+      nome_remetente: nomeRemetente,
       codigo_objeto: emissao.codigoObjeto || '',
       data_prevista: emissao.dataPrevisaoEntrega || '',
     };

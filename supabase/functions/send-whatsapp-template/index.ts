@@ -100,6 +100,15 @@ Deno.serve(async (req) => {
     const bodyVars = templateVars.filter(v => v.component_type === 'BODY' || !v.component_type);
     const buttonVars = templateVars.filter(v => v.component_type === 'BUTTONS');
 
+    // Sanitizar nome_remetente genérico como última defesa
+    if (variables.nome_remetente) {
+      const nomeRem = variables.nome_remetente.trim().toLowerCase();
+      if (nomeRem === 'remetente' || nomeRem === '' || nomeRem.length < 2) {
+        variables.nome_remetente = 'Loja';
+        console.log('⚠️ nome_remetente genérico substituído por "Loja"');
+      }
+    }
+
     const resolveVar = (v: { system_field?: string; key: string }) => ({
       type: "text",
       text: variables[v.system_field || v.key] || variables[v.key] || "",

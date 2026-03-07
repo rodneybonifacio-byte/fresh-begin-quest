@@ -3,6 +3,39 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 // @ts-ignore
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+/**
+ * Resolve o nome real do remetente, evitando o genérico "Remetente".
+ */
+async function resolverNomeRemetente(supabase: any, remetenteNome: string, remetenteId?: string): Promise<string> {
+  const nomeLimpo = (remetenteNome || '').trim();
+  const genericos = ['remetente', 'loja', ''];
+  
+  if (!genericos.includes(nomeLimpo.toLowerCase()) && nomeLimpo.length > 2) {
+    const first = nomeLimpo.split(/\s+/)[0] || nomeLimpo;
+    return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+  }
+  
+  if (remetenteId) {
+    try {
+      const { data: rem } = await supabase
+        .from('remetentes')
+        .select('nome')
+        .eq('id', remetenteId)
+        .maybeSingle();
+      
+      if (rem?.nome && rem.nome.trim().length > 2) {
+        const first = rem.nome.trim().split(/\s+/)[0];
+        console.log(`🔍 Nome remetente resolvido via DB: "${rem.nome}" → "${first}"`);
+        return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+      }
+    } catch (err) {
+      console.warn('⚠️ Erro ao resolver nome remetente via DB:', err);
+    }
+  }
+  
+  return 'Loja';
+}
+
 declare const Deno: {
   env: {
     get(key: string): string | undefined;
@@ -221,10 +254,17 @@ serve(async (req: Request) => {
         console.log(`📱 Celular formatado: "${celular}"`);
 
         // Preparar payload para o webhook DataCrazy
+        // Resolver nome real do remetente (evitar genérico "Remetente")
+        const nomeRemetenteResolvido = await resolverNomeRemetente(
+          supabase, 
+          envio.remetenteNome || envio.cliente?.nome || '', 
+          envio.remetenteId
+        );
+        
         const webhookPayload = {
           destinatario_nome: destinatario.nome || envio.destinatarioNome || '',
           codigo_objeto: envio.codigoObjeto || '',
-          remetente_nome: envio.remetenteNome || envio.cliente?.nome || '',
+          remetente_nome: nomeRemetenteResolvido,
           destinatario_celular: celular,
           // Endereço do destinatário
           destinatario_cep: enderecoDestinatario.cep || '',
