@@ -159,9 +159,13 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
           });
         }
         loadConversations();
+        loadClosedConversationIds();
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'whatsapp_conversations' }, () => {
         loadConversations();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'whatsapp_tickets' }, () => {
+        loadClosedConversationIds();
       })
       .subscribe();
 
