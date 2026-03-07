@@ -77,6 +77,17 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
     loadTemplateBodies();
   }, []);
 
+  // Load closed ticket conversation IDs
+  const loadClosedConversationIds = useCallback(async () => {
+    const { data } = await supabase
+      .from('whatsapp_tickets')
+      .select('conversation_id')
+      .in('status', ['closed', 'resolved']);
+    if (data) {
+      setClosedConversationIds(new Set(data.map((t: any) => t.conversation_id)));
+    }
+  }, []);
+
   const loadConversations = useCallback(async () => {
     const { data, error } = await supabase
       .from('whatsapp_conversations')
