@@ -436,6 +436,8 @@ serve(async (req) => {
     // === PRÉ-HANDOFF: Se Veronica e mensagem contém keywords de atraso/problema grave → Felipe assume COM aviso profissional ===
     if (agentName === "veronica" && message) {
       const lowerMsg = (message || "").toLowerCase();
+      
+      // Keywords de PROBLEMA REAL → transferência direta para Felipe
       const preHandoffKeywords = [
         "atrasado", "atrasada", "atrasados", "atrasadas", "atraso", "atrasou",
         "demora", "demorando", "demorou", "demorada",
@@ -447,7 +449,10 @@ serve(async (req) => {
         "apreendido", "apreensão", "apreensao", "retido", "retida", "retenção", "retencao",
         "extraviou", "extraviado", "extraviada", "sumiu", "perdido", "perdida",
         "danificado", "danificada", "quebrado", "quebrada", "avariado", "avariada",
-        // Pedido explícito para falar com Felipe
+      ];
+
+      // Keywords de PEDIDO EXPLÍCITO para falar com Felipe → Veronica questiona antes
+      const felipeExplicitKeywords = [
         "falar com felipe", "falar com o felipe", "quero o felipe", "quero falar com felipe",
         "chama o felipe", "chamar o felipe", "passa pro felipe", "transfere pro felipe",
         "transferir pro felipe", "transfere para o felipe", "transferir para o felipe",
@@ -455,18 +460,20 @@ serve(async (req) => {
         "preciso do felipe", "preciso falar com felipe", "cadê o felipe", "cade o felipe",
         "passa para o felipe", "me passa para o felipe",
       ];
-      if (preHandoffKeywords.some(k => lowerMsg.includes(k))) {
-        console.log(`🔄 PRÉ-HANDOFF: Keyword detectada em "${message.substring(0, 50)}..." → Veronica avisa e Felipe assume (com áudio)`);
 
-        // Resolver canal para enviar handoff completo (áudio + análise)
+      const isRealProblem = preHandoffKeywords.some(k => lowerMsg.includes(k));
+      const isExplicitFelipeRequest = felipeExplicitKeywords.some(k => lowerMsg.includes(k));
+
+      if (isRealProblem && !isExplicitFelipeRequest) {
+        // Problema real detectado → transferência direta
+        console.log(`🔄 PRÉ-HANDOFF: Problema detectado em "${message.substring(0, 50)}..." → Felipe assume`);
+
         const preHandoffChannel = await resolveChannelForConversation(conversationId);
         if (preHandoffChannel) {
-          // Atualizar agente para felipe ANTES do handoff
           await supabase.from("whatsapp_conversations")
             .update({ active_agent: "felipe" })
             .eq("id", conversationId);
 
-          // Chamar performHandoffToFelipe que já faz: msg Veronica → delay 1min → áudio Felipe → texto análise
           await performHandoffToFelipe(supabase, conversationId, contactPhone, message, preHandoffChannel);
 
           return new Response(
@@ -475,7 +482,60 @@ serve(async (req) => {
           );
         }
 
-        // Fallback se não tem canal: só muda agente e continua no loop normal
+        agentName = "felipe";
+        await supabase.from("whatsapp_conversations")
+          .update({ active_agent: "felipe" })
+          .eq("id", conversationId);
+
+      } else if (isExplicitFelipeRequest && !isRealProblem) {
+        // Pedido explícito SEM problema claro → Veronica questiona antes de transferir
+        console.log(`🔄 TRIAGEM: Cliente pediu Felipe mas sem problema claro → Veronica questiona`);
+
+        const triagemChannel = await resolveChannelForConversation(conversationId);
+        if (triagemChannel) {
+          const { data: convData } = await supabase.from("whatsapp_conversations")
+            .select("contact_name").eq("id", conversationId).single();
+          const firstName = convData?.contact_name?.split(" ")[0] || "";
+          const nameGreeting = firstName ? `${firstName}, ` : "";
+
+          const triagemMsg = `*Veronica:*\n\n${nameGreeting}o Felipe é nosso especialista em casos de *atraso na entrega*, *extravio*, *apreensão* e *avaria* de pacotes. 📦\n\nMe conta o que tá acontecendo — se for um desses casos eu transfiro na hora pra ele! Se for outra coisa, posso te ajudar por aqui mesmo 😊`;
+
+          await fetch("https://conversations.messagebird.com/v1/send", {
+            method: "POST",
+            headers: { Authorization: `AccessKey ${triagemChannel.access_key}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ to: contactPhone, from: triagemChannel.channel_id, type: "text", content: { text: triagemMsg } }),
+          }).then(r => r.json()).then(async (mbResult) => {
+            await supabase.from("whatsapp_messages").insert({
+              conversation_id: conversationId, direction: "outgoing", content: triagemMsg,
+              content_type: "text", status: "sent", ai_generated: true, sent_by: "veronica",
+              messagebird_id: mbResult?.id || null,
+            });
+          });
+
+          return new Response(
+            JSON.stringify({ ok: true, reply: "Veronica questionou antes de transferir para Felipe", tools_used: [] }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+      } else if (isExplicitFelipeRequest && isRealProblem) {
+        // Pedido explícito + problema real na mesma mensagem → transfere direto
+        console.log(`🔄 PRÉ-HANDOFF: Pedido explícito + problema real → Felipe assume`);
+
+        const preHandoffChannel = await resolveChannelForConversation(conversationId);
+        if (preHandoffChannel) {
+          await supabase.from("whatsapp_conversations")
+            .update({ active_agent: "felipe" })
+            .eq("id", conversationId);
+
+          await performHandoffToFelipe(supabase, conversationId, contactPhone, message, preHandoffChannel);
+
+          return new Response(
+            JSON.stringify({ ok: true, reply: "Handoff Veronica → Felipe realizado (áudio + análise)", tools_used: [] }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
         agentName = "felipe";
         await supabase.from("whatsapp_conversations")
           .update({ active_agent: "felipe" })
