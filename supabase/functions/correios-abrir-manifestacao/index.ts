@@ -7,7 +7,125 @@ const corsHeaders = {
 };
 
 // ═══════════════════════════════════════════════════════════
-// MAPEAMENTO de motivos para códigos do Correios
+// HELPER: Login no backend externo e obter credenciais Correios
+// ═══════════════════════════════════════════════════════════
+async function loginBackend(): Promise<string> {
+  const baseApiUrl = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br/api";
+  const adminEmail = Deno.env.get("API_ADMIN_EMAIL");
+  const adminPassword = Deno.env.get("API_ADMIN_PASSWORD");
+
+  if (!adminEmail || !adminPassword) {
+    throw new Error("Credenciais do backend não configuradas (API_ADMIN_EMAIL, API_ADMIN_PASSWORD)");
+  }
+
+  console.log(`🔑 Login no backend: ${baseApiUrl}/login`);
+
+  const response = await fetch(`${baseApiUrl}/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: adminEmail, password: adminPassword }),
+    signal: AbortSignal.timeout(10000),
+  });
+
+  const responseText = await response.text();
+  console.log(`📦 Login response (${response.status}):`, responseText.substring(0, 300));
+
+  if (!response.ok) {
+    throw new Error(`Falha no login do backend (${response.status}): ${responseText.substring(0, 200)}`);
+  }
+
+  const data = JSON.parse(responseText);
+  const token = data.token || data.data?.token;
+
+  if (!token) {
+    throw new Error("Token não retornado pelo backend");
+  }
+
+  console.log("✅ Token do backend obtido");
+  return token;
+}
+
+async function getCorreiosCredenciais(backendToken: string): Promise<{ usuario: string; codigoAcesso: string; cartaoPostagem: string; contrato: string }> {
+  const baseApiUrl = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br/api";
+
+  console.log("📋 Buscando credenciais Correios do backend...");
+
+  const response = await fetch(`${baseApiUrl}/frete/credenciais`, {
+    method: "GET",
+    headers: {
+      "Accept": "application/json",
+      "Authorization": `Bearer ${backendToken}`,
+    },
+    signal: AbortSignal.timeout(10000),
+  });
+
+  const responseText = await response.text();
+  console.log(`📦 Credenciais response (${response.status}):`, responseText.substring(0, 500));
+
+  if (!response.ok) {
+    throw new Error(`Falha ao buscar credenciais Correios (${response.status})`);
+  }
+
+  const data = JSON.parse(responseText);
+  // Pode vir como data.data (array) ou data (array)
+  const credenciais = Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : [data];
+
+  // Buscar credencial ativa
+  const ativa = credenciais.find((c: any) => c.status === "ATIVO" || c.status === "ativo") || credenciais[0];
+
+  if (!ativa) {
+    throw new Error("Nenhuma credencial Correios encontrada");
+  }
+
+  console.log(`✅ Credencial encontrada: cartão=${(ativa.cartaoPostagem || "").substring(0, 4)}***, usuario=${(ativa.usuario || "").substring(0, 5)}***`);
+
+  return {
+    usuario: ativa.usuario,
+    codigoAcesso: ativa.codigoAcesso,
+    cartaoPostagem: ativa.cartaoPostagem,
+    contrato: ativa.contrato,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════
+// HELPER: Autenticar na API dos Correios
+// ═══════════════════════════════════════════════════════════
+async function autenticarCorreios(creds: { usuario: string; codigoAcesso: string; cartaoPostagem: string }): Promise<string> {
+  const basicAuth = btoa(`${creds.usuario}:${creds.codigoAcesso}`);
+
+  console.log(`🔐 Autenticando nos Correios: usuario=${creds.usuario.substring(0, 5)}***, cartão=${creds.cartaoPostagem.substring(0, 4)}***`);
+
+  const response = await fetch("https://api.correios.com.br/token/v1/autentica/cartaopostagem", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+      "Authorization": `Basic ${basicAuth}`,
+    },
+    body: JSON.stringify({ numero: creds.cartaoPostagem }),
+    signal: AbortSignal.timeout(15000),
+  });
+
+  const responseText = await response.text();
+  console.log(`📦 Auth Correios (${response.status}):`, responseText.substring(0, 300));
+
+  if (!response.ok) {
+    throw new Error(`Falha autenticação Correios (${response.status}): ${responseText.substring(0, 200)}`);
+  }
+
+  const data = JSON.parse(responseText);
+  const token = data.token;
+
+  if (!token) {
+    throw new Error("Token não retornado pela API dos Correios");
+  }
+
+  console.log("✅ Token Correios obtido");
+  return token;
+}
+
+// ═══════════════════════════════════════════════════════════
+// HELPER: Registrar PI nos Correios
 // ═══════════════════════════════════════════════════════════
 const MOTIVOS_PI: Record<string, { tipoPI: string; codigoMotivo: string; descricao: string }> = {
   "objeto_nao_entregue":     { tipoPI: "2", codigoMotivo: "28", descricao: "Objeto não entregue ao destinatário" },
@@ -20,6 +138,65 @@ const MOTIVOS_PI: Record<string, { tipoPI: string; codigoMotivo: string; descric
   "tentativa_nao_realizada": { tipoPI: "2", codigoMotivo: "26", descricao: "Tentativa de entrega não realizada" },
   "outros":                  { tipoPI: "2", codigoMotivo: "32", descricao: "Outros" },
 };
+
+async function registrarPI(correiosToken: string, params: {
+  codigoObjeto: string;
+  motivoConfig: { tipoPI: string; codigoMotivo: string; descricao: string };
+  descricao: string;
+  nomeRemetente: string;
+  emailRemetente: string;
+  telefoneRemetente: string;
+  nomeDestinatario: string;
+  telefoneDestinatario: string;
+  cepDestinatario: string;
+}): Promise<any> {
+  const body: any = {
+    codigoObjeto: params.codigoObjeto,
+    tipoPI: params.motivoConfig.tipoPI,
+    codigoMotivo: params.motivoConfig.codigoMotivo,
+    textoPI: params.descricao.substring(0, 1000),
+    solicitante: {
+      nome: params.nomeRemetente,
+      email: params.emailRemetente || "",
+      telefone: (params.telefoneRemetente || "").replace(/\D/g, ""),
+    },
+    destinatario: {
+      nome: params.nomeDestinatario,
+      telefone: (params.telefoneDestinatario || "").replace(/\D/g, ""),
+      cep: (params.cepDestinatario || "").replace(/\D/g, ""),
+    },
+  };
+
+  console.log("📋 Registrando PI:", JSON.stringify(body).substring(0, 500));
+
+  const response = await fetch("https://api.correios.com.br/pedido-informacao/v1/registrar", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+      "Authorization": `Bearer ${correiosToken}`,
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(30000),
+  });
+
+  const responseText = await response.text();
+  console.log(`📦 PI response (${response.status}):`, responseText.substring(0, 500));
+
+  let responseData: any;
+  try {
+    responseData = JSON.parse(responseText);
+  } catch {
+    responseData = { mensagem: responseText };
+  }
+
+  if (!response.ok) {
+    const errorMsg = responseData?.msgs?.join(", ") || responseData?.message || responseData?.mensagem || responseText;
+    throw new Error(`Erro PI Correios (${response.status}): ${errorMsg}`);
+  }
+
+  return responseData;
+}
 
 // ═══════════════════════════════════════════════════════════
 // MAIN HANDLER
@@ -53,99 +230,50 @@ Deno.serve(async (req) => {
       );
     }
 
-    const baseApiUrl = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br/api";
-    const adminEmail = Deno.env.get("API_ADMIN_EMAIL");
-    const adminPassword = Deno.env.get("API_ADMIN_PASSWORD");
-
-    // 1. Autenticar no backend externo para obter token
-    console.log("🔑 Autenticando no backend externo...");
-    let apiToken = "";
-    
-    try {
-      const loginResponse = await fetch(`${baseApiUrl}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: adminEmail, senha: adminPassword }),
-        signal: AbortSignal.timeout(10000),
-      });
-
-      const loginText = await loginResponse.text();
-      console.log(`📦 Login response (${loginResponse.status}):`, loginText.substring(0, 200));
-
-      if (loginResponse.ok) {
-        const loginData = JSON.parse(loginText);
-        apiToken = loginData.token || loginData.data?.token || "";
-      }
-    } catch (loginErr: any) {
-      console.warn("⚠️ Falha no login do backend:", loginErr.message);
-    }
-
-    // 2. Resolver motivo
     const motivoConfig = MOTIVOS_PI[motivo_key || "outros"] || MOTIVOS_PI["outros"];
-
-    // 3. Chamar endpoint de PI no backend externo
-    console.log("📋 Registrando PI via backend externo...");
-    
-    const piPayload = {
-      codigoObjeto: codigo_objeto.toUpperCase(),
-      tipoPI: motivoConfig.tipoPI,
-      codigoMotivo: motivoConfig.codigoMotivo,
-      textoPI: `${motivoConfig.descricao}. ${descricao || ""}`.trim().substring(0, 1000),
-      solicitante: {
-        nome: nome_remetente || "BRHub Envios",
-        email: email_remetente || "",
-        telefone: (telefone_remetente || "").replace(/\D/g, ""),
-      },
-      destinatario: {
-        nome: nome_destinatario || "Destinatário",
-        telefone: (telefone_destinatario || "").replace(/\D/g, ""),
-        cep: (cep_destinatario || "").replace(/\D/g, ""),
-      },
-    };
 
     let protocolo: string | null = null;
     let piSuccess = false;
     let piResult: any = null;
 
     try {
-      const piResponse = await fetch(`${baseApiUrl}/frete/manifestacao`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(apiToken ? { "Authorization": `Bearer ${apiToken}` } : {}),
-        },
-        body: JSON.stringify(piPayload),
-        signal: AbortSignal.timeout(30000),
+      // 1. Login no backend para pegar token
+      const backendToken = await loginBackend();
+
+      // 2. Buscar credenciais Correios do backend
+      const creds = await getCorreiosCredenciais(backendToken);
+
+      // 3. Autenticar diretamente nos Correios com as credenciais
+      const correiosToken = await autenticarCorreios(creds);
+
+      // 4. Registrar PI
+      piResult = await registrarPI(correiosToken, {
+        codigoObjeto: codigo_objeto.toUpperCase(),
+        motivoConfig,
+        descricao: `${motivoConfig.descricao}. ${descricao || ""}`.trim(),
+        nomeRemetente: nome_remetente || "BRHub Envios",
+        emailRemetente: email_remetente || "",
+        telefoneRemetente: telefone_remetente || "",
+        nomeDestinatario: nome_destinatario || "Destinatário",
+        telefoneDestinatario: telefone_destinatario || "",
+        cepDestinatario: cep_destinatario || "",
       });
 
-      const piText = await piResponse.text();
-      console.log(`📦 Resposta PI backend (${piResponse.status}):`, piText.substring(0, 500));
-
-      try {
-        piResult = JSON.parse(piText);
-      } catch {
-        piResult = { mensagem: piText };
-      }
-
-      if (piResponse.ok && piResult) {
-        protocolo = piResult.protocolo || piResult.data?.protocolo || piResult.numero || piResult.data?.numero || piResult.idPI || null;
-        piSuccess = !!protocolo;
-        console.log(`✅ PI registrado: protocolo ${protocolo}`);
-      } else {
-        console.warn("⚠️ PI via backend falhou:", piResult?.error || piResult?.message || piText);
-      }
-    } catch (piErr: any) {
-      console.error("❌ Erro chamando PI no backend:", piErr.message);
+      protocolo = piResult?.protocolo || piResult?.numero || piResult?.idPI || null;
+      piSuccess = !!protocolo;
+      console.log(`✅ PI resultado: protocolo=${protocolo}, success=${piSuccess}`);
+    } catch (piError: any) {
+      console.error("❌ Erro no fluxo PI:", piError.message);
+      piResult = { error: piError.message };
     }
 
-    // 4. Registrar no pipeline (sempre, com ou sem protocolo)
+    // 5. Registrar no pipeline
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    const statusText = piSuccess ? `Protocolo Correios PI: ${protocolo}` : "PI pendente - registrado internamente";
     const descricaoCard = [
-      piSuccess ? `📋 Protocolo PI: ${protocolo}` : "⚠️ PI não registrado na API (pendente)",
+      piSuccess ? `📋 Protocolo PI: ${protocolo}` : `⚠️ PI não registrado: ${piResult?.error || "erro desconhecido"}`,
       `📦 Código: ${codigo_objeto}`,
       `📝 Motivo: ${motivoConfig.descricao}`,
       descricao ? `💬 Detalhes: ${descricao}` : "",
@@ -158,7 +286,7 @@ Deno.serve(async (req) => {
         .from("ai_support_pipeline")
         .update({
           status: piSuccess ? "em_andamento" : "aberto",
-          resolution: statusText,
+          resolution: piSuccess ? `Protocolo Correios PI: ${protocolo}` : null,
           description: descricaoCard.substring(0, 1000),
         })
         .eq("id", pipeline_card_id);
