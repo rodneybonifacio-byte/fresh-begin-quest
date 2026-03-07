@@ -8,9 +8,10 @@ import { FreteService } from "../services/FreteService";
 import { supabase } from "../integrations/supabase/client";
 
 /**
- * Dispara notificação WhatsApp "etiqueta_criada" automaticamente.
- * Não bloqueia o fluxo — erros são silenciados.
+ * [LEGACY] Disparo de notificação "etiqueta_criada" foi movido para o backend (cron-notificar-etiqueta-criada).
+ * Função mantida apenas como referência.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function dispararNotificacaoEtiquetaCriada(emissaoResponse: any, emissaoInput: any) {
   try {
     console.log('🔍 [NotifEtiqueta] Response recebida:', JSON.stringify(emissaoResponse).substring(0, 500));
