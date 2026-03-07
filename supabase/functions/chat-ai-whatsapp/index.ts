@@ -1587,7 +1587,7 @@ async function fetchClienteShipments(clienteId: string, onlyPending = true): Pro
 // BUSCAR PACOTES DE DESTINATÁRIOS POR TELEFONE
 // ═══════════════════════════════════════════════════════════
 
-async function fetchRecipientPackagesByPhone(supabase: any, normalizedPhone: string, phoneVariants: string[]): Promise<string | null> {
+async function fetchRecipientPackagesByPhone(supabase: any, normalizedPhone: string, phoneVariants: string[], conversationId?: string): Promise<string | null> {
   try {
     const packages: { codigo: string; destNome: string; status: string; previsao: string; servico: string; source: string }[] = [];
 
@@ -1646,7 +1646,74 @@ async function fetchRecipientPackagesByPhone(supabase: any, normalizedPhone: str
       }
     }
 
-    // 3. Verificar atrasos cruzando com emissoes_em_atraso
+    // 3. Buscar códigos de rastreio em mensagens HSM já enviadas para este contato
+    // Isso permite identificar destinatários mesmo sem dados em pedidos_importados
+    if (conversationId) {
+      try {
+        const { data: outboundMsgs } = await supabase
+          .from("whatsapp_messages")
+          .select("content")
+          .eq("conversation_id", conversationId)
+          .eq("direction", "outbound")
+          .not("content", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(30);
+
+        if (outboundMsgs) {
+          const trackingCodeRegex = /[A-Z]{2}\d{9,13}BR/g;
+          const foundCodes = new Set<string>();
+
+          for (const msg of outboundMsgs) {
+            const matches = (msg.content || "").match(trackingCodeRegex);
+            if (matches) {
+              for (const code of matches) {
+                // Evitar duplicatas com pacotes já encontrados nas fontes anteriores
+                if (!packages.find(pkg => pkg.codigo === code) && !foundCodes.has(code)) {
+                  foundCodes.add(code);
+                }
+              }
+            }
+          }
+
+          if (foundCodes.size > 0) {
+            console.log(`📨 Códigos de rastreio encontrados em HSMs enviadas: ${Array.from(foundCodes).join(", ")}`);
+
+            // Para cada código encontrado nas mensagens, buscar dados atualizados via API de rastreio
+            for (const code of Array.from(foundCodes).slice(0, 3)) {
+              try {
+                const trackingData = await fetchTrackingData(code);
+                if (trackingData) {
+                  // Extrair status do rastreio
+                  const eventos = trackingData.eventos || trackingData.objetos?.[0]?.eventos || [];
+                  const ultimoEvento = eventos[0];
+                  const statusDesc = ultimoEvento?.descricao || ultimoEvento?.status || "EM_TRANSITO";
+                  const destNome = trackingData.destinatario?.nome || trackingData.nomeDestinatario || "?";
+
+                  // Ignorar pacotes já entregues ou cancelados
+                  const statusUpper = statusDesc.toUpperCase();
+                  if (statusUpper.includes("ENTREGUE") || statusUpper.includes("CANCELADO")) continue;
+
+                  packages.push({
+                    codigo: code,
+                    destNome,
+                    status: statusDesc,
+                    previsao: trackingData.dataPrevisaoEntrega || trackingData.previsaoEntrega || "",
+                    servico: trackingData.servico || trackingData.nomeServico || "",
+                    source: "hsm_message",
+                  });
+                }
+              } catch {
+                // Silenciar erros individuais de rastreio
+              }
+            }
+          }
+        }
+      } catch (hsmErr) {
+        console.warn("⚠️ Erro ao buscar códigos em mensagens HSM:", hsmErr);
+      }
+    }
+
+    // 4. Verificar atrasos cruzando com emissoes_em_atraso
     if (packages.length > 0) {
       const codigos = packages.map(p => p.codigo).filter(Boolean);
       const { data: atrasos } = await supabase
@@ -1669,11 +1736,24 @@ async function fetchRecipientPackagesByPhone(supabase: any, normalizedPhone: str
 
     let result = `Pacotes encontrados (${packages.length}):\n`;
     for (const pkg of packages.slice(0, 5)) {
-      result += `- ${pkg.codigo} → ${pkg.destNome} | Status: ${pkg.status}${pkg.previsao ? ` | Previsão: ${pkg.previsao}` : ""}${pkg.servico ? ` | ${pkg.servico}` : ""}\n`;
+      result += `- ${pkg.codigo} → ${pkg.destNome} | Status: ${pkg.status}${pkg.previsao ? ` | Previsão: ${pkg.previsao}` : ""}${pkg.servico ? ` | ${pkg.servico}` : ""} [fonte: ${pkg.source}]\n`;
     }
 
-    // Rastrear os primeiros 2 pacotes para dados atualizados
-    for (const pkg of packages.slice(0, 2)) {
+    // Rastrear os primeiros 2 pacotes (que não vieram de HSM, já rastreados) para dados atualizados
+    for (const pkg of packages.filter(p => p.source !== "hsm_message").slice(0, 2)) {
+      try {
+        const trackingData = await fetchTrackingData(pkg.codigo);
+        if (trackingData) {
+          const formatted = formatTrackingForAI(trackingData);
+          result += `\n[RASTREIO ATUALIZADO — ${pkg.codigo}]\n${formatted}\n`;
+        }
+      } catch {
+        // Silenciar erros de rastreio individual
+      }
+    }
+
+    // Adicionar rastreio formatado para pacotes vindos de HSM
+    for (const pkg of packages.filter(p => p.source === "hsm_message").slice(0, 2)) {
       try {
         const trackingData = await fetchTrackingData(pkg.codigo);
         if (trackingData) {
