@@ -149,26 +149,56 @@ export const ContactIntelligencePanel = ({
         .limit(50) : Promise.resolve({ data: [] as any[] }),
     ]);
 
-    // Extract tracking codes from messages metadata and pipeline descriptions
+    // Extract tracking codes and shipment info from messages metadata and pipeline
     const trackingCodes = new Set<string>();
+    const trackingFromMeta: { codigo: string; status: string; servico: string; data: string; destNome: string }[] = [];
     
     // From messages metadata
     if (messagesRes.data) {
       for (const msg of messagesRes.data) {
         const meta = msg.metadata as any;
         if (meta?.variables?.codigo_rastreio) {
-          trackingCodes.add(meta.variables.codigo_rastreio);
+          const code = meta.variables.codigo_rastreio;
+          if (!trackingCodes.has(code)) {
+            trackingCodes.add(code);
+            trackingFromMeta.push({
+              codigo: code,
+              status: meta.trigger_key === 'etiqueta_criada' ? 'criado' : (meta.trigger_key || 'notificado'),
+              servico: meta.template_name || '—',
+              data: '', // will be filled from pipeline if available
+              destNome: meta.variables.nome_destinatario || contactName || '',
+            });
+          }
         }
       }
     }
     
-    // From pipeline card descriptions/subjects
+    // From pipeline card descriptions/subjects - also build shipment entries
     if (pipelineRes.data) {
       for (const card of pipelineRes.data) {
-        // Extract tracking codes from description (pattern: Código: XXXX or just tracking format)
         const text = `${card.description || ''} ${card.subject || ''}`;
         const matches = text.match(/[A-Z]{2}\d{9,}[A-Z]{2}|[A-Z0-9]{13,}/g);
-        if (matches) matches.forEach(m => trackingCodes.add(m));
+        if (matches) {
+          for (const code of matches) {
+            if (!trackingCodes.has(code)) {
+              trackingCodes.add(code);
+              trackingFromMeta.push({
+                codigo: code,
+                status: card.status || 'verificando',
+                servico: card.category || '—',
+                data: card.created_at || '',
+                destNome: contactName || '',
+              });
+            } else {
+              // Update existing entry with pipeline data (date, status)
+              const existing = trackingFromMeta.find(t => t.codigo === code);
+              if (existing && card.created_at) {
+                existing.data = existing.data || card.created_at;
+                existing.status = card.status || existing.status;
+              }
+            }
+          }
+        }
       }
     }
 
