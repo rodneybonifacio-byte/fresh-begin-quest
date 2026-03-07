@@ -234,8 +234,8 @@ export const useEmissao = () => {
             queryClient.invalidateQueries({ queryKey: ["emissoes"] });
             toast.success("Emissão cadastrada com sucesso!", { duration: 5000, position: "top-center" });
 
-            // Disparo automático de notificação WhatsApp
-            dispararNotificacaoEtiquetaCriada(data, lastEmissaoInputRef.current);
+            // Notificação WhatsApp "etiqueta_criada" agora é disparada pelo backend (cron a cada 3 min)
+            // dispararNotificacaoEtiquetaCriada(data, lastEmissaoInputRef.current);
         },
         onError: (error) => {
             console.error('❌ Mutation Error:', error);
