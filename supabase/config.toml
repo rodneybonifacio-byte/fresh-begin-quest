@@ -183,5 +183,8 @@ verify_jwt = false
 [functions.messagebird-send]
 verify_jwt = false
 
+[functions.correios-abrir-manifestacao]
+verify_jwt = false
+
 [functions.chat-ai-whatsapp]
 verify_jwt = false

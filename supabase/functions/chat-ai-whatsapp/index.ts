@@ -498,12 +498,13 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
         return result;
       }
 
-      // ── Abrir manifestação/reclamação interna com dados da etiqueta ──
+      // ── Abrir manifestação/reclamação via API Correios (PI) ──
       case "abrir_manifestacao": {
         const codigoObjeto = (args.codigo_rastreio || "").trim().toUpperCase();
         if (!codigoObjeto) return "Preciso do código de rastreio para abrir a manifestação.";
         const motivo = args.motivo || "Reclamação do destinatário";
         const descricaoExtra = args.descricao || "";
+        const motivoKey = args.motivo_key || "outros";
 
         // 1. Buscar em pedidos_importados
         let shipmentData: any = null;
@@ -551,53 +552,82 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
           }
         }
 
-        // 4. Montar descrição completa
         const destNome = shipmentData.destinatario_nome || "N/A";
         const destTel = shipmentData.destinatario_telefone || contactPhone || "N/A";
+        const destCep = shipmentData.destinatario_cep || "";
         const destCidade = shipmentData.destinatario_cidade || "N/A";
         const destUF = shipmentData.destinatario_estado || shipmentData.destinatario_uf || "N/A";
         const servico = shipmentData.servico_frete || shipmentData.servico || "N/A";
 
-        const descricaoCompleta = `📦 MANIFESTAÇÃO — ${codigoObjeto}\n` +
-          `Motivo: ${motivo}\n` +
-          `${descricaoExtra ? `Detalhes: ${descricaoExtra}\n` : ""}` +
-          `\n👤 DESTINATÁRIO:\n` +
-          `Nome: ${destNome}\nTelefone: ${destTel}\nCidade: ${destCidade}-${destUF}\n` +
-          `\n📤 REMETENTE:\n` +
-          `Nome: ${remetenteNome}\nTelefone: ${remetenteTelefone}\nEmail: ${remetenteEmail}\n` +
-          `\n🚚 Serviço: ${servico}`;
+        // 4. Chamar edge function que registra PI na API dos Correios
+        let protocolo = "N/A";
+        let piSuccess = false;
+        try {
+          const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+          const piResponse = await fetch(`${supabaseUrl}/functions/v1/correios-abrir-manifestacao`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+            },
+            body: JSON.stringify({
+              codigo_objeto: codigoObjeto,
+              motivo_key: motivoKey,
+              descricao: `${motivo}. ${descricaoExtra}`.trim(),
+              nome_remetente: remetenteNome,
+              email_remetente: remetenteEmail,
+              telefone_remetente: remetenteTelefone,
+              nome_destinatario: destNome,
+              telefone_destinatario: destTel,
+              cep_destinatario: destCep,
+              conversation_id: conversationId,
+              contact_phone: contactPhone,
+              contact_name: destNome,
+            }),
+            signal: AbortSignal.timeout(35000),
+          });
 
-        // 5. Criar card no pipeline
-        const { data: conv } = await supabase
-          .from("whatsapp_conversations")
-          .select("contact_name")
-          .eq("id", conversationId)
-          .single();
+          const piData = await piResponse.json();
+          if (piData.success && piData.protocolo) {
+            protocolo = piData.protocolo;
+            piSuccess = true;
+            console.log(`✅ PI Correios registrado: protocolo ${protocolo}`);
+          } else {
+            console.warn("⚠️ PI Correios falhou, registrando internamente:", piData.error);
+          }
+        } catch (piError: any) {
+          console.error("❌ Erro ao chamar PI Correios:", piError.message);
+        }
 
-        await supabase.from("ai_support_pipeline").insert({
-          conversation_id: conversationId,
-          contact_phone: contactPhone,
-          contact_name: conv?.contact_name || destNome,
-          category: "reclamacao",
-          priority: "alta",
-          status: "aberto",
-          subject: `Manifestação: ${codigoObjeto} — ${motivo.substring(0, 80)}`,
-          description: descricaoCompleta.substring(0, 1000),
-          sentiment: "negativo",
-          detected_by: "tool_manifestacao",
-        });
+        // 5. Se a API falhou, registrar internamente como fallback
+        if (!piSuccess) {
+          const descricaoCompleta = `📦 MANIFESTAÇÃO — ${codigoObjeto}\n` +
+            `Motivo: ${motivo}\n` +
+            `${descricaoExtra ? `Detalhes: ${descricaoExtra}\n` : ""}` +
+            `\n👤 DESTINATÁRIO:\nNome: ${destNome}\nTelefone: ${destTel}\nCidade: ${destCidade}-${destUF}\n` +
+            `\n📤 REMETENTE:\nNome: ${remetenteNome}\nTelefone: ${remetenteTelefone}\nEmail: ${remetenteEmail}\n` +
+            `\n🚚 Serviço: ${servico}`;
 
-        // 6. Também criar/atualizar ticket
-        const { data: existingTicket } = await supabase
-          .from("whatsapp_tickets")
-          .select("id")
-          .eq("conversation_id", conversationId)
-          .eq("status", "open")
-          .limit(1)
-          .single();
+          const { data: conv } = await supabase
+            .from("whatsapp_conversations")
+            .select("contact_name")
+            .eq("id", conversationId)
+            .single();
 
-        if (!existingTicket) {
-          await supabase.from("whatsapp_tickets").insert({
+          await supabase.from("ai_support_pipeline").insert({
+            conversation_id: conversationId,
+            contact_phone: contactPhone,
+            contact_name: conv?.contact_name || destNome,
+            category: "reclamacao",
+            priority: "alta",
+            status: "aberto",
+            subject: `Manifestação: ${codigoObjeto} — ${motivo.substring(0, 80)}`,
+            description: descricaoCompleta.substring(0, 1000),
+            sentiment: "negativo",
+            detected_by: "tool_manifestacao",
+          });
+
+          await supabase.from("whatsapp_tickets").upsert({
             conversation_id: conversationId,
             contact_phone: contactPhone,
             contact_name: conv?.contact_name || destNome,
@@ -606,12 +636,19 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
             priority: "alta",
             subject: `Manifestação: ${codigoObjeto}`,
             description: descricaoCompleta.substring(0, 500),
-          });
+          }, { onConflict: "conversation_id" }).select();
         }
 
-        return `Manifestação registrada com sucesso!\n\n` +
-          `Código: ${codigoObjeto}\nDestinatário: ${destNome}\nRemetente: ${remetenteNome}\nServiço: ${servico}\nMotivo: ${motivo}\n\n` +
-          `A equipe vai analisar e dar retorno.`;
+        if (piSuccess) {
+          return `✅ Manifestação registrada com SUCESSO nos Correios!\n\n` +
+            `📋 Protocolo: ${protocolo}\n` +
+            `📦 Código: ${codigoObjeto}\n👤 Destinatário: ${destNome}\n📤 Remetente: ${remetenteNome}\n🚚 Serviço: ${servico}\n📝 Motivo: ${motivo}\n\n` +
+            `O protocolo ${protocolo} pode ser usado para acompanhar a manifestação junto aos Correios.`;
+        } else {
+          return `Manifestação registrada internamente (não foi possível abrir PI nos Correios no momento).\n\n` +
+            `Código: ${codigoObjeto}\nDestinatário: ${destNome}\nRemetente: ${remetenteNome}\nServiço: ${servico}\nMotivo: ${motivo}\n\n` +
+            `A equipe vai analisar e dar retorno.`;
+        }
       }
 
       default:
