@@ -357,6 +357,7 @@ Deno.serve(async (req) => {
           trigger_key: template.trigger_key,
           trigger_label: template.trigger_label,
           variables: variables || {},
+          rendered_body: renderedBody || null,
         },
       });
 
