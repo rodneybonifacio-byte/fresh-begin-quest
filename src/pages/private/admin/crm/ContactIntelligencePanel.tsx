@@ -101,56 +101,82 @@ export const ContactIntelligencePanel = ({
   const loadData = useCallback(async () => {
     setLoading(true);
     const normalized = normalizePhone(contactPhone);
+    const phoneSuffix = normalized.slice(-9);
 
-    // All parallel queries
+    // Phase 1: All parallel queries by phone + conversation messages for tracking codes
     const [
       cadastroRes,
       remetentesRes,
       pedidosRes,
       ticketsRes,
       pipelineRes,
+      messagesRes,
     ] = await Promise.all([
-      // 1. Profile from cadastros_origem
       supabase
         .from('cadastros_origem')
         .select('cliente_id, nome_cliente, email_cliente, telefone_cliente, origem')
-        .or(`telefone_cliente.ilike.%${normalized.slice(-9)}%`)
+        .or(`telefone_cliente.ilike.%${phoneSuffix}%`)
         .limit(1),
-
-      // 2. Remetentes by phone match
       supabase
         .from('remetentes_masked')
         .select('id, nome, cpf_cnpj_masked, celular, telefone, localidade, uf')
-        .or(`celular.ilike.%${normalized.slice(-9)}%,telefone.ilike.%${normalized.slice(-9)}%`)
+        .or(`celular.ilike.%${phoneSuffix}%,telefone.ilike.%${phoneSuffix}%`)
         .limit(10),
-
-      // 3. Shipments (as destinatario)
       supabase
         .from('pedidos_importados')
         .select('codigo_rastreio, status, servico_frete, criado_em, destinatario_nome, destinatario_telefone')
-        .or(`destinatario_telefone.ilike.%${normalized.slice(-9)}%`)
+        .or(`destinatario_telefone.ilike.%${phoneSuffix}%`)
         .order('criado_em', { ascending: false })
         .limit(50),
-
-      // 4. Tickets
       supabase
         .from('whatsapp_tickets')
         .select('id, status, created_at')
         .eq('contact_phone', normalized)
         .order('created_at', { ascending: false })
         .limit(50),
-
-      // 5. Pipeline cards
       supabase
         .from('ai_support_pipeline')
-        .select('id, status, category, created_at')
+        .select('id, status, category, created_at, description, subject')
         .eq('contact_phone', normalized)
         .order('created_at', { ascending: false })
         .limit(20),
+      // Get messages from conversation to extract tracking codes
+      conversationId ? supabase
+        .from('whatsapp_messages')
+        .select('metadata')
+        .eq('conversation_id', conversationId)
+        .not('metadata', 'is', null)
+        .limit(50) : Promise.resolve({ data: [] as any[] }),
     ]);
 
-    // Profile
+    // Extract tracking codes from messages metadata and pipeline descriptions
+    const trackingCodes = new Set<string>();
+    
+    // From messages metadata
+    if (messagesRes.data) {
+      for (const msg of messagesRes.data) {
+        const meta = msg.metadata as any;
+        if (meta?.variables?.codigo_rastreio) {
+          trackingCodes.add(meta.variables.codigo_rastreio);
+        }
+      }
+    }
+    
+    // From pipeline card descriptions/subjects
+    if (pipelineRes.data) {
+      for (const card of pipelineRes.data) {
+        // Extract tracking codes from description (pattern: Código: XXXX or just tracking format)
+        const text = `${card.description || ''} ${card.subject || ''}`;
+        const matches = text.match(/[A-Z]{2}\d{9,}[A-Z]{2}|[A-Z0-9]{13,}/g);
+        if (matches) matches.forEach(m => trackingCodes.add(m));
+      }
+    }
+
+    // Phase 2: Use tracking codes to find shipments and client via emissoes_externas
     let clienteId: string | null = null;
+    let emissaoShipments: typeof shipments.recentes = [];
+    let emissaoTotal = 0;
+
     if (cadastroRes.data && cadastroRes.data.length > 0) {
       const c = cadastroRes.data[0];
       clienteId = c.cliente_id;
@@ -171,8 +197,54 @@ export const ContactIntelligencePanel = ({
       });
     }
 
-    // Remetentes
-    if (remetentesRes.data) {
+    // Cross-reference: search emissoes_externas by tracking codes if we have them
+    if (trackingCodes.size > 0) {
+      const codes = Array.from(trackingCodes);
+      const { data: emissoes } = await supabase
+        .from('emissoes_externas')
+        .select('codigo_objeto, cliente_id, destinatario_nome, servico, status, created_at, remetente_id, destinatario_cidade, destinatario_uf')
+        .in('codigo_objeto', codes)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (emissoes && emissoes.length > 0) {
+        // Discover cliente_id from emissoes if not found yet
+        if (!clienteId) {
+          clienteId = emissoes[0].cliente_id;
+        }
+
+        emissaoShipments = emissoes.slice(0, 5).map(e => ({
+          codigo: e.codigo_objeto || '—',
+          status: e.status || 'pendente',
+          servico: e.servico || '—',
+          data: e.created_at || '',
+          destNome: e.destinatario_nome || '',
+        }));
+        emissaoTotal = emissoes.length;
+
+        // Also try to get remetente info from the emissao
+        const remIds = [...new Set(emissoes.map(e => e.remetente_id).filter(Boolean))];
+        if (remIds.length > 0 && remetentesRes.data?.length === 0) {
+          const { data: remsFromEmissao } = await supabase
+            .from('remetentes_masked')
+            .select('id, nome, cpf_cnpj_masked, celular, telefone, localidade, uf')
+            .in('id', remIds as string[])
+            .limit(10);
+          if (remsFromEmissao && remsFromEmissao.length > 0) {
+            setRemetentes(remsFromEmissao.map(r => ({
+              id: r.id || '',
+              nome: r.nome || '',
+              cpfMasked: r.cpf_cnpj_masked || '',
+              cidade: r.localidade,
+              uf: r.uf,
+            })));
+          }
+        }
+      }
+    }
+
+    // Remetentes from phone search
+    if (remetentesRes.data && remetentesRes.data.length > 0) {
       setRemetentes(remetentesRes.data.map(r => ({
         id: r.id || '',
         nome: r.nome || '',
@@ -181,9 +253,7 @@ export const ContactIntelligencePanel = ({
         uf: r.uf,
       })));
 
-      // If no profile found but remetente exists, use remetente's client_id
-      if (!clienteId && remetentesRes.data.length > 0) {
-        // Try to find client_id from remetentes via a separate query
+      if (!clienteId) {
         const remId = remetentesRes.data[0].id;
         if (remId) {
           const { data: remFull } = await supabase
@@ -194,32 +264,54 @@ export const ContactIntelligencePanel = ({
             .single();
           if (remFull) {
             clienteId = remFull.cliente_id;
-            if (!profile?.nome || profile.nome === contactName) {
-              setProfile(prev => ({
-                ...prev!,
-                nome: remFull.nome || prev?.nome || null,
-                email: remFull.email || prev?.email || null,
-                clienteId: remFull.cliente_id,
-              }));
-            }
+            setProfile(prev => ({
+              ...prev!,
+              nome: remFull.nome || prev?.nome || null,
+              email: remFull.email || prev?.email || null,
+              clienteId: remFull.cliente_id,
+            }));
           }
         }
       }
     }
 
-    // Shipments
-    if (pedidosRes.data) {
-      setShipments({
-        total: pedidosRes.data.length,
-        recentes: pedidosRes.data.slice(0, 5).map(p => ({
+    // Update profile with clienteId if discovered via cross-reference
+    if (clienteId && !profile?.clienteId) {
+      setProfile(prev => prev ? { ...prev, clienteId } : prev);
+    }
+
+    // Shipments: merge phone-based + tracking-code-based results
+    const phoneShipments = pedidosRes.data || [];
+    const allShipmentCodes = new Set<string>();
+    const mergedRecentes: typeof shipments.recentes = [];
+
+    // Add phone-based shipments first
+    for (const p of phoneShipments) {
+      const code = p.codigo_rastreio || `phone-${phoneShipments.indexOf(p)}`;
+      if (!allShipmentCodes.has(code)) {
+        allShipmentCodes.add(code);
+        mergedRecentes.push({
           codigo: p.codigo_rastreio || '—',
           status: p.status || 'pendente',
           servico: p.servico_frete || '—',
           data: p.criado_em || '',
           destNome: p.destinatario_nome || '',
-        })),
-      });
+        });
+      }
     }
+
+    // Add emissao-based shipments (from tracking codes)
+    for (const e of emissaoShipments) {
+      if (!allShipmentCodes.has(e.codigo)) {
+        allShipmentCodes.add(e.codigo);
+        mergedRecentes.push(e);
+      }
+    }
+
+    setShipments({
+      total: Math.max(phoneShipments.length, emissaoTotal, mergedRecentes.length),
+      recentes: mergedRecentes.slice(0, 5),
+    });
 
     // Financial (only if we have clienteId)
     if (clienteId) {
@@ -253,6 +345,15 @@ export const ContactIntelligencePanel = ({
         totalConsumos,
         totalBloqueado,
       });
+
+      // Get total emissoes for this client
+      const { count } = await supabase
+        .from('emissoes_externas')
+        .select('id', { count: 'exact', head: true })
+        .eq('cliente_id', clienteId);
+      if (count !== null) {
+        setShipments(prev => ({ ...prev, total: Math.max(prev.total, count) }));
+      }
     }
 
     // Interactions
@@ -265,19 +366,8 @@ export const ContactIntelligencePanel = ({
       ultimaInteracao: tickets.length > 0 ? tickets[0].created_at : null,
     });
 
-    // Also fetch emissoes_externas for total shipments from this client
-    if (clienteId) {
-      const { count } = await supabase
-        .from('emissoes_externas')
-        .select('id', { count: 'exact', head: true })
-        .eq('cliente_id', clienteId);
-      if (count !== null && count > shipments.total) {
-        setShipments(prev => ({ ...prev, total: count }));
-      }
-    }
-
     setLoading(false);
-  }, [contactPhone, contactName]);
+  }, [contactPhone, contactName, conversationId]);
 
   useEffect(() => {
     loadData();
