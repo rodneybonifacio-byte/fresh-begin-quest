@@ -244,7 +244,7 @@ Deno.serve(async (req) => {
 
     // Save HSM message to whatsapp_messages for conversation history
     // Find or create conversation for this phone
-    const { data: existingConv } = await supabase
+    let { data: existingConv } = await supabase
       .from("whatsapp_conversations")
       .select("id")
       .eq("contact_phone", normalizedPhone)
@@ -252,12 +252,42 @@ Deno.serve(async (req) => {
       .limit(1)
       .single();
 
-    if (existingConv) {
-      // Build readable content from template variables
-      const varSummary = Object.entries(variables || {})
-        .map(([k, v]) => `${k}: ${v}`)
-        .join(", ");
+    // Se não existe conversa, criar uma nova
+    if (!existingConv) {
+      const contactName = variables.nome_destinatario || variables.recipient_name || normalizedPhone;
+      console.log(`📝 Criando conversa para ${normalizedPhone} (${contactName})`);
 
+      // Resolver canal padrão
+      const { data: defaultChannel } = await supabase
+        .from("whatsapp_channels")
+        .select("id, ai_enabled")
+        .eq("is_default", true)
+        .single();
+
+      const { data: newConv, error: convCreateErr } = await supabase
+        .from("whatsapp_conversations")
+        .insert({
+          contact_phone: normalizedPhone,
+          contact_name: contactName,
+          whatsapp_channel_id: defaultChannel?.id || null,
+          status: "open",
+          last_message_at: new Date().toISOString(),
+          last_message_preview: `📋 ${template.trigger_label}`,
+          unread_count: 0,
+          ai_enabled: defaultChannel?.ai_enabled ?? true,
+        })
+        .select("id")
+        .single();
+
+      if (convCreateErr) {
+        console.error("❌ Erro ao criar conversa:", convCreateErr);
+      } else {
+        existingConv = newConv;
+        console.log(`✅ Conversa criada: ${newConv.id}`);
+      }
+    }
+
+    if (existingConv) {
       await supabase.from("whatsapp_messages").insert({
         conversation_id: existingConv.id,
         messagebird_id: result.id || null,
