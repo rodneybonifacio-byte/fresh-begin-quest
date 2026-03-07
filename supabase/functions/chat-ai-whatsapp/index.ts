@@ -827,6 +827,25 @@ serve(async (req) => {
                           : "um cliente da plataforma";
           contactContext = `\n\n[CONTEXTO DO CONTATO ATUAL]\nO contato que está falando com você se chama: ${formattedFirstName} (nome completo: ${contactName}). Tipo: ${roleLabel}. Email: ${contactEmail || "N/A"}. Telefone: ${contactPhone}.${clienteId ? ` ID cliente: ${clienteId}.` : ""}\nIMPORTANTE: Chame a pessoa SEMPRE por "${formattedFirstName}" de forma pessoal e simpática na PRIMEIRA mensagem. Não use "Desconhecido", não peça identificação, você já sabe quem é.`;
 
+          // 6b. Buscar regras especiais de telefone (VIP/admin)
+          try {
+            const { data: phoneRule } = await supabase
+              .from("ai_tool_phone_rules")
+              .select("allow_all, skip_approval, contact_name, notes")
+              .eq("phone_number", normalized)
+              .eq("is_active", true)
+              .maybeSingle();
+            
+            if (phoneRule) {
+              if (phoneRule.allow_all || phoneRule.skip_approval) {
+                contactContext += `\n\n[PERMISSÕES ESPECIAIS - VIP]\nEste contato é um ADMINISTRADOR/PROPRIETÁRIO da BRHUB. Trate-o com máxima prioridade e deferência. Ele tem acesso total a todas as ferramentas sem restrição. USE todas as tools disponíveis para atender seus pedidos imediatamente. NUNCA diga "acesse o painel" — resolva tudo aqui mesmo. Se ele pedir algo que não existe como tool, explique que vai verificar e dê o máximo de informação possível.`;
+                console.log(`👑 VIP detectado: ${formattedFirstName} (allow_all: ${phoneRule.allow_all})`);
+              }
+            }
+          } catch (phoneRuleErr) {
+            console.warn("⚠️ Erro ao buscar phone rules:", phoneRuleErr);
+          }
+
           // 7. AUTO-INJECT: Buscar envios pendentes do cliente automaticamente
           let clienteHasActiveShipments = false;
           
