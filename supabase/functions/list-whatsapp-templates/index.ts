@@ -76,6 +76,46 @@ Deno.serve(async (req) => {
 
     console.log(`Found ${approved.length} approved templates out of ${templates.length} total`);
 
+    // Auto-sync template_body for all existing notification templates
+    const syncMode = url.searchParams.get("sync") === "true";
+    if (syncMode) {
+      const { data: existingTemplates } = await supabase
+        .from("whatsapp_notification_templates")
+        .select("id, template_name, template_body");
+
+      if (existingTemplates) {
+        for (const et of existingTemplates) {
+          if (et.template_body) continue; // Already has body
+          const meta = approved.find((a: any) => a.name === et.template_name);
+          if (!meta?.components) continue;
+
+          const getCompText = (type: string) => {
+            const c = meta.components.find((c: any) => (c.type || '').toUpperCase() === type);
+            return c?.text || '';
+          };
+          const header = meta.components.find((c: any) => (c.type || '').toUpperCase() === 'HEADER');
+          const headerText = (header?.format === 'TEXT' || header?.format === 'text') ? header.text : '';
+          const footer = getCompText('FOOTER');
+          const btnComp = meta.components.find((c: any) => (c.type || '').toUpperCase() === 'BUTTONS');
+          const buttons = (btnComp?.buttons || []).map((b: any) => ({ text: b.text, type: b.type, url: b.url }));
+
+          const bodyData = JSON.stringify({
+            body: getCompText('BODY'),
+            header: headerText,
+            footer,
+            buttons,
+          });
+
+          await supabase
+            .from("whatsapp_notification_templates")
+            .update({ template_body: bodyData })
+            .eq("id", et.id);
+
+          console.log(`✅ Auto-synced template_body for: ${et.template_name}`);
+        }
+      }
+    }
+
     return new Response(
       JSON.stringify({ templates: approved, total: templates.length }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
