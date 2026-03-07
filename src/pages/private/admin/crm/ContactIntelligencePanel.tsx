@@ -330,11 +330,19 @@ export const ContactIntelligencePanel = ({
       }
     }
 
-    // Add emissao-based shipments (from tracking codes)
+    // Add emissao-based shipments (from tracking codes in DB)
     for (const e of emissaoShipments) {
       if (!allShipmentCodes.has(e.codigo)) {
         allShipmentCodes.add(e.codigo);
         mergedRecentes.push(e);
+      }
+    }
+
+    // Add shipments discovered from message metadata / pipeline (fallback when DB tables are empty)
+    for (const t of trackingFromMeta) {
+      if (!allShipmentCodes.has(t.codigo)) {
+        allShipmentCodes.add(t.codigo);
+        mergedRecentes.push(t);
       }
     }
 
