@@ -123,7 +123,8 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
 
   useEffect(() => {
     loadConversations();
-  }, [loadConversations]);
+    loadClosedConversationIds();
+  }, [loadConversations, loadClosedConversationIds]);
 
   // Abrir conversa vinda do Pipeline
   useEffect(() => {
