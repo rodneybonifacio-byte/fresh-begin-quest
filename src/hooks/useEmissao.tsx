@@ -8,10 +8,11 @@ import { FreteService } from "../services/FreteService";
 import { supabase } from "../integrations/supabase/client";
 
 /**
- * Dispara notificação WhatsApp "etiqueta_criada" automaticamente.
- * Não bloqueia o fluxo — erros são silenciados.
+ * [LEGACY] Disparo de notificação "etiqueta_criada" foi movido para o backend (cron-notificar-etiqueta-criada).
+ * Função mantida apenas como referência.
  */
-async function dispararNotificacaoEtiquetaCriada(emissaoResponse: any, emissaoInput: any) {
+// @ts-ignore - Legacy function kept as reference
+async function _dispararNotificacaoEtiquetaCriada(emissaoResponse: any, emissaoInput: any) {
   try {
     console.log('🔍 [NotifEtiqueta] Response recebida:', JSON.stringify(emissaoResponse).substring(0, 500));
     console.log('🔍 [NotifEtiqueta] Input original:', JSON.stringify(emissaoInput).substring(0, 500));
@@ -234,8 +235,8 @@ export const useEmissao = () => {
             queryClient.invalidateQueries({ queryKey: ["emissoes"] });
             toast.success("Emissão cadastrada com sucesso!", { duration: 5000, position: "top-center" });
 
-            // Disparo automático de notificação WhatsApp
-            dispararNotificacaoEtiquetaCriada(data, lastEmissaoInputRef.current);
+            // Notificação WhatsApp "etiqueta_criada" agora é disparada pelo backend (cron a cada 3 min)
+            // dispararNotificacaoEtiquetaCriada(data, lastEmissaoInputRef.current);
         },
         onError: (error) => {
             console.error('❌ Mutation Error:', error);
