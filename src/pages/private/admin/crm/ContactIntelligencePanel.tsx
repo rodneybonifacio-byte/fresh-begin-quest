@@ -76,7 +76,7 @@ const SectionHeader = ({ icon: Icon, label, count, color, expanded, onToggle }: 
 );
 
 export const ContactIntelligencePanel = ({
-  contactPhone, contactName, onClose,
+  contactPhone, contactName, conversationId, onClose,
 }: ContactIntelligencePanelProps) => {
   const [profile, setProfile] = useState<ClientProfile | null>(null);
   const [shipments, setShipments] = useState<ShipmentSummary>({ total: 0, recentes: [] });
