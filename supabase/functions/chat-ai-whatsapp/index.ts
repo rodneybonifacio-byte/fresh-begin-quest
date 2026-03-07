@@ -635,7 +635,7 @@ serve(async (req) => {
       if (clienteId) {
         const details = await fetchClienteDetails(clienteId);
         console.log("🔍 fetchClienteDetails resultado:", details ? details.nome : "NULL/falhou");
-        if (details) {
+        if (details && details.nome !== "Desconhecido") {
           contactName = details.nome;
           contactEmail = details.email || null;
           contactRole = "cliente";
