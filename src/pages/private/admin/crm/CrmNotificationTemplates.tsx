@@ -266,10 +266,19 @@ const CrmNotificationTemplates = () => {
       button_sub_type: v.button_sub_type ?? undefined,
     }));
 
+    // Extract body text for rendering HSM in chat
+    const bodyText = getComponentText(meta.components || [], 'BODY');
+    const headerComp = getTemplateHeader(meta.components || []);
+    const headerText = (headerComp?.format === 'TEXT' || headerComp?.format === 'text') ? headerComp.text : '';
+    const footerText = getComponentText(meta.components || [], 'FOOTER');
+    const buttons = getTemplateButtons(meta.components || []);
+    const templateBody = JSON.stringify({ body: bodyText, header: headerText, footer: footerText, buttons: buttons.map((b: any) => ({ text: b.text, type: b.type, url: b.url })) });
+
     setField(templateId, 'template_name', meta.name);
     setField(templateId, 'template_language', meta.language);
     setField(templateId, 'template_namespace', meta.namespace || null);
     setField(templateId, 'variables', variables);
+    setField(templateId, 'template_body', templateBody);
 
     setSelectingForId(null);
     setShowMetaModal(false);
