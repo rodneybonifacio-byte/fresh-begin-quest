@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
     const { data: conversations, error: convErr } = await supabase
       .from("whatsapp_conversations")
       .select("id, contact_phone, contact_name, last_message_at, status")
-      .eq("status", "active")
+      .in("status", ["open", "active"])
       .lt("last_message_at", cutoff)
       .not("last_message_at", "is", null);
 
