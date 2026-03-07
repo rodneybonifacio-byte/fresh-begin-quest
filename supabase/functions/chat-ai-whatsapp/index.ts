@@ -329,7 +329,7 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
         params.set("offset", "0");
         params.set("statusFaturamento", statusFilter);
         
-        const fatUrl = `${BASE_API_URL}/admin/faturas?${params.toString()}`;
+        const fatUrl = `${BASE_API_URL}/faturas/admin?${params.toString()}`;
         console.log(`📡 Faturas fetch: ${fatUrl}`);
         const resp = await fetch(fatUrl, {
           headers: { Authorization: `Bearer ${token}` },
