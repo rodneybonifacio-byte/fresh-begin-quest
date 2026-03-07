@@ -1262,31 +1262,89 @@ serve(async (req) => {
       }
 
       if (!audioSent) {
-        const mbResponse = await fetch("https://conversations.messagebird.com/v1/send", {
-          method: "POST",
-          headers: {
-            Authorization: `AccessKey ${channel.access_key}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            to: contactPhone,
-            from: channel.channel_id,
-            type: "text",
-            content: { text: aiReply },
-          }),
-        });
-        const mbResult = await mbResponse.json();
+        // Felipe: quebrar respostas longas em múltiplas mensagens para humanizar
+        if (agentName === "felipe" && aiReply.length > 200) {
+          // Remover prefixo do agente, splitar por \n\n, e reagrupar em blocos curtos
+          const agentPrefix = `*${agentDisplayName}:*\n\n`;
+          const replyBody = aiReply.startsWith(agentPrefix) ? aiReply.slice(agentPrefix.length) : aiReply;
+          const paragraphs = replyBody.split(/\n\n+/).filter((p: string) => p.trim().length > 0);
+          
+          // Agrupar parágrafos em blocos de 1-2 para não mandar mensagens muito pequenas
+          const blocks: string[] = [];
+          let currentBlock = "";
+          for (const p of paragraphs) {
+            if (currentBlock && (currentBlock + "\n\n" + p).length > 250) {
+              blocks.push(currentBlock);
+              currentBlock = p;
+            } else {
+              currentBlock = currentBlock ? currentBlock + "\n\n" + p : p;
+            }
+          }
+          if (currentBlock) blocks.push(currentBlock);
+          
+          // Se resultou em mais de 1 bloco, enviar separadamente
+          if (blocks.length > 1) {
+            for (let i = 0; i < blocks.length; i++) {
+              const blockText = i === 0 ? `*${agentDisplayName}:*\n\n${blocks[i]}` : `${blocks[i]}`;
+              
+              if (i > 0) {
+                await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 2000));
+              }
+              
+              const mbBlock = await fetch("https://conversations.messagebird.com/v1/send", {
+                method: "POST",
+                headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: blockText } }),
+              });
+              const mbBlockResult = await mbBlock.json();
+              await supabase.from("whatsapp_messages").insert({
+                conversation_id: conversationId, messagebird_id: mbBlockResult.id || null,
+                direction: "outbound", content_type: "text", content: blockText,
+                status: "sent", sent_by: agentName, ai_generated: true,
+              });
+            }
+          } else {
+            // Bloco único, enviar normal
+            const mbResponse = await fetch("https://conversations.messagebird.com/v1/send", {
+              method: "POST",
+              headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: aiReply } }),
+            });
+            const mbResult = await mbResponse.json();
+            await supabase.from("whatsapp_messages").insert({
+              conversation_id: conversationId, messagebird_id: mbResult.id || null,
+              direction: "outbound", content_type: "text", content: aiReply,
+              status: "sent", sent_by: agentName, ai_generated: true,
+            });
+          }
+        } else {
+          // Veronica ou mensagens curtas: enviar normal
+          const mbResponse = await fetch("https://conversations.messagebird.com/v1/send", {
+            method: "POST",
+            headers: {
+              Authorization: `AccessKey ${channel.access_key}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              to: contactPhone,
+              from: channel.channel_id,
+              type: "text",
+              content: { text: aiReply },
+            }),
+          });
+          const mbResult = await mbResponse.json();
 
-        await supabase.from("whatsapp_messages").insert({
-          conversation_id: conversationId,
-          messagebird_id: mbResult.id || null,
-          direction: "outbound",
-          content_type: "text",
-          content: aiReply,
-          status: "sent",
-          sent_by: agentName,
-          ai_generated: true,
-        });
+          await supabase.from("whatsapp_messages").insert({
+            conversation_id: conversationId,
+            messagebird_id: mbResult.id || null,
+            direction: "outbound",
+            content_type: "text",
+            content: aiReply,
+            status: "sent",
+            sent_by: agentName,
+            ai_generated: true,
+          });
+        }
       }
 
       await supabase
