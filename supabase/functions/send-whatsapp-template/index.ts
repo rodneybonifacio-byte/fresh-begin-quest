@@ -103,43 +103,59 @@ Deno.serve(async (req) => {
     // Sanitizar nome_remetente genérico — tentar resolver nome real via DB
     if (variables.nome_remetente) {
       const nomeRem = variables.nome_remetente.trim().toLowerCase();
-      if (nomeRem === 'remetente' || nomeRem === '' || nomeRem.length < 2) {
+      const isGenerico = nomeRem === 'remetente' || nomeRem === 'loja' || nomeRem === '' || nomeRem.length < 2;
+      
+      if (isGenerico) {
         let resolved = false;
-        // Tentar resolver pelo código de rastreio
         const codigoRastreio = variables.codigo_rastreio || variables.tracking_code || "";
+        
         if (codigoRastreio) {
           try {
-            // Buscar remetente_id via pedidos_importados
+            // Buscar remetente via pedidos_importados
             const { data: pedido } = await supabase
               .from("pedidos_importados")
-              .select("remetente_id")
+              .select("remetente_id, cliente_id")
               .eq("codigo_rastreio", codigoRastreio)
               .limit(1)
               .maybeSingle();
             
-            const remetenteId = pedido?.remetente_id;
+            let remetenteId = pedido?.remetente_id;
+            let clienteId = pedido?.cliente_id;
+
             if (!remetenteId) {
               // Fallback: emissoes_externas
               const { data: emissao } = await supabase
                 .from("emissoes_externas")
-                .select("remetente_id")
+                .select("remetente_id, cliente_id")
                 .eq("codigo_objeto", codigoRastreio)
                 .limit(1)
                 .maybeSingle();
-              if (emissao?.remetente_id) {
-                const { data: rem } = await supabase.from("remetentes").select("nome").eq("id", emissao.remetente_id).single();
-                if (rem?.nome && rem.nome.toLowerCase() !== 'remetente') {
-                  variables.nome_remetente = rem.nome.split(' ')[0]; // Primeiro nome
-                  resolved = true;
-                  console.log(`✅ nome_remetente resolvido via emissoes_externas: ${variables.nome_remetente}`);
-                }
-              }
-            } else {
+              remetenteId = emissao?.remetente_id;
+              clienteId = clienteId || emissao?.cliente_id;
+            }
+
+            // Tentar resolver pelo remetente_id
+            if (remetenteId) {
               const { data: rem } = await supabase.from("remetentes").select("nome").eq("id", remetenteId).single();
-              if (rem?.nome && rem.nome.toLowerCase() !== 'remetente') {
-                variables.nome_remetente = rem.nome.split(' ')[0]; // Primeiro nome
+              if (rem?.nome && rem.nome.trim().length > 2 && rem.nome.toLowerCase() !== 'remetente') {
+                variables.nome_remetente = rem.nome.split(' ')[0];
                 resolved = true;
-                console.log(`✅ nome_remetente resolvido via pedidos_importados: ${variables.nome_remetente}`);
+                console.log(`✅ nome_remetente resolvido via remetente_id: ${variables.nome_remetente}`);
+              }
+            }
+
+            // Fallback: buscar qualquer remetente do cliente
+            if (!resolved && clienteId) {
+              const { data: rems } = await supabase
+                .from("remetentes")
+                .select("nome")
+                .eq("cliente_id", clienteId)
+                .limit(1)
+                .maybeSingle();
+              if (rems?.nome && rems.nome.trim().length > 2 && rems.nome.toLowerCase() !== 'remetente') {
+                variables.nome_remetente = rems.nome.split(' ')[0];
+                resolved = true;
+                console.log(`✅ nome_remetente resolvido via cliente_id: ${variables.nome_remetente}`);
               }
             }
           } catch (lookupErr) {

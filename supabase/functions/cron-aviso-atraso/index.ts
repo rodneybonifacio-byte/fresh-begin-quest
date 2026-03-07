@@ -15,20 +15,30 @@ const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 /**
- * Resolve o nome real do remetente, evitando o genérico "Remetente".
- * Tenta buscar na tabela remetentes pelo remetenteId se o nome vier genérico.
+ * Resolve o nome real do remetente, evitando genéricos.
+ * Hierarquia: remetenteNome → remetente.nome → remetenteId → cpf_cnpj → "Loja"
  */
-async function resolverNomeRemetente(remetenteNome: string, remetenteId?: string): Promise<string> {
-  const nomeLimpo = (remetenteNome || '').trim();
+async function resolverNomeRemetente(emissao: EmissaoEmTransito): Promise<string> {
   const genericos = ['remetente', 'loja', ''];
-  
-  if (!genericos.includes(nomeLimpo.toLowerCase()) && nomeLimpo.length > 2) {
-    // Nome já é válido, capitalizar primeiro nome
-    const first = nomeLimpo.split(/\s+/)[0] || nomeLimpo;
+  const isGenerico = (n: string) => {
+    const l = (n || '').trim().toLowerCase();
+    return genericos.includes(l) || l.length < 2;
+  };
+  const capitalize = (n: string) => {
+    const first = n.trim().split(/\s+/)[0] || n.trim();
     return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
-  }
-  
-  // Tentar resolver pelo ID na tabela remetentes
+  };
+
+  // 1. Nome direto
+  const nomeDireto = (emissao.remetenteNome || '').trim();
+  if (!isGenerico(nomeDireto)) return capitalize(nomeDireto);
+
+  // 2. Objeto aninhado remetente (se existir no payload da API)
+  const nomeObjeto = ((emissao as any).remetente?.nome || '').trim();
+  if (!isGenerico(nomeObjeto)) return capitalize(nomeObjeto);
+
+  // 3. Buscar via remetenteId
+  const remetenteId = emissao.remetenteId || (emissao as any).remetente_id;
   if (remetenteId) {
     try {
       const { data: rem } = await supabase
@@ -36,17 +46,41 @@ async function resolverNomeRemetente(remetenteNome: string, remetenteId?: string
         .select('nome')
         .eq('id', remetenteId)
         .maybeSingle();
-      
-      if (rem?.nome && rem.nome.trim().length > 2) {
-        const first = rem.nome.trim().split(/\s+/)[0];
-        console.log(`🔍 Nome remetente resolvido via DB: "${rem.nome}" → "${first}"`);
-        return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+      if (rem?.nome && !isGenerico(rem.nome)) {
+        console.log(`🔍 Remetente resolvido via ID: "${rem.nome}"`);
+        return capitalize(rem.nome);
       }
     } catch (err) {
-      console.warn('⚠️ Erro ao resolver nome remetente via DB:', err);
+      console.warn('⚠️ Erro ao resolver remetente por ID:', err);
     }
   }
-  
+
+  // 4. Buscar via CPF/CNPJ
+  const cpfCnpj = (emissao as any).remetenteCpfCnpj || (emissao as any).remetente?.cpfCnpj || '';
+  if (cpfCnpj) {
+    try {
+      const { data: rem } = await supabase
+        .from('remetentes')
+        .select('nome')
+        .eq('cpf_cnpj', cpfCnpj.replace(/\D/g, ''))
+        .limit(1)
+        .maybeSingle();
+      if (rem?.nome && !isGenerico(rem.nome)) {
+        console.log(`🔍 Remetente resolvido via CPF/CNPJ: "${rem.nome}"`);
+        return capitalize(rem.nome);
+      }
+    } catch (err) {
+      console.warn('⚠️ Erro ao resolver remetente por CPF/CNPJ:', err);
+    }
+  }
+
+  // 5. Nome do cliente
+  const nomeCliente = ((emissao as any).cliente?.nome || '').trim();
+  if (!isGenerico(nomeCliente)) {
+    console.log(`🔍 Usando nome do cliente: "${nomeCliente}"`);
+    return capitalize(nomeCliente);
+  }
+
   return 'Loja';
 }
 
@@ -118,7 +152,7 @@ function isToday(dateString: string): boolean {
 
 async function enviarWebhookAviso(emissao: EmissaoEmTransito): Promise<boolean> {
   try {
-    const nomeRemetente = await resolverNomeRemetente(emissao.remetenteNome || '', emissao.remetenteId);
+    const nomeRemetente = await resolverNomeRemetente(emissao);
     const payload = {
       telefone_destinatario: emissao.destinatario?.celular || '',
       nome_destinatario: emissao.destinatario?.nome || '',

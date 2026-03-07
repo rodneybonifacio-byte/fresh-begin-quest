@@ -19,18 +19,37 @@ function formatFirstName(fullName: string): string {
 }
 
 /**
- * Resolve nome real do remetente evitando genéricos
+ * Resolve nome real do remetente evitando genéricos.
+ * Hierarquia: nome direto → remetente.nome → remetenteId → cpf_cnpj → cliente.nome → "Loja"
  */
 async function resolverNomeRemetente(
   supabase: any,
-  nome: string,
-  remetenteId?: string
+  envio: any
 ): Promise<string> {
-  const limpo = (nome || "").trim();
   const genericos = ["remetente", "loja", ""];
-  if (!genericos.includes(limpo.toLowerCase()) && limpo.length > 2) {
-    return formatFirstName(limpo);
+
+  const isGenerico = (n: string) => {
+    const l = (n || "").trim().toLowerCase();
+    return genericos.includes(l) || l.length < 2;
+  };
+
+  // 1. Nome direto do remetente (campo remetenteNome)
+  const nomeDireto = (envio.remetenteNome || "").trim();
+  if (!isGenerico(nomeDireto)) {
+    return formatFirstName(nomeDireto);
   }
+
+  // 2. Objeto aninhado remetente.nome (API retorna)
+  const nomeObjeto = (envio.remetente?.nome || "").trim();
+  if (!isGenerico(nomeObjeto)) {
+    return formatFirstName(nomeObjeto);
+  }
+
+  // 3. Nome do cliente (API retorna cliente.nome)
+  const nomeCliente = (envio.cliente?.nome || "").trim();
+
+  // 4. Buscar via remetenteId no banco
+  const remetenteId = envio.remetenteId || envio.remetente_id;
   if (remetenteId) {
     try {
       const { data: rem } = await supabase
@@ -38,14 +57,41 @@ async function resolverNomeRemetente(
         .select("nome")
         .eq("id", remetenteId)
         .maybeSingle();
-      if (rem?.nome && rem.nome.trim().length > 2) {
-        console.log(`🔍 Nome remetente resolvido via DB: "${rem.nome}"`);
+      if (rem?.nome && !isGenerico(rem.nome)) {
+        console.log(`🔍 Remetente resolvido via ID: "${rem.nome}"`);
         return formatFirstName(rem.nome);
       }
     } catch (err) {
-      console.warn("⚠️ Erro ao resolver nome remetente:", err);
+      console.warn("⚠️ Erro ao resolver remetente por ID:", err);
     }
   }
+
+  // 5. Buscar via CPF/CNPJ do remetente
+  const cpfCnpj = envio.remetenteCpfCnpj || envio.remetente?.cpfCnpj || "";
+  if (cpfCnpj) {
+    try {
+      const { data: rem } = await supabase
+        .from("remetentes")
+        .select("nome")
+        .eq("cpf_cnpj", cpfCnpj.replace(/\D/g, ""))
+        .limit(1)
+        .maybeSingle();
+      if (rem?.nome && !isGenerico(rem.nome)) {
+        console.log(`🔍 Remetente resolvido via CPF/CNPJ: "${rem.nome}"`);
+        return formatFirstName(rem.nome);
+      }
+    } catch (err) {
+      console.warn("⚠️ Erro ao resolver remetente por CPF/CNPJ:", err);
+    }
+  }
+
+  // 6. Fallback: nome do cliente
+  if (!isGenerico(nomeCliente)) {
+    console.log(`🔍 Usando nome do cliente como remetente: "${nomeCliente}"`);
+    return formatFirstName(nomeCliente);
+  }
+
+  console.warn("⚠️ Nenhum nome de remetente encontrado, usando fallback");
   return "Loja";
 }
 
@@ -206,12 +252,8 @@ serve(async (req: Request) => {
           destinatario.nome || envio.destinatarioNome || "Cliente"
         );
 
-        // Nome remetente
-        const nomeRemetente = await resolverNomeRemetente(
-          supabase,
-          envio.remetenteNome || envio.cliente?.nome || "",
-          envio.remetenteId
-        );
+        // Nome remetente — passa o envio inteiro para resolução completa
+        const nomeRemetente = await resolverNomeRemetente(supabase, envio);
 
         console.log(`📲 Notificando ${codigoRastreio}: ${celular} (${nomeDestinatario} / ${nomeRemetente})`);
 
