@@ -1245,6 +1245,9 @@ serve(async (req) => {
 
     // === PREFIXO DO AGENTE ===
     const agentDisplayName = agentConfig?.display_name || (agentName === "felipe" ? "Felipe" : "Veronica");
+    // Remover prefixo duplicado se a IA já incluiu (ex: "*Veronica:*\n\n")
+    const prefixPattern = /^\*[A-Za-zÀ-ú]+:\*\s*\n*/;
+    aiReply = aiReply.replace(prefixPattern, "").trimStart();
     aiReply = `*${agentDisplayName}:*\n\n${aiReply}`;
 
     console.log("🤖 Resposta final:", aiReply.substring(0, 150));
