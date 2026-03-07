@@ -969,6 +969,12 @@ EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de a
       }
     }
 
+    // Injetar bloco HSM como última mensagem de sistema (peso máximo para o modelo)
+    if (hsmInjectionBlock) {
+      messages.push({ role: "system", content: hsmInjectionBlock });
+      console.log("📋 HSM block injetado APÓS histórico (posição final = peso máximo)");
+    }
+
     // ═══════════════════════════════════════════════════════════
     // PRÉ-PROCESSAMENTO: converter mídia em contexto textual
     // ═══════════════════════════════════════════════════════════
