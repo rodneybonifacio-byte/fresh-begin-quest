@@ -1,0 +1,1 @@
+ALTER TABLE public.whatsapp_notification_templates ADD COLUMN IF NOT EXISTS template_body TEXT DEFAULT NULL;

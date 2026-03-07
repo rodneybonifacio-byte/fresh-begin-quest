@@ -562,20 +562,56 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
                       )}
                       {msg.content_type === 'hsm' ? (
                         msg.metadata?.hsm ? (
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <FileText className="w-3.5 h-3.5 opacity-70" />
-                              <span className="text-[10px] font-medium opacity-70">Mensagem Ativa</span>
-                            </div>
-                            <p className="text-xs font-semibold">{msg.metadata.trigger_label || msg.metadata.template_name}</p>
-                            {msg.metadata.variables && Object.keys(msg.metadata.variables).length > 0 && (
-                              <div className="text-[11px] opacity-80 space-y-0.5 mt-1 border-t border-white/20 pt-1">
-                                {Object.entries(msg.metadata.variables as Record<string, string>).map(([key, val]) => (
-                                  <div key={key}><span className="opacity-60">{key}:</span> {val}</div>
-                                ))}
+                          (() => {
+                            // Try to render the full template body
+                            let rendered: { header?: string; body?: string; footer?: string; buttons?: { text: string; type: string }[] } | null = null;
+                            try {
+                              if (msg.metadata.rendered_body) {
+                                rendered = JSON.parse(msg.metadata.rendered_body as string);
+                              }
+                            } catch {}
+
+                            if (rendered?.body) {
+                              return (
+                                <div className="space-y-1.5">
+                                  {rendered.header && (
+                                    <p className="text-xs font-bold">{rendered.header}</p>
+                                  )}
+                                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{rendered.body}</p>
+                                  {rendered.footer && (
+                                    <p className="text-[10px] opacity-60 mt-1">{rendered.footer}</p>
+                                  )}
+                                  {rendered.buttons && rendered.buttons.length > 0 && (
+                                    <div className="border-t border-white/20 pt-1.5 mt-1.5 flex flex-col gap-1">
+                                      {rendered.buttons.map((btn, bi) => (
+                                        <div key={bi} className="text-center text-xs font-medium text-blue-300 py-0.5">
+                                          {btn.text}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            }
+
+                            // Fallback: show label + variables
+                            return (
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-1.5 mb-1">
+                                  <FileText className="w-3.5 h-3.5 opacity-70" />
+                                  <span className="text-[10px] font-medium opacity-70">Mensagem Ativa</span>
+                                </div>
+                                <p className="text-xs font-semibold">{msg.metadata.trigger_label || msg.metadata.template_name}</p>
+                                {msg.metadata.variables && Object.keys(msg.metadata.variables).length > 0 && (
+                                  <div className="text-[11px] opacity-80 space-y-0.5 mt-1 border-t border-white/20 pt-1">
+                                    {Object.entries(msg.metadata.variables as Record<string, string>).map(([key, val]) => (
+                                      <div key={key}><span className="opacity-60">{key}:</span> {val}</div>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
-                            )}
-                          </div>
+                            );
+                          })()
                         ) : (
                           <div className="space-y-1">
                             <div className="flex items-center gap-1.5 mb-1">

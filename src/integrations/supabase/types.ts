@@ -1755,6 +1755,7 @@ export type Database = {
           id: string
           is_active: boolean
           send_delay_minutes: number
+          template_body: string | null
           template_language: string
           template_name: string
           template_namespace: string | null
@@ -1770,6 +1771,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           send_delay_minutes?: number
+          template_body?: string | null
           template_language?: string
           template_name: string
           template_namespace?: string | null
@@ -1785,6 +1787,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           send_delay_minutes?: number
+          template_body?: string | null
           template_language?: string
           template_name?: string
           template_namespace?: string | null

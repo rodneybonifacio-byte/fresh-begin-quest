@@ -258,6 +258,43 @@ Deno.serve(async (req) => {
 
     console.log(`Template sent successfully: ${result.id}`);
 
+    // Render template body text with variables for chat display
+    let renderedBody = '';
+    if (template.template_body) {
+      try {
+        const bodyData = JSON.parse(template.template_body);
+        // Replace {{1}}, {{2}}, etc. with actual variable values
+        const orderedVars = templateVars
+          .filter(v => v.component_type === 'BODY' || !v.component_type)
+          .sort((a, b) => (a.component_var_index || 0) - (b.component_var_index || 0));
+        
+        let text = bodyData.body || '';
+        orderedVars.forEach((v, i) => {
+          const val = variables[v.system_field || v.key] || variables[v.key] || '';
+          text = text.replace(`{{${i + 1}}}`, val);
+        });
+        
+        // Also render header
+        let headerText = bodyData.header || '';
+        const orderedHeaderVars = templateVars
+          .filter(v => v.component_type === 'HEADER')
+          .sort((a, b) => (a.component_var_index || 0) - (b.component_var_index || 0));
+        orderedHeaderVars.forEach((v, i) => {
+          const val = variables[v.system_field || v.key] || variables[v.key] || '';
+          headerText = headerText.replace(`{{${i + 1}}}`, val);
+        });
+
+        renderedBody = JSON.stringify({
+          header: headerText,
+          body: text,
+          footer: bodyData.footer || '',
+          buttons: bodyData.buttons || [],
+        });
+      } catch (e) {
+        console.warn('Error rendering template body:', e);
+      }
+    }
+
     // Save HSM message to whatsapp_messages for conversation history
     // Find or create conversation for this phone
     let { data: existingConv } = await supabase
@@ -320,6 +357,7 @@ Deno.serve(async (req) => {
           trigger_key: template.trigger_key,
           trigger_label: template.trigger_label,
           variables: variables || {},
+          rendered_body: renderedBody || null,
         },
       });
 
