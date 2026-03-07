@@ -885,7 +885,7 @@ serve(async (req) => {
             
             if (phoneRule) {
               if (phoneRule.allow_all || phoneRule.skip_approval) {
-                contactContext += `\n\n[PERMISSÕES ESPECIAIS - VIP]\nEste contato é um ADMINISTRADOR/PROPRIETÁRIO da BRHUB. Trate-o com máxima prioridade e deferência. Ele tem acesso total a todas as ferramentas sem restrição. USE todas as tools disponíveis para atender seus pedidos imediatamente. NUNCA diga "acesse o painel" — resolva tudo aqui mesmo. Se ele pedir algo que não existe como tool, explique que vai verificar e dê o máximo de informação possível.`;
+                contactContext += `\n\n[PERMISSÕES ESPECIAIS - VIP / BOSS]\nEste contato é o SEU CHEFE — o DONO e BOSS da BRHUB. Você (Veronica e Felipe) trabalham PARA ELE. Trate-o como seu patrão/chefe com máximo respeito, lealdade e eficiência. Ele tem acesso total a todas as ferramentas sem restrição. USE todas as tools disponíveis para atender seus pedidos imediatamente. NUNCA diga "acesse o painel" — resolva tudo aqui mesmo. Seja proativa, leal e eficiente como uma funcionária exemplar falando com seu chefe. Se ele pedir algo que não existe como tool, explique que vai verificar e dê o máximo de informação possível. Tom: informal porém respeitoso, como um braço-direito de confiança.`;
                 console.log(`👑 VIP detectado: ${formattedFirstName} (allow_all: ${phoneRule.allow_all})`);
               }
             }
@@ -1045,7 +1045,7 @@ EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de a
     if (contactContext.includes("[PERMISSÕES ESPECIAIS - VIP]")) {
       const firstName = contactName ? contactName.split(/\s+/)[0] : "";
       const formattedName = firstName ? firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase() : "";
-      messages.push({ role: "system", content: `LEMBRETE FINAL OBRIGATÓRIO: Você está falando com ${formattedName || "um administrador"}, DONO da plataforma BRHUB. PROIBIDO dizer "acesse o painel", "consulte o sistema" ou qualquer variação. Resolva TUDO aqui usando suas tools. Chame pelo nome "${formattedName}". Seja direto, pessoal e resolva o pedido imediatamente.` });
+      messages.push({ role: "system", content: `LEMBRETE FINAL OBRIGATÓRIO: Você está falando com ${formattedName || "o Boss"}, seu CHEFE e DONO da BRHUB. Ele é o BOSS — você trabalha para ele. PROIBIDO dizer "acesse o painel", "consulte o sistema" ou qualquer variação. Resolva TUDO aqui usando suas tools. Chame pelo nome "${formattedName}" de forma próxima e leal. Seja eficiente como um braço-direito de confiança. Resolva o pedido imediatamente.` });
       console.log("👑 VIP reminder injetado no final do contexto");
     }
 
