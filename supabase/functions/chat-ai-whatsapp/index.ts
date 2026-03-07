@@ -316,6 +316,51 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
         return result;
       }
 
+      // ── Faturas a Receber (financeiro) ──
+      case "consultar_faturas_a_receber": {
+        const { data: faturas, error: fatErr } = await supabase
+          .from("fechamentos_fatura")
+          .select("id, fatura_id, codigo_fatura, nome_cliente, cpf_cnpj, status_pagamento, valor_pago, data_pagamento, boleto_id, nosso_numero, created_at")
+          .order("created_at", { ascending: false })
+          .limit(args.limite || 20);
+
+        if (fatErr) return `Erro ao consultar faturas: ${fatErr.message}`;
+        if (!faturas || faturas.length === 0) return "Nenhuma fatura encontrada.";
+
+        // Apply filters
+        let filtered = faturas;
+        if (args.nome_cliente) {
+          const search = args.nome_cliente.toLowerCase();
+          filtered = filtered.filter((f: any) => f.nome_cliente?.toLowerCase().includes(search));
+        }
+        if (args.status_pagamento) {
+          filtered = filtered.filter((f: any) => f.status_pagamento === args.status_pagamento);
+        }
+
+        if (filtered.length === 0) return `Nenhuma fatura encontrada com os filtros aplicados.`;
+
+        const pendentes = filtered.filter((f: any) => f.status_pagamento === "PENDENTE" || !f.status_pagamento);
+        const pagas = filtered.filter((f: any) => f.status_pagamento === "PAGO");
+        const totalPago = pagas.reduce((s: number, f: any) => s + (Number(f.valor_pago) || 0), 0);
+
+        let result = `📋 Faturas a Receber (${filtered.length} encontradas):\n`;
+        result += `✅ Pagas: ${pagas.length} | Total recebido: R$ ${totalPago.toFixed(2)}\n`;
+        result += `⏳ Pendentes: ${pendentes.length}\n\n`;
+
+        for (const f of filtered.slice(0, 15)) {
+          const status = f.status_pagamento || "PENDENTE";
+          const icon = status === "PAGO" ? "✅" : "⏳";
+          result += `${icon} #${f.codigo_fatura} — ${f.nome_cliente}\n`;
+          result += `   Status: ${status}`;
+          if (f.valor_pago) result += ` | Valor: R$ ${Number(f.valor_pago).toFixed(2)}`;
+          if (f.data_pagamento) result += ` | Pago em: ${new Date(f.data_pagamento).toLocaleDateString("pt-BR")}`;
+          if (f.boleto_id) result += ` | Boleto: Sim`;
+          result += `\n`;
+        }
+        if (filtered.length > 15) result += `\n... e mais ${filtered.length - 15} faturas.`;
+        return result;
+      }
+
       // ── Listar objetos do cliente (etiquetas/envios pendentes) ──
       case "listar_objetos_cliente": {
         let clienteId = args.cliente_id;
