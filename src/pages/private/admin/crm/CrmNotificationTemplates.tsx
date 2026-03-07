@@ -18,6 +18,7 @@ interface NotificationTemplate {
   template_name: string;
   template_language: string;
   template_namespace: string | null;
+  template_body: string | null;
   variables: { key: string; label: string; system_field?: string; component_type?: string }[];
   channel_id: string | null;
   is_active: boolean;
