@@ -816,10 +816,14 @@ serve(async (req) => {
         const isGeneric = nomeUpper.length < 3 || nomeUpper.includes('CADASTRO') || nomeUpper.includes('NOLASTNAME') || /^[0-9a-f-]{36}$/i.test(nomeUpper);
 
         if (!isGeneric) {
+          // Formatar primeiro nome capitalizado (ex: "RODNEY BONIFACIO" → "Rodney")
+          const firstName = contactName.split(/\s+/)[0];
+          const formattedFirstName = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+
           const roleLabel = contactRole === "destinatário" ? "um destinatário de envio" 
                           : contactRole === "remetente" ? "um remetente cadastrado"
                           : "um cliente da plataforma";
-          contactContext = `\n\n[CONTEXTO DO CONTATO ATUAL]\nO contato que está falando com você se chama: ${contactName}. Tipo: ${roleLabel}. Email: ${contactEmail || "N/A"}. Telefone: ${contactPhone}.${clienteId ? ` ID cliente: ${clienteId}.` : ""}\nIMPORTANTE: Chame a pessoa pelo PRIMEIRO NOME de forma pessoal e simpática. Não peça identificação novamente, você já sabe quem é.`;
+          contactContext = `\n\n[CONTEXTO DO CONTATO ATUAL]\nO contato que está falando com você se chama: ${formattedFirstName} (nome completo: ${contactName}). Tipo: ${roleLabel}. Email: ${contactEmail || "N/A"}. Telefone: ${contactPhone}.${clienteId ? ` ID cliente: ${clienteId}.` : ""}\nIMPORTANTE: Chame a pessoa SEMPRE por "${formattedFirstName}" de forma pessoal e simpática na PRIMEIRA mensagem. Não use "Desconhecido", não peça identificação, você já sabe quem é.`;
 
           // 7. AUTO-INJECT: Buscar envios pendentes do cliente automaticamente
           if (clienteId) {
