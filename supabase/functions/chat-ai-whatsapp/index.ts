@@ -598,13 +598,15 @@ serve(async (req) => {
     const temperature = agentConfig?.temperature || 0.7;
     const maxTokens = Math.min(agentConfig?.max_tokens || 200, 250);
 
-    // === BUSCAR HISTÓRICO ===
-    const { data: history } = await supabase
+    // === BUSCAR HISTÓRICO (mais recente primeiro, depois reordenar para cronológico) ===
+    const { data: historyDesc } = await supabase
       .from("whatsapp_messages")
       .select("direction, content, content_type, created_at, metadata")
       .eq("conversation_id", conversationId)
-      .order("created_at", { ascending: true })
-      .limit(20);
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    const history = (historyDesc || []).reverse();
 
     // ═══════════════════════════════════════════════════════════
     // AUTO-IDENTIFICAÇÃO: resolver contato pelo telefone (ampla)
@@ -830,21 +832,51 @@ serve(async (req) => {
           
           // 7.0 Detectar se há HSM recente no histórico (notificação ativa)
           let lastHsmContext = "";
-          if (history && history.length > 0) {
-            const hsmMsgs = history.filter((m: any) => m.direction === "outbound" && m.content_type === "hsm");
-            if (hsmMsgs.length > 0) {
-              const lastHsm = hsmMsgs[hsmMsgs.length - 1];
+
+          // Fonte principal: buscar o ÚLTIMO HSM real na conversa
+          try {
+            const { data: lastHsm } = await supabase
+              .from("whatsapp_messages")
+              .select("content, content_type, created_at, metadata")
+              .eq("conversation_id", conversationId)
+              .eq("direction", "outbound")
+              .eq("content_type", "hsm")
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (lastHsm?.created_at) {
               const hsmTime = new Date(lastHsm.created_at).getTime();
               const hoursAgo = (Date.now() - hsmTime) / (1000 * 60 * 60);
               if (hoursAgo <= 24) {
-                // Extrair detalhes do HSM via metadata
                 const meta = lastHsm.metadata || {};
                 const triggerLabel = meta.trigger_label || "";
                 const templateName = meta.template_name || "";
                 const vars = meta.variables || {};
                 const varSummary = Object.entries(vars).map(([k, v]) => `${k}: ${v}`).join(", ");
                 lastHsmContext = `Notificação "${triggerLabel || templateName}" enviada há ${hoursAgo.toFixed(0)}h. Dados: ${varSummary || lastHsm.content || ""}`;
-                console.log(`📋 HSM recente (${hoursAgo.toFixed(1)}h):`, lastHsmContext.substring(0, 150));
+                console.log(`📋 HSM recente (query direta, ${hoursAgo.toFixed(1)}h):`, lastHsmContext.substring(0, 150));
+              }
+            }
+          } catch (hsmQueryErr) {
+            console.warn("⚠️ Erro ao buscar último HSM por query direta:", hsmQueryErr);
+          }
+
+          // Fallback: histórico local já carregado
+          if (!lastHsmContext && history && history.length > 0) {
+            const hsmMsgs = history.filter((m: any) => m.direction === "outbound" && m.content_type === "hsm");
+            if (hsmMsgs.length > 0) {
+              const lastHsm = hsmMsgs[hsmMsgs.length - 1];
+              const hsmTime = new Date(lastHsm.created_at).getTime();
+              const hoursAgo = (Date.now() - hsmTime) / (1000 * 60 * 60);
+              if (hoursAgo <= 24) {
+                const meta = lastHsm.metadata || {};
+                const triggerLabel = meta.trigger_label || "";
+                const templateName = meta.template_name || "";
+                const vars = meta.variables || {};
+                const varSummary = Object.entries(vars).map(([k, v]) => `${k}: ${v}`).join(", ");
+                lastHsmContext = `Notificação "${triggerLabel || templateName}" enviada há ${hoursAgo.toFixed(0)}h. Dados: ${varSummary || lastHsm.content || ""}`;
+                console.log(`📋 HSM recente (fallback histórico, ${hoursAgo.toFixed(1)}h):`, lastHsmContext.substring(0, 150));
               }
             }
           }
