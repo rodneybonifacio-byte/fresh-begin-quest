@@ -443,6 +443,10 @@ export const ContactIntelligencePanel = ({
     em_transito: 'bg-purple-500/10 text-purple-600',
     entregue: 'bg-green-500/10 text-green-600',
     cancelado: 'bg-red-500/10 text-red-600',
+    criado: 'bg-blue-500/10 text-blue-600',
+    verificando: 'bg-amber-500/10 text-amber-600',
+    notificado: 'bg-cyan-500/10 text-cyan-600',
+    etiqueta_criada: 'bg-blue-500/10 text-blue-600',
   };
 
   return (
