@@ -831,17 +831,20 @@ serve(async (req) => {
           // 7.0 Detectar se há HSM recente no histórico (notificação ativa)
           let lastHsmContext = "";
           if (history && history.length > 0) {
-            // Buscar o HSM mais recente no histórico (pode não ser o último outbound)
             const hsmMsgs = history.filter((m: any) => m.direction === "outbound" && m.content_type === "hsm");
             if (hsmMsgs.length > 0) {
               const lastHsm = hsmMsgs[hsmMsgs.length - 1];
-              // Verificar se o HSM é recente (últimas 24h)
               const hsmTime = new Date(lastHsm.created_at).getTime();
-              const now = Date.now();
-              const hoursAgo = (now - hsmTime) / (1000 * 60 * 60);
+              const hoursAgo = (Date.now() - hsmTime) / (1000 * 60 * 60);
               if (hoursAgo <= 24) {
-                lastHsmContext = lastHsm.content || "";
-                console.log(`📋 HSM recente encontrado (${hoursAgo.toFixed(1)}h atrás):`, lastHsmContext.substring(0, 100));
+                // Extrair detalhes do HSM via metadata
+                const meta = lastHsm.metadata || {};
+                const triggerLabel = meta.trigger_label || "";
+                const templateName = meta.template_name || "";
+                const vars = meta.variables || {};
+                const varSummary = Object.entries(vars).map(([k, v]) => `${k}: ${v}`).join(", ");
+                lastHsmContext = `Notificação "${triggerLabel || templateName}" enviada há ${hoursAgo.toFixed(0)}h. Dados: ${varSummary || lastHsm.content || ""}`;
+                console.log(`📋 HSM recente (${hoursAgo.toFixed(1)}h):`, lastHsmContext.substring(0, 150));
               }
             }
           }
