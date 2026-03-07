@@ -417,11 +417,18 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
 
   const filteredConversations = conversations.filter(c => {
     const term = searchTerm.toLowerCase();
-    return (
+    const matchesSearch =
       (c.contact_name || '').toLowerCase().includes(term) ||
       c.contact_phone.includes(term) ||
-      (c.last_message_preview || '').toLowerCase().includes(term)
-    );
+      (c.last_message_preview || '').toLowerCase().includes(term);
+    if (!matchesSearch) return false;
+
+    const isClosed = closedConversationIds.has(c.id);
+
+    if (conversationTab === 'sem_atendimento') return !c.ai_enabled && !isClosed;
+    if (conversationTab === 'ia') return c.ai_enabled && !isClosed;
+    if (conversationTab === 'fechados') return isClosed;
+    return true;
   });
 
   return (
