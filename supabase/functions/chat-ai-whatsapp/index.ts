@@ -1582,6 +1582,114 @@ async function fetchClienteShipments(clienteId: string, onlyPending = true): Pro
     return "Erro ao buscar envios do cliente.";
   }
 }
+// ═══════════════════════════════════════════════════════════
+// BUSCAR PACOTES DE DESTINATÁRIOS POR TELEFONE
+// ═══════════════════════════════════════════════════════════
+
+async function fetchRecipientPackagesByPhone(supabase: any, normalizedPhone: string, phoneVariants: string[]): Promise<string | null> {
+  try {
+    const packages: { codigo: string; destNome: string; status: string; previsao: string; servico: string; source: string }[] = [];
+
+    // 1. Buscar em pedidos_importados (destinatário)
+    for (const pv of phoneVariants) {
+      const { data: pedidos } = await supabase
+        .from("pedidos_importados")
+        .select("codigo_rastreio, destinatario_nome, status, servico_frete")
+        .or(`destinatario_telefone.ilike.%${pv}%`)
+        .not("codigo_rastreio", "is", null)
+        .order("criado_em", { ascending: false })
+        .limit(10);
+
+      if (pedidos) {
+        for (const p of pedidos) {
+          const statusUpper = (p.status || "").toUpperCase();
+          if (statusUpper.includes("ENTREGUE") || statusUpper.includes("CANCELADO") || statusUpper.includes("DELIVERED")) continue;
+          if (!packages.find(pkg => pkg.codigo === p.codigo_rastreio)) {
+            packages.push({
+              codigo: p.codigo_rastreio,
+              destNome: p.destinatario_nome || "?",
+              status: p.status || "?",
+              previsao: "",
+              servico: p.servico_frete || "",
+              source: "pedido",
+            });
+          }
+        }
+        if (packages.length > 0) break;
+      }
+    }
+
+    // 2. Buscar em notificacoes_aguardando_retirada
+    for (const pv of phoneVariants) {
+      const { data: notifs } = await supabase
+        .from("notificacoes_aguardando_retirada")
+        .select("codigo_objeto, destinatario_nome, remetente_nome, notificado_em")
+        .or(`destinatario_celular.ilike.%${pv}%`)
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      if (notifs) {
+        for (const n of notifs) {
+          if (!packages.find(pkg => pkg.codigo === n.codigo_objeto)) {
+            packages.push({
+              codigo: n.codigo_objeto,
+              destNome: n.destinatario_nome || "?",
+              status: "AGUARDANDO_RETIRADA",
+              previsao: "",
+              servico: "",
+              source: "notificacao_retirada",
+            });
+          }
+        }
+        if (notifs.length > 0) break;
+      }
+    }
+
+    // 3. Verificar atrasos cruzando com emissoes_em_atraso
+    if (packages.length > 0) {
+      const codigos = packages.map(p => p.codigo).filter(Boolean);
+      const { data: atrasos } = await supabase
+        .from("emissoes_em_atraso")
+        .select("codigo_objeto, destinatario_nome, data_previsao_entrega, servico")
+        .in("codigo_objeto", codigos);
+
+      if (atrasos) {
+        for (const a of atrasos) {
+          const existing = packages.find(pkg => pkg.codigo === a.codigo_objeto);
+          if (existing) {
+            existing.status = "ATRASADO";
+            existing.previsao = a.data_previsao_entrega || "";
+          }
+        }
+      }
+    }
+
+    if (packages.length === 0) return null;
+
+    let result = `Pacotes encontrados (${packages.length}):\n`;
+    for (const pkg of packages.slice(0, 5)) {
+      result += `- ${pkg.codigo} → ${pkg.destNome} | Status: ${pkg.status}${pkg.previsao ? ` | Previsão: ${pkg.previsao}` : ""}${pkg.servico ? ` | ${pkg.servico}` : ""}\n`;
+    }
+
+    // Rastrear os primeiros 2 pacotes para dados atualizados
+    for (const pkg of packages.slice(0, 2)) {
+      try {
+        const trackingData = await fetchTrackingData(pkg.codigo);
+        if (trackingData) {
+          const formatted = formatTrackingForAI(trackingData);
+          result += `\n[RASTREIO ATUALIZADO — ${pkg.codigo}]\n${formatted}\n`;
+        }
+      } catch {
+        // Silenciar erros de rastreio individual
+      }
+    }
+
+    return result;
+  } catch (e: any) {
+    console.error("❌ Erro fetchRecipientPackagesByPhone:", e);
+    return null;
+  }
+}
 
 async function getAdminToken(): Promise<string | null> {
   const BASE_API_URL = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br";
