@@ -447,6 +447,13 @@ serve(async (req) => {
         "apreendido", "apreensão", "apreensao", "retido", "retida", "retenção", "retencao",
         "extraviou", "extraviado", "extraviada", "sumiu", "perdido", "perdida",
         "danificado", "danificada", "quebrado", "quebrada", "avariado", "avariada",
+        // Pedido explícito para falar com Felipe
+        "falar com felipe", "falar com o felipe", "quero o felipe", "quero falar com felipe",
+        "chama o felipe", "chamar o felipe", "passa pro felipe", "transfere pro felipe",
+        "transferir pro felipe", "transfere para o felipe", "transferir para o felipe",
+        "me passa pro felipe", "me transfere pro felipe", "manda o felipe",
+        "preciso do felipe", "preciso falar com felipe", "cadê o felipe", "cade o felipe",
+        "passa para o felipe", "me passa para o felipe",
       ];
       if (preHandoffKeywords.some(k => lowerMsg.includes(k))) {
         console.log(`🔄 PRÉ-HANDOFF: Keyword detectada em "${message.substring(0, 50)}..." → Veronica avisa e Felipe assume (com áudio)`);
