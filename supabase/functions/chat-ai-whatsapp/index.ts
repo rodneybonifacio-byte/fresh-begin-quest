@@ -322,23 +322,66 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
         if (!token) return "Erro interno ao consultar faturas — falha no token admin.";
         const BASE_API_URL = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br";
         
-        // Buscar faturas da API externa (mesma fonte da página Faturas a Receber)
-        const statusFilter = args.status_pagamento === "PAGO" ? "PAGO" : "PENDENTE,PAGO_PARCIAL";
-        const params = new URLSearchParams();
-        params.set("limit", String(args.limite || 50));
-        params.set("offset", "0");
-        params.set("statusFaturamento", statusFilter);
+        // Determinar filtro de status
+        const wantsPago = args.status_pagamento === "PAGO";
+        const wantsTodos = args.status_pagamento === "TODOS" || (!args.status_pagamento && args.nome_cliente);
         
-        const fatUrl = `${BASE_API_URL}/faturas/admin?${params.toString()}`;
-        console.log(`📡 Faturas fetch: ${fatUrl}`);
-        const resp = await fetch(fatUrl, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        // Se quer TODOS, buscar ambos em paralelo
+        const statusesToFetch = wantsTodos 
+          ? ["PENDENTE,PAGO_PARCIAL", "PAGO"] 
+          : [wantsPago ? "PAGO" : "PENDENTE,PAGO_PARCIAL"];
         
-        if (!resp.ok) return `Erro ao consultar faturas: ${resp.status}`;
-        const fatResult = await resp.json();
-        let faturas = fatResult?.data || fatResult || [];
-        if (!Array.isArray(faturas)) faturas = [];
+        let allFaturas: any[] = [];
+        
+        for (const statusFilter of statusesToFetch) {
+          let offset = 0;
+          const limit = 100;
+          let hasMore = true;
+          
+          while (hasMore && offset < 500) {
+            const params = new URLSearchParams();
+            params.set("limit", String(limit));
+            params.set("offset", String(offset));
+            params.set("statusFaturamento", statusFilter);
+            
+            const fatUrl = `${BASE_API_URL}/faturas/admin?${params.toString()}`;
+            console.log(`📡 Faturas fetch: ${fatUrl}`);
+            const resp = await fetch(fatUrl, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            
+            if (!resp.ok) {
+              console.log(`❌ Faturas API error: ${resp.status}`);
+              break;
+            }
+            
+            const fatResult = await resp.json();
+            const batch = fatResult?.data || fatResult || [];
+            if (!Array.isArray(batch) || batch.length === 0) {
+              hasMore = false;
+              break;
+            }
+            
+            allFaturas = allFaturas.concat(batch);
+            
+            // Se estamos buscando por nome específico, pegar mais páginas
+            if (!args.nome_cliente || batch.length < limit) {
+              hasMore = false;
+            } else {
+              offset += limit;
+            }
+          }
+        }
+        
+        // Log primeiro item para debug de campos
+        if (allFaturas.length > 0) {
+          const sample = allFaturas[0];
+          console.log(`🔍 Sample fatura keys: ${Object.keys(sample).join(', ')}`);
+          console.log(`🔍 Sample fatura: codigo=${sample.codigo}, codigoFatura=${sample.codigoFatura}, statusFaturamento=${sample.statusFaturamento}, totalFaturado=${sample.totalFaturado}, valor=${sample.valor}, valorPostagem=${sample.valorPostagem}`);
+          if (sample.cliente) console.log(`🔍 Sample cliente: ${JSON.stringify(sample.cliente)}`);
+        }
+        
+        let faturas = allFaturas;
         
         // Filter by client name if specified
         if (args.nome_cliente) {
@@ -351,14 +394,14 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
         
         if (faturas.length === 0) return `Nenhuma fatura encontrada${args.nome_cliente ? ` para "${args.nome_cliente}"` : ""}.`;
         
-        // Also fetch fechamentos from DB for boleto status
+        // Fetch fechamentos from DB for boleto/payment status
         const faturaIds = faturas.map((f: any) => f.id).filter(Boolean);
         let fechamentosMap: Record<string, any> = {};
         if (faturaIds.length > 0) {
           const { data: fechamentos } = await supabase
             .from("fechamentos_fatura")
             .select("fatura_id, status_pagamento, boleto_id, valor_pago, data_pagamento")
-            .in("fatura_id", faturaIds.slice(0, 50));
+            .in("fatura_id", faturaIds.slice(0, 100));
           if (fechamentos) {
             for (const f of fechamentos) {
               fechamentosMap[f.fatura_id] = f;
@@ -366,37 +409,49 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
           }
         }
         
-        // Build response
+        // Build response - use correct field mappings
         let totalFaturado = 0;
         let totalCusto = 0;
         let totalLucro = 0;
+        let totalPago = 0;
+        let countPendente = 0;
+        let countPago = 0;
         
-        let result = `📋 Faturas a Receber (${faturas.length} encontradas):\n\n`;
+        let result = `📋 Faturas${args.nome_cliente ? ` de ${args.nome_cliente}` : ""} (${faturas.length} encontradas):\n\n`;
         
-        for (const f of faturas.slice(0, 20)) {
+        for (const f of faturas.slice(0, 15)) {
           const cliente = f.cliente?.nome || f.nomeCliente || "N/A";
-          const valor = Number(f.totalFaturado || f.valor_venda || 0);
-          const custo = Number(f.totalCusto || f.valor_custo || 0);
+          // Correct mapping: valor = preço venda, valorPostagem = preço custo
+          const valor = Number(f.totalFaturado || f.valor || 0);
+          const custo = Number(f.totalCusto || f.valorPostagem || 0);
           const lucro = valor - custo;
-          const codigo = f.codigoFatura || f.codigo_fatura || "—";
+          const codigo = f.codigo || f.codigoFatura || f.codigo_fatura || "—";
+          const statusAPI = f.statusFaturamento || f.status || "";
           const fechamento = fechamentosMap[f.id];
-          const temBoleto = fechamento?.boleto_id ? "✅ Boleto" : "❌ Sem boleto";
-          const statusPag = fechamento?.status_pagamento || "PENDENTE";
+          const statusPag = fechamento?.status_pagamento || statusAPI || "PENDENTE";
+          const temBoleto = fechamento?.boleto_id ? "✅ Boleto" : "";
+          const valorPago = Number(fechamento?.valor_pago || 0);
           
           totalFaturado += valor;
           totalCusto += custo;
           totalLucro += lucro;
+          totalPago += valorPago;
+          
+          if (statusPag === "PAGO") countPago++;
+          else countPendente++;
           
           result += `#${codigo} — ${cliente}\n`;
           result += `  Valor: R$ ${valor.toFixed(2)} | Custo: R$ ${custo.toFixed(2)} | Lucro: R$ ${lucro.toFixed(2)}\n`;
-          result += `  ${temBoleto} | Status: ${statusPag}\n\n`;
+          result += `  Status: ${statusPag}${temBoleto ? ` | ${temBoleto}` : ""}${valorPago > 0 ? ` | Pago: R$ ${valorPago.toFixed(2)}` : ""}\n\n`;
         }
         
         result += `─────────────────\n`;
         result += `💰 Total Faturado: R$ ${totalFaturado.toFixed(2)}\n`;
         result += `💸 Total Custo: R$ ${totalCusto.toFixed(2)}\n`;
         result += `📈 Total Lucro: R$ ${totalLucro.toFixed(2)}\n`;
-        if (faturas.length > 20) result += `\n... e mais ${faturas.length - 20} faturas.`;
+        if (totalPago > 0) result += `✅ Total Pago: R$ ${totalPago.toFixed(2)}\n`;
+        result += `📊 ${countPago} pagas | ${countPendente} pendentes\n`;
+        if (faturas.length > 15) result += `\n... e mais ${faturas.length - 15} faturas.`;
         
         return result;
       }
