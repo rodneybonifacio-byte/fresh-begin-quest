@@ -841,7 +841,7 @@ serve(async (req) => {
           // Isso permite atendimento proativo para qualquer pessoa que recebeu notificações HSM
           {
             try {
-              const recipientPackages = await fetchRecipientPackagesByPhone(supabase, normalized, phoneVariants);
+              const recipientPackages = await fetchRecipientPackagesByPhone(supabase, normalized, phoneVariants, conversationId);
               if (recipientPackages) {
                 contactContext += `\n\n[PACOTES ASSOCIADOS A ESTE DESTINATÁRIO]\n${recipientPackages}\nIMPORTANTE: Este contato é um DESTINATÁRIO de encomendas. Informe proativamente o status dos pacotes dele. Se estiver em trânsito, informe a previsão. Se estiver aguardando retirada, informe o endereço. Se estiver atrasado (previsão anterior a hoje ${new Date().toLocaleDateString("pt-BR")}), reconheça o atraso e ofereça ajuda, direcionando ao Felipe (Suporte Nível 2) se necessário.`;
                 console.log("📦 Auto-inject destinatário:", recipientPackages.substring(0, 150));
