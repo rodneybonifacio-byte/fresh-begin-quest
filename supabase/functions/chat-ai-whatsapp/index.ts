@@ -273,7 +273,8 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
       // ── Dashboard da plataforma (admin/VIP) ──
       case "consultar_dashboard_plataforma": {
         const token = await getAdminToken();
-        if (!token) return "Erro interno ao consultar dashboard.";
+        console.log(`🔑 getAdminToken result: ${token ? "OK (length=" + token.length + ")" : "NULL"}`);
+        if (!token) return "Erro interno ao consultar dashboard — falha no token admin.";
         const BASE_API_URL = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br";
         const periodo = args.periodo || "hoje";
         const params = new URLSearchParams();
@@ -281,9 +282,12 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
         if (args.data_inicio) params.set("dataIni", args.data_inicio);
         if (args.data_fim) params.set("dataFim", args.data_fim);
         if (args.cliente_id) params.set("clienteId", args.cliente_id);
-        const resp = await fetch(`${BASE_API_URL}/dashboard?${params.toString()}`, {
+        const dashUrl = `${BASE_API_URL}/dashboard?${params.toString()}`;
+        console.log(`📡 Dashboard fetch: ${dashUrl}`);
+        const resp = await fetch(dashUrl, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        console.log(`📡 Dashboard response: ${resp.status}`);
         if (!resp.ok) return `Erro ao consultar dashboard: ${resp.status}`;
         const dashboard = await resp.json();
         const fat = dashboard?.faturamento?.resumo || {};
@@ -1263,6 +1267,7 @@ EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de a
           toolsUsed.push(toolName);
 
           const toolResult = await executeTool(toolName, toolArgs, contactPhone, conversationId);
+          console.log(`📋 Tool result (${toolName}): ${toolResult.substring(0, 300)}`);
           
           // === POST-TOOL HANDOFF: Se o resultado da tool contém indicadores de problema grave E estamos com Veronica, escalar pro Felipe ===
           if (agentName === "veronica" && toolName === "rastrear_objeto") {
