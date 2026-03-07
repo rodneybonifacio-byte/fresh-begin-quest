@@ -254,10 +254,17 @@ serve(async (req: Request) => {
         console.log(`📱 Celular formatado: "${celular}"`);
 
         // Preparar payload para o webhook DataCrazy
+        // Resolver nome real do remetente (evitar genérico "Remetente")
+        const nomeRemetenteResolvido = await resolverNomeRemetente(
+          supabase, 
+          envio.remetenteNome || envio.cliente?.nome || '', 
+          envio.remetenteId
+        );
+        
         const webhookPayload = {
           destinatario_nome: destinatario.nome || envio.destinatarioNome || '',
           codigo_objeto: envio.codigoObjeto || '',
-          remetente_nome: envio.remetenteNome || envio.cliente?.nome || '',
+          remetente_nome: nomeRemetenteResolvido,
           destinatario_celular: celular,
           // Endereço do destinatário
           destinatario_cep: enderecoDestinatario.cep || '',
