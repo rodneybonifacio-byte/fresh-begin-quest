@@ -508,6 +508,29 @@ export const ContactIntelligencePanel = ({
       recentes: mergedRecentes.slice(0, 5),
     });
 
+    // Auto-enrich: update conversation contact_name with full destinatário name from API
+    const allDestNames = Array.from(shipmentMap.values())
+      .map(s => normalizePersonName(s.destNome))
+      .filter(n => n.length > 3);
+    const bestFullName = allDestNames.sort((a, b) => b.length - a.length)[0] || null;
+    
+    if (bestFullName && conversationId) {
+      const currentName = normalizePersonName(contactName);
+      if (bestFullName.length > currentName.length + 2) {
+        const formattedName = bestFullName
+          .toLowerCase()
+          .replace(/\b\w/g, c => c.toUpperCase())
+          .replace(/\b(De|Da|Do|Dos|Das)\b/g, m => m.toLowerCase());
+
+        await supabase
+          .from('whatsapp_conversations')
+          .update({ contact_name: formattedName })
+          .eq('id', conversationId);
+        
+        setProfile(prev => prev ? { ...prev, nome: formattedName } : prev);
+      }
+    }
+
     // Financial (only if we have clienteId)
     if (clienteId) {
       const [recargasRes, consumosRes, bloqueadosRes] = await Promise.all([
