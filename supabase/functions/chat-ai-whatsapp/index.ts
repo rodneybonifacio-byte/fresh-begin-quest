@@ -836,9 +836,10 @@ serve(async (req) => {
             }
           }
 
-          // 7b. AUTO-INJECT DESTINATÁRIOS: Buscar pacotes por telefone quando não tem clienteId
-          // Isso permite atendimento proativo para destinatários que receberam notificações HSM
-          if (!clienteId || contactRole === "destinatário") {
+          // 7b. AUTO-INJECT DESTINATÁRIOS: Buscar pacotes por telefone SEMPRE
+          // Mesmo clientes podem ser destinatários de outros envios
+          // Isso permite atendimento proativo para qualquer pessoa que recebeu notificações HSM
+          {
             try {
               const recipientPackages = await fetchRecipientPackagesByPhone(supabase, normalized, phoneVariants);
               if (recipientPackages) {
