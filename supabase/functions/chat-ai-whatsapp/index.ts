@@ -318,46 +318,86 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
 
       // ── Faturas a Receber (financeiro) ──
       case "consultar_faturas_a_receber": {
-        const { data: faturas, error: fatErr } = await supabase
-          .from("fechamentos_fatura")
-          .select("id, fatura_id, codigo_fatura, nome_cliente, cpf_cnpj, status_pagamento, valor_pago, data_pagamento, boleto_id, nosso_numero, created_at")
-          .order("created_at", { ascending: false })
-          .limit(args.limite || 20);
-
-        if (fatErr) return `Erro ao consultar faturas: ${fatErr.message}`;
-        if (!faturas || faturas.length === 0) return "Nenhuma fatura encontrada.";
-
-        // Apply filters
-        let filtered = faturas;
+        const token = await getAdminToken();
+        if (!token) return "Erro interno ao consultar faturas — falha no token admin.";
+        const BASE_API_URL = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br";
+        
+        // Buscar faturas da API externa (mesma fonte da página Faturas a Receber)
+        const statusFilter = args.status_pagamento === "PAGO" ? "PAGO" : "PENDENTE,PAGO_PARCIAL";
+        const params = new URLSearchParams();
+        params.set("limit", String(args.limite || 50));
+        params.set("offset", "0");
+        params.set("statusFaturamento", statusFilter);
+        
+        const fatUrl = `${BASE_API_URL}/admin/faturas?${params.toString()}`;
+        console.log(`📡 Faturas fetch: ${fatUrl}`);
+        const resp = await fetch(fatUrl, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        
+        if (!resp.ok) return `Erro ao consultar faturas: ${resp.status}`;
+        const fatResult = await resp.json();
+        let faturas = fatResult?.data || fatResult || [];
+        if (!Array.isArray(faturas)) faturas = [];
+        
+        // Filter by client name if specified
         if (args.nome_cliente) {
           const search = args.nome_cliente.toLowerCase();
-          filtered = filtered.filter((f: any) => f.nome_cliente?.toLowerCase().includes(search));
+          faturas = faturas.filter((f: any) => {
+            const nome = f.cliente?.nome || f.nomeCliente || f.nome_cliente || "";
+            return nome.toLowerCase().includes(search);
+          });
         }
-        if (args.status_pagamento) {
-          filtered = filtered.filter((f: any) => f.status_pagamento === args.status_pagamento);
+        
+        if (faturas.length === 0) return `Nenhuma fatura encontrada${args.nome_cliente ? ` para "${args.nome_cliente}"` : ""}.`;
+        
+        // Also fetch fechamentos from DB for boleto status
+        const faturaIds = faturas.map((f: any) => f.id).filter(Boolean);
+        let fechamentosMap: Record<string, any> = {};
+        if (faturaIds.length > 0) {
+          const { data: fechamentos } = await supabase
+            .from("fechamentos_fatura")
+            .select("fatura_id, status_pagamento, boleto_id, valor_pago, data_pagamento")
+            .in("fatura_id", faturaIds.slice(0, 50));
+          if (fechamentos) {
+            for (const f of fechamentos) {
+              fechamentosMap[f.fatura_id] = f;
+            }
+          }
         }
-
-        if (filtered.length === 0) return `Nenhuma fatura encontrada com os filtros aplicados.`;
-
-        const pendentes = filtered.filter((f: any) => f.status_pagamento === "PENDENTE" || !f.status_pagamento);
-        const pagas = filtered.filter((f: any) => f.status_pagamento === "PAGO");
-        const totalPago = pagas.reduce((s: number, f: any) => s + (Number(f.valor_pago) || 0), 0);
-
-        let result = `📋 Faturas a Receber (${filtered.length} encontradas):\n`;
-        result += `✅ Pagas: ${pagas.length} | Total recebido: R$ ${totalPago.toFixed(2)}\n`;
-        result += `⏳ Pendentes: ${pendentes.length}\n\n`;
-
-        for (const f of filtered.slice(0, 15)) {
-          const status = f.status_pagamento || "PENDENTE";
-          const icon = status === "PAGO" ? "✅" : "⏳";
-          result += `${icon} #${f.codigo_fatura} — ${f.nome_cliente}\n`;
-          result += `   Status: ${status}`;
-          if (f.valor_pago) result += ` | Valor: R$ ${Number(f.valor_pago).toFixed(2)}`;
-          if (f.data_pagamento) result += ` | Pago em: ${new Date(f.data_pagamento).toLocaleDateString("pt-BR")}`;
-          if (f.boleto_id) result += ` | Boleto: Sim`;
-          result += `\n`;
+        
+        // Build response
+        let totalFaturado = 0;
+        let totalCusto = 0;
+        let totalLucro = 0;
+        
+        let result = `📋 Faturas a Receber (${faturas.length} encontradas):\n\n`;
+        
+        for (const f of faturas.slice(0, 20)) {
+          const cliente = f.cliente?.nome || f.nomeCliente || "N/A";
+          const valor = Number(f.totalFaturado || f.valor_venda || 0);
+          const custo = Number(f.totalCusto || f.valor_custo || 0);
+          const lucro = valor - custo;
+          const codigo = f.codigoFatura || f.codigo_fatura || "—";
+          const fechamento = fechamentosMap[f.id];
+          const temBoleto = fechamento?.boleto_id ? "✅ Boleto" : "❌ Sem boleto";
+          const statusPag = fechamento?.status_pagamento || "PENDENTE";
+          
+          totalFaturado += valor;
+          totalCusto += custo;
+          totalLucro += lucro;
+          
+          result += `#${codigo} — ${cliente}\n`;
+          result += `  Valor: R$ ${valor.toFixed(2)} | Custo: R$ ${custo.toFixed(2)} | Lucro: R$ ${lucro.toFixed(2)}\n`;
+          result += `  ${temBoleto} | Status: ${statusPag}\n\n`;
         }
-        if (filtered.length > 15) result += `\n... e mais ${filtered.length - 15} faturas.`;
+        
+        result += `─────────────────\n`;
+        result += `💰 Total Faturado: R$ ${totalFaturado.toFixed(2)}\n`;
+        result += `💸 Total Custo: R$ ${totalCusto.toFixed(2)}\n`;
+        result += `📈 Total Lucro: R$ ${totalLucro.toFixed(2)}\n`;
+        if (faturas.length > 20) result += `\n... e mais ${faturas.length - 20} faturas.`;
+        
         return result;
       }
 
