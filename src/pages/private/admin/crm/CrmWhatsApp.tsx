@@ -52,7 +52,29 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [showContactPanel, setShowContactPanel] = useState(false);
-  // Carregar conversas
+  const [templateBodies, setTemplateBodies] = useState<Record<string, { body: string; header?: string; footer?: string; buttons?: { text: string }[]; variables?: any[] }>>({});
+
+  // Load template bodies for HSM rendering
+  useEffect(() => {
+    const loadTemplateBodies = async () => {
+      const { data } = await supabase
+        .from('whatsapp_notification_templates')
+        .select('template_name, template_body, variables')
+        .not('template_body', 'is', null);
+      if (data) {
+        const map: typeof templateBodies = {};
+        data.forEach((t: any) => {
+          try {
+            const parsed = JSON.parse(t.template_body);
+            map[t.template_name] = { ...parsed, variables: t.variables };
+          } catch {}
+        });
+        setTemplateBodies(map);
+      }
+    };
+    loadTemplateBodies();
+  }, []);
+
   const loadConversations = useCallback(async () => {
     const { data, error } = await supabase
       .from('whatsapp_conversations')
@@ -563,13 +585,43 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
                       {msg.content_type === 'hsm' ? (
                         msg.metadata?.hsm ? (
                           (() => {
-                            // Try to render the full template body
+                            // Try rendered_body from metadata first
                             let rendered: { header?: string; body?: string; footer?: string; buttons?: { text: string; type: string }[] } | null = null;
                             try {
                               if (msg.metadata.rendered_body) {
                                 rendered = JSON.parse(msg.metadata.rendered_body as string);
                               }
                             } catch {}
+
+                            // Fallback: render client-side from template_body + variables
+                            if (!rendered?.body && msg.metadata.template_name) {
+                              const tmpl = templateBodies[msg.metadata.template_name as string];
+                              if (tmpl?.body) {
+                                const vars = msg.metadata.variables as Record<string, string> || {};
+                                const tmplVars = (tmpl.variables || []) as { key: string; system_field?: string; component_type?: string; component_var_index?: number }[];
+                                
+                                let bodyText = tmpl.body;
+                                const bodyVars = tmplVars.filter(v => v.component_type === 'BODY' || !v.component_type);
+                                bodyVars.forEach((v, i) => {
+                                  const val = vars[v.system_field || v.key] || vars[v.key] || '';
+                                  bodyText = bodyText.replace(`{{${i + 1}}}`, val);
+                                });
+
+                                let headerText = tmpl.header || '';
+                                const headerVars = tmplVars.filter(v => v.component_type === 'HEADER');
+                                headerVars.forEach((v, i) => {
+                                  const val = vars[v.system_field || v.key] || vars[v.key] || '';
+                                  headerText = headerText.replace(`{{${i + 1}}}`, val);
+                                });
+
+                                rendered = {
+                                  header: headerText,
+                                  body: bodyText,
+                                  footer: tmpl.footer || '',
+                                  buttons: (tmpl.buttons || []) as { text: string; type: string }[],
+                                };
+                              }
+                            }
 
                             if (rendered?.body) {
                               return (
@@ -594,7 +646,7 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
                               );
                             }
 
-                            // Fallback: show label + variables
+                            // Final fallback: show label + variables
                             return (
                               <div className="space-y-1">
                                 <div className="flex items-center gap-1.5 mb-1">
