@@ -2930,10 +2930,10 @@ NUNCA terceirize ("entre em contato com os Correios"). NÓS somos os responsáve
       const analysisRaw = analysisData.choices?.[0]?.message?.content || "";
       if (analysisRaw) {
         // Splitar em blocos separados por "---"
-        const blocks = analysisRaw.split(/\\n*---\\n*/).map((b: string) => b.trim()).filter((b: string) => b.length > 0);
+        const blocks = analysisRaw.split(/\n*---\n*/).map((b: string) => b.trim()).filter((b: string) => b.length > 0);
         
         for (let i = 0; i < blocks.length; i++) {
-          const blockText = \`*Felipe:*\\n\\n\${blocks[i]}\`;
+          const blockText = `*Felipe:*\n\n${blocks[i]}`;
           
           // Delay entre mensagens (simula digitação) - 2-4 segundos
           if (i > 0) {
@@ -2942,7 +2942,7 @@ NUNCA terceirize ("entre em contato com os Correios"). NÓS somos os responsáve
           
           const mbBlock = await fetch("https://conversations.messagebird.com/v1/send", {
             method: "POST",
-            headers: { Authorization: \`AccessKey \${channel.access_key}\`, "Content-Type": "application/json" },
+            headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
             body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: blockText } }),
           });
           const mbBlockResult = await mbBlock.json();
