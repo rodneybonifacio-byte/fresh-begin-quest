@@ -612,6 +612,7 @@ serve(async (req) => {
     // AUTO-IDENTIFICAÇÃO: resolver contato pelo telefone (ampla)
     // ═══════════════════════════════════════════════════════════
     let contactContext = "";
+    let hsmInjectionBlock = ""; // precisa estar fora do bloco de identificação para uso posterior
     try {
       const normalized = (contactPhone || "").replace(/\D/g, "");
       const phoneSuffix = normalized.length > 8 ? normalized.slice(-8) : normalized;
