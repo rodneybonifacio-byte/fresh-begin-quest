@@ -505,19 +505,19 @@ export const ContactIntelligencePanel = ({
         {/* Quick stats */}
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-background rounded-lg p-2 text-center border border-border">
-            <Package className="w-3.5 h-3.5 mx-auto text-blue-500 mb-0.5" />
+            <Package className="w-3.5 h-3.5 mx-auto text-primary mb-0.5" />
             <p className="text-sm font-bold text-foreground">{shipments.total}</p>
             <p className="text-[9px] text-muted-foreground">Envios</p>
           </div>
           <div className="bg-background rounded-lg p-2 text-center border border-border">
-            <CreditCard className="w-3.5 h-3.5 mx-auto text-emerald-500 mb-0.5" />
+            <CreditCard className="w-3.5 h-3.5 mx-auto text-primary mb-0.5" />
             <p className="text-sm font-bold text-foreground">
-              {financial ? formatCurrency(financial.saldoDisponivel) : '—'}
+              {shipments.totalGasto > 0 ? formatCurrency(shipments.totalGasto) : (financial ? formatCurrency(financial.totalConsumos) : '—')}
             </p>
-            <p className="text-[9px] text-muted-foreground">Saldo</p>
+            <p className="text-[9px] text-muted-foreground">Gasto</p>
           </div>
           <div className="bg-background rounded-lg p-2 text-center border border-border">
-            <MessageSquare className="w-3.5 h-3.5 mx-auto text-amber-500 mb-0.5" />
+            <MessageSquare className="w-3.5 h-3.5 mx-auto text-primary mb-0.5" />
             <p className="text-sm font-bold text-foreground">{interactions?.totalTickets || 0}</p>
             <p className="text-[9px] text-muted-foreground">Tickets</p>
           </div>
