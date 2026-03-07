@@ -391,12 +391,7 @@ export const ContactIntelligencePanel = ({
     for (const t of trackingFromMeta) {
       if (!allShipmentCodes.has(t.codigo)) {
         allShipmentCodes.add(t.codigo);
-        mergedRecentes.push({
-          ...t,
-          destEndereco: '',
-          remetenteNome: '',
-          valorVenda: 0,
-        });
+        mergedRecentes.push(t);
       }
     }
 
