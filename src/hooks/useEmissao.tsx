@@ -135,14 +135,19 @@ async function dispararNotificacaoEtiquetaCriada(emissaoResponse: any, emissaoIn
       ''
     ).trim();
 
+    console.log('🔍 [NotifEtiqueta] Resolução remetente:', { remetenteId, remetenteNome });
+
     // Fallback: resolve nome do remetente pelo ID quando veio genérico/vazio
     if ((!remetenteNome || remetenteNome.toLowerCase() === 'remetente') && remetenteId) {
       try {
+        // Tenta buscar via client autenticado
         const { data: remetenteRow, error: remetenteErr } = await supabase
           .from('remetentes')
           .select('nome')
           .eq('id', remetenteId)
           .maybeSingle();
+
+        console.log('🔍 [NotifEtiqueta] Lookup remetente por ID:', { remetenteId, row: remetenteRow, error: remetenteErr?.message });
 
         if (!remetenteErr && remetenteRow?.nome) {
           remetenteNome = String(remetenteRow.nome).trim();
@@ -152,8 +157,20 @@ async function dispararNotificacaoEtiquetaCriada(emissaoResponse: any, emissaoIn
       }
     }
 
-    if (!remetenteNome) {
-      remetenteNome = 'Remetente';
+    // Fallback final: usar nome do remetente do input original (campo separado)
+    if (!remetenteNome || remetenteNome.toLowerCase() === 'remetente') {
+      // Tentar extrair do remetente selecionado no formulário (armazenado no localStorage ou state)
+      const inputRemetente = emissaoInput as any;
+      const nomeDoInput = inputRemetente?.remetente?.nome || inputRemetente?.nomeRemetente || '';
+      if (nomeDoInput && nomeDoInput.toLowerCase() !== 'remetente') {
+        remetenteNome = String(nomeDoInput).trim();
+        console.log('🔍 [NotifEtiqueta] Nome obtido do input direto:', remetenteNome);
+      }
+    }
+
+    if (!remetenteNome || remetenteNome.toLowerCase() === 'remetente') {
+      remetenteNome = 'Loja';
+      console.warn('⚠️ [NotifEtiqueta] Remetente não resolvido, usando fallback "Loja"');
     } else {
       remetenteNome = formatFirstName(remetenteNome);
     }

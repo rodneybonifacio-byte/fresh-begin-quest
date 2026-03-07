@@ -886,12 +886,9 @@ serve(async (req) => {
               const shipmentContext = await fetchClienteShipments(clienteId, true);
               if (shipmentContext && !shipmentContext.includes("Nenhum") && !shipmentContext.includes("Erro") && !shipmentContext.includes("Todos os envios")) {
                 clienteHasActiveShipments = true;
-                
-                if (lastHsmContext) {
-                  // O cliente está respondendo a um HSM — ser proativo e mencionar o contexto
-                  contactContext += `\n\n[ENVIOS PENDENTES DO CLIENTE]\n${shipmentContext}\n\n[CONTEXTO IMPORTANTE: RESPOSTA A NOTIFICAÇÃO]\nO cliente está respondendo a uma notificação automática que enviamos: "${lastHsmContext}". REGRA: Quando o cliente responder a uma notificação (HSM), cumprimente pelo nome e MENCIONE o envio/pacote relacionado à notificação. Informe o status atualizado. Ele veio falar por causa dessa notificação, então contextualize sua resposta com os dados do envio.`;
-                } else {
-                  contactContext += `\n\n[ENVIOS PENDENTES DO CLIENTE - CONTEXTO PRINCIPAL]\n${shipmentContext}\nEste contato é um CLIENTE ATIVO que envia pacotes pela plataforma. Quando ele disser "oi", cumprimente pelo nome e pergunte como pode ajudar. NÃO mencione pacotes proativamente a menos que ele pergunte sobre um envio específico. Você tem os dados disponíveis para consulta rápida se ele perguntar.`;
+                contactContext += `\n\n[ENVIOS PENDENTES DO CLIENTE]\n${shipmentContext}`;
+                if (!lastHsmContext) {
+                  contactContext += `\nEste contato é um CLIENTE ATIVO que envia pacotes pela plataforma. Quando ele disser "oi", cumprimente pelo nome e pergunte como pode ajudar. NÃO mencione pacotes proativamente a menos que ele pergunte sobre um envio específico. Você tem os dados disponíveis para consulta rápida se ele perguntar.`;
                 }
               } else if (shipmentContext && shipmentContext.includes("Todos os envios")) {
                 contactContext += `\n\n[ENVIOS DO CLIENTE]\nTodos os envios desse cliente já foram entregues. Nenhum envio pendente no momento.`;
@@ -900,6 +897,12 @@ serve(async (req) => {
             } catch (shipErr) {
               console.warn("⚠️ Erro ao buscar envios para contexto:", shipErr);
             }
+          }
+
+          // 7a. HSM CONTEXT — SEMPRE injetar se detectado, INDEPENDENTE de ter envios pendentes
+          if (lastHsmContext) {
+            contactContext += `\n\n[CONTEXTO IMPORTANTE: RESPOSTA A NOTIFICAÇÃO — PRIORIDADE MÁXIMA]\nO cliente está respondendo a uma notificação automática (HSM) que enviamos recentemente: "${lastHsmContext}".\nREGRA OBRIGATÓRIA: Na sua resposta, cumprimente pelo nome e MENCIONE EXPLICITAMENTE o envio/pacote relacionado à notificação. Informe o código de rastreio e o status atualizado. O cliente veio falar POR CAUSA dessa notificação, então contextualize sua resposta com os dados do envio. NÃO faça uma saudação genérica tipo "como posso ajudar" — vá direto ao assunto da notificação.`;
+            console.log("📋 HSM context injetado no prompt do sistema");
           }
 
           // 7b. AUTO-INJECT DESTINATÁRIOS: Buscar pacotes por telefone SEMPRE
