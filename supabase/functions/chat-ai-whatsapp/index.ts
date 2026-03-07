@@ -601,7 +601,7 @@ serve(async (req) => {
     // === BUSCAR HISTÓRICO ===
     const { data: history } = await supabase
       .from("whatsapp_messages")
-      .select("direction, content, content_type, created_at")
+      .select("direction, content, content_type, created_at, metadata")
       .eq("conversation_id", conversationId)
       .order("created_at", { ascending: true })
       .limit(20);
