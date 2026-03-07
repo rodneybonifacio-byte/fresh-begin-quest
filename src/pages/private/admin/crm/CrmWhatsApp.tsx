@@ -711,6 +711,17 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
             <p className="text-sm">Selecione uma conversa para começar</p>
           </div>
         )}
+        </div>
+
+        {/* Contact Intelligence Panel */}
+        {showContactPanel && selectedConversation && (
+          <ContactIntelligencePanel
+            contactPhone={selectedConversation.contact_phone}
+            contactName={selectedConversation.contact_name}
+            conversationId={selectedConversation.id}
+            onClose={() => setShowContactPanel(false)}
+          />
+        )}
       </div>
     </div>
   );
