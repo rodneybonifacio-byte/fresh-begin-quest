@@ -163,7 +163,8 @@ export const ContactIntelligencePanel = ({
 
     // Extract tracking codes and shipment info from messages metadata and pipeline
     const trackingCodes = new Set<string>();
-    const trackingFromMeta: { codigo: string; status: string; servico: string; data: string; destNome: string }[] = [];
+    const trackingFromMeta: ShipmentRecord[] = [];
+    const metaRemetenteNames = new Set<string>();
     
     // From messages metadata
     if (messagesRes.data) {
@@ -171,25 +172,35 @@ export const ContactIntelligencePanel = ({
         const meta = msg.metadata as any;
         if (meta?.variables?.codigo_rastreio) {
           const code = meta.variables.codigo_rastreio;
+          const remNome = meta.variables.nome_remetente || '';
+          if (remNome && remNome.length > 1) metaRemetenteNames.add(remNome);
           if (!trackingCodes.has(code)) {
             trackingCodes.add(code);
             trackingFromMeta.push({
               codigo: code,
               status: meta.trigger_key === 'etiqueta_criada' ? 'criado' : (meta.trigger_key || 'notificado'),
-              servico: meta.template_name || '—',
-              data: '', // will be filled from pipeline if available
+              servico: meta.trigger_label || meta.template_name || '—',
+              data: '',
               destNome: meta.variables.nome_destinatario || contactName || '',
+              destEndereco: '',
+              remetenteNome: remNome,
+              valorVenda: 0,
             });
           }
         }
       }
     }
     
-    // From pipeline card descriptions/subjects - also build shipment entries
+    // From pipeline card descriptions/subjects
     if (pipelineRes.data) {
       for (const card of pipelineRes.data) {
         const text = `${card.description || ''} ${card.subject || ''}`;
         const matches = text.match(/[A-Z]{2}\d{9,}[A-Z]{2}|[A-Z0-9]{13,}/g);
+        // Try to extract remetente from pipeline description
+        const remMatch = (card.description || '').match(/Remetente:\s*([^|]+)/i);
+        const remFromPipeline = remMatch ? remMatch[1].trim() : '';
+        if (remFromPipeline && remFromPipeline.length > 1) metaRemetenteNames.add(remFromPipeline);
+        
         if (matches) {
           for (const code of matches) {
             if (!trackingCodes.has(code)) {
@@ -200,13 +211,16 @@ export const ContactIntelligencePanel = ({
                 servico: card.category || '—',
                 data: card.created_at || '',
                 destNome: contactName || '',
+                destEndereco: '',
+                remetenteNome: remFromPipeline,
+                valorVenda: 0,
               });
             } else {
-              // Update existing entry with pipeline data (date, status)
               const existing = trackingFromMeta.find(t => t.codigo === code);
-              if (existing && card.created_at) {
-                existing.data = existing.data || card.created_at;
+              if (existing) {
+                if (card.created_at) existing.data = existing.data || card.created_at;
                 existing.status = card.status || existing.status;
+                if (remFromPipeline && !existing.remetenteNome) existing.remetenteNome = remFromPipeline;
               }
             }
           }
@@ -325,17 +339,11 @@ export const ContactIntelligencePanel = ({
         }
       }
     } else {
-      // Fallback: extract remetente names from message metadata
+      // Fallback: use remetente names collected from metadata/pipeline
       const metaRemetentes: RemetenteSummary[] = [];
-      const seenNames = new Set<string>();
-      if (messagesRes.data) {
-        for (const msg of messagesRes.data) {
-          const meta = msg.metadata as any;
-          const nome = meta?.variables?.nome_remetente;
-          if (nome && nome !== 'Loja' && nome !== 'Remetente' && nome.length > 2 && !seenNames.has(nome)) {
-            seenNames.add(nome);
-            metaRemetentes.push({ id: '', nome, cpfMasked: '', cidade: null, uf: null });
-          }
+      for (const nome of metaRemetenteNames) {
+        if (nome.length > 1) {
+          metaRemetentes.push({ id: '', nome, cpfMasked: '', cidade: null, uf: null });
         }
       }
       if (metaRemetentes.length > 0) {
@@ -383,12 +391,7 @@ export const ContactIntelligencePanel = ({
     for (const t of trackingFromMeta) {
       if (!allShipmentCodes.has(t.codigo)) {
         allShipmentCodes.add(t.codigo);
-        mergedRecentes.push({
-          ...t,
-          destEndereco: '',
-          remetenteNome: '',
-          valorVenda: 0,
-        });
+        mergedRecentes.push(t);
       }
     }
 
