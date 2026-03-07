@@ -33,7 +33,7 @@ interface Message {
   metadata: Record<string, any> | null;
 }
 
-const CrmWhatsApp = () => {
+const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialConversationId?: string | null; onConversationOpened?: () => void }) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -88,6 +88,19 @@ const CrmWhatsApp = () => {
   useEffect(() => {
     loadConversations();
   }, [loadConversations]);
+
+  // Abrir conversa vinda do Pipeline
+  useEffect(() => {
+    if (initialConversationId && conversations.length > 0) {
+      const conv = conversations.find(c => c.id === initialConversationId);
+      if (conv) {
+        setSelectedConversation(conv);
+        loadMessages(conv.id);
+        setMobileShowChat(true);
+      }
+      onConversationOpened?.();
+    }
+  }, [initialConversationId, conversations, loadMessages, onConversationOpened]);
 
   // Realtime para novas mensagens
   useEffect(() => {
