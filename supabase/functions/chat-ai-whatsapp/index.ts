@@ -960,7 +960,7 @@ EXEMPLO DE RESPOSTA CORRETA: "Oi [nome]! Vi que você recebeu a notificação so
     }
     console.log("👤 Contexto de contato:", contactContext ? contactContext.substring(0, 120) : "NENHUM (não identificado)");
 
-    const enrichedSystemPrompt = systemPrompt + contactContext;
+    const enrichedSystemPrompt = systemPrompt + "\n\nREGRA TÉCNICA: NÃO inclua prefixo como '*Veronica:*' ou '*Felipe:*' no início da sua resposta. O sistema adiciona automaticamente. Responda apenas com o conteúdo da mensagem." + contactContext;
     const messages: any[] = [{ role: "system", content: enrichedSystemPrompt }];
 
     if (history) {
