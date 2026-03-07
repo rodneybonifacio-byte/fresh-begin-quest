@@ -24,9 +24,21 @@ interface ClientProfile {
   origem: string | null;
 }
 
+interface ShipmentRecord {
+  codigo: string;
+  status: string;
+  servico: string;
+  data: string;
+  destNome: string;
+  destEndereco: string;
+  remetenteNome: string;
+  valorVenda: number;
+}
+
 interface ShipmentSummary {
   total: number;
-  recentes: { codigo: string; status: string; servico: string; data: string; destNome: string }[];
+  totalGasto: number;
+  recentes: ShipmentRecord[];
 }
 
 interface FinancialSummary {
@@ -79,7 +91,7 @@ export const ContactIntelligencePanel = ({
   contactPhone, contactName, conversationId, onClose,
 }: ContactIntelligencePanelProps) => {
   const [profile, setProfile] = useState<ClientProfile | null>(null);
-  const [shipments, setShipments] = useState<ShipmentSummary>({ total: 0, recentes: [] });
+  const [shipments, setShipments] = useState<ShipmentSummary>({ total: 0, totalGasto: 0, recentes: [] });
   const [financial, setFinancial] = useState<FinancialSummary | null>(null);
   const [interactions, setInteractions] = useState<InteractionSummary | null>(null);
   const [remetentes, setRemetentes] = useState<RemetenteSummary[]>([]);
@@ -204,8 +216,9 @@ export const ContactIntelligencePanel = ({
 
     // Phase 2: Use tracking codes to find shipments and client via emissoes_externas
     let clienteId: string | null = null;
-    let emissaoShipments: typeof shipments.recentes = [];
+    let emissaoShipments: ShipmentRecord[] = [];
     let emissaoTotal = 0;
+    let totalGastoEmissoes = 0;
 
     if (cadastroRes.data && cadastroRes.data.length > 0) {
       const c = cadastroRes.data[0];
@@ -232,16 +245,20 @@ export const ContactIntelligencePanel = ({
       const codes = Array.from(trackingCodes);
       const { data: emissoes } = await supabase
         .from('emissoes_externas')
-        .select('codigo_objeto, cliente_id, destinatario_nome, servico, status, created_at, remetente_id, destinatario_cidade, destinatario_uf')
+        .select('codigo_objeto, cliente_id, destinatario_nome, destinatario_logradouro, destinatario_numero, destinatario_bairro, destinatario_cidade, destinatario_uf, destinatario_cep, servico, status, created_at, remetente_id, valor_venda, remetente:remetentes(id, nome)')
         .in('codigo_objeto', codes)
         .order('created_at', { ascending: false })
         .limit(20);
 
       if (emissoes && emissoes.length > 0) {
-        // Discover cliente_id from emissoes if not found yet
         if (!clienteId) {
           clienteId = emissoes[0].cliente_id;
         }
+
+        const buildEndereco = (e: any) => {
+          const parts = [e.destinatario_logradouro, e.destinatario_numero, e.destinatario_bairro, e.destinatario_cidade ? `${e.destinatario_cidade}-${e.destinatario_uf || ''}` : null].filter(Boolean);
+          return parts.join(', ') || '';
+        };
 
         emissaoShipments = emissoes.slice(0, 5).map(e => ({
           codigo: e.codigo_objeto || '—',
@@ -249,8 +266,12 @@ export const ContactIntelligencePanel = ({
           servico: e.servico || '—',
           data: e.created_at || '',
           destNome: e.destinatario_nome || '',
+          destEndereco: buildEndereco(e),
+          remetenteNome: (e.remetente as any)?.nome || '',
+          valorVenda: Number(e.valor_venda || 0),
         }));
         emissaoTotal = emissoes.length;
+        totalGastoEmissoes = emissoes.reduce((s, e) => s + Number(e.valor_venda || 0), 0);
 
         // Also try to get remetente info from the emissao
         const remIds = [...new Set(emissoes.map(e => e.remetente_id).filter(Boolean))];
@@ -330,7 +351,7 @@ export const ContactIntelligencePanel = ({
     // Shipments: merge phone-based + tracking-code-based results
     const phoneShipments = pedidosRes.data || [];
     const allShipmentCodes = new Set<string>();
-    const mergedRecentes: typeof shipments.recentes = [];
+    const mergedRecentes: ShipmentRecord[] = [];
 
     // Add phone-based shipments first
     for (const p of phoneShipments) {
@@ -343,6 +364,9 @@ export const ContactIntelligencePanel = ({
           servico: p.servico_frete || '—',
           data: p.criado_em || '',
           destNome: p.destinatario_nome || '',
+          destEndereco: '',
+          remetenteNome: '',
+          valorVenda: 0,
         });
       }
     }
@@ -355,16 +379,22 @@ export const ContactIntelligencePanel = ({
       }
     }
 
-    // Add shipments discovered from message metadata / pipeline (fallback when DB tables are empty)
+    // Add shipments discovered from message metadata / pipeline (fallback)
     for (const t of trackingFromMeta) {
       if (!allShipmentCodes.has(t.codigo)) {
         allShipmentCodes.add(t.codigo);
-        mergedRecentes.push(t);
+        mergedRecentes.push({
+          ...t,
+          destEndereco: '',
+          remetenteNome: '',
+          valorVenda: 0,
+        });
       }
     }
 
     setShipments({
       total: Math.max(phoneShipments.length, emissaoTotal, mergedRecentes.length),
+      totalGasto: totalGastoEmissoes,
       recentes: mergedRecentes.slice(0, 5),
     });
 
@@ -475,19 +505,19 @@ export const ContactIntelligencePanel = ({
         {/* Quick stats */}
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-background rounded-lg p-2 text-center border border-border">
-            <Package className="w-3.5 h-3.5 mx-auto text-blue-500 mb-0.5" />
+            <Package className="w-3.5 h-3.5 mx-auto text-primary mb-0.5" />
             <p className="text-sm font-bold text-foreground">{shipments.total}</p>
             <p className="text-[9px] text-muted-foreground">Envios</p>
           </div>
           <div className="bg-background rounded-lg p-2 text-center border border-border">
-            <CreditCard className="w-3.5 h-3.5 mx-auto text-emerald-500 mb-0.5" />
+            <CreditCard className="w-3.5 h-3.5 mx-auto text-primary mb-0.5" />
             <p className="text-sm font-bold text-foreground">
-              {financial ? formatCurrency(financial.saldoDisponivel) : '—'}
+              {shipments.totalGasto > 0 ? formatCurrency(shipments.totalGasto) : (financial ? formatCurrency(financial.totalConsumos) : '—')}
             </p>
-            <p className="text-[9px] text-muted-foreground">Saldo</p>
+            <p className="text-[9px] text-muted-foreground">Gasto</p>
           </div>
           <div className="bg-background rounded-lg p-2 text-center border border-border">
-            <MessageSquare className="w-3.5 h-3.5 mx-auto text-amber-500 mb-0.5" />
+            <MessageSquare className="w-3.5 h-3.5 mx-auto text-primary mb-0.5" />
             <p className="text-sm font-bold text-foreground">{interactions?.totalTickets || 0}</p>
             <p className="text-[9px] text-muted-foreground">Tickets</p>
           </div>
@@ -533,22 +563,37 @@ export const ContactIntelligencePanel = ({
               <p className="text-[11px] text-muted-foreground/60 pl-4 py-2">Nenhum envio encontrado</p>
             ) : (
               shipments.recentes.map((s, i) => (
-                <div key={i} className="flex items-start gap-2 px-2 py-1.5 rounded-md hover:bg-muted/50 transition-colors">
-                  <Truck className="w-3.5 h-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
+                <div key={i} className="px-2 py-2 rounded-md hover:bg-muted/50 transition-colors border border-border/50 space-y-1">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
+                      <Truck className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                       <span className="text-[11px] font-mono font-semibold text-foreground">{s.codigo}</span>
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${statusColors[s.status] || 'bg-muted text-muted-foreground'}`}>
-                        {s.status}
-                      </span>
                     </div>
-                    <p className="text-[10px] text-muted-foreground truncate">{s.servico} • {s.destNome}</p>
-                    {s.data && (
-                      <p className="text-[9px] text-muted-foreground/60">
-                        {format(new Date(s.data), "dd/MM/yy", { locale: ptBR })}
-                      </p>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${statusColors[s.status] || 'bg-muted text-muted-foreground'}`}>
+                      {s.status}
+                    </span>
+                  </div>
+                  {s.remetenteNome && (
+                    <p className="text-[10px] text-muted-foreground"><span className="font-medium text-foreground">Rem:</span> {s.remetenteNome}</p>
+                  )}
+                  <p className="text-[10px] text-muted-foreground"><span className="font-medium text-foreground">Dest:</span> {s.destNome || '—'}</p>
+                  {s.destEndereco && (
+                    <p className="text-[10px] text-muted-foreground flex items-start gap-1">
+                      <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                      <span className="truncate">{s.destEndereco}</span>
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="text-muted-foreground">{s.servico}</span>
+                    {s.valorVenda > 0 && (
+                      <span className="font-bold text-foreground">{formatCurrency(s.valorVenda)}</span>
                     )}
                   </div>
+                  {s.data && (
+                    <p className="text-[9px] text-muted-foreground/60">
+                      {format(new Date(s.data), "dd/MM/yy", { locale: ptBR })}
+                    </p>
+                  )}
                 </div>
               ))
             )}
