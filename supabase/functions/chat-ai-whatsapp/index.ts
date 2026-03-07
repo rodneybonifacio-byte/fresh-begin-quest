@@ -836,6 +836,20 @@ serve(async (req) => {
             }
           }
 
+          // 7b. AUTO-INJECT DESTINATÁRIOS: Buscar pacotes por telefone quando não tem clienteId
+          // Isso permite atendimento proativo para destinatários que receberam notificações HSM
+          if (!clienteId || contactRole === "destinatário") {
+            try {
+              const recipientPackages = await fetchRecipientPackagesByPhone(supabase, normalized, phoneVariants);
+              if (recipientPackages) {
+                contactContext += `\n\n[PACOTES ASSOCIADOS A ESTE DESTINATÁRIO]\n${recipientPackages}\nIMPORTANTE: Este contato é um DESTINATÁRIO de encomendas. Informe proativamente o status dos pacotes dele. Se estiver em trânsito, informe a previsão. Se estiver aguardando retirada, informe o endereço. Se estiver atrasado (previsão anterior a hoje ${new Date().toLocaleDateString("pt-BR")}), reconheça o atraso e ofereça ajuda, direcionando ao Felipe (Suporte Nível 2) se necessário.`;
+                console.log("📦 Auto-inject destinatário:", recipientPackages.substring(0, 150));
+              }
+            } catch (recipErr) {
+              console.warn("⚠️ Erro ao buscar pacotes do destinatário:", recipErr);
+            }
+          }
+
           // Atualizar contact_name na conversa
           if (!convData?.contact_name || convData.contact_name === contactPhone || convData.contact_name === normalized) {
             await supabase.from("whatsapp_conversations")
