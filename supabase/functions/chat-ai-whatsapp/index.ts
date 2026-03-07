@@ -901,7 +901,22 @@ serve(async (req) => {
 
           // 7a. HSM CONTEXT — SEMPRE injetar se detectado, INDEPENDENTE de ter envios pendentes
           if (lastHsmContext) {
-            contactContext += `\n\n[CONTEXTO IMPORTANTE: RESPOSTA A NOTIFICAÇÃO — PRIORIDADE MÁXIMA]\nO cliente está respondendo a uma notificação automática (HSM) que enviamos recentemente: "${lastHsmContext}".\nREGRA OBRIGATÓRIA: Na sua resposta, cumprimente pelo nome e MENCIONE EXPLICITAMENTE o envio/pacote relacionado à notificação. Informe o código de rastreio e o status atualizado. O cliente veio falar POR CAUSA dessa notificação, então contextualize sua resposta com os dados do envio. NÃO faça uma saudação genérica tipo "como posso ajudar" — vá direto ao assunto da notificação.`;
+            contactContext += `\n\n=== CONTEXTO OBRIGATÓRIO: RESPOSTA A NOTIFICAÇÃO HSM ===
+ATENÇÃO: O cliente ACABOU de receber esta notificação nossa: "${lastHsmContext}"
+Quando ele diz "oi" ou qualquer saudação, ele está RESPONDENDO a essa notificação.
+
+VOCÊ DEVE OBRIGATORIAMENTE:
+1. Cumprimentar pelo primeiro nome
+2. Referenciar o pacote da notificação (ex: "vi que você recebeu a atualização do seu envio!")
+3. Informar o código de rastreio e status atual se disponível nos dados acima
+4. Perguntar se precisa de algo sobre esse envio
+
+VOCÊ NÃO PODE:
+- Fazer saudação genérica tipo "Como posso te ajudar hoje?"
+- Ignorar a notificação e tratar como conversa nova
+- Dizer apenas "oi" de volta
+
+EXEMPLO DE RESPOSTA CORRETA: "Oi [nome]! Vi que você recebeu a notificação sobre seu envio [código]. [status do pacote]. Precisa de algo sobre essa entrega? 😊"`;
             console.log("📋 HSM context injetado no prompt do sistema");
           }
 
@@ -945,7 +960,7 @@ serve(async (req) => {
     }
     console.log("👤 Contexto de contato:", contactContext ? contactContext.substring(0, 120) : "NENHUM (não identificado)");
 
-    const enrichedSystemPrompt = systemPrompt + contactContext;
+    const enrichedSystemPrompt = systemPrompt + "\n\nREGRA TÉCNICA: NÃO inclua prefixo como '*Veronica:*' ou '*Felipe:*' no início da sua resposta. O sistema adiciona automaticamente. Responda apenas com o conteúdo da mensagem." + contactContext;
     const messages: any[] = [{ role: "system", content: enrichedSystemPrompt }];
 
     if (history) {
@@ -1245,6 +1260,9 @@ serve(async (req) => {
 
     // === PREFIXO DO AGENTE ===
     const agentDisplayName = agentConfig?.display_name || (agentName === "felipe" ? "Felipe" : "Veronica");
+    // Remover prefixo duplicado se a IA já incluiu (ex: "*Veronica:*\n\n")
+    const prefixPattern = /^\*[A-Za-zÀ-ú]+:\*\s*\n*/;
+    aiReply = aiReply.replace(prefixPattern, "").trimStart();
     aiReply = `*${agentDisplayName}:*\n\n${aiReply}`;
 
     console.log("🤖 Resposta final:", aiReply.substring(0, 150));
