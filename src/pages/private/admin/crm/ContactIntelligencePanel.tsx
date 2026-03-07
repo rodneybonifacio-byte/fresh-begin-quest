@@ -216,8 +216,9 @@ export const ContactIntelligencePanel = ({
 
     // Phase 2: Use tracking codes to find shipments and client via emissoes_externas
     let clienteId: string | null = null;
-    let emissaoShipments: typeof shipments.recentes = [];
+    let emissaoShipments: ShipmentRecord[] = [];
     let emissaoTotal = 0;
+    let totalGastoEmissoes = 0;
 
     if (cadastroRes.data && cadastroRes.data.length > 0) {
       const c = cadastroRes.data[0];
