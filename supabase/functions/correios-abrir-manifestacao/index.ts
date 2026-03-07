@@ -61,8 +61,8 @@ async function tentarPICorreios(params: {
 
     const authText = await authResponse.text();
     if (!authResponse.ok) {
-      console.warn(`⚠️ Auth Correios falhou (${authResponse.status}):`, authText.substring(0, 200));
-      return { success: false, protocolo: null, dados: { error: `Auth falhou (${authResponse.status})` } };
+      console.warn(`⚠️ Auth Correios falhou (${authResponse.status}):`, authText.substring(0, 500));
+      return { success: false, protocolo: null, dados: { error: `Auth falhou (${authResponse.status})`, detalhes: authText.substring(0, 300) } };
     }
 
     const authData = JSON.parse(authText);
