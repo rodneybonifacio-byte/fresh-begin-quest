@@ -74,6 +74,15 @@ const formatPhone = (phone: string) => {
 const formatCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+const GENERIC_SENDER_NAMES = new Set(['', 'loja', 'remetente', 'cliente']);
+
+const normalizePersonName = (name?: string | null) => String(name || '').trim();
+
+const isGenericSenderName = (name?: string | null) => {
+  const normalized = normalizePersonName(name).toLowerCase();
+  return GENERIC_SENDER_NAMES.has(normalized) || normalized.length < 2;
+};
+
 const SectionHeader = ({ icon: Icon, label, count, color, expanded, onToggle }: {
   icon: any; label: string; count?: number; color: string; expanded: boolean; onToggle: () => void;
 }) => (
@@ -165,6 +174,7 @@ export const ContactIntelligencePanel = ({
     const trackingCodes = new Set<string>();
     const trackingFromMeta: ShipmentRecord[] = [];
     const metaRemetenteNames = new Set<string>();
+    let resolvedRemetentes: RemetenteSummary[] = [];
     
     // From messages metadata
     if (messagesRes.data) {
@@ -173,7 +183,7 @@ export const ContactIntelligencePanel = ({
         if (meta?.variables?.codigo_rastreio) {
           const code = meta.variables.codigo_rastreio;
           const remNome = meta.variables.nome_remetente || '';
-          if (remNome && remNome.length > 1) metaRemetenteNames.add(remNome);
+          if (!isGenericSenderName(remNome)) metaRemetenteNames.add(normalizePersonName(remNome));
           if (!trackingCodes.has(code)) {
             trackingCodes.add(code);
             trackingFromMeta.push({
@@ -199,7 +209,7 @@ export const ContactIntelligencePanel = ({
         // Try to extract remetente from pipeline description
         const remMatch = (card.description || '').match(/Remetente:\s*([^|]+)/i);
         const remFromPipeline = remMatch ? remMatch[1].trim() : '';
-        if (remFromPipeline && remFromPipeline.length > 1) metaRemetenteNames.add(remFromPipeline);
+        if (!isGenericSenderName(remFromPipeline)) metaRemetenteNames.add(normalizePersonName(remFromPipeline));
         
         if (matches) {
           for (const code of matches) {
@@ -301,13 +311,14 @@ export const ContactIntelligencePanel = ({
             .in('id', remIds as string[])
             .limit(10);
           if (remsFromEmissao && remsFromEmissao.length > 0) {
-            setRemetentes(remsFromEmissao.map(r => ({
+            resolvedRemetentes = remsFromEmissao.map(r => ({
               id: r.id || '',
               nome: r.nome || '',
               cpfMasked: r.cpf_cnpj_masked || '',
               cidade: r.localidade,
               uf: r.uf,
-            })));
+            }));
+            setRemetentes(resolvedRemetentes);
           }
         }
       }
@@ -345,16 +356,23 @@ export const ContactIntelligencePanel = ({
             emissaoTotal = Math.max(emissaoTotal, normalizedFromApi.length);
             totalGastoEmissoes += normalizedFromApi.reduce((sum, item) => sum + Number(item.valorVenda || 0), 0);
 
-            if (remetentesRes.data?.length === 0) {
-              const senderNames = Array.from(new Set(normalizedFromApi.map(s => s.remetenteNome).filter(Boolean)));
+            if (remetentesRes.data?.length === 0 && resolvedRemetentes.length === 0) {
+              const senderNames = Array.from(
+                new Set(
+                  normalizedFromApi
+                    .map(s => normalizePersonName(s.remetenteNome))
+                    .filter(name => !isGenericSenderName(name))
+                )
+              );
               if (senderNames.length > 0) {
-                setRemetentes(senderNames.map((name, index) => ({
+                resolvedRemetentes = senderNames.map((name, index) => ({
                   id: `api-${index}`,
                   nome: name,
                   cpfMasked: '',
                   cidade: null,
                   uf: null,
-                })));
+                }));
+                setRemetentes(resolvedRemetentes);
               }
             }
           }
@@ -362,15 +380,16 @@ export const ContactIntelligencePanel = ({
       }
     }
 
-    // Remetentes from phone search
+    // Remetentes from phone search (prioridade mais alta)
     if (remetentesRes.data && remetentesRes.data.length > 0) {
-      setRemetentes(remetentesRes.data.map(r => ({
+      resolvedRemetentes = remetentesRes.data.map(r => ({
         id: r.id || '',
         nome: r.nome || '',
         cpfMasked: r.cpf_cnpj_masked || '',
         cidade: r.localidade,
         uf: r.uf,
-      })));
+      }));
+      setRemetentes(resolvedRemetentes);
 
       if (!clienteId) {
         const remId = remetentesRes.data[0].id;
@@ -392,15 +411,18 @@ export const ContactIntelligencePanel = ({
           }
         }
       }
-    } else {
-      // Fallback: use remetente names collected from metadata/pipeline
+    }
+
+    // Fallback final: usar remetentes extraídos de metadata/pipeline apenas se não houver fonte melhor
+    if (resolvedRemetentes.length === 0) {
       const metaRemetentes: RemetenteSummary[] = [];
       for (const nome of metaRemetenteNames) {
-        if (nome.length > 1) {
-          metaRemetentes.push({ id: '', nome, cpfMasked: '', cidade: null, uf: null });
+        if (!isGenericSenderName(nome)) {
+          metaRemetentes.push({ id: `meta-${nome}`, nome, cpfMasked: '', cidade: null, uf: null });
         }
       }
       if (metaRemetentes.length > 0) {
+        resolvedRemetentes = metaRemetentes;
         setRemetentes(metaRemetentes);
       }
     }
@@ -410,44 +432,75 @@ export const ContactIntelligencePanel = ({
       setProfile(prev => prev ? { ...prev, clienteId } : prev);
     }
 
-    // Shipments: merge phone-based + tracking-code-based results
+    // Shipments: merge by quality to keep full destinatário/remetente data
     const phoneShipments = pedidosRes.data || [];
-    const allShipmentCodes = new Set<string>();
-    const mergedRecentes: ShipmentRecord[] = [];
+    const shipmentMap = new Map<string, ShipmentRecord>();
+    const weakStatuses = new Set(['pendente', 'criado', 'notificado', 'verificando']);
 
-    // Add phone-based shipments first
-    for (const p of phoneShipments) {
-      const code = p.codigo_rastreio || `phone-${phoneShipments.indexOf(p)}`;
-      if (!allShipmentCodes.has(code)) {
-        allShipmentCodes.add(code);
-        mergedRecentes.push({
-          codigo: p.codigo_rastreio || '—',
-          status: p.status || 'pendente',
-          servico: p.servico_frete || '—',
-          data: p.criado_em || '',
-          destNome: p.destinatario_nome || '',
-          destEndereco: '',
-          remetenteNome: '',
-          valorVenda: 0,
+    const chooseLongest = (a?: string, b?: string) => {
+      const left = String(a || '').trim();
+      const right = String(b || '').trim();
+      return right.length > left.length ? right : left;
+    };
+
+    const upsertShipment = (incoming: ShipmentRecord) => {
+      const codeKey = String(incoming.codigo || `fallback-${shipmentMap.size}`).trim().toUpperCase();
+      const current = shipmentMap.get(codeKey);
+
+      if (!current) {
+        shipmentMap.set(codeKey, {
+          ...incoming,
+          codigo: incoming.codigo || '—',
+          destNome: normalizePersonName(incoming.destNome),
+          remetenteNome: normalizePersonName(incoming.remetenteNome),
         });
+        return;
       }
-    }
 
-    // Add emissao-based shipments (from tracking codes in DB)
-    for (const e of emissaoShipments) {
-      if (!allShipmentCodes.has(e.codigo)) {
-        allShipmentCodes.add(e.codigo);
-        mergedRecentes.push(e);
-      }
-    }
+      const incomingRem = normalizePersonName(incoming.remetenteNome);
+      const currentRem = normalizePersonName(current.remetenteNome);
 
-    // Add shipments discovered from message metadata / pipeline (fallback)
+      shipmentMap.set(codeKey, {
+        ...current,
+        status: weakStatuses.has(current.status) && incoming.status ? incoming.status : current.status,
+        servico: current.servico === '—' && incoming.servico ? incoming.servico : current.servico,
+        data: current.data || incoming.data,
+        destNome: chooseLongest(current.destNome, incoming.destNome),
+        destEndereco: chooseLongest(current.destEndereco, incoming.destEndereco),
+        remetenteNome: (!incomingRem || isGenericSenderName(incomingRem))
+          ? currentRem
+          : (isGenericSenderName(currentRem) ? incomingRem : chooseLongest(currentRem, incomingRem)),
+        valorVenda: Math.max(Number(current.valorVenda || 0), Number(incoming.valorVenda || 0)),
+      });
+    };
+
+    // prioridade: metadata (mais fraco) -> pedidos -> emissões/API (mais forte)
     for (const t of trackingFromMeta) {
-      if (!allShipmentCodes.has(t.codigo)) {
-        allShipmentCodes.add(t.codigo);
-        mergedRecentes.push(t);
-      }
+      upsertShipment(t);
     }
+
+    for (const p of phoneShipments) {
+      upsertShipment({
+        codigo: p.codigo_rastreio || `phone-${phoneShipments.indexOf(p)}`,
+        status: p.status || 'pendente',
+        servico: p.servico_frete || '—',
+        data: p.criado_em || '',
+        destNome: p.destinatario_nome || '',
+        destEndereco: '',
+        remetenteNome: '',
+        valorVenda: 0,
+      });
+    }
+
+    for (const e of emissaoShipments) {
+      upsertShipment(e);
+    }
+
+    const mergedRecentes = Array.from(shipmentMap.values()).sort((a, b) => {
+      const ta = a.data ? new Date(a.data).getTime() : 0;
+      const tb = b.data ? new Date(b.data).getTime() : 0;
+      return tb - ta;
+    });
 
     setShipments({
       total: Math.max(phoneShipments.length, emissaoTotal, mergedRecentes.length),
