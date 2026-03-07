@@ -51,7 +51,7 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
-
+  const [showContactPanel, setShowContactPanel] = useState(false);
   // Carregar conversas
   const loadConversations = useCallback(async () => {
     const { data, error } = await supabase
