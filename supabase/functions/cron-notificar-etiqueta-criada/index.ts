@@ -111,8 +111,8 @@ serve(async (req: Request) => {
       );
     }
 
-    // Filtrar apenas emissões das últimas 2 horas (para não reprocessar antigas)
-    const duasHorasAtras = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    // Filtrar apenas emissões das últimas 6 horas (para não reprocessar antigas)
+    const duasHorasAtras = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
     const emissoesFiltradas = allEmissoes.filter((e: any) => {
       const dataCriacao = e.criadoEm || e.createdAt || e.created_at || "";
       return dataCriacao >= duasHorasAtras;
