@@ -1,4 +1,4 @@
-import { User, Phone, GripVertical, ArrowRight, Zap } from 'lucide-react';
+import { User, Phone, GripVertical, ArrowRight, Zap, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { priorityConfig, sentimentEmoji } from './pipelineConfig';
@@ -31,6 +31,7 @@ interface Props {
   onDragStart: (e: React.DragEvent) => void;
   onDragEnd: () => void;
   onAdvance: () => void;
+  onOpenConversation?: (conversationId: string) => void;
 }
 
 const formatPhone = (phone: string | null) => {
@@ -52,7 +53,7 @@ const timeAgo = (dateStr: string) => {
 
 export const PipelineTicketCard = ({
   ticket, isExpanded, isDragging, isLastStage, nextStageLabel,
-  onToggleExpand, onDragStart, onDragEnd, onAdvance,
+  onToggleExpand, onDragStart, onDragEnd, onAdvance, onOpenConversation,
 }: Props) => {
   const pCfg = priorityConfig[ticket.priority] || priorityConfig.normal;
   const PriorityIcon = pCfg.icon;
@@ -124,6 +125,16 @@ export const PipelineTicketCard = ({
           <div className="text-[10px] text-muted-foreground">
             Criado: {format(new Date(ticket.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
           </div>
+
+          {ticket.conversation_id && onOpenConversation && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onOpenConversation(ticket.conversation_id!); }}
+              className="flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-md bg-green-500/10 text-green-600 hover:bg-green-500/20 transition-colors font-medium"
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              Abrir conversa
+            </button>
+          )}
 
           {!isLastStage && nextStageLabel && (
             <button

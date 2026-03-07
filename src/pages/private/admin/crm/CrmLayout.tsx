@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { MessageSquare, Columns3, Bell } from 'lucide-react';
 import CrmWhatsApp from './CrmWhatsApp';
 import CrmPipelineKanban from './CrmPipelineKanban';
@@ -6,6 +6,12 @@ import CrmNotificationTemplates from './CrmNotificationTemplates';
 
 const CrmLayout = () => {
   const [activeTab, setActiveTab] = useState<'conversas' | 'pipeline' | 'notificacoes'>('conversas');
+  const [initialConversationId, setInitialConversationId] = useState<string | null>(null);
+
+  const handleOpenConversation = useCallback((conversationId: string) => {
+    setInitialConversationId(conversationId);
+    setActiveTab('conversas');
+  }, []);
 
   return (
     <div className="h-full flex flex-col">
@@ -48,8 +54,13 @@ const CrmLayout = () => {
 
       {/* Content */}
       <div className="flex-1 min-h-0 px-4 pb-4">
-        {activeTab === 'conversas' && <CrmWhatsApp />}
-        {activeTab === 'pipeline' && <CrmPipelineKanban />}
+        {activeTab === 'conversas' && (
+          <CrmWhatsApp
+            initialConversationId={initialConversationId}
+            onConversationOpened={() => setInitialConversationId(null)}
+          />
+        )}
+        {activeTab === 'pipeline' && <CrmPipelineKanban onOpenConversation={handleOpenConversation} />}
         {activeTab === 'notificacoes' && <CrmNotificationTemplates />}
       </div>
     </div>

@@ -33,7 +33,7 @@ interface Message {
   metadata: Record<string, any> | null;
 }
 
-const CrmWhatsApp = () => {
+const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialConversationId?: string | null; onConversationOpened?: () => void }) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);

@@ -24,7 +24,7 @@ interface PipelineTicket {
   updated_at: string;
 }
 
-const CrmPipelineKanban = () => {
+const CrmPipelineKanban = ({ onOpenConversation }: { onOpenConversation?: (conversationId: string) => void }) => {
   const queryClient = useQueryClient();
   const [selectedCategory, setSelectedCategory] = useState(CATEGORY_PIPELINES[0].key);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -208,6 +208,7 @@ const CrmPipelineKanban = () => {
                         onAdvance={() => {
                           if (nextStageKey) updateMutation.mutate({ id: ticket.id, status: nextStageKey });
                         }}
+                        onOpenConversation={onOpenConversation}
                       />
                     );
                   })
