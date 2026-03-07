@@ -244,16 +244,20 @@ export const ContactIntelligencePanel = ({
       const codes = Array.from(trackingCodes);
       const { data: emissoes } = await supabase
         .from('emissoes_externas')
-        .select('codigo_objeto, cliente_id, destinatario_nome, servico, status, created_at, remetente_id, destinatario_cidade, destinatario_uf')
+        .select('codigo_objeto, cliente_id, destinatario_nome, destinatario_logradouro, destinatario_numero, destinatario_bairro, destinatario_cidade, destinatario_uf, destinatario_cep, servico, status, created_at, remetente_id, valor_venda, remetente:remetentes(id, nome)')
         .in('codigo_objeto', codes)
         .order('created_at', { ascending: false })
         .limit(20);
 
       if (emissoes && emissoes.length > 0) {
-        // Discover cliente_id from emissoes if not found yet
         if (!clienteId) {
           clienteId = emissoes[0].cliente_id;
         }
+
+        const buildEndereco = (e: any) => {
+          const parts = [e.destinatario_logradouro, e.destinatario_numero, e.destinatario_bairro, e.destinatario_cidade ? `${e.destinatario_cidade}-${e.destinatario_uf || ''}` : null].filter(Boolean);
+          return parts.join(', ') || '';
+        };
 
         emissaoShipments = emissoes.slice(0, 5).map(e => ({
           codigo: e.codigo_objeto || '—',
@@ -261,8 +265,12 @@ export const ContactIntelligencePanel = ({
           servico: e.servico || '—',
           data: e.created_at || '',
           destNome: e.destinatario_nome || '',
+          destEndereco: buildEndereco(e),
+          remetenteNome: (e.remetente as any)?.nome || '',
+          valorVenda: Number(e.valor_venda || 0),
         }));
         emissaoTotal = emissoes.length;
+        totalGastoEmissoes = emissoes.reduce((s, e) => s + Number(e.valor_venda || 0), 0);
 
         // Also try to get remetente info from the emissao
         const remIds = [...new Set(emissoes.map(e => e.remetente_id).filter(Boolean))];
