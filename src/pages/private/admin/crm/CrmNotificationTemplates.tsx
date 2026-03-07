@@ -18,6 +18,7 @@ interface NotificationTemplate {
   template_name: string;
   template_language: string;
   template_namespace: string | null;
+  template_body: string | null;
   variables: { key: string; label: string; system_field?: string; component_type?: string }[];
   channel_id: string | null;
   is_active: boolean;
@@ -238,9 +239,42 @@ const CrmNotificationTemplates = () => {
     try {
       const { data, error } = await supabase.functions.invoke('list-whatsapp-templates');
       if (error) throw error;
-      setMetaTemplates(data.templates || []);
+      const metaList = data.templates || [];
+      setMetaTemplates(metaList);
       setShowMetaModal(true);
-      toast.success(`${data.templates?.length || 0} templates aprovados encontrados`);
+      toast.success(`${metaList.length} templates aprovados encontrados`);
+
+      // Auto-sync template_body for all existing templates that don't have it
+      if (templates && metaList.length > 0) {
+        const toSync = templates.filter(t => !t.template_body && t.template_name);
+        for (const tmpl of toSync as any[]) {
+          const meta = metaList.find((m: MetaTemplate) => m.name === tmpl.template_name);
+          if (!meta?.components) continue;
+
+          const getCompText = (type: string) => {
+            const c = meta.components.find((c: any) => (c.type || '').toUpperCase() === type);
+            return c?.text || '';
+          };
+          const header = meta.components.find((c: any) => (c.type || '').toUpperCase() === 'HEADER');
+          const headerText = (header?.format === 'TEXT' || header?.format === 'text') ? header.text : '';
+          const btnComp = meta.components.find((c: any) => (c.type || '').toUpperCase() === 'BUTTONS');
+          const buttons = (btnComp?.buttons || []).map((b: any) => ({ text: b.text, type: b.type, url: b.url }));
+
+          const bodyData = JSON.stringify({
+            body: getCompText('BODY'),
+            header: headerText,
+            footer: getCompText('FOOTER'),
+            buttons,
+          });
+
+          await aiManagementUpdate('whatsapp_notification_templates', tmpl.id, { template_body: bodyData });
+          console.log(`✅ Auto-synced template_body for: ${tmpl.template_name}`);
+        }
+        if (toSync.length > 0) {
+          queryClient.invalidateQueries({ queryKey: ['notification-templates'] });
+          toast.success(`${toSync.length} templates sincronizados automaticamente!`);
+        }
+      }
     } catch (err: any) {
       toast.error('Erro ao buscar templates: ' + err.message);
     } finally {
