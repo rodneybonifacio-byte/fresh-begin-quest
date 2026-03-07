@@ -107,12 +107,20 @@ async function dispararNotificacaoEtiquetaCriada(emissaoResponse: any, emissaoIn
       ''
     );
 
-    const destinatarioNome = String(
+    const rawDestinatarioNome = String(
       freteItem?.destinatario?.nome ||
       data?.destinatario?.nome ||
       emissaoInput?.destinatario?.nome ||
       'Cliente'
     ).trim();
+
+    // Formata: pega primeiro nome e capitaliza (ex: "RODNEY BONIFACIO" → "Rodney")
+    const formatFirstName = (fullName: string): string => {
+      const first = fullName.split(/\s+/)[0] || fullName;
+      return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+    };
+
+    const destinatarioNome = formatFirstName(rawDestinatarioNome);
 
     const remetenteId = String(
       data?.remetenteId ||
@@ -146,6 +154,8 @@ async function dispararNotificacaoEtiquetaCriada(emissaoResponse: any, emissaoIn
 
     if (!remetenteNome) {
       remetenteNome = 'Remetente';
+    } else {
+      remetenteNome = formatFirstName(remetenteNome);
     }
 
     console.log('🔍 [NotifEtiqueta] Dados extraídos:', { codigoRastreio, destinatarioPhone, destinatarioNome, remetenteNome });
