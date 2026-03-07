@@ -264,15 +264,21 @@ export const ContactIntelligencePanel = ({
         .order('created_at', { ascending: false })
         .limit(20);
 
+      const buildEndereco = (e: any) => {
+        const parts = [
+          e.destinatario_logradouro,
+          e.destinatario_numero,
+          e.destinatario_bairro,
+          e.destinatario_cidade ? `${e.destinatario_cidade}-${e.destinatario_uf || ''}` : null,
+          e.destinatario_cep ? `CEP ${e.destinatario_cep}` : null,
+        ].filter(Boolean);
+        return parts.join(', ') || '';
+      };
+
       if (emissoes && emissoes.length > 0) {
         if (!clienteId) {
           clienteId = emissoes[0].cliente_id;
         }
-
-        const buildEndereco = (e: any) => {
-          const parts = [e.destinatario_logradouro, e.destinatario_numero, e.destinatario_bairro, e.destinatario_cidade ? `${e.destinatario_cidade}-${e.destinatario_uf || ''}` : null].filter(Boolean);
-          return parts.join(', ') || '';
-        };
 
         emissaoShipments = emissoes.slice(0, 5).map(e => ({
           codigo: e.codigo_objeto || '—',
@@ -287,7 +293,6 @@ export const ContactIntelligencePanel = ({
         emissaoTotal = emissoes.length;
         totalGastoEmissoes = emissoes.reduce((s, e) => s + Number(e.valor_venda || 0), 0);
 
-        // Also try to get remetente info from the emissao
         const remIds = [...new Set(emissoes.map(e => e.remetente_id).filter(Boolean))];
         if (remIds.length > 0 && remetentesRes.data?.length === 0) {
           const { data: remsFromEmissao } = await supabase
@@ -303,6 +308,55 @@ export const ContactIntelligencePanel = ({
               cidade: r.localidade,
               uf: r.uf,
             })));
+          }
+        }
+      }
+
+      // Fallback: buscar direto na API externa quando não tiver no banco
+      const codesInDb = new Set((emissoes || []).map((e: any) => e.codigo_objeto).filter(Boolean));
+      const missingCodes = codes.filter(code => !codesInDb.has(code));
+
+      if (missingCodes.length > 0) {
+        const { data: apiFallback, error: apiFallbackError } = await supabase.functions.invoke('crm-buscar-envio-api', {
+          body: { codes: missingCodes },
+        });
+
+        if (!apiFallbackError && apiFallback?.data?.length) {
+          const normalizedFromApi: ShipmentRecord[] = apiFallback.data
+            .filter((item: any) => !item?.notFound)
+            .map((item: any) => ({
+              codigo: item.codigoObjeto || '—',
+              status: item.status || 'pendente',
+              servico: item.servico || '—',
+              data: item.criadoEm || '',
+              destNome: item.destinatarioNome || '',
+              destEndereco: item.destinatarioEndereco || '',
+              remetenteNome: item.remetenteNome || '',
+              valorVenda: Number(item.valorGasto || 0),
+            }));
+
+          if (!clienteId) {
+            const firstClient = apiFallback.data.find((item: any) => item?.clienteId)?.clienteId;
+            if (firstClient) clienteId = firstClient;
+          }
+
+          if (normalizedFromApi.length > 0) {
+            emissaoShipments = [...emissaoShipments, ...normalizedFromApi];
+            emissaoTotal = Math.max(emissaoTotal, normalizedFromApi.length);
+            totalGastoEmissoes += normalizedFromApi.reduce((sum, item) => sum + Number(item.valorVenda || 0), 0);
+
+            if (remetentesRes.data?.length === 0) {
+              const senderNames = Array.from(new Set(normalizedFromApi.map(s => s.remetenteNome).filter(Boolean)));
+              if (senderNames.length > 0) {
+                setRemetentes(senderNames.map((name, index) => ({
+                  id: `api-${index}`,
+                  nome: name,
+                  cpfMasked: '',
+                  cidade: null,
+                  uf: null,
+                })));
+              }
+            }
           }
         }
       }
