@@ -18,26 +18,41 @@ async function autenticarCorreios(): Promise<string> {
     throw new Error("Credenciais dos Correios não configuradas (CORREIOS_ID_CORREIOS, CORREIOS_SENHA, CORREIOS_CARTAO_POSTAGEM)");
   }
 
-  const basicAuth = btoa(`${idCorreios}:${senha}`);
+  console.log(`🔐 Credenciais: idCorreios=${idCorreios.substring(0, 5)}***, cartão=${cartaoPostagem.substring(0, 4)}***, senha=***${senha.length}chars`);
 
-  const response = await fetch("https://api.correios.com.br/token/v1/autentica/cartaopostagem", {
+  // Usar TextEncoder para lidar com caracteres especiais
+  const encoder = new TextEncoder();
+  const credentials = `${idCorreios}:${senha}`;
+  const basicAuth = btoa(String.fromCharCode(...encoder.encode(credentials)));
+
+  const authUrl = "https://api.correios.com.br/token/v1/autentica/cartaopostagem";
+  const authBody = JSON.stringify({ numero: cartaoPostagem });
+  console.log(`📡 POST ${authUrl} | body: ${authBody}`);
+
+  const response = await fetch(authUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Accept": "application/json",
       "Authorization": `Basic ${basicAuth}`,
     },
-    body: JSON.stringify({ numero: cartaoPostagem }),
+    body: authBody,
     signal: AbortSignal.timeout(15000),
   });
 
+  const responseText = await response.text();
+  console.log(`📦 Resposta auth Correios (${response.status}):`, responseText.substring(0, 500));
+
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error("❌ Erro autenticação Correios:", response.status, errorText);
-    throw new Error(`Falha na autenticação dos Correios (${response.status}): ${errorText}`);
+    throw new Error(`Falha na autenticação dos Correios (${response.status}): ${responseText}`);
   }
 
-  const data = await response.json();
+  let data: any;
+  try {
+    data = JSON.parse(responseText);
+  } catch {
+    throw new Error(`Resposta inválida da autenticação Correios: ${responseText.substring(0, 200)}`);
+  }
   const token = data.token;
 
   if (!token) {
