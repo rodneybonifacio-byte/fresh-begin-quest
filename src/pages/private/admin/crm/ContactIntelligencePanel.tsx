@@ -427,36 +427,6 @@ export const ContactIntelligencePanel = ({
       }
     }
 
-    // Discover best full name for this contact from API/emissão data (destinatário name)
-    // and update conversation contact_name if we found a better one
-    const allDestNames = Array.from(shipmentMap?.values?.() || mergedRecentes || [])
-      .map(s => normalizePersonName(s.destNome))
-      .filter(n => n.length > 3);
-    
-    // Pick the longest destinatário name as the best full name
-    const bestFullName = allDestNames.sort((a, b) => b.length - a.length)[0] || null;
-    
-    if (bestFullName && conversationId) {
-      const currentName = normalizePersonName(contactName);
-      // Only update if the new name is significantly better (longer, more complete)
-      if (bestFullName.length > currentName.length + 2) {
-        // Format nicely: "ALAN JUNIO DE PINHO DIAS" -> "Alan Junio De Pinho Dias"
-        const formattedName = bestFullName
-          .toLowerCase()
-          .replace(/\b\w/g, c => c.toUpperCase())
-          .replace(/\b(De|Da|Do|Dos|Das)\b/g, m => m.toLowerCase());
-
-        // Update conversation contact_name
-        await supabase
-          .from('whatsapp_conversations')
-          .update({ contact_name: formattedName })
-          .eq('id', conversationId);
-        
-        // Update local profile display
-        setProfile(prev => prev ? { ...prev, nome: formattedName } : prev);
-      }
-    }
-
     // Update profile with clienteId if discovered via cross-reference
     if (clienteId && !profile?.clienteId) {
       setProfile(prev => prev ? { ...prev, clienteId } : prev);
