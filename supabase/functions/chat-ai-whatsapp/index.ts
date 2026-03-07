@@ -383,12 +383,45 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
         
         let faturas = allFaturas;
         
-        // Filter by client name if specified
+        // Filter by client name if specified (robust against spacing/order variations)
         if (args.nome_cliente) {
-          const search = args.nome_cliente.toLowerCase();
+          const normalize = (value: string) =>
+            (value || "")
+              .toLowerCase()
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .replace(/[^a-z0-9\s]/g, " ")
+              .replace(/\s+/g, " ")
+              .trim();
+
+          const compact = (value: string) => normalize(value).replace(/\s+/g, "");
+          const searchNorm = normalize(args.nome_cliente);
+          const searchCompact = compact(args.nome_cliente);
+          const searchTokens = searchNorm.split(" ").filter(Boolean);
+
+          const matchName = (candidate: string) => {
+            const candNorm = normalize(candidate || "");
+            const candCompact = compact(candidate || "");
+            const candTokens = new Set(candNorm.split(" ").filter(Boolean));
+
+            // Match direto (normalizado/compacto)
+            if (candNorm.includes(searchNorm) || candCompact.includes(searchCompact)) return true;
+
+            // Match por tokens (ordem livre: ex. "PREMIUM VESTI" == "VESTI PREMIUM")
+            if (searchTokens.length > 1 && searchTokens.every((t) => candTokens.has(t))) return true;
+
+            // Fallback para casos sem espaço (ex. PREMIUMVESTI)
+            if (searchCompact.length >= 6) {
+              const pieces = searchTokens.length > 1 ? searchTokens : [searchCompact.slice(0, Math.floor(searchCompact.length / 2)), searchCompact.slice(Math.floor(searchCompact.length / 2))];
+              if (pieces.filter(Boolean).every((p) => candCompact.includes(p))) return true;
+            }
+
+            return false;
+          };
+
           faturas = faturas.filter((f: any) => {
             const nome = f.cliente?.nome || f.nomeCliente || f.nome_cliente || "";
-            return nome.toLowerCase().includes(search);
+            return matchName(nome);
           });
         }
         
