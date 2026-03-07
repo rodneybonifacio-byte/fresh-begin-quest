@@ -39,23 +39,23 @@ async function tentarPICorreios(params: {
   const senha = Deno.env.get("CORREIOS_SENHA");
   const cartaoPostagem = Deno.env.get("CORREIOS_CARTAO_POSTAGEM");
 
-  if (!idCorreios || !senha || !cartaoPostagem) {
+  if (!idCorreios || !senha) {
     return { success: false, protocolo: null, dados: { error: "Credenciais Correios não configuradas" } };
   }
 
   try {
-    // 1. Autenticar
+    // 1. Autenticar via endpoint simples (sem cartão de postagem)
     const basicAuth = btoa(`${idCorreios}:${senha}`);
-    console.log(`🔐 Auth Correios: ${idCorreios.substring(0, 5)}***`);
+    console.log(`🔐 Auth Correios (simples): ${idCorreios.substring(0, 5)}***`);
 
-    const authResponse = await fetch("https://api.correios.com.br/token/v1/autentica/cartaopostagem", {
+    const authResponse = await fetch("https://api.correios.com.br/token/v1/autentica", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Accept": "application/json",
         "Authorization": `Basic ${basicAuth}`,
       },
-      body: JSON.stringify({ numero: cartaoPostagem }),
+      body: JSON.stringify({}),
       signal: AbortSignal.timeout(15000),
     });
 
