@@ -74,6 +74,15 @@ const formatPhone = (phone: string) => {
 const formatCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+const GENERIC_SENDER_NAMES = new Set(['', 'loja', 'remetente', 'cliente']);
+
+const normalizePersonName = (name?: string | null) => String(name || '').trim();
+
+const isGenericSenderName = (name?: string | null) => {
+  const normalized = normalizePersonName(name).toLowerCase();
+  return GENERIC_SENDER_NAMES.has(normalized) || normalized.length < 2;
+};
+
 const SectionHeader = ({ icon: Icon, label, count, color, expanded, onToggle }: {
   icon: any; label: string; count?: number; color: string; expanded: boolean; onToggle: () => void;
 }) => (
