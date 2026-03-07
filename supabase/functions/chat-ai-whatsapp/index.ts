@@ -2700,30 +2700,47 @@ Tom calmo, confiante, informal. Máximo 2-3 frases CURTAS. SEM emojis (vai virar
       }
     }
 
-    const felipeAnalysisPrompt = `Você é o Felipe, especialista de resolução de problemas da BRHUB Envios. Você já se apresentou por áudio. Agora mande a ANÁLISE COMPLETA por texto.
+    const felipeAnalysisPrompt = `Você é o Felipe, especialista de resolução de problemas da BRHUB Envios. Você já se apresentou por áudio. Agora mande a ANÁLISE por texto.
 
 DADOS DO RASTREIO:
 ${trackingData || "Nenhum dado de rastreio disponível."}
 
 MENSAGEM DO CLIENTE: "${userMessage}"
 
-INSTRUÇÕES:
-- Mande uma análise COMPLETA e PROFISSIONAL do caso, com todos os dados relevantes.
-- Inclua: status atual, localização, o que aconteceu, e qual será a próxima ação da equipe.
-- Se houver problema (avaria, extravio, atraso), explique o que VOCÊ vai fazer para resolver.
-- Use endereços completos quando disponíveis.
-- Tom profissional mas acessível. Pode ser mais longo que o normal (5-8 frases ok).
-- PROIBIDO bullet points. Texto corrido natural como WhatsApp.
-- NUNCA terceirize ("entre em contato com os Correios"). NÓS somos os responsáveis.
-- Termine dizendo que está acompanhando pessoalmente.`;
+INSTRUÇÕES CRÍTICAS DE FORMATO:
+- Divida sua resposta em 2-4 BLOCOS separados pelo marcador "---" (três hifens em linha isolada).
+- Cada bloco será enviado como uma mensagem SEPARADA no WhatsApp, simulando digitação humana.
+- Cada bloco deve ter no MÁXIMO 2-3 frases curtas. Escreva como gente real no WhatsApp.
+- PROIBIDO bullet points, listas, formatação de email/relatório.
+- Português informal mas profissional ("tá", "pra", "vc").
+- Use no máximo 1 emoji por bloco.
+
+ESTRUTURA SUGERIDA:
+Bloco 1: Resumo rápido do status atual (onde está o pacote, o que aconteceu)
+Bloco 2: Explicação do problema/motivo (se houver atraso, extravio, etc.)
+Bloco 3: O que VOCÊ vai fazer pra resolver (ação concreta)
+Bloco 4 (opcional): Fechamento tranquilizando o cliente
+
+EXEMPLO:
+dei uma olhada detalhada no seu pacote AB123456789BR 📦
+
+ele foi postado em SP dia 26/02 e chegou em Recife no dia 27, mas ficou parado lá por alguns dias
+---
+o atraso aconteceu porque a unidade de Recife teve um acúmulo operacional nesse período, e o pacote só seguiu pra Santa Cruz do Capibaribe no dia 05/03
+---
+já acionei nosso time de operações pra priorizar a entrega e tô monitorando pessoalmente
+
+qualquer novidade te aviso aqui, tá tranquilo 😊
+
+NUNCA terceirize ("entre em contato com os Correios"). NÓS somos os responsáveis.`;
 
     const felipeAnalysisResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: \`Bearer \${OPENAI_API_KEY}\`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: felipeConfig?.model || "gpt-4o",
         messages: [{ role: "system", content: felipeAnalysisPrompt }, { role: "user", content: userMessage }],
-        max_tokens: 400, temperature: 0.7,
+        max_tokens: 500, temperature: 0.7,
       }),
     });
 
@@ -2732,19 +2749,31 @@ INSTRUÇÕES:
       const analysisData = await felipeAnalysisResponse.json();
       const analysisRaw = analysisData.choices?.[0]?.message?.content || "";
       if (analysisRaw) {
-        felipeAnalysisReply = `*Felipe:*\n\n${analysisRaw}`;
+        // Splitar em blocos separados por "---"
+        const blocks = analysisRaw.split(/\\n*---\\n*/).map((b: string) => b.trim()).filter((b: string) => b.length > 0);
         
-        const mbAnalysis = await fetch("https://conversations.messagebird.com/v1/send", {
-          method: "POST",
-          headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: felipeAnalysisReply } }),
-        });
-        const mbAnalysisResult = await mbAnalysis.json();
-        await supabase.from("whatsapp_messages").insert({
-          conversation_id: conversationId, messagebird_id: mbAnalysisResult.id || null,
-          direction: "outbound", content_type: "text", content: felipeAnalysisReply,
-          status: "sent", sent_by: "felipe", ai_generated: true,
-        });
+        for (let i = 0; i < blocks.length; i++) {
+          const blockText = \`*Felipe:*\\n\\n\${blocks[i]}\`;
+          
+          // Delay entre mensagens (simula digitação) - 2-4 segundos
+          if (i > 0) {
+            await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 2000));
+          }
+          
+          const mbBlock = await fetch("https://conversations.messagebird.com/v1/send", {
+            method: "POST",
+            headers: { Authorization: \`AccessKey \${channel.access_key}\`, "Content-Type": "application/json" },
+            body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: blockText } }),
+          });
+          const mbBlockResult = await mbBlock.json();
+          await supabase.from("whatsapp_messages").insert({
+            conversation_id: conversationId, messagebird_id: mbBlockResult.id || null,
+            direction: "outbound", content_type: "text", content: blockText,
+            status: "sent", sent_by: "felipe", ai_generated: true,
+          });
+          
+          felipeAnalysisReply = blockText; // Guardar última para preview
+        }
       }
     }
 
