@@ -93,6 +93,7 @@ Deno.serve(async (req) => {
       component_var_index?: number;
       button_position?: number;
       button_sub_type?: string;
+      media_type?: string;
     }[];
 
     // Group variables by component type
