@@ -546,21 +546,35 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
                           <span className="text-[10px]">{msg.sent_by || 'IA'}</span>
                         </div>
                       )}
-                      {msg.content_type === 'hsm' && msg.metadata?.hsm ? (
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1.5 mb-1">
-                            <FileText className="w-3.5 h-3.5 opacity-70" />
-                            <span className="text-[10px] font-medium opacity-70">Mensagem Ativa</span>
-                          </div>
-                          <p className="text-xs font-semibold">{msg.metadata.trigger_label || msg.metadata.template_name}</p>
-                          {msg.metadata.variables && Object.keys(msg.metadata.variables).length > 0 && (
-                            <div className="text-[11px] opacity-80 space-y-0.5 mt-1 border-t border-white/20 pt-1">
-                              {Object.entries(msg.metadata.variables as Record<string, string>).map(([key, val]) => (
-                                <div key={key}><span className="opacity-60">{key}:</span> {val}</div>
-                              ))}
+                      {msg.content_type === 'hsm' ? (
+                        msg.metadata?.hsm ? (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <FileText className="w-3.5 h-3.5 opacity-70" />
+                              <span className="text-[10px] font-medium opacity-70">Mensagem Ativa</span>
                             </div>
-                          )}
-                        </div>
+                            <p className="text-xs font-semibold">{msg.metadata.trigger_label || msg.metadata.template_name}</p>
+                            {msg.metadata.variables && Object.keys(msg.metadata.variables).length > 0 && (
+                              <div className="text-[11px] opacity-80 space-y-0.5 mt-1 border-t border-white/20 pt-1">
+                                {Object.entries(msg.metadata.variables as Record<string, string>).map(([key, val]) => (
+                                  <div key={key}><span className="opacity-60">{key}:</span> {val}</div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <FileText className="w-3.5 h-3.5 opacity-70" />
+                              <span className="text-[10px] font-medium opacity-70">Mensagem Ativa</span>
+                            </div>
+                            {msg.content ? (
+                              <p className="text-xs">{msg.content}</p>
+                            ) : (
+                              <p className="text-xs opacity-70">Notificação enviada</p>
+                            )}
+                          </div>
+                        )
                       ) : (
                         <>
                           {msg.content_type === 'image' && msg.media_url ? (
