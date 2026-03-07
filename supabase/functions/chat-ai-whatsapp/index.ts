@@ -601,7 +601,7 @@ serve(async (req) => {
     // === BUSCAR HISTÓRICO ===
     const { data: history } = await supabase
       .from("whatsapp_messages")
-      .select("direction, content, content_type, created_at")
+      .select("direction, content, content_type, created_at, metadata")
       .eq("conversation_id", conversationId)
       .order("created_at", { ascending: true })
       .limit(20);
@@ -828,16 +828,24 @@ serve(async (req) => {
           // 7. AUTO-INJECT: Buscar envios pendentes do cliente automaticamente
           let clienteHasActiveShipments = false;
           
-          // 7.0 Detectar se o último outbound foi um HSM (notificação ativa)
+          // 7.0 Detectar se há HSM recente no histórico (notificação ativa)
           let lastHsmContext = "";
           if (history && history.length > 0) {
-            // Pegar a última mensagem outbound antes da mensagem atual do usuário
-            const outboundMsgs = history.filter((m: any) => m.direction === "outbound");
-            const lastOutbound = outboundMsgs[outboundMsgs.length - 1];
-            if (lastOutbound && lastOutbound.content_type === "hsm") {
-              // O usuário está respondendo a uma notificação HSM
-              lastHsmContext = lastOutbound.content || "";
-              console.log("📋 Último outbound é HSM:", lastHsmContext.substring(0, 100));
+            const hsmMsgs = history.filter((m: any) => m.direction === "outbound" && m.content_type === "hsm");
+            if (hsmMsgs.length > 0) {
+              const lastHsm = hsmMsgs[hsmMsgs.length - 1];
+              const hsmTime = new Date(lastHsm.created_at).getTime();
+              const hoursAgo = (Date.now() - hsmTime) / (1000 * 60 * 60);
+              if (hoursAgo <= 24) {
+                // Extrair detalhes do HSM via metadata
+                const meta = lastHsm.metadata || {};
+                const triggerLabel = meta.trigger_label || "";
+                const templateName = meta.template_name || "";
+                const vars = meta.variables || {};
+                const varSummary = Object.entries(vars).map(([k, v]) => `${k}: ${v}`).join(", ");
+                lastHsmContext = `Notificação "${triggerLabel || templateName}" enviada há ${hoursAgo.toFixed(0)}h. Dados: ${varSummary || lastHsm.content || ""}`;
+                console.log(`📋 HSM recente (${hoursAgo.toFixed(1)}h):`, lastHsmContext.substring(0, 150));
+              }
             }
           }
           
