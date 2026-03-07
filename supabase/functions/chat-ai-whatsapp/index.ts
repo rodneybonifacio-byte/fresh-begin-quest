@@ -613,6 +613,7 @@ serve(async (req) => {
     // ═══════════════════════════════════════════════════════════
     let contactContext = "";
     let hsmInjectionBlock = ""; // precisa estar fora do bloco de identificação para uso posterior
+    let contactName: string | null = null; // usado também fora do try (VIP reminder)
     try {
       const normalized = (contactPhone || "").replace(/\D/g, "");
       const phoneSuffix = normalized.length > 8 ? normalized.slice(-8) : normalized;
@@ -629,7 +630,6 @@ serve(async (req) => {
         .single();
 
       let clienteId = convData?.cliente_id || null;
-      let contactName: string | null = null;
       let contactEmail: string | null = null;
       let contactRole: string | null = null;
       console.log("🔍 Conversa existente - cliente_id:", clienteId, "contact_name:", convData?.contact_name);
