@@ -836,6 +836,20 @@ serve(async (req) => {
             }
           }
 
+          // 7b. AUTO-INJECT DESTINATÁRIOS: Buscar pacotes por telefone quando não tem clienteId
+          // Isso permite atendimento proativo para destinatários que receberam notificações HSM
+          if (!clienteId || contactRole === "destinatário") {
+            try {
+              const recipientPackages = await fetchRecipientPackagesByPhone(supabase, normalized, phoneVariants);
+              if (recipientPackages) {
+                contactContext += `\n\n[PACOTES ASSOCIADOS A ESTE DESTINATÁRIO]\n${recipientPackages}\nIMPORTANTE: Este contato é um DESTINATÁRIO de encomendas. Informe proativamente o status dos pacotes dele. Se estiver em trânsito, informe a previsão. Se estiver aguardando retirada, informe o endereço. Se estiver atrasado (previsão anterior a hoje ${new Date().toLocaleDateString("pt-BR")}), reconheça o atraso e ofereça ajuda, direcionando ao Felipe (Suporte Nível 2) se necessário.`;
+                console.log("📦 Auto-inject destinatário:", recipientPackages.substring(0, 150));
+              }
+            } catch (recipErr) {
+              console.warn("⚠️ Erro ao buscar pacotes do destinatário:", recipErr);
+            }
+          }
+
           // Atualizar contact_name na conversa
           if (!convData?.contact_name || convData.contact_name === contactPhone || convData.contact_name === normalized) {
             await supabase.from("whatsapp_conversations")
@@ -1566,6 +1580,114 @@ async function fetchClienteShipments(clienteId: string, onlyPending = true): Pro
   } catch (e: any) {
     console.error("❌ Erro fetchClienteShipments:", e);
     return "Erro ao buscar envios do cliente.";
+  }
+}
+// ═══════════════════════════════════════════════════════════
+// BUSCAR PACOTES DE DESTINATÁRIOS POR TELEFONE
+// ═══════════════════════════════════════════════════════════
+
+async function fetchRecipientPackagesByPhone(supabase: any, normalizedPhone: string, phoneVariants: string[]): Promise<string | null> {
+  try {
+    const packages: { codigo: string; destNome: string; status: string; previsao: string; servico: string; source: string }[] = [];
+
+    // 1. Buscar em pedidos_importados (destinatário)
+    for (const pv of phoneVariants) {
+      const { data: pedidos } = await supabase
+        .from("pedidos_importados")
+        .select("codigo_rastreio, destinatario_nome, status, servico_frete")
+        .or(`destinatario_telefone.ilike.%${pv}%`)
+        .not("codigo_rastreio", "is", null)
+        .order("criado_em", { ascending: false })
+        .limit(10);
+
+      if (pedidos) {
+        for (const p of pedidos) {
+          const statusUpper = (p.status || "").toUpperCase();
+          if (statusUpper.includes("ENTREGUE") || statusUpper.includes("CANCELADO") || statusUpper.includes("DELIVERED")) continue;
+          if (!packages.find(pkg => pkg.codigo === p.codigo_rastreio)) {
+            packages.push({
+              codigo: p.codigo_rastreio,
+              destNome: p.destinatario_nome || "?",
+              status: p.status || "?",
+              previsao: "",
+              servico: p.servico_frete || "",
+              source: "pedido",
+            });
+          }
+        }
+        if (packages.length > 0) break;
+      }
+    }
+
+    // 2. Buscar em notificacoes_aguardando_retirada
+    for (const pv of phoneVariants) {
+      const { data: notifs } = await supabase
+        .from("notificacoes_aguardando_retirada")
+        .select("codigo_objeto, destinatario_nome, remetente_nome, notificado_em")
+        .or(`destinatario_celular.ilike.%${pv}%`)
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      if (notifs) {
+        for (const n of notifs) {
+          if (!packages.find(pkg => pkg.codigo === n.codigo_objeto)) {
+            packages.push({
+              codigo: n.codigo_objeto,
+              destNome: n.destinatario_nome || "?",
+              status: "AGUARDANDO_RETIRADA",
+              previsao: "",
+              servico: "",
+              source: "notificacao_retirada",
+            });
+          }
+        }
+        if (notifs.length > 0) break;
+      }
+    }
+
+    // 3. Verificar atrasos cruzando com emissoes_em_atraso
+    if (packages.length > 0) {
+      const codigos = packages.map(p => p.codigo).filter(Boolean);
+      const { data: atrasos } = await supabase
+        .from("emissoes_em_atraso")
+        .select("codigo_objeto, destinatario_nome, data_previsao_entrega, servico")
+        .in("codigo_objeto", codigos);
+
+      if (atrasos) {
+        for (const a of atrasos) {
+          const existing = packages.find(pkg => pkg.codigo === a.codigo_objeto);
+          if (existing) {
+            existing.status = "ATRASADO";
+            existing.previsao = a.data_previsao_entrega || "";
+          }
+        }
+      }
+    }
+
+    if (packages.length === 0) return null;
+
+    let result = `Pacotes encontrados (${packages.length}):\n`;
+    for (const pkg of packages.slice(0, 5)) {
+      result += `- ${pkg.codigo} → ${pkg.destNome} | Status: ${pkg.status}${pkg.previsao ? ` | Previsão: ${pkg.previsao}` : ""}${pkg.servico ? ` | ${pkg.servico}` : ""}\n`;
+    }
+
+    // Rastrear os primeiros 2 pacotes para dados atualizados
+    for (const pkg of packages.slice(0, 2)) {
+      try {
+        const trackingData = await fetchTrackingData(pkg.codigo);
+        if (trackingData) {
+          const formatted = formatTrackingForAI(trackingData);
+          result += `\n[RASTREIO ATUALIZADO — ${pkg.codigo}]\n${formatted}\n`;
+        }
+      } catch {
+        // Silenciar erros de rastreio individual
+      }
+    }
+
+    return result;
+  } catch (e: any) {
+    console.error("❌ Erro fetchRecipientPackagesByPhone:", e);
+    return null;
   }
 }
 
@@ -2794,7 +2916,7 @@ NUNCA terceirize ("entre em contato com os Correios"). NÓS somos os responsáve
 
     const felipeAnalysisResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
-      headers: { Authorization: \`Bearer \${OPENAI_API_KEY}\`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: felipeConfig?.model || "gpt-4o",
         messages: [{ role: "system", content: felipeAnalysisPrompt }, { role: "user", content: userMessage }],
@@ -2808,10 +2930,10 @@ NUNCA terceirize ("entre em contato com os Correios"). NÓS somos os responsáve
       const analysisRaw = analysisData.choices?.[0]?.message?.content || "";
       if (analysisRaw) {
         // Splitar em blocos separados por "---"
-        const blocks = analysisRaw.split(/\\n*---\\n*/).map((b: string) => b.trim()).filter((b: string) => b.length > 0);
+        const blocks = analysisRaw.split(/\n*---\n*/).map((b: string) => b.trim()).filter((b: string) => b.length > 0);
         
         for (let i = 0; i < blocks.length; i++) {
-          const blockText = \`*Felipe:*\\n\\n\${blocks[i]}\`;
+          const blockText = `*Felipe:*\n\n${blocks[i]}`;
           
           // Delay entre mensagens (simula digitação) - 2-4 segundos
           if (i > 0) {
@@ -2820,7 +2942,7 @@ NUNCA terceirize ("entre em contato com os Correios"). NÓS somos os responsáve
           
           const mbBlock = await fetch("https://conversations.messagebird.com/v1/send", {
             method: "POST",
-            headers: { Authorization: \`AccessKey \${channel.access_key}\`, "Content-Type": "application/json" },
+            headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
             body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: blockText } }),
           });
           const mbBlockResult = await mbBlock.json();
