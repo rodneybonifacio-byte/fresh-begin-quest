@@ -154,6 +154,8 @@ async function dispararNotificacaoEtiquetaCriada(emissaoResponse: any, emissaoIn
 
     if (!remetenteNome) {
       remetenteNome = 'Remetente';
+    } else {
+      remetenteNome = formatFirstName(remetenteNome);
     }
 
     console.log('🔍 [NotifEtiqueta] Dados extraídos:', { codigoRastreio, destinatarioPhone, destinatarioNome, remetenteNome });
