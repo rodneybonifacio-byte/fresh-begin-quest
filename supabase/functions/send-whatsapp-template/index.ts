@@ -169,19 +169,38 @@ Deno.serve(async (req) => {
       }
     }
 
-    const resolveVar = (v: { system_field?: string; key: string }) => ({
-      type: "text",
-      text: variables[v.system_field || v.key] || variables[v.key] || "",
-    });
+    const resolveVar = (v: { system_field?: string; key: string; media_type?: string }) => {
+      // Check if this is a media variable (image/video/document)
+      if (v.media_type === 'image') {
+        const url = variables[v.system_field || v.key] || variables[v.key] || "";
+        return {
+          type: "image",
+          image: { link: url },
+        };
+      }
+      return {
+        type: "text",
+        text: variables[v.system_field || v.key] || variables[v.key] || "",
+      };
+    };
 
     const components: any[] = [];
 
     // Header component parameters
     if (headerVars.length > 0) {
-      components.push({
-        type: "header",
-        parameters: headerVars.map(resolveVar),
-      });
+      // Check if any header var is a media type
+      const hasMediaHeader = headerVars.some((v: any) => v.media_type === 'image');
+      if (hasMediaHeader) {
+        components.push({
+          type: "header",
+          parameters: headerVars.map((v: any) => resolveVar(v)),
+        });
+      } else {
+        components.push({
+          type: "header",
+          parameters: headerVars.map((v: any) => resolveVar(v)),
+        });
+      }
     }
 
     // Body component parameters
