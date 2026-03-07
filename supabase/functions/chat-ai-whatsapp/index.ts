@@ -827,12 +827,32 @@ serve(async (req) => {
 
           // 7. AUTO-INJECT: Buscar envios pendentes do cliente automaticamente
           let clienteHasActiveShipments = false;
+          
+          // 7.0 Detectar se o último outbound foi um HSM (notificação ativa)
+          let lastHsmContext = "";
+          if (history && history.length > 0) {
+            // Pegar a última mensagem outbound antes da mensagem atual do usuário
+            const outboundMsgs = history.filter((m: any) => m.direction === "outbound");
+            const lastOutbound = outboundMsgs[outboundMsgs.length - 1];
+            if (lastOutbound && lastOutbound.content_type === "hsm") {
+              // O usuário está respondendo a uma notificação HSM
+              lastHsmContext = lastOutbound.content || "";
+              console.log("📋 Último outbound é HSM:", lastHsmContext.substring(0, 100));
+            }
+          }
+          
           if (clienteId) {
             try {
               const shipmentContext = await fetchClienteShipments(clienteId, true);
               if (shipmentContext && !shipmentContext.includes("Nenhum") && !shipmentContext.includes("Erro") && !shipmentContext.includes("Todos os envios")) {
                 clienteHasActiveShipments = true;
-                contactContext += `\n\n[ENVIOS PENDENTES DO CLIENTE - CONTEXTO PRINCIPAL]\n${shipmentContext}\nEste contato é um CLIENTE ATIVO que envia pacotes pela plataforma. Quando ele disser "oi", cumprimente pelo nome e pergunte como pode ajudar. NÃO mencione pacotes proativamente a menos que ele pergunte sobre um envio específico. Você tem os dados disponíveis para consulta rápida se ele perguntar.`;
+                
+                if (lastHsmContext) {
+                  // O cliente está respondendo a um HSM — ser proativo e mencionar o contexto
+                  contactContext += `\n\n[ENVIOS PENDENTES DO CLIENTE]\n${shipmentContext}\n\n[CONTEXTO IMPORTANTE: RESPOSTA A NOTIFICAÇÃO]\nO cliente está respondendo a uma notificação automática que enviamos: "${lastHsmContext}". REGRA: Quando o cliente responder a uma notificação (HSM), cumprimente pelo nome e MENCIONE o envio/pacote relacionado à notificação. Informe o status atualizado. Ele veio falar por causa dessa notificação, então contextualize sua resposta com os dados do envio.`;
+                } else {
+                  contactContext += `\n\n[ENVIOS PENDENTES DO CLIENTE - CONTEXTO PRINCIPAL]\n${shipmentContext}\nEste contato é um CLIENTE ATIVO que envia pacotes pela plataforma. Quando ele disser "oi", cumprimente pelo nome e pergunte como pode ajudar. NÃO mencione pacotes proativamente a menos que ele pergunte sobre um envio específico. Você tem os dados disponíveis para consulta rápida se ele perguntar.`;
+                }
               } else if (shipmentContext && shipmentContext.includes("Todos os envios")) {
                 contactContext += `\n\n[ENVIOS DO CLIENTE]\nTodos os envios desse cliente já foram entregues. Nenhum envio pendente no momento.`;
               }
