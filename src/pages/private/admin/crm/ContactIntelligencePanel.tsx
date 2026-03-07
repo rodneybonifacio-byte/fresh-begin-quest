@@ -91,7 +91,7 @@ export const ContactIntelligencePanel = ({
   contactPhone, contactName, conversationId, onClose,
 }: ContactIntelligencePanelProps) => {
   const [profile, setProfile] = useState<ClientProfile | null>(null);
-  const [shipments, setShipments] = useState<ShipmentSummary>({ total: 0, recentes: [] });
+  const [shipments, setShipments] = useState<ShipmentSummary>({ total: 0, totalGasto: 0, recentes: [] });
   const [financial, setFinancial] = useState<FinancialSummary | null>(null);
   const [interactions, setInteractions] = useState<InteractionSummary | null>(null);
   const [remetentes, setRemetentes] = useState<RemetenteSummary[]>([]);
