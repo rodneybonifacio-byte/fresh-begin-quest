@@ -170,7 +170,7 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [selectedConversation?.id, loadConversations]);
+  }, [selectedConversation?.id, loadConversations, loadClosedConversationIds]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
