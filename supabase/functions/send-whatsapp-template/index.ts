@@ -100,12 +100,56 @@ Deno.serve(async (req) => {
     const bodyVars = templateVars.filter(v => v.component_type === 'BODY' || !v.component_type);
     const buttonVars = templateVars.filter(v => v.component_type === 'BUTTONS');
 
-    // Sanitizar nome_remetente genérico como última defesa
+    // Sanitizar nome_remetente genérico — tentar resolver nome real via DB
     if (variables.nome_remetente) {
       const nomeRem = variables.nome_remetente.trim().toLowerCase();
       if (nomeRem === 'remetente' || nomeRem === '' || nomeRem.length < 2) {
-        variables.nome_remetente = 'Loja';
-        console.log('⚠️ nome_remetente genérico substituído por "Loja"');
+        let resolved = false;
+        // Tentar resolver pelo código de rastreio
+        const codigoRastreio = variables.codigo_rastreio || variables.tracking_code || "";
+        if (codigoRastreio) {
+          try {
+            // Buscar remetente_id via pedidos_importados
+            const { data: pedido } = await supabase
+              .from("pedidos_importados")
+              .select("remetente_id")
+              .eq("codigo_rastreio", codigoRastreio)
+              .limit(1)
+              .maybeSingle();
+            
+            const remetenteId = pedido?.remetente_id;
+            if (!remetenteId) {
+              // Fallback: emissoes_externas
+              const { data: emissao } = await supabase
+                .from("emissoes_externas")
+                .select("remetente_id")
+                .eq("codigo_objeto", codigoRastreio)
+                .limit(1)
+                .maybeSingle();
+              if (emissao?.remetente_id) {
+                const { data: rem } = await supabase.from("remetentes").select("nome").eq("id", emissao.remetente_id).single();
+                if (rem?.nome && rem.nome.toLowerCase() !== 'remetente') {
+                  variables.nome_remetente = rem.nome.split(' ')[0]; // Primeiro nome
+                  resolved = true;
+                  console.log(`✅ nome_remetente resolvido via emissoes_externas: ${variables.nome_remetente}`);
+                }
+              }
+            } else {
+              const { data: rem } = await supabase.from("remetentes").select("nome").eq("id", remetenteId).single();
+              if (rem?.nome && rem.nome.toLowerCase() !== 'remetente') {
+                variables.nome_remetente = rem.nome.split(' ')[0]; // Primeiro nome
+                resolved = true;
+                console.log(`✅ nome_remetente resolvido via pedidos_importados: ${variables.nome_remetente}`);
+              }
+            }
+          } catch (lookupErr) {
+            console.warn('⚠️ Erro ao resolver nome_remetente:', lookupErr);
+          }
+        }
+        if (!resolved) {
+          variables.nome_remetente = 'Loja';
+          console.log('⚠️ nome_remetente genérico substituído por "Loja"');
+        }
       }
     }
 
