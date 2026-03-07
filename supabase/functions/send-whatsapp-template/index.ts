@@ -138,7 +138,7 @@ Deno.serve(async (req) => {
             if (remetenteId) {
               const { data: rem } = await supabase.from("remetentes").select("nome").eq("id", remetenteId).single();
               if (rem?.nome && rem.nome.trim().length > 2 && rem.nome.toLowerCase() !== 'remetente') {
-                variables.nome_remetente = rem.nome.split(' ')[0];
+                variables.nome_remetente = rem.nome.trim();
                 resolved = true;
                 console.log(`✅ nome_remetente resolvido via remetente_id: ${variables.nome_remetente}`);
               }
@@ -153,7 +153,7 @@ Deno.serve(async (req) => {
                 .limit(1)
                 .maybeSingle();
               if (rems?.nome && rems.nome.trim().length > 2 && rems.nome.toLowerCase() !== 'remetente') {
-                variables.nome_remetente = rems.nome.split(' ')[0];
+                variables.nome_remetente = rems.nome.trim();
                 resolved = true;
                 console.log(`✅ nome_remetente resolvido via cliente_id: ${variables.nome_remetente}`);
               }
