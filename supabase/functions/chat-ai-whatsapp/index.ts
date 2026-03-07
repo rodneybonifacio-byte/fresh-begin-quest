@@ -995,6 +995,14 @@ EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de a
       console.log("📋 HSM block injetado APÓS histórico (posição final = peso máximo)");
     }
 
+    // VIP REMINDER — injetar lembrete final para contatos VIP (posição com peso máximo)
+    if (contactContext.includes("[PERMISSÕES ESPECIAIS - VIP]")) {
+      const firstName = contactName ? contactName.split(/\s+/)[0] : "";
+      const formattedName = firstName ? firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase() : "";
+      messages.push({ role: "system", content: `LEMBRETE FINAL OBRIGATÓRIO: Você está falando com ${formattedName || "um administrador"}, DONO da plataforma BRHUB. PROIBIDO dizer "acesse o painel", "consulte o sistema" ou qualquer variação. Resolva TUDO aqui usando suas tools. Chame pelo nome "${formattedName}". Seja direto, pessoal e resolva o pedido imediatamente.` });
+      console.log("👑 VIP reminder injetado no final do contexto");
+    }
+
     // ═══════════════════════════════════════════════════════════
     // PRÉ-PROCESSAMENTO: converter mídia em contexto textual
     // ═══════════════════════════════════════════════════════════
