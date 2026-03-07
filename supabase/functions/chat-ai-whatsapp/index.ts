@@ -1045,7 +1045,7 @@ EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de a
     if (contactContext.includes("[PERMISSÕES ESPECIAIS - VIP]")) {
       const firstName = contactName ? contactName.split(/\s+/)[0] : "";
       const formattedName = firstName ? firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase() : "";
-      messages.push({ role: "system", content: `LEMBRETE FINAL OBRIGATÓRIO: Você está falando com ${formattedName || "o Boss"}, seu CHEFE e DONO da BRHUB. Ele é o BOSS — você trabalha para ele. PROIBIDO dizer "acesse o painel", "consulte o sistema" ou qualquer variação. Resolva TUDO aqui usando suas tools. Chame pelo nome "${formattedName}" de forma próxima e leal. Seja eficiente como um braço-direito de confiança. Resolva o pedido imediatamente.` });
+      messages.push({ role: "system", content: `LEMBRETE FINAL OBRIGATÓRIO: Você está falando com ${formattedName || "o Boss"}, seu CHEFE e DONO da BRHUB. Ele é o BOSS — você trabalha para ele.\n\nREGRAS DE TOM:\n- Chame de "chefe", "boss" ou "${formattedName}" — com atitude de braço-direito leal\n- Seja DIRETA: apresente dados/status proativamente, sem perguntas vagas\n- NUNCA diga "acesse o painel" — resolva TUDO aqui com tools\n- Exemplo bom: "Fala chefe! Pacote XX tá em trânsito, previsão dia Y 👊"\n- Exemplo ruim: "Oi! Vi que seu envio foi registrado. Precisa de algo?" ❌` });
       console.log("👑 VIP reminder injetado no final do contexto");
     }
 
