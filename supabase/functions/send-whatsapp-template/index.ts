@@ -307,11 +307,33 @@ Deno.serve(async (req) => {
         },
       });
 
-      // Update conversation last message
+      // Update conversation last message + contact name if missing
+      const contactName = variables.nome_destinatario || variables.recipient_name || "";
       const convUpdate: Record<string, any> = {
         last_message_at: new Date().toISOString(),
         last_message_preview: `📋 ${template.trigger_label}`,
       };
+
+      // Atualizar nome do contato se atualmente é apenas o número ou está vazio
+      if (contactName && contactName.length > 1) {
+        // Buscar conversa atual para checar se o nome precisa ser atualizado
+        const { data: currentConv } = await supabase
+          .from("whatsapp_conversations")
+          .select("contact_name")
+          .eq("id", existingConv.id)
+          .single();
+
+        const currentName = currentConv?.contact_name || "";
+        const isNameMissing = !currentName 
+          || currentName === normalizedPhone 
+          || /^\d+$/.test(currentName)
+          || currentName.length < 2;
+
+        if (isNameMissing) {
+          convUpdate.contact_name = contactName;
+          console.log(`📝 Atualizando nome do contato: "${currentName}" → "${contactName}"`);
+        }
+      }
 
       // Se for atraso, Felipe assume automaticamente a conversa
       if (trigger_key === "atraso") {
