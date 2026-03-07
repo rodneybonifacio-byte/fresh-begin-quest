@@ -4,35 +4,54 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /**
- * Resolve o nome real do remetente, evitando o genérico "Remetente".
+ * Resolve o nome real do remetente, evitando genéricos.
+ * Hierarquia: remetenteNome → remetente.nome → remetenteId → cpf_cnpj → cliente.nome → "Loja"
  */
-async function resolverNomeRemetente(supabase: any, remetenteNome: string, remetenteId?: string): Promise<string> {
-  const nomeLimpo = (remetenteNome || '').trim();
+async function resolverNomeRemetente(supabase: any, envio: any): Promise<string> {
   const genericos = ['remetente', 'loja', ''];
-  
-  if (!genericos.includes(nomeLimpo.toLowerCase()) && nomeLimpo.length > 2) {
-    const first = nomeLimpo.split(/\s+/)[0] || nomeLimpo;
+  const isGenerico = (n: string) => {
+    const l = (n || '').trim().toLowerCase();
+    return genericos.includes(l) || l.length < 2;
+  };
+  const capitalize = (n: string) => {
+    const first = n.trim().split(/\s+/)[0] || n.trim();
     return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
-  }
-  
+  };
+
+  const nomeDireto = (envio.remetenteNome || '').trim();
+  if (!isGenerico(nomeDireto)) return capitalize(nomeDireto);
+
+  const nomeObjeto = (envio.remetente?.nome || '').trim();
+  if (!isGenerico(nomeObjeto)) return capitalize(nomeObjeto);
+
+  const remetenteId = envio.remetenteId || envio.remetente_id;
   if (remetenteId) {
     try {
-      const { data: rem } = await supabase
-        .from('remetentes')
-        .select('nome')
-        .eq('id', remetenteId)
-        .maybeSingle();
-      
-      if (rem?.nome && rem.nome.trim().length > 2) {
-        const first = rem.nome.trim().split(/\s+/)[0];
-        console.log(`🔍 Nome remetente resolvido via DB: "${rem.nome}" → "${first}"`);
-        return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+      const { data: rem } = await supabase.from('remetentes').select('nome').eq('id', remetenteId).maybeSingle();
+      if (rem?.nome && !isGenerico(rem.nome)) {
+        console.log(`🔍 Remetente resolvido via ID: "${rem.nome}"`);
+        return capitalize(rem.nome);
       }
-    } catch (err) {
-      console.warn('⚠️ Erro ao resolver nome remetente via DB:', err);
-    }
+    } catch (err) { console.warn('⚠️ Erro resolver remetente ID:', err); }
   }
-  
+
+  const cpfCnpj = envio.remetenteCpfCnpj || envio.remetente?.cpfCnpj || '';
+  if (cpfCnpj) {
+    try {
+      const { data: rem } = await supabase.from('remetentes').select('nome').eq('cpf_cnpj', cpfCnpj.replace(/\D/g, '')).limit(1).maybeSingle();
+      if (rem?.nome && !isGenerico(rem.nome)) {
+        console.log(`🔍 Remetente resolvido via CPF/CNPJ: "${rem.nome}"`);
+        return capitalize(rem.nome);
+      }
+    } catch (err) { console.warn('⚠️ Erro resolver remetente CPF:', err); }
+  }
+
+  const nomeCliente = (envio.cliente?.nome || '').trim();
+  if (!isGenerico(nomeCliente)) {
+    console.log(`🔍 Usando nome do cliente: "${nomeCliente}"`);
+    return capitalize(nomeCliente);
+  }
+
   return 'Loja';
 }
 
@@ -255,11 +274,7 @@ serve(async (req: Request) => {
 
         // Preparar payload para o webhook DataCrazy
         // Resolver nome real do remetente (evitar genérico "Remetente")
-        const nomeRemetenteResolvido = await resolverNomeRemetente(
-          supabase, 
-          envio.remetenteNome || envio.cliente?.nome || '', 
-          envio.remetenteId
-        );
+        const nomeRemetenteResolvido = await resolverNomeRemetente(supabase, envio);
         
         const webhookPayload = {
           destinatario_nome: destinatario.nome || envio.destinatarioNome || '',
