@@ -351,7 +351,7 @@ export const ContactIntelligencePanel = ({
     // Shipments: merge phone-based + tracking-code-based results
     const phoneShipments = pedidosRes.data || [];
     const allShipmentCodes = new Set<string>();
-    const mergedRecentes: typeof shipments.recentes = [];
+    const mergedRecentes: ShipmentRecord[] = [];
 
     // Add phone-based shipments first
     for (const p of phoneShipments) {
@@ -364,6 +364,9 @@ export const ContactIntelligencePanel = ({
           servico: p.servico_frete || '—',
           data: p.criado_em || '',
           destNome: p.destinatario_nome || '',
+          destEndereco: '',
+          remetenteNome: '',
+          valorVenda: 0,
         });
       }
     }
@@ -376,16 +379,22 @@ export const ContactIntelligencePanel = ({
       }
     }
 
-    // Add shipments discovered from message metadata / pipeline (fallback when DB tables are empty)
+    // Add shipments discovered from message metadata / pipeline (fallback)
     for (const t of trackingFromMeta) {
       if (!allShipmentCodes.has(t.codigo)) {
         allShipmentCodes.add(t.codigo);
-        mergedRecentes.push(t);
+        mergedRecentes.push({
+          ...t,
+          destEndereco: '',
+          remetenteNome: '',
+          valorVenda: 0,
+        });
       }
     }
 
     setShipments({
       total: Math.max(phoneShipments.length, emissaoTotal, mergedRecentes.length),
+      totalGasto: totalGastoEmissoes,
       recentes: mergedRecentes.slice(0, 5),
     });
 
