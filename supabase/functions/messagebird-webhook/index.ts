@@ -112,13 +112,22 @@ serve(async (req) => {
       : (message.to || body.contact?.msisdn || message.contact?.msisdn || message.destination || message.originator);
     const contactPhone = rawPhone ? String(rawPhone) : null;
     const whatsappDisplayName = body.contact?.displayName || body.contact?.firstName || message.contact?.displayName || message.contact?.firstName || null;
-    const messageContent = message.content?.text || message.body || message.content?.html || message.content?.caption || "";
+    let messageContent = message.content?.text || message.body || message.content?.html || message.content?.caption || "";
 
     // === DETECÇÃO ROBUSTA DE CONTENT TYPE ===
     const rawContentType = message.content?.type || message.type || "text";
     // Detecção por presença de campos no content
     let contentType = rawContentType;
-    if (message.content?.audio || rawContentType === "audio" || rawContentType === "voice" || rawContentType === "ptt") {
+
+    // HSM (template) messages
+    if (message.content?.hsm || rawContentType === "hsm" || message.type === "hsm") {
+      contentType = "hsm";
+      // Preencher content para HSM se vazio
+      if (!messageContent) {
+        const templateName = message.content?.hsm?.templateName || "template";
+        messageContent = `📋 Template: ${templateName}`;
+      }
+    } else if (message.content?.audio || rawContentType === "audio" || rawContentType === "voice" || rawContentType === "ptt") {
       contentType = "audio";
     } else if (message.content?.image || rawContentType === "image") {
       contentType = "image";
