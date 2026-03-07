@@ -53,6 +53,8 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [showContactPanel, setShowContactPanel] = useState(false);
   const [templateBodies, setTemplateBodies] = useState<Record<string, { body: string; header?: string; footer?: string; buttons?: { text: string }[]; variables?: any[] }>>({});
+  const [conversationTab, setConversationTab] = useState<'sem_atendimento' | 'ia' | 'fechados'>('sem_atendimento');
+  const [closedConversationIds, setClosedConversationIds] = useState<Set<string>>(new Set());
 
   // Load template bodies for HSM rendering
   useEffect(() => {
@@ -73,6 +75,17 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
       }
     };
     loadTemplateBodies();
+  }, []);
+
+  // Load closed ticket conversation IDs
+  const loadClosedConversationIds = useCallback(async () => {
+    const { data } = await supabase
+      .from('whatsapp_tickets')
+      .select('conversation_id')
+      .in('status', ['closed', 'resolved']);
+    if (data) {
+      setClosedConversationIds(new Set(data.map((t: any) => t.conversation_id)));
+    }
   }, []);
 
   const loadConversations = useCallback(async () => {
@@ -110,7 +123,8 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
 
   useEffect(() => {
     loadConversations();
-  }, [loadConversations]);
+    loadClosedConversationIds();
+  }, [loadConversations, loadClosedConversationIds]);
 
   // Abrir conversa vinda do Pipeline
   useEffect(() => {
@@ -145,14 +159,18 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
           });
         }
         loadConversations();
+        loadClosedConversationIds();
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'whatsapp_conversations' }, () => {
         loadConversations();
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'whatsapp_tickets' }, () => {
+        loadClosedConversationIds();
+      })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [selectedConversation?.id, loadConversations]);
+  }, [selectedConversation?.id, loadConversations, loadClosedConversationIds]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -403,11 +421,18 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
 
   const filteredConversations = conversations.filter(c => {
     const term = searchTerm.toLowerCase();
-    return (
+    const matchesSearch =
       (c.contact_name || '').toLowerCase().includes(term) ||
       c.contact_phone.includes(term) ||
-      (c.last_message_preview || '').toLowerCase().includes(term)
-    );
+      (c.last_message_preview || '').toLowerCase().includes(term);
+    if (!matchesSearch) return false;
+
+    const isClosed = closedConversationIds.has(c.id);
+
+    if (conversationTab === 'sem_atendimento') return !c.ai_enabled && !isClosed;
+    if (conversationTab === 'ia') return c.ai_enabled && !isClosed;
+    if (conversationTab === 'fechados') return isClosed;
+    return true;
   });
 
   return (
@@ -433,9 +458,33 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
               className="w-full pl-9 pr-4 py-2 text-sm bg-muted rounded-lg border-none outline-none text-foreground placeholder:text-muted-foreground"
             />
           </div>
-        </div>
 
-        {/* Lista */}
+          {/* Tabs */}
+          <div className="flex mt-3 bg-muted rounded-lg p-0.5 gap-0.5">
+            {([
+              { key: 'sem_atendimento' as const, label: 'Sem atendimento', count: conversations.filter(c => !c.ai_enabled && !closedConversationIds.has(c.id)).length },
+              { key: 'ia' as const, label: 'IA', count: conversations.filter(c => c.ai_enabled && !closedConversationIds.has(c.id)).length },
+              { key: 'fechados' as const, label: 'Fechados', count: conversations.filter(c => closedConversationIds.has(c.id)).length },
+            ]).map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setConversationTab(tab.key)}
+                className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  conversationTab === tab.key
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {tab.label}
+                <span className={`text-[10px] px-1 rounded-full ${
+                  conversationTab === tab.key ? 'bg-primary/10 text-primary' : 'bg-muted-foreground/10'
+                }`}>
+                  {tab.count}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="flex-1 overflow-y-auto">
           {loadingConversations ? (
             <div className="flex items-center justify-center h-32">
