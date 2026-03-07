@@ -270,6 +270,48 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
         return "Cadastro realizado com sucesso! O cliente já pode acessar a plataforma.";
       }
 
+      // ── Dashboard da plataforma (admin/VIP) ──
+      case "consultar_dashboard_plataforma": {
+        const token = await getAdminToken();
+        if (!token) return "Erro interno ao consultar dashboard.";
+        const BASE_API_URL = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br";
+        const periodo = args.periodo || "hoje";
+        const params = new URLSearchParams();
+        params.set("periodo", periodo);
+        if (args.data_inicio) params.set("dataIni", args.data_inicio);
+        if (args.data_fim) params.set("dataFim", args.data_fim);
+        if (args.cliente_id) params.set("clienteId", args.cliente_id);
+        const resp = await fetch(`${BASE_API_URL}/dashboard?${params.toString()}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!resp.ok) return `Erro ao consultar dashboard: ${resp.status}`;
+        const dashboard = await resp.json();
+        const fat = dashboard?.faturamento?.resumo || {};
+        const envio = dashboard?.envio || {};
+        let result = `📊 Dashboard da Plataforma (${periodo}):\n`;
+        result += `💰 Faturado: R$ ${Number(fat.faturado || 0).toFixed(2)}\n`;
+        result += `💳 Pago: R$ ${Number(fat.pago || 0).toFixed(2)}\n`;
+        result += `📈 Lucro: R$ ${Number(fat.lucro || 0).toFixed(2)}\n`;
+        result += `💸 Custo: R$ ${Number(fat.custo || 0).toFixed(2)}\n`;
+        result += `✅ % Recebido: ${Number(fat.porcentagemRecebida || 0).toFixed(1)}%\n`;
+        result += `📦 Total Envios: ${fat.totalObjetos || 0}\n`;
+        if (envio.totalPorStatus) {
+          result += `\nStatus dos envios:\n`;
+          for (const [status, qtd] of Object.entries(envio.totalPorStatus)) {
+            result += `- ${status}: ${qtd}\n`;
+          }
+        }
+        // Top clientes
+        const topClientes = dashboard?.faturamento?.comparativoClientes || [];
+        if (topClientes.length > 0) {
+          result += `\nTop clientes:\n`;
+          for (const c of topClientes.slice(0, 5)) {
+            result += `- ${c.cliente}: R$ ${Number(c.faturado || 0).toFixed(2)} (lucro: R$ ${Number(c.lucro || 0).toFixed(2)})\n`;
+          }
+        }
+        return result;
+      }
+
       // ── Listar objetos do cliente (etiquetas/envios pendentes) ──
       case "listar_objetos_cliente": {
         let clienteId = args.cliente_id;
