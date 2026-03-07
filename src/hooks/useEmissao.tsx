@@ -11,8 +11,8 @@ import { supabase } from "../integrations/supabase/client";
  * [LEGACY] Disparo de notificação "etiqueta_criada" foi movido para o backend (cron-notificar-etiqueta-criada).
  * Função mantida apenas como referência.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function dispararNotificacaoEtiquetaCriada(emissaoResponse: any, emissaoInput: any) {
+// @ts-ignore - Legacy function kept as reference
+async function _dispararNotificacaoEtiquetaCriada(emissaoResponse: any, emissaoInput: any) {
   try {
     console.log('🔍 [NotifEtiqueta] Response recebida:', JSON.stringify(emissaoResponse).substring(0, 500));
     console.log('🔍 [NotifEtiqueta] Input original:', JSON.stringify(emissaoInput).substring(0, 500));
