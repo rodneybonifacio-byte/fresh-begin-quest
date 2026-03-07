@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
   User, Package, CreditCard, MapPin, Phone, Mail,
-  TrendingUp, Clock, AlertTriangle, MessageSquare,
-  ChevronDown, ChevronUp, Truck, FileText, Star,
+  Clock, AlertTriangle, MessageSquare,
+  ChevronDown, ChevronUp, Truck,
   X, ExternalLink, Hash
 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -76,7 +76,7 @@ const SectionHeader = ({ icon: Icon, label, count, color, expanded, onToggle }: 
 );
 
 export const ContactIntelligencePanel = ({
-  contactPhone, contactName, conversationId, onClose,
+  contactPhone, contactName, onClose,
 }: ContactIntelligencePanelProps) => {
   const [profile, setProfile] = useState<ClientProfile | null>(null);
   const [shipments, setShipments] = useState<ShipmentSummary>({ total: 0, recentes: [] });
