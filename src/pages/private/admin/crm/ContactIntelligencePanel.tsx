@@ -339,17 +339,11 @@ export const ContactIntelligencePanel = ({
         }
       }
     } else {
-      // Fallback: extract remetente names from message metadata
+      // Fallback: use remetente names collected from metadata/pipeline
       const metaRemetentes: RemetenteSummary[] = [];
-      const seenNames = new Set<string>();
-      if (messagesRes.data) {
-        for (const msg of messagesRes.data) {
-          const meta = msg.metadata as any;
-          const nome = meta?.variables?.nome_remetente;
-          if (nome && nome !== 'Loja' && nome !== 'Remetente' && nome.length > 2 && !seenNames.has(nome)) {
-            seenNames.add(nome);
-            metaRemetentes.push({ id: '', nome, cpfMasked: '', cidade: null, uf: null });
-          }
+      for (const nome of metaRemetenteNames) {
+        if (nome.length > 1) {
+          metaRemetentes.push({ id: '', nome, cpfMasked: '', cidade: null, uf: null });
         }
       }
       if (metaRemetentes.length > 0) {
