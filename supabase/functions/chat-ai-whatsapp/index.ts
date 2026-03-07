@@ -1529,8 +1529,20 @@ async function fetchClienteDetails(clienteId: string): Promise<{ nome: string; e
     if (!resp.ok) return null;
     const data = await resp.json();
     const cliente = data?.data || data;
+
+    const rawNome = String(cliente.nomeEmpresa || cliente.nomResponsavel || cliente.nome || "").trim();
+    const nomeUpper = rawNome.toUpperCase();
+    const nomeValido =
+      rawNome.length >= 3 &&
+      !nomeUpper.includes("DESCONHECIDO") &&
+      !nomeUpper.includes("NOLASTNAME") &&
+      !nomeUpper.includes("CADASTRO") &&
+      !/^[0-9a-f-]{36}$/i.test(rawNome);
+
+    if (!nomeValido) return null;
+
     return {
-      nome: cliente.nomeEmpresa || cliente.nomResponsavel || cliente.nome || "Desconhecido",
+      nome: rawNome,
       email: cliente.email,
       telefone: cliente.telefone || cliente.celular,
       cpfCnpj: cliente.cpfCnpj,
