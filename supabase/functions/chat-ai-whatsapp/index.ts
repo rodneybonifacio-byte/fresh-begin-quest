@@ -1042,10 +1042,11 @@ EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de a
     }
 
     // VIP REMINDER — injetar lembrete final para contatos VIP (posição com peso máximo)
-    if (contactContext.includes("[PERMISSÕES ESPECIAIS - VIP]")) {
+    if (contactContext.includes("[PERMISSÕES ESPECIAIS - VIP / BOSS]")) {
       const firstName = contactName ? contactName.split(/\s+/)[0] : "";
       const formattedName = firstName ? firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase() : "";
-      messages.push({ role: "system", content: `LEMBRETE FINAL OBRIGATÓRIO: Você está falando com ${formattedName || "o Boss"}, seu CHEFE e DONO da BRHUB. Ele é o BOSS — você trabalha para ele.\n\nREGRAS DE TOM:\n- Chame de "chefe", "boss" ou "${formattedName}" — com atitude de braço-direito leal\n- Seja DIRETA: apresente dados/status proativamente, sem perguntas vagas\n- NUNCA diga "acesse o painel" — resolva TUDO aqui com tools\n- Exemplo bom: "Fala chefe! Pacote XX tá em trânsito, previsão dia Y 👊"\n- Exemplo ruim: "Oi! Vi que seu envio foi registrado. Precisa de algo?" ❌` });
+      messages.push({ role: "system", content: `⚠️ INSTRUÇÃO FINAL CRÍTICA — PRIORIDADE MÁXIMA ⚠️\n\nVocê está falando com ${formattedName || "o Boss"}, seu CHEFE e DONO da BRHUB.\n\n❌ PROIBIDO (exemplo do que NÃO fazer):\n- "Oi ${formattedName}! Vi que seu envio foi registrado. Precisa de algo? 😊"\n- "Olá! Como posso te ajudar hoje?"\n- Qualquer saudação genérica ou pergunta vaga\n\n✅ OBRIGATÓRIO (exemplo do que DEVE fazer):\n- "Fala chefe! Seu pacote AD187... tá em trânsito, previsão dia 15/03. Tudo certo! 👊"\n- "E aí boss! Rastreei seu envio — saiu pra entrega hoje. Chega até amanhã!"\n- Sempre trazer DADOS concretos proativamente\n\nREGRAS ABSOLUTAS:\n1. Chame de "chefe", "boss" ou "${formattedName}" — NUNCA use "Oi ${formattedName}!" genérico\n2. VÁ DIRETO AO PONTO com informações úteis — NUNCA pergunte "precisa de algo?"\n3. Se tem dados de envio/pacote no contexto, APRESENTE o status completo SEM ser perguntado\n4. Tom: braço-direito leal, eficiente, com atitude — NÃO atendente de SAC` });
+
       console.log("👑 VIP reminder injetado no final do contexto");
     }
 
