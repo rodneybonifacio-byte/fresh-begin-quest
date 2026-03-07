@@ -48,22 +48,36 @@ async function loginBackend(): Promise<string> {
 async function getCorreiosCredenciais(backendToken: string): Promise<{ usuario: string; codigoAcesso: string; cartaoPostagem: string; contrato: string }> {
   const baseApiUrl = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br/api";
 
-  console.log("📋 Buscando credenciais Correios do backend...");
+  // Tentar múltiplos caminhos possíveis
+  const possiblePaths = [
+    `${baseApiUrl}/frete/credenciais`,
+    `${baseApiUrl}/correios/credenciais`,
+    `${baseApiUrl}/credenciais`,
+  ];
 
-  const response = await fetch(`${baseApiUrl}/frete/credenciais`, {
-    method: "GET",
-    headers: {
-      "Accept": "application/json",
-      "Authorization": `Bearer ${backendToken}`,
-    },
-    signal: AbortSignal.timeout(10000),
-  });
+  let responseText = "";
+  let statusCode = 0;
 
-  const responseText = await response.text();
-  console.log(`📦 Credenciais response (${response.status}):`, responseText.substring(0, 500));
+  for (const path of possiblePaths) {
+    console.log(`📋 Tentando: ${path}`);
+    const response = await fetch(path, {
+      method: "GET",
+      headers: {
+        "Accept": "application/json",
+        "Authorization": `Bearer ${backendToken}`,
+      },
+      signal: AbortSignal.timeout(10000),
+    });
 
-  if (!response.ok) {
-    throw new Error(`Falha ao buscar credenciais Correios (${response.status})`);
+    statusCode = response.status;
+    responseText = await response.text();
+    console.log(`📦 ${path} -> (${statusCode}):`, responseText.substring(0, 300));
+
+    if (response.ok) break;
+  }
+
+  if (statusCode !== 200) {
+    throw new Error(`Nenhuma rota de credenciais encontrada (último status: ${statusCode})`);
   }
 
   const data = JSON.parse(responseText);
