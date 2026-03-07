@@ -826,15 +826,17 @@ serve(async (req) => {
           contactContext = `\n\n[CONTEXTO DO CONTATO ATUAL]\nO contato que está falando com você se chama: ${formattedFirstName} (nome completo: ${contactName}). Tipo: ${roleLabel}. Email: ${contactEmail || "N/A"}. Telefone: ${contactPhone}.${clienteId ? ` ID cliente: ${clienteId}.` : ""}\nIMPORTANTE: Chame a pessoa SEMPRE por "${formattedFirstName}" de forma pessoal e simpática na PRIMEIRA mensagem. Não use "Desconhecido", não peça identificação, você já sabe quem é.`;
 
           // 7. AUTO-INJECT: Buscar envios pendentes do cliente automaticamente
+          let clienteHasActiveShipments = false;
           if (clienteId) {
             try {
               const shipmentContext = await fetchClienteShipments(clienteId, true);
               if (shipmentContext && !shipmentContext.includes("Nenhum") && !shipmentContext.includes("Erro") && !shipmentContext.includes("Todos os envios")) {
-                contactContext += `\n\n[ENVIOS PENDENTES DO CLIENTE]\n${shipmentContext}\nUse estas informações para ser PROATIVA: se o cliente perguntar sobre um envio, você já tem os dados. Pode informar status, previsão de entrega e código de rastreio sem precisar que o cliente forneça. Se achar relevante, mencione brevemente que há envios em andamento.`;
-              } else if (shipmentContext.includes("Todos os envios")) {
+                clienteHasActiveShipments = true;
+                contactContext += `\n\n[ENVIOS PENDENTES DO CLIENTE - CONTEXTO PRINCIPAL]\n${shipmentContext}\nEste contato é um CLIENTE ATIVO que envia pacotes pela plataforma. Quando ele disser "oi", cumprimente pelo nome e pergunte como pode ajudar. NÃO mencione pacotes proativamente a menos que ele pergunte sobre um envio específico. Você tem os dados disponíveis para consulta rápida se ele perguntar.`;
+              } else if (shipmentContext && shipmentContext.includes("Todos os envios")) {
                 contactContext += `\n\n[ENVIOS DO CLIENTE]\nTodos os envios desse cliente já foram entregues. Nenhum envio pendente no momento.`;
               }
-              console.log("📦 Auto-inject envios:", shipmentContext.substring(0, 150));
+              console.log("📦 Auto-inject envios:", shipmentContext ? shipmentContext.substring(0, 150) : "vazio");
             } catch (shipErr) {
               console.warn("⚠️ Erro ao buscar envios para contexto:", shipErr);
             }
@@ -847,7 +849,19 @@ serve(async (req) => {
             try {
               const recipientPackages = await fetchRecipientPackagesByPhone(supabase, normalized, phoneVariants, conversationId);
               if (recipientPackages) {
-                contactContext += `\n\n[PACOTES ASSOCIADOS A ESTE DESTINATÁRIO - ATENÇÃO MÁXIMA]\n${recipientPackages}\nREGRA OBRIGATÓRIA: Quando o contato enviar uma saudação simples (oi, olá, bom dia, etc), você DEVE:\n1. Cumprimentar pelo primeiro nome\n2. IMEDIATAMENTE mencionar que identificou os pacotes dele e informar o status atualizado de cada um\n3. NÃO fazer saudação genérica — vá direto ao ponto com as informações dos pacotes\nSe estiver em trânsito, informe a previsão. Se estiver aguardando retirada, informe o endereço. Se estiver atrasado (previsão anterior a hoje ${new Date().toLocaleDateString("pt-BR")}), reconheça o atraso e ofereça ajuda.`;
+                if (clienteHasActiveShipments) {
+                  // Cliente ativo — contexto de destinatário é SECUNDÁRIO
+                  contactContext += `\n\n[PACOTES RECEBIDOS COMO DESTINATÁRIO - CONTEXTO SECUNDÁRIO]\n${recipientPackages}\nNOTA: Este contato também recebe pacotes como destinatário, mas sua função PRINCIPAL é como cliente/remetente. NÃO mencione estes pacotes proativamente. Só informe se ele perguntar especificamente sobre um código de rastreio listado aqui.`;
+                } else {
+                  // Não é cliente ativo — destinatário puro, ser proativo com pacotes PENDENTES
+                  // Filtrar pacotes já entregues para não confundir
+                  const hasPending = !recipientPackages.includes("ENTREGUE") || recipientPackages.includes("ATRASADO") || recipientPackages.includes("EM_TRANSITO") || recipientPackages.includes("POSTADO");
+                  if (hasPending) {
+                    contactContext += `\n\n[PACOTES ASSOCIADOS A ESTE DESTINATÁRIO]\n${recipientPackages}\nREGRA: Quando o contato enviar uma saudação simples (oi, olá, bom dia, etc), cumprimente pelo primeiro nome e informe o status dos pacotes PENDENTES (em trânsito, atrasados ou aguardando retirada). NÃO mencione pacotes já entregues proativamente. Se estiver atrasado (previsão anterior a hoje ${new Date().toLocaleDateString("pt-BR")}), reconheça o atraso e ofereça ajuda.`;
+                  } else {
+                    contactContext += `\n\n[PACOTES RECEBIDOS COMO DESTINATÁRIO]\n${recipientPackages}\nNOTA: Todos os pacotes deste destinatário já foram entregues. NÃO mencione proativamente. Só informe se ele perguntar.`;
+                  }
+                }
                 console.log("📦 Auto-inject destinatário:", recipientPackages.substring(0, 150));
               }
             } catch (recipErr) {
