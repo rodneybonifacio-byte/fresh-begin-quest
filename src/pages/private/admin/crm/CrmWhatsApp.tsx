@@ -52,7 +52,29 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [showContactPanel, setShowContactPanel] = useState(false);
-  // Carregar conversas
+  const [templateBodies, setTemplateBodies] = useState<Record<string, { body: string; header?: string; footer?: string; buttons?: { text: string }[]; variables?: any[] }>>({});
+
+  // Load template bodies for HSM rendering
+  useEffect(() => {
+    const loadTemplateBodies = async () => {
+      const { data } = await supabase
+        .from('whatsapp_notification_templates')
+        .select('template_name, template_body, variables')
+        .not('template_body', 'is', null);
+      if (data) {
+        const map: typeof templateBodies = {};
+        data.forEach((t: any) => {
+          try {
+            const parsed = JSON.parse(t.template_body);
+            map[t.template_name] = { ...parsed, variables: t.variables };
+          } catch {}
+        });
+        setTemplateBodies(map);
+      }
+    };
+    loadTemplateBodies();
+  }, []);
+
   const loadConversations = useCallback(async () => {
     const { data, error } = await supabase
       .from('whatsapp_conversations')
