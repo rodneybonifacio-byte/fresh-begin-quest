@@ -454,9 +454,33 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
               className="w-full pl-9 pr-4 py-2 text-sm bg-muted rounded-lg border-none outline-none text-foreground placeholder:text-muted-foreground"
             />
           </div>
-        </div>
 
-        {/* Lista */}
+          {/* Tabs */}
+          <div className="flex mt-3 bg-muted rounded-lg p-0.5 gap-0.5">
+            {([
+              { key: 'sem_atendimento' as const, label: 'Sem atendimento', count: conversations.filter(c => !c.ai_enabled && !closedConversationIds.has(c.id)).length },
+              { key: 'ia' as const, label: 'IA', count: conversations.filter(c => c.ai_enabled && !closedConversationIds.has(c.id)).length },
+              { key: 'fechados' as const, label: 'Fechados', count: conversations.filter(c => closedConversationIds.has(c.id)).length },
+            ]).map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setConversationTab(tab.key)}
+                className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  conversationTab === tab.key
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {tab.label}
+                <span className={`text-[10px] px-1 rounded-full ${
+                  conversationTab === tab.key ? 'bg-primary/10 text-primary' : 'bg-muted-foreground/10'
+                }`}>
+                  {tab.count}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="flex-1 overflow-y-auto">
           {loadingConversations ? (
             <div className="flex items-center justify-center h-32">
