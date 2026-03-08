@@ -40,7 +40,7 @@ async function resolverNomeRemetente(emissao: EmissaoEmTransito): Promise<string
 
   // 2. Objeto aninhado remetente (se existir no payload da API)
   const nomeObjeto = ((emissao as any).remetente?.nome || '').trim();
-  if (!isGenerico(nomeObjeto)) return capitalize(nomeObjeto);
+  if (!isGenerico(nomeObjeto)) return formatFullName(nomeObjeto);
 
   // 3. Buscar via remetenteId
   const remetenteId = emissao.remetenteId || (emissao as any).remetente_id;
