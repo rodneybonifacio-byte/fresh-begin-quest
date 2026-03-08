@@ -46,7 +46,7 @@ async function resolverNomeRemetente(supabase: any, envio: any): Promise<string>
       const { data: rem } = await supabase.from('remetentes').select('nome').eq('cpf_cnpj', cpfCnpj.replace(/\D/g, '')).limit(1).maybeSingle();
       if (rem?.nome && !isGenerico(rem.nome)) {
         console.log(`🔍 Remetente resolvido via CPF/CNPJ: "${rem.nome}"`);
-        return capitalize(rem.nome);
+        return formatFullName(rem.nome);
       }
     } catch (err) { console.warn('⚠️ Erro resolver remetente CPF:', err); }
   }
