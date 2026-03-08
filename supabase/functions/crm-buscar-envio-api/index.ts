@@ -183,7 +183,7 @@ function parseMoney(...values: any[]): number {
 
 async function resolveSenderName(emissao: any): Promise<string> {
   const directName = pickFirst(emissao.remetenteNome, emissao.remetente_nome, emissao.remetente?.nome);
-  if (!isGenericName(directName)) return firstName(directName);
+  if (!isGenericName(directName)) return formatFullName(directName);
 
   const remetenteId = pickFirst(emissao.remetenteId, emissao.remetente_id);
   if (remetenteId) {
