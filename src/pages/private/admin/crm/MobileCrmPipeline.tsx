@@ -152,7 +152,7 @@ const MobileCrmPipeline = ({ onOpenConversation }: { onOpenConversation?: (conve
 
       {/* Stages - Accordion style */}
       <div className="flex-1 overflow-y-auto">
-        {activePipeline.stages.map((stage, stageIdx) => {
+        {activePipeline.stages.map((stage) => {
           const stageTickets = getStageTickets(stage.key);
           const isOpen = expandedStage === stage.key || expandedStage === null;
           const StageIcon = stage.icon;

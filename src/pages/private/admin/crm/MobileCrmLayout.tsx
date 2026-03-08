@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
-import { MessageSquare, Columns3, Bell, ArrowLeft } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { MessageSquare, Columns3, Bell } from 'lucide-react';
+import { motion } from 'framer-motion';
 import CrmWhatsApp from './CrmWhatsApp';
 import MobileCrmPipeline from './MobileCrmPipeline';
 import CrmNotificationTemplates from './CrmNotificationTemplates';

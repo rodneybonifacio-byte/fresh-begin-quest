@@ -3,8 +3,11 @@ import { MessageSquare, Columns3, Bell } from 'lucide-react';
 import CrmWhatsApp from './CrmWhatsApp';
 import CrmPipelineKanban from './CrmPipelineKanban';
 import CrmNotificationTemplates from './CrmNotificationTemplates';
+import MobileCrmLayout from './MobileCrmLayout';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 const CrmLayout = () => {
+  const isDesktop = useBreakpoint('lg');
   const [activeTab, setActiveTab] = useState<'conversas' | 'pipeline' | 'notificacoes'>('conversas');
   const [initialConversationId, setInitialConversationId] = useState<string | null>(null);
 
