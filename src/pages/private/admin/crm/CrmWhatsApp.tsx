@@ -436,9 +436,9 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
   });
 
   return (
-    <div className="h-[calc(100vh-120px)] flex bg-background rounded-xl border border-border overflow-hidden">
+    <div className="h-full lg:h-[calc(100vh-120px)] flex bg-background lg:rounded-xl lg:border lg:border-border overflow-hidden">
       {/* Lista de Conversas */}
-      <div className={`w-full md:w-96 border-r border-border flex flex-col ${mobileShowChat ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`w-full lg:w-96 border-r border-border flex flex-col ${mobileShowChat ? 'hidden lg:flex' : 'flex'}`}>
         {/* Header */}
         <div className="p-4 border-b border-border bg-card">
           <div className="flex items-center gap-2 mb-3">
