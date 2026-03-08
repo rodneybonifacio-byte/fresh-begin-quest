@@ -100,7 +100,7 @@ async function resolverNomeRemetente(
   // 6. Fallback: nome do cliente
   if (!isGenerico(nomeCliente)) {
     console.log(`🔍 Usando nome do cliente como remetente: "${nomeCliente}"`);
-    return formatFirstName(nomeCliente);
+    return formatFullName(nomeCliente);
   }
 
   console.warn("⚠️ Nenhum nome de remetente encontrado, usando fallback");
