@@ -16,6 +16,10 @@ const CrmLayout = () => {
     setActiveTab('conversas');
   }, []);
 
+  if (!isDesktop) {
+    return <MobileCrmLayout />;
+  }
+
   return (
     <div className="h-full flex flex-col">
       {/* Tab bar */}
