@@ -565,13 +565,34 @@ export const ContactIntelligencePanel = ({
       });
 
       // Fetch historical shipments from external API by clienteId
+      // Then filter only shipments where the destinatário matches this contact
       const { data: historyResponse, error: historyError } = await supabase.functions.invoke('crm-buscar-envio-api', {
-        body: { clienteId, limit: 20 },
+        body: { clienteId, limit: 50 },
       });
 
       if (!historyError && historyResponse?.data?.length) {
+        // Build contact name tokens for fuzzy matching
+        const contactNameNorm = normalizePersonName(contactName || profile?.nome || '')
+          .toLowerCase()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const contactTokens = contactNameNorm.split(/\s+/).filter(t => t.length > 2);
+
         for (const item of historyResponse.data) {
           if (item?.notFound) continue;
+          const destName = normalizePersonName(item.destinatarioNome)
+            .toLowerCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+          // Match: at least 2 tokens in common, or first+last name match, or one name contains the other
+          const destTokens = destName.split(/\s+/).filter((t: string) => t.length > 2);
+          const commonTokens = contactTokens.filter(t => destTokens.includes(t));
+          const isMatch = commonTokens.length >= 2
+            || (contactTokens.length === 1 && destName.includes(contactNameNorm))
+            || (destTokens.length === 1 && contactNameNorm.includes(destName))
+            || contactNameNorm === destName;
+
+          if (!isMatch && contactTokens.length > 0) continue;
+
           upsertShipment({
             codigo: item.codigoObjeto || '—',
             status: item.status || 'pendente',
@@ -584,10 +605,10 @@ export const ContactIntelligencePanel = ({
           });
         }
 
-        totalGastoEmissoes = Math.max(
-          totalGastoEmissoes,
-          historyResponse.data.reduce((s: number, item: any) => s + Number(item?.valorGasto || 0), 0)
-        );
+        // Recalculate totalGasto only from matched shipments
+        const matchedGasto = Array.from(shipmentMap.values())
+          .reduce((s, item) => s + Number(item.valorVenda || 0), 0);
+        totalGastoEmissoes = Math.max(totalGastoEmissoes, matchedGasto);
       }
 
       // Re-sort and update shipments with historical data
