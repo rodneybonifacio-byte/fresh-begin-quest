@@ -27,7 +27,7 @@ async function resolverNomeRemetente(supabase: any, envio: any): Promise<string>
   if (!isGenerico(nomeDireto)) return formatFullName(nomeDireto);
 
   const nomeObjeto = (envio.remetente?.nome || '').trim();
-  if (!isGenerico(nomeObjeto)) return capitalize(nomeObjeto);
+  if (!isGenerico(nomeObjeto)) return formatFullName(nomeObjeto);
 
   const remetenteId = envio.remetenteId || envio.remetente_id;
   if (remetenteId) {
