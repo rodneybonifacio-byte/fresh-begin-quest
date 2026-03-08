@@ -54,7 +54,7 @@ async function resolverNomeRemetente(
   // 2. Objeto aninhado remetente.nome (API retorna)
   const nomeObjeto = (envio.remetente?.nome || "").trim();
   if (!isGenerico(nomeObjeto)) {
-    return formatFirstName(nomeObjeto);
+    return formatFullName(nomeObjeto);
   }
 
   // 3. Nome do cliente (API retorna cliente.nome)
