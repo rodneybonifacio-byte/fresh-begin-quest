@@ -537,7 +537,7 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
       </div>
 
       {/* Área de Chat */}
-      <div className={`flex-1 flex ${!mobileShowChat ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`flex-1 flex ${!mobileShowChat ? 'hidden lg:flex' : 'flex'}`}>
         <div className="flex-1 flex flex-col min-w-0">
         {selectedConversation ? (
           <>
