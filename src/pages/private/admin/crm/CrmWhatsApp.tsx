@@ -851,14 +851,16 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
         )}
         </div>
 
-        {/* Contact Intelligence Panel */}
+        {/* Contact Intelligence Panel - full screen overlay on mobile, sidebar on desktop */}
         {showContactPanel && selectedConversation && (
-          <ContactIntelligencePanel
-            contactPhone={selectedConversation.contact_phone}
-            contactName={selectedConversation.contact_name}
-            conversationId={selectedConversation.id}
-            onClose={() => setShowContactPanel(false)}
-          />
+          <div className="fixed inset-0 z-50 bg-background lg:static lg:inset-auto lg:z-auto lg:bg-transparent">
+            <ContactIntelligencePanel
+              contactPhone={selectedConversation.contact_phone}
+              contactName={selectedConversation.contact_name}
+              conversationId={selectedConversation.id}
+              onClose={() => setShowContactPanel(false)}
+            />
+          </div>
         )}
       </div>
     </div>
