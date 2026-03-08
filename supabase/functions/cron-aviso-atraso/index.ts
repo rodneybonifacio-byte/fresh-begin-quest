@@ -83,7 +83,7 @@ async function resolverNomeRemetente(emissao: EmissaoEmTransito): Promise<string
   const nomeCliente = ((emissao as any).cliente?.nome || '').trim();
   if (!isGenerico(nomeCliente)) {
     console.log(`🔍 Usando nome do cliente: "${nomeCliente}"`);
-    return capitalize(nomeCliente);
+    return formatFullName(nomeCliente);
   }
 
   return 'Loja';

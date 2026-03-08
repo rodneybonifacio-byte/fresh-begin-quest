@@ -260,7 +260,7 @@ serve(async (req: Request) => {
         if (!celular.startsWith("55")) celular = "55" + celular;
 
         // Nome destinatário
-        const nomeDestinatario = formatFirstName(
+        const nomeDestinatario = formatFullName(
           destinatario.nome || envio.destinatarioNome || "Cliente"
         );
 
