@@ -72,7 +72,7 @@ async function resolverNomeRemetente(emissao: EmissaoEmTransito): Promise<string
         .maybeSingle();
       if (rem?.nome && !isGenerico(rem.nome)) {
         console.log(`🔍 Remetente resolvido via CPF/CNPJ: "${rem.nome}"`);
-        return capitalize(rem.nome);
+        return formatFullName(rem.nome);
       }
     } catch (err) {
       console.warn('⚠️ Erro ao resolver remetente por CPF/CNPJ:', err);
