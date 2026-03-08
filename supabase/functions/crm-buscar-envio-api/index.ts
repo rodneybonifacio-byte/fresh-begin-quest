@@ -208,7 +208,7 @@ async function resolveSenderName(emissao: any): Promise<string> {
       .maybeSingle();
 
     if (data?.nome && !isGenericName(data.nome)) {
-      return firstName(data.nome);
+      return formatFullName(data.nome);
     }
   }
 
