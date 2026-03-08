@@ -39,25 +39,46 @@ async function tentarPICorreios(params: {
   const senha = Deno.env.get("CORREIOS_SENHA");
   const cartaoPostagem = Deno.env.get("CORREIOS_CARTAO_POSTAGEM");
 
-  if (!idCorreios || !senha) {
+  if (!idCorreios || !senha || !cartaoPostagem) {
     return { success: false, protocolo: null, dados: { error: "Credenciais Correios não configuradas" } };
   }
 
   try {
-    // 1. Autenticar via endpoint simples (sem cartão de postagem)
+    // 1. Tentar autenticação com cartão de postagem primeiro, fallback para simples
     const basicAuth = btoa(`${idCorreios}:${senha}`);
-    console.log(`🔐 Auth Correios (simples): ${idCorreios.substring(0, 5)}***`);
+    console.log(`🔐 Auth Correios: id=${idCorreios.substring(0, 5)}***, cartao=${cartaoPostagem.substring(0, 5)}***`);
 
-    const authResponse = await fetch("https://api.correios.com.br/token/v1/autentica", {
+    // Tentativa 1: Com cartão de postagem
+    let authResponse = await fetch("https://api.correios.com.br/token/v1/autentica/cartaopostagem", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Accept": "application/json",
         "Authorization": `Basic ${basicAuth}`,
       },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ numero: cartaoPostagem }),
       signal: AbortSignal.timeout(15000),
     });
+
+    let authText = await authResponse.text();
+    console.log(`🔑 Auth cartao (${authResponse.status}):`, authText.substring(0, 300));
+
+    // Fallback: Autenticação simples
+    if (!authResponse.ok) {
+      console.log("🔄 Tentando auth simples...");
+      authResponse = await fetch("https://api.correios.com.br/token/v1/autentica", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "Authorization": `Basic ${basicAuth}`,
+        },
+        body: JSON.stringify({}),
+        signal: AbortSignal.timeout(15000),
+      });
+      authText = await authResponse.text();
+      console.log(`🔑 Auth simples (${authResponse.status}):`, authText.substring(0, 300));
+    }
 
     const authText = await authResponse.text();
     console.log(`🔑 Auth response (${authResponse.status}):`, authText.substring(0, 500));
