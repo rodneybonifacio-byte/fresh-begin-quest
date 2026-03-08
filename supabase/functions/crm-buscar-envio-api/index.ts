@@ -26,11 +26,14 @@ function isGenericName(name: string): boolean {
   return GENERIC_NAMES.includes(normalized) || normalized.length < 2;
 }
 
-function firstName(name: string): string {
+function formatFullName(name: string): string {
   const cleaned = String(name || "").trim();
   if (!cleaned) return "Loja";
-  const first = cleaned.split(/\s+/)[0] || cleaned;
-  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+  return cleaned.split(/\s+/).map((word, i) => {
+    const lower = word.toLowerCase();
+    if (i > 0 && ["da", "de", "do", "das", "dos", "e"].includes(lower)) return lower;
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+  }).join(" ");
 }
 
 async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 12000) {
