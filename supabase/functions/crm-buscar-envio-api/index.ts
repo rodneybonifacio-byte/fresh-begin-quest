@@ -213,7 +213,7 @@ async function resolveSenderName(emissao: any): Promise<string> {
   }
 
   const clientName = pickFirst(emissao.cliente?.nome, emissao.clienteNome, emissao.cliente_nome);
-  if (!isGenericName(clientName)) return firstName(clientName);
+  if (!isGenericName(clientName)) return formatFullName(clientName);
 
   return "Loja";
 }
