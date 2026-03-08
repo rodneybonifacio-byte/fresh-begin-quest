@@ -36,7 +36,7 @@ async function resolverNomeRemetente(emissao: EmissaoEmTransito): Promise<string
 
   // 1. Nome direto
   const nomeDireto = (emissao.remetenteNome || '').trim();
-  if (!isGenerico(nomeDireto)) return capitalize(nomeDireto);
+  if (!isGenerico(nomeDireto)) return formatFullName(nomeDireto);
 
   // 2. Objeto aninhado remetente (se existir no payload da API)
   const nomeObjeto = ((emissao as any).remetente?.nome || '').trim();
