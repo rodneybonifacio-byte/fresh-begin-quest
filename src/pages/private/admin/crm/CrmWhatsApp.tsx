@@ -545,7 +545,7 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
             <div className="p-3 border-b border-border bg-card flex items-center gap-3">
               <button
                 onClick={() => setMobileShowChat(false)}
-                className="md:hidden p-1 hover:bg-muted rounded"
+                className="lg:hidden p-1 hover:bg-muted rounded"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
