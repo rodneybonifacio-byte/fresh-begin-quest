@@ -48,7 +48,7 @@ async function resolverNomeRemetente(
   // 1. Nome direto do remetente (campo remetenteNome)
   const nomeDireto = (envio.remetenteNome || "").trim();
   if (!isGenerico(nomeDireto)) {
-    return formatFirstName(nomeDireto);
+    return formatFullName(nomeDireto);
   }
 
   // 2. Objeto aninhado remetente.nome (API retorna)
