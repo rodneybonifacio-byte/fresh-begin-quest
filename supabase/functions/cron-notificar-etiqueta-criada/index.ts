@@ -11,11 +11,23 @@ const corsHeaders = {
 const BASE_API_URL = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br";
 
 /**
- * Formata primeiro nome com capitalização
+ * Formata nome COMPLETO com Title Case (preserva todas as palavras)
  */
-function formatFirstName(fullName: string): string {
-  const first = (fullName || "").trim().split(/\s+/)[0] || fullName;
-  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+function formatFullName(fullName: string): string {
+  const name = (fullName || "").trim();
+  if (!name) return "";
+  // Converte UPPERCASE para Title Case, preserva nomes curtos como "da", "de", "do"
+  return name
+    .split(/\s+/)
+    .map((word, i) => {
+      const lower = word.toLowerCase();
+      // Preposições permanecem minúsculas (exceto se for a primeira palavra)
+      if (i > 0 && ["da", "de", "do", "das", "dos", "e"].includes(lower)) {
+        return lower;
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(" ");
 }
 
 /**
@@ -36,13 +48,13 @@ async function resolverNomeRemetente(
   // 1. Nome direto do remetente (campo remetenteNome)
   const nomeDireto = (envio.remetenteNome || "").trim();
   if (!isGenerico(nomeDireto)) {
-    return formatFirstName(nomeDireto);
+    return formatFullName(nomeDireto);
   }
 
   // 2. Objeto aninhado remetente.nome (API retorna)
   const nomeObjeto = (envio.remetente?.nome || "").trim();
   if (!isGenerico(nomeObjeto)) {
-    return formatFirstName(nomeObjeto);
+    return formatFullName(nomeObjeto);
   }
 
   // 3. Nome do cliente (API retorna cliente.nome)
@@ -59,7 +71,7 @@ async function resolverNomeRemetente(
         .maybeSingle();
       if (rem?.nome && !isGenerico(rem.nome)) {
         console.log(`🔍 Remetente resolvido via ID: "${rem.nome}"`);
-        return formatFirstName(rem.nome);
+        return formatFullName(rem.nome);
       }
     } catch (err) {
       console.warn("⚠️ Erro ao resolver remetente por ID:", err);
@@ -78,7 +90,7 @@ async function resolverNomeRemetente(
         .maybeSingle();
       if (rem?.nome && !isGenerico(rem.nome)) {
         console.log(`🔍 Remetente resolvido via CPF/CNPJ: "${rem.nome}"`);
-        return formatFirstName(rem.nome);
+        return formatFullName(rem.nome);
       }
     } catch (err) {
       console.warn("⚠️ Erro ao resolver remetente por CPF/CNPJ:", err);
@@ -88,7 +100,7 @@ async function resolverNomeRemetente(
   // 6. Fallback: nome do cliente
   if (!isGenerico(nomeCliente)) {
     console.log(`🔍 Usando nome do cliente como remetente: "${nomeCliente}"`);
-    return formatFirstName(nomeCliente);
+    return formatFullName(nomeCliente);
   }
 
   console.warn("⚠️ Nenhum nome de remetente encontrado, usando fallback");
@@ -248,7 +260,7 @@ serve(async (req: Request) => {
         if (!celular.startsWith("55")) celular = "55" + celular;
 
         // Nome destinatário
-        const nomeDestinatario = formatFirstName(
+        const nomeDestinatario = formatFullName(
           destinatario.nome || envio.destinatarioNome || "Cliente"
         );
 

@@ -13,16 +13,21 @@ async function resolverNomeRemetente(supabase: any, envio: any): Promise<string>
     const l = (n || '').trim().toLowerCase();
     return genericos.includes(l) || l.length < 2;
   };
-  const capitalize = (n: string) => {
-    const first = n.trim().split(/\s+/)[0] || n.trim();
-    return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+  const formatFullName = (n: string) => {
+    const name = n.trim();
+    if (!name) return "";
+    return name.split(/\s+/).map((word, i) => {
+      const lower = word.toLowerCase();
+      if (i > 0 && ["da", "de", "do", "das", "dos", "e"].includes(lower)) return lower;
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    }).join(" ");
   };
 
   const nomeDireto = (envio.remetenteNome || '').trim();
-  if (!isGenerico(nomeDireto)) return capitalize(nomeDireto);
+  if (!isGenerico(nomeDireto)) return formatFullName(nomeDireto);
 
   const nomeObjeto = (envio.remetente?.nome || '').trim();
-  if (!isGenerico(nomeObjeto)) return capitalize(nomeObjeto);
+  if (!isGenerico(nomeObjeto)) return formatFullName(nomeObjeto);
 
   const remetenteId = envio.remetenteId || envio.remetente_id;
   if (remetenteId) {
@@ -30,7 +35,7 @@ async function resolverNomeRemetente(supabase: any, envio: any): Promise<string>
       const { data: rem } = await supabase.from('remetentes').select('nome').eq('id', remetenteId).maybeSingle();
       if (rem?.nome && !isGenerico(rem.nome)) {
         console.log(`🔍 Remetente resolvido via ID: "${rem.nome}"`);
-        return capitalize(rem.nome);
+        return formatFullName(rem.nome);
       }
     } catch (err) { console.warn('⚠️ Erro resolver remetente ID:', err); }
   }
@@ -41,7 +46,7 @@ async function resolverNomeRemetente(supabase: any, envio: any): Promise<string>
       const { data: rem } = await supabase.from('remetentes').select('nome').eq('cpf_cnpj', cpfCnpj.replace(/\D/g, '')).limit(1).maybeSingle();
       if (rem?.nome && !isGenerico(rem.nome)) {
         console.log(`🔍 Remetente resolvido via CPF/CNPJ: "${rem.nome}"`);
-        return capitalize(rem.nome);
+        return formatFullName(rem.nome);
       }
     } catch (err) { console.warn('⚠️ Erro resolver remetente CPF:', err); }
   }
@@ -49,7 +54,7 @@ async function resolverNomeRemetente(supabase: any, envio: any): Promise<string>
   const nomeCliente = (envio.cliente?.nome || '').trim();
   if (!isGenerico(nomeCliente)) {
     console.log(`🔍 Usando nome do cliente: "${nomeCliente}"`);
-    return capitalize(nomeCliente);
+    return formatFullName(nomeCliente);
   }
 
   return 'Loja';

@@ -26,11 +26,14 @@ function isGenericName(name: string): boolean {
   return GENERIC_NAMES.includes(normalized) || normalized.length < 2;
 }
 
-function firstName(name: string): string {
+function formatFullName(name: string): string {
   const cleaned = String(name || "").trim();
   if (!cleaned) return "Loja";
-  const first = cleaned.split(/\s+/)[0] || cleaned;
-  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+  return cleaned.split(/\s+/).map((word, i) => {
+    const lower = word.toLowerCase();
+    if (i > 0 && ["da", "de", "do", "das", "dos", "e"].includes(lower)) return lower;
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+  }).join(" ");
 }
 
 async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 12000) {
@@ -180,7 +183,7 @@ function parseMoney(...values: any[]): number {
 
 async function resolveSenderName(emissao: any): Promise<string> {
   const directName = pickFirst(emissao.remetenteNome, emissao.remetente_nome, emissao.remetente?.nome);
-  if (!isGenericName(directName)) return firstName(directName);
+  if (!isGenericName(directName)) return formatFullName(directName);
 
   const remetenteId = pickFirst(emissao.remetenteId, emissao.remetente_id);
   if (remetenteId) {
@@ -191,7 +194,7 @@ async function resolveSenderName(emissao: any): Promise<string> {
       .maybeSingle();
 
     if (data?.nome && !isGenericName(data.nome)) {
-      return firstName(data.nome);
+      return formatFullName(data.nome);
     }
   }
 
@@ -205,12 +208,12 @@ async function resolveSenderName(emissao: any): Promise<string> {
       .maybeSingle();
 
     if (data?.nome && !isGenericName(data.nome)) {
-      return firstName(data.nome);
+      return formatFullName(data.nome);
     }
   }
 
   const clientName = pickFirst(emissao.cliente?.nome, emissao.clienteNome, emissao.cliente_nome);
-  if (!isGenericName(clientName)) return firstName(clientName);
+  if (!isGenericName(clientName)) return formatFullName(clientName);
 
   return "Loja";
 }

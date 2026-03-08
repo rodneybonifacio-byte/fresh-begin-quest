@@ -24,18 +24,23 @@ async function resolverNomeRemetente(emissao: EmissaoEmTransito): Promise<string
     const l = (n || '').trim().toLowerCase();
     return genericos.includes(l) || l.length < 2;
   };
-  const capitalize = (n: string) => {
-    const first = n.trim().split(/\s+/)[0] || n.trim();
-    return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+  const formatFullName = (n: string) => {
+    const name = n.trim();
+    if (!name) return "";
+    return name.split(/\s+/).map((word, i) => {
+      const lower = word.toLowerCase();
+      if (i > 0 && ["da", "de", "do", "das", "dos", "e"].includes(lower)) return lower;
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    }).join(" ");
   };
 
   // 1. Nome direto
   const nomeDireto = (emissao.remetenteNome || '').trim();
-  if (!isGenerico(nomeDireto)) return capitalize(nomeDireto);
+  if (!isGenerico(nomeDireto)) return formatFullName(nomeDireto);
 
   // 2. Objeto aninhado remetente (se existir no payload da API)
   const nomeObjeto = ((emissao as any).remetente?.nome || '').trim();
-  if (!isGenerico(nomeObjeto)) return capitalize(nomeObjeto);
+  if (!isGenerico(nomeObjeto)) return formatFullName(nomeObjeto);
 
   // 3. Buscar via remetenteId
   const remetenteId = emissao.remetenteId || (emissao as any).remetente_id;
@@ -48,7 +53,7 @@ async function resolverNomeRemetente(emissao: EmissaoEmTransito): Promise<string
         .maybeSingle();
       if (rem?.nome && !isGenerico(rem.nome)) {
         console.log(`🔍 Remetente resolvido via ID: "${rem.nome}"`);
-        return capitalize(rem.nome);
+        return formatFullName(rem.nome);
       }
     } catch (err) {
       console.warn('⚠️ Erro ao resolver remetente por ID:', err);
@@ -67,7 +72,7 @@ async function resolverNomeRemetente(emissao: EmissaoEmTransito): Promise<string
         .maybeSingle();
       if (rem?.nome && !isGenerico(rem.nome)) {
         console.log(`🔍 Remetente resolvido via CPF/CNPJ: "${rem.nome}"`);
-        return capitalize(rem.nome);
+        return formatFullName(rem.nome);
       }
     } catch (err) {
       console.warn('⚠️ Erro ao resolver remetente por CPF/CNPJ:', err);
@@ -78,7 +83,7 @@ async function resolverNomeRemetente(emissao: EmissaoEmTransito): Promise<string
   const nomeCliente = ((emissao as any).cliente?.nome || '').trim();
   if (!isGenerico(nomeCliente)) {
     console.log(`🔍 Usando nome do cliente: "${nomeCliente}"`);
-    return capitalize(nomeCliente);
+    return formatFullName(nomeCliente);
   }
 
   return 'Loja';
