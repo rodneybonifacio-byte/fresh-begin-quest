@@ -505,7 +505,7 @@ export const ContactIntelligencePanel = ({
     setShipments({
       total: Math.max(phoneShipments.length, emissaoTotal, mergedRecentes.length),
       totalGasto: totalGastoEmissoes,
-      recentes: mergedRecentes.slice(0, 5),
+      recentes: mergedRecentes.slice(0, 10),
     });
 
     // Auto-enrich: update conversation contact_name with full destinatário name from API
