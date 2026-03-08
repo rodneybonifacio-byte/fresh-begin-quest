@@ -35,7 +35,7 @@ async function resolverNomeRemetente(supabase: any, envio: any): Promise<string>
       const { data: rem } = await supabase.from('remetentes').select('nome').eq('id', remetenteId).maybeSingle();
       if (rem?.nome && !isGenerico(rem.nome)) {
         console.log(`🔍 Remetente resolvido via ID: "${rem.nome}"`);
-        return capitalize(rem.nome);
+        return formatFullName(rem.nome);
       }
     } catch (err) { console.warn('⚠️ Erro resolver remetente ID:', err); }
   }
