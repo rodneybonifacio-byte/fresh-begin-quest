@@ -11,11 +11,23 @@ const corsHeaders = {
 const BASE_API_URL = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br";
 
 /**
- * Formata primeiro nome com capitalização
+ * Formata nome COMPLETO com Title Case (preserva todas as palavras)
  */
-function formatFirstName(fullName: string): string {
-  const first = (fullName || "").trim().split(/\s+/)[0] || fullName;
-  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+function formatFullName(fullName: string): string {
+  const name = (fullName || "").trim();
+  if (!name) return "";
+  // Converte UPPERCASE para Title Case, preserva nomes curtos como "da", "de", "do"
+  return name
+    .split(/\s+/)
+    .map((word, i) => {
+      const lower = word.toLowerCase();
+      // Preposições permanecem minúsculas (exceto se for a primeira palavra)
+      if (i > 0 && ["da", "de", "do", "das", "dos", "e"].includes(lower)) {
+        return lower;
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(" ");
 }
 
 /**
