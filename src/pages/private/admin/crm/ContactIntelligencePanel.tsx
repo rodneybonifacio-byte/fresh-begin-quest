@@ -533,7 +533,7 @@ export const ContactIntelligencePanel = ({
 
     // Financial + Historical shipments (only if we have clienteId)
     if (clienteId) {
-      const [recargasRes, consumosRes, bloqueadosRes, historicalEmissoesRes, emissaoCountRes] = await Promise.all([
+      const [recargasRes, consumosRes, bloqueadosRes] = await Promise.all([
         supabase
           .from('transacoes_credito')
           .select('valor')
@@ -551,18 +551,6 @@ export const ContactIntelligencePanel = ({
           .eq('cliente_id', clienteId)
           .eq('tipo', 'consumo')
           .eq('status', 'bloqueado'),
-        // Fetch historical shipments for this client
-        supabase
-          .from('emissoes_externas')
-          .select('codigo_objeto, destinatario_nome, destinatario_logradouro, destinatario_numero, destinatario_bairro, destinatario_cidade, destinatario_uf, destinatario_cep, servico, status, created_at, valor_venda, remetente:remetentes(id, nome)')
-          .eq('cliente_id', clienteId)
-          .order('created_at', { ascending: false })
-          .limit(20),
-        // Count total emissoes
-        supabase
-          .from('emissoes_externas')
-          .select('id', { count: 'exact', head: true })
-          .eq('cliente_id', clienteId),
       ]);
 
       const totalRecargas = recargasRes.data?.reduce((s, t) => s + Number(t.valor), 0) || 0;
@@ -576,35 +564,30 @@ export const ContactIntelligencePanel = ({
         totalBloqueado,
       });
 
-      // Merge historical shipments into the shipment map
-      if (historicalEmissoesRes.data && historicalEmissoesRes.data.length > 0) {
-        const buildEndereco = (e: any) => {
-          const parts = [
-            e.destinatario_logradouro,
-            e.destinatario_numero,
-            e.destinatario_bairro,
-            e.destinatario_cidade ? `${e.destinatario_cidade}-${e.destinatario_uf || ''}` : null,
-            e.destinatario_cep ? `CEP ${e.destinatario_cep}` : null,
-          ].filter(Boolean);
-          return parts.join(', ') || '';
-        };
+      // Fetch historical shipments from external API by clienteId
+      const { data: historyResponse, error: historyError } = await supabase.functions.invoke('crm-buscar-envio-api', {
+        body: { clienteId, limit: 20 },
+      });
 
-        for (const e of historicalEmissoesRes.data) {
+      if (!historyError && historyResponse?.data?.length) {
+        for (const item of historyResponse.data) {
+          if (item?.notFound) continue;
           upsertShipment({
-            codigo: e.codigo_objeto || '—',
-            status: e.status || 'pendente',
-            servico: e.servico || '—',
-            data: e.created_at || '',
-            destNome: e.destinatario_nome || '',
-            destEndereco: buildEndereco(e),
-            remetenteNome: (e.remetente as any)?.nome || '',
-            valorVenda: Number(e.valor_venda || 0),
+            codigo: item.codigoObjeto || '—',
+            status: item.status || 'pendente',
+            servico: item.servico || '—',
+            data: item.criadoEm || '',
+            destNome: item.destinatarioNome || '',
+            destEndereco: item.destinatarioEndereco || '',
+            remetenteNome: item.remetenteNome || '',
+            valorVenda: Number(item.valorGasto || 0),
           });
         }
 
-        // Recalculate totalGasto from all emissoes
-        const allHistoricalGasto = historicalEmissoesRes.data.reduce((s, e) => s + Number(e.valor_venda || 0), 0);
-        totalGastoEmissoes = Math.max(totalGastoEmissoes, allHistoricalGasto);
+        totalGastoEmissoes = Math.max(
+          totalGastoEmissoes,
+          historyResponse.data.reduce((s: number, item: any) => s + Number(item?.valorGasto || 0), 0)
+        );
       }
 
       // Re-sort and update shipments with historical data
@@ -614,9 +597,8 @@ export const ContactIntelligencePanel = ({
         return tb - ta;
       });
 
-      const totalCount = emissaoCountRes.count ?? 0;
       setShipments({
-        total: Math.max(shipmentMap.size, totalCount),
+        total: Math.max(shipmentMap.size, updatedRecentes.length),
         totalGasto: totalGastoEmissoes,
         recentes: updatedRecentes.slice(0, 10),
       });
