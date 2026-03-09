@@ -174,7 +174,12 @@ Deno.serve(async (req: Request) => {
 
         const nomeDestinatario = formatFullName(destinatario.nome || envio.destinatarioNome || "Cliente");
         const nomeRemetente = await resolverNomeRemetente(supabase, envio);
-        const dataPrevisao = formatDate(envio.dataPrevisaoEntrega || "");
+        // Buscar previsão de entrega via rastreio (não vem no objeto POSTADO)
+        let dataPrevisao = formatDate(envio.dataPrevisaoEntrega || "");
+        if (!dataPrevisao) {
+          dataPrevisao = await fetchDataPrevisao(token, codigoRastreio);
+          console.log(`📅 Previsão via rastreio para ${codigoRastreio}: ${dataPrevisao || "não disponível"}`);
+        }
 
         console.log(`📲 Notificando objeto_postado: ${codigoRastreio} → ${celular}`);
 
