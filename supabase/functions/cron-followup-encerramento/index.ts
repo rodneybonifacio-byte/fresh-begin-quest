@@ -99,6 +99,46 @@ Deno.serve(async (req) => {
           continue;
         }
 
+        // Verificar se a conversa tem ALGUMA mensagem inbound (cliente respondeu em algum momento)
+        const { data: inboundMsgs } = await supabase
+          .from("whatsapp_messages")
+          .select("id")
+          .eq("conversation_id", conv.id)
+          .eq("direction", "inbound")
+          .limit(1);
+
+        const hasInboundMessages = inboundMsgs && inboundMsgs.length > 0;
+
+        // Se NÃO tem mensagem inbound = conversa apenas de HSM, fechar silenciosamente
+        if (!hasInboundMessages) {
+          await supabase
+            .from("whatsapp_tickets")
+            .update({
+              status: "closed",
+              closed_at: new Date().toISOString(),
+              closed_by: "system_hsm_timeout",
+              resolution: "HSM sem resposta — fechado automaticamente (5min)",
+            })
+            .eq("id", ticket.id);
+
+          // Atualizar pipeline card se existir
+          await supabase
+            .from("ai_support_pipeline")
+            .update({
+              status: "concluido",
+              resolution: "HSM sem resposta — fechado automaticamente",
+              updated_at: new Date().toISOString(),
+            })
+            .eq("conversation_id", conv.id)
+            .in("status", ["verificando", "localizado", "em_transito", "novo", "recebido", "aberto"]);
+
+          console.log(`📩 HSM sem resposta fechado: ${conv.contact_name || conv.contact_phone} (conv: ${conv.id})`);
+          processed++;
+          continue;
+        }
+
+        // --- Fluxo normal: conversa com interação humana → enviar follow-up ---
+
         // Montar mensagem de encerramento
         const firstName = conv.contact_name
           ? conv.contact_name.split(/\s+/)[0].charAt(0).toUpperCase() +
