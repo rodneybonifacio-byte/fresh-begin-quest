@@ -66,12 +66,24 @@ const CrmPipelineKanban = ({ onOpenConversation }: { onOpenConversation?: (conve
     return pipeline.stages[0].key;
   };
 
+  const matchesSearch = useCallback((ticket: PipelineTicket) => {
+    if (!pipelineSearch) return true;
+    const term = pipelineSearch.toLowerCase();
+    return (
+      (ticket.subject || '').toLowerCase().includes(term) ||
+      (ticket.description || '').toLowerCase().includes(term) ||
+      (ticket.contact_name || '').toLowerCase().includes(term) ||
+      (ticket.contact_phone || '').includes(term)
+    );
+  }, [pipelineSearch]);
+
   const getColumnTickets = useCallback((stageKey: string) => {
     if (!tickets) return [];
     return tickets
       .filter(t => t.category === selectedCategory)
-      .filter(t => normalizeStatus(t) === stageKey);
-  }, [tickets, selectedCategory]);
+      .filter(t => normalizeStatus(t) === stageKey)
+      .filter(matchesSearch);
+  }, [tickets, selectedCategory, matchesSearch]);
 
   const categoryTicketCounts = useCallback(() => {
     if (!tickets) return {};
