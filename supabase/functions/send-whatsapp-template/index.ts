@@ -315,10 +315,12 @@ Deno.serve(async (req) => {
 
     // Save HSM message to whatsapp_messages for conversation history
     // Find or create conversation for this phone
+    // Find or create conversation for this phone (search all variants)
+    const phoneLookupVariants = phoneVariants(normalizedPhone);
     let { data: existingConv } = await supabase
       .from("whatsapp_conversations")
       .select("id")
-      .eq("contact_phone", normalizedPhone)
+      .in("contact_phone", phoneLookupVariants)
       .order("last_message_at", { ascending: false })
       .limit(1)
       .single();
