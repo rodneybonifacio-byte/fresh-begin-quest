@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { normalizeBrazilianPhone, phoneVariants } from "../_shared/normalize-phone.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
