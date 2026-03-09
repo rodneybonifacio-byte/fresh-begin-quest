@@ -138,18 +138,36 @@ async function fetchEmissoesEmTransito(token: string): Promise<EmissaoEmTransito
   return data.data || [];
 }
 
-function isToday(dateString: string): boolean {
+function isAtrasado(dateString: string): boolean {
   if (!dateString) return false;
   
   try {
-    const hoje = new Date();
     const dataPrevisao = new Date(dateString);
+    if (isNaN(dataPrevisao.getTime())) return false;
+
+    // Usar horário de Brasília (UTC-3)
+    const agoraBrasilia = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
     
-    return (
-      hoje.getFullYear() === dataPrevisao.getFullYear() &&
-      hoje.getMonth() === dataPrevisao.getMonth() &&
-      hoje.getDate() === dataPrevisao.getDate()
-    );
+    const hojeDia = new Date(agoraBrasilia);
+    hojeDia.setHours(0, 0, 0, 0);
+    
+    const previsaoDia = new Date(dataPrevisao);
+    previsaoDia.setHours(0, 0, 0, 0);
+    
+    // Se a previsão já passou (dias anteriores), é atraso
+    if (hojeDia > previsaoDia) {
+      return true;
+    }
+    
+    // Se hoje É o dia da previsão e já passou das 16:05, é atraso
+    if (hojeDia.getTime() === previsaoDia.getTime()) {
+      const hora = agoraBrasilia.getHours();
+      const minuto = agoraBrasilia.getMinutes();
+      return (hora > 16) || (hora === 16 && minuto >= 5);
+    }
+    
+    // Previsão ainda é no futuro
+    return false;
   } catch {
     return false;
   }
