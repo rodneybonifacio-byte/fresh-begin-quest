@@ -30,6 +30,7 @@ const CrmPipelineKanban = ({ onOpenConversation }: { onOpenConversation?: (conve
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const [pipelineSearch, setPipelineSearch] = useState('');
 
   const activePipeline = CATEGORY_PIPELINES.find(p => p.key === selectedCategory) || CATEGORY_PIPELINES[0];
 
