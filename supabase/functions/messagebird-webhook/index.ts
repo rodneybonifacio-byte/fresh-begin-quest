@@ -293,12 +293,13 @@ serve(async (req) => {
     }
     console.log("📡 Canal resolvido:", channel?.name || "nenhum");
 
-    // Buscar ou criar conversa
+    // Buscar ou criar conversa — buscar por todas as variantes do telefone
     const normalizedPhone = normalizedPhoneForLookup;
+    const variants = phoneVariants(normalizedPhone);
     let { data: conversation, error: convError } = await supabase
       .from("whatsapp_conversations")
       .select("*")
-      .eq("contact_phone", normalizedPhone)
+      .in("contact_phone", variants)
       .order("created_at", { ascending: false })
       .limit(1)
       .single();
