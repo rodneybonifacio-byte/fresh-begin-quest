@@ -78,6 +78,26 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
     loadTemplateBodies();
   }, []);
 
+  // Load pipeline data for tracking code search
+  useEffect(() => {
+    const loadPipelineSearch = async () => {
+      const { data } = await supabase
+        .from('ai_support_pipeline')
+        .select('conversation_id, subject, description')
+        .not('conversation_id', 'is', null);
+      if (data) {
+        const map: Record<string, string> = {};
+        data.forEach((t: any) => {
+          if (t.conversation_id) {
+            map[t.conversation_id] = [t.subject || '', t.description || ''].join(' ').toLowerCase();
+          }
+        });
+        setPipelineSearchData(map);
+      }
+    };
+    loadPipelineSearch();
+  }, []);
+
   // Load closed ticket conversation IDs
   const loadClosedConversationIds = useCallback(async () => {
     const { data } = await supabase
