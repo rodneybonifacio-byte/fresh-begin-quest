@@ -138,18 +138,36 @@ async function fetchEmissoesEmTransito(token: string): Promise<EmissaoEmTransito
   return data.data || [];
 }
 
-function isToday(dateString: string): boolean {
+function isAtrasado(dateString: string): boolean {
   if (!dateString) return false;
   
   try {
-    const hoje = new Date();
     const dataPrevisao = new Date(dateString);
+    if (isNaN(dataPrevisao.getTime())) return false;
+
+    // Usar horário de Brasília (UTC-3)
+    const agoraBrasilia = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
     
-    return (
-      hoje.getFullYear() === dataPrevisao.getFullYear() &&
-      hoje.getMonth() === dataPrevisao.getMonth() &&
-      hoje.getDate() === dataPrevisao.getDate()
-    );
+    const hojeDia = new Date(agoraBrasilia);
+    hojeDia.setHours(0, 0, 0, 0);
+    
+    const previsaoDia = new Date(dataPrevisao);
+    previsaoDia.setHours(0, 0, 0, 0);
+    
+    // Se a previsão já passou (dias anteriores), é atraso
+    if (hojeDia > previsaoDia) {
+      return true;
+    }
+    
+    // Se hoje É o dia da previsão e já passou das 16:05, é atraso
+    if (hojeDia.getTime() === previsaoDia.getTime()) {
+      const hora = agoraBrasilia.getHours();
+      const minuto = agoraBrasilia.getMinutes();
+      return (hora > 16) || (hora === 16 && minuto >= 5);
+    }
+    
+    // Previsão ainda é no futuro
+    return false;
   } catch {
     return false;
   }
@@ -214,11 +232,11 @@ Deno.serve(async (req: Request) => {
     const emissoesEmTransito = await fetchEmissoesEmTransito(token);
     console.log(`Total de emissões em trânsito: ${emissoesEmTransito.length}`);
 
-    // Filtrar emissões com data prevista = hoje
+    // Filtrar emissões atrasadas (previsão passou OU hoje após 16:05)
     const emissoesParaAvisar = emissoesEmTransito.filter(emissao => 
-      isToday(emissao.dataPrevisaoEntrega)
+      isAtrasado(emissao.dataPrevisaoEntrega)
     );
-    console.log(`Emissões com data prevista hoje: ${emissoesParaAvisar.length}`);
+    console.log(`Emissões atrasadas para notificar: ${emissoesParaAvisar.length}`);
 
     // Enviar webhooks
     let enviados = 0;
