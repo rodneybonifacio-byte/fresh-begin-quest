@@ -70,6 +70,7 @@ const systemFieldsByTrigger: Record<string, { value: string; label: string; desc
     { value: 'link_avaliacao', label: 'Link de Avaliação', description: 'URL para avaliar o envio' },
   ],
   atraso: [
+    { value: 'header_image_url', label: 'Imagem do Header', description: 'Imagem fixa de aviso de atraso' },
     { value: 'nome_destinatario', label: 'Nome do Destinatário', description: 'Nome do destinatário' },
     { value: 'codigo_rastreio', label: 'Código de Rastreio', description: 'Código do objeto' },
     { value: 'nome_remetente', label: 'Nome do Remetente', description: 'Nome de quem enviou' },
