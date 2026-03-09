@@ -177,11 +177,12 @@ serve(async (req) => {
 
     let contactName = cleanDisplayName || normalizedPhoneForLookup;
 
-    // 1. Buscar conversa existente
+    // 1. Buscar conversa existente (todas as variantes do telefone)
+    const lookupVariants = phoneVariants(normalizedPhoneForLookup);
     const { data: existingConv } = await supabase
       .from("whatsapp_conversations")
       .select("contact_name, cliente_id")
-      .eq("contact_phone", normalizedPhoneForLookup)
+      .in("contact_phone", lookupVariants)
       .order("created_at", { ascending: false })
       .limit(1)
       .single();
