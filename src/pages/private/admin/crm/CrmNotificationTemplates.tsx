@@ -70,6 +70,7 @@ const systemFieldsByTrigger: Record<string, { value: string; label: string; desc
     { value: 'link_avaliacao', label: 'Link de Avaliação', description: 'URL para avaliar o envio' },
   ],
   atraso: [
+    { value: 'header_image_url', label: 'Imagem do Header', description: 'Imagem fixa de aviso de atraso' },
     { value: 'nome_destinatario', label: 'Nome do Destinatário', description: 'Nome do destinatário' },
     { value: 'codigo_rastreio', label: 'Código de Rastreio', description: 'Código do objeto' },
     { value: 'nome_remetente', label: 'Nome do Remetente', description: 'Nome de quem enviou' },
@@ -796,6 +797,7 @@ const CrmNotificationTemplates = () => {
                               </div>
                               {vars.map((v: any) => {
                                 const globalIdx = currentVars.indexOf(v);
+                                const isMediaImage = v.media_type === 'image';
                                 return (
                                   <div key={globalIdx} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-background">
                                     <div className={`flex-shrink-0 text-xs font-mono font-bold px-2.5 py-1 rounded ${groupInfo?.color || `${colors.bg} ${colors.text} ${colors.border}`}`}>
@@ -804,20 +806,29 @@ const CrmNotificationTemplates = () => {
                                     <div className="flex items-center text-muted-foreground">
                                       <Zap className="w-3.5 h-3.5" />
                                     </div>
-                                    <select
-                                      value={v.system_field || ''}
-                                      onChange={(e) => updateVariableMapping(template.id, globalIdx, e.target.value)}
-                                      className={`flex-1 px-3 py-2 text-sm rounded-lg border bg-background text-foreground focus:ring-2 focus:ring-primary/30 outline-none ${
-                                        v.system_field ? 'border-emerald-500/30' : 'border-amber-500/30'
-                                      }`}
-                                    >
-                                      <option value="">-- Selecione o campo --</option>
-                                      {availableFields.map(field => (
-                                        <option key={field.value} value={field.value}>
-                                          {field.label} — {field.description}
-                                        </option>
-                                      ))}
-                                    </select>
+                                    {isMediaImage ? (
+                                      <div className="flex-1 flex items-center gap-2 px-3 py-2 text-sm rounded-lg border border-emerald-500/30 bg-emerald-500/5">
+                                        <span className="text-emerald-600 font-medium">🖼️ Imagem fixa configurada</span>
+                                        <span className="text-muted-foreground text-xs truncate max-w-[200px]" title={v.system_field || ''}>
+                                          {v.system_field ? `(${v.system_field})` : 'Não configurada'}
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <select
+                                        value={v.system_field || ''}
+                                        onChange={(e) => updateVariableMapping(template.id, globalIdx, e.target.value)}
+                                        className={`flex-1 px-3 py-2 text-sm rounded-lg border bg-background text-foreground focus:ring-2 focus:ring-primary/30 outline-none ${
+                                          v.system_field ? 'border-emerald-500/30' : 'border-amber-500/30'
+                                        }`}
+                                      >
+                                        <option value="">-- Selecione o campo --</option>
+                                        {availableFields.filter(f => f.value !== 'header_image_url').map(field => (
+                                          <option key={field.value} value={field.value}>
+                                            {field.label} — {field.description}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    )}
                                     {v.system_field ? (
                                       <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
                                     ) : (
