@@ -55,6 +55,7 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
   const [templateBodies, setTemplateBodies] = useState<Record<string, { body: string; header?: string; footer?: string; buttons?: { text: string }[]; variables?: any[] }>>({});
   const [conversationTab, setConversationTab] = useState<'sem_atendimento' | 'ia' | 'fechados'>('sem_atendimento');
   const [closedConversationIds, setClosedConversationIds] = useState<Set<string>>(new Set());
+  const [pipelineSearchData, setPipelineSearchData] = useState<Record<string, string>>({});
 
   // Load template bodies for HSM rendering
   useEffect(() => {
@@ -75,6 +76,26 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
       }
     };
     loadTemplateBodies();
+  }, []);
+
+  // Load pipeline data for tracking code search
+  useEffect(() => {
+    const loadPipelineSearch = async () => {
+      const { data } = await supabase
+        .from('ai_support_pipeline')
+        .select('conversation_id, subject, description')
+        .not('conversation_id', 'is', null);
+      if (data) {
+        const map: Record<string, string> = {};
+        data.forEach((t: any) => {
+          if (t.conversation_id) {
+            map[t.conversation_id] = [t.subject || '', t.description || ''].join(' ').toLowerCase();
+          }
+        });
+        setPipelineSearchData(map);
+      }
+    };
+    loadPipelineSearch();
   }, []);
 
   // Load closed ticket conversation IDs
@@ -424,7 +445,8 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
     const matchesSearch =
       (c.contact_name || '').toLowerCase().includes(term) ||
       c.contact_phone.includes(term) ||
-      (c.last_message_preview || '').toLowerCase().includes(term);
+      (c.last_message_preview || '').toLowerCase().includes(term) ||
+      (pipelineSearchData[c.id] || '').includes(term);
     if (!matchesSearch) return false;
 
     const isClosed = closedConversationIds.has(c.id);
