@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { aiManagementQuery, aiManagementUpdate } from '@/services/aiManagementApi';
 import { Zap, Search } from 'lucide-react';
