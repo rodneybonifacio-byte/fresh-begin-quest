@@ -8,6 +8,29 @@ const corsHeaders = {
 
 const BASE_API_URL = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br";
 
+async function fetchDataPrevisao(token: string, codigoObjeto: string): Promise<string> {
+  try {
+    const response = await fetch(`${BASE_API_URL}/rastrear?codigo=${codigoObjeto}`, {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    });
+    if (!response.ok) return "";
+    const result = await response.json();
+    const previsao = result?.data?.dataPrevisaoEntrega || "";
+    if (!previsao) return "";
+    // Formatar a data
+    try {
+      const d = new Date(previsao);
+      if (isNaN(d.getTime())) return previsao;
+      return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+    } catch {
+      return previsao;
+    }
+  } catch (err) {
+    console.warn(`⚠️ Erro ao buscar rastreio de ${codigoObjeto}:`, err);
+    return "";
+  }
+}
+
 function formatFullName(fullName: string): string {
   const name = (fullName || "").trim();
   if (!name) return "";
