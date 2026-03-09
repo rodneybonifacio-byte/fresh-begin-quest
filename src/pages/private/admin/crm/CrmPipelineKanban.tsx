@@ -129,37 +129,51 @@ const CrmPipelineKanban = ({ onOpenConversation }: { onOpenConversation?: (conve
 
   return (
     <div className="h-[calc(100vh-160px)] flex flex-col">
-      {/* Category tabs */}
-      <div className="flex items-center gap-1.5 mb-3 overflow-x-auto pb-1">
-        {CATEGORY_PIPELINES.map(cat => {
-          const isActive = selectedCategory === cat.key;
-          const count = counts[cat.key] || 0;
-          const CatIcon = cat.icon;
-          return (
-            <button
-              key={cat.key}
-              onClick={() => setSelectedCategory(cat.key)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
-                isActive
-                  ? `${cat.color} bg-background border border-border shadow-sm`
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-              }`}
-            >
-              <CatIcon className="w-3.5 h-3.5" />
-              {cat.label}
-              {count > 0 && (
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                  isActive ? 'bg-foreground/10' : 'bg-muted'
-                }`}>
-                  {count}
-                </span>
-              )}
-            </button>
-          );
-        })}
-        <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
-          <Zap className="w-3.5 h-3.5" />
-          Total: <span className="font-bold text-foreground">{tickets?.length || 0}</span>
+      {/* Category tabs + Search */}
+      <div className="flex flex-col gap-2 mb-3">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+          {CATEGORY_PIPELINES.map(cat => {
+            const isActive = selectedCategory === cat.key;
+            const count = counts[cat.key] || 0;
+            const CatIcon = cat.icon;
+            return (
+              <button
+                key={cat.key}
+                onClick={() => setSelectedCategory(cat.key)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+                  isActive
+                    ? `${cat.color} bg-background border border-border shadow-sm`
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                }`}
+              >
+                <CatIcon className="w-3.5 h-3.5" />
+                {cat.label}
+                {count > 0 && (
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                    isActive ? 'bg-foreground/10' : 'bg-muted'
+                  }`}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+          <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
+            <Zap className="w-3.5 h-3.5" />
+            Total: <span className="font-bold text-foreground">{tickets?.length || 0}</span>
+          </div>
+        </div>
+
+        {/* Search bar */}
+        <div className="relative max-w-sm">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Buscar por código, nome, telefone..."
+            value={pipelineSearch}
+            onChange={(e) => setPipelineSearch(e.target.value)}
+            className="w-full pl-8 pr-3 py-1.5 text-xs bg-muted rounded-lg border-none outline-none text-foreground placeholder:text-muted-foreground"
+          />
         </div>
       </div>
 
