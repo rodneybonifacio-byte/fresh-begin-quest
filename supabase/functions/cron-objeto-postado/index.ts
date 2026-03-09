@@ -99,32 +99,21 @@ Deno.serve(async (req: Request) => {
 
     console.log(`📦 ${allEmissoes.length} emissões com status POSTADO`);
 
-    // Filtrar últimas 6 horas
-    const horasAtras = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
-    const emissoesFiltradas = allEmissoes.filter((e: any) => {
-      // Usar data de postagem se disponível, senão data de criação
-      const dataRef = e.dataPostagem || e.criadoEm || e.createdAt || "";
-      return dataRef >= horasAtras;
-    });
-
-    console.log(`⏰ ${emissoesFiltradas.length} emissões recentes`);
-
-    if (emissoesFiltradas.length === 0) {
+    if (allEmissoes.length === 0) {
       return new Response(
-        JSON.stringify({ success: true, notificados: 0, message: "Nenhuma emissão POSTADO recente" }),
+        JSON.stringify({ success: true, notificados: 0, message: "Nenhuma emissão POSTADO encontrada" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Deduplicar: verificar quais já foram notificados com trigger objeto_postado
-    const codigosObjetos = emissoesFiltradas.map((e: any) => e.codigoObjeto).filter(Boolean);
+    // Deduplicar: verificar quais já foram notificados com trigger objeto_postado (sem limite de tempo)
+    const codigosObjetos = allEmissoes.map((e: any) => e.codigoObjeto).filter(Boolean);
 
     const { data: hsmMessages } = await supabase
       .from("whatsapp_messages")
       .select("metadata")
       .eq("content_type", "hsm")
-      .eq("direction", "outbound")
-      .gte("created_at", horasAtras);
+      .eq("direction", "outbound");
 
     const codigosJaNotificados = new Set<string>();
     if (hsmMessages) {
@@ -138,7 +127,7 @@ Deno.serve(async (req: Request) => {
 
     console.log(`🔍 ${codigosJaNotificados.size} já notificados como objeto_postado`);
 
-    const emissoesPendentes = emissoesFiltradas.filter(
+    const emissoesPendentes = allEmissoes.filter(
       (e: any) => e.codigoObjeto && !codigosJaNotificados.has(e.codigoObjeto)
     );
 
@@ -208,7 +197,7 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({
         success: true,
         total: allEmissoes.length,
-        filtradas: emissoesFiltradas.length,
+        pendentes: emissoesPendentes.length,
         ja_notificadas: codigosJaNotificados.size,
         notificados_agora: notificados,
         erros: erros.length > 0 ? erros : undefined,
