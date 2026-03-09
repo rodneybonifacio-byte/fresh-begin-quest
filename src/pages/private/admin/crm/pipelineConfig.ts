@@ -3,7 +3,7 @@ import {
   Search, MapPin, Truck, Package, FileText, CreditCard,
   ThumbsUp, Ban, ShieldCheck, HelpCircle, Star, Heart,
   Flame, AlertTriangle, Circle, RotateCcw, Send,
-  Eye, UserCheck, XCircle, CheckCheck
+  Eye, UserCheck, XCircle, CheckCheck, PackageCheck, Navigation
 } from 'lucide-react';
 
 export interface PipelineStage {
@@ -43,10 +43,13 @@ export const CATEGORY_PIPELINES: CategoryPipeline[] = [
     icon: MapPin,
     color: 'text-blue-500',
     stages: [
-      { key: 'verificando', label: 'Verificando', icon: Search, color: 'text-yellow-500', bg: 'bg-yellow-500/10', border: 'border-yellow-500/30', count_bg: 'bg-yellow-500' },
-      { key: 'localizado', label: 'Localizado', icon: MapPin, color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/30', count_bg: 'bg-blue-500' },
-      { key: 'em_transito', label: 'Em Trânsito', icon: Truck, color: 'text-purple-500', bg: 'bg-purple-500/10', border: 'border-purple-500/30', count_bg: 'bg-purple-500' },
-      { key: 'entregue', label: 'Entregue', icon: Package, color: 'text-green-500', bg: 'bg-green-500/10', border: 'border-green-500/30', count_bg: 'bg-green-500' },
+      { key: 'pre_postado', label: 'Pré Postado', icon: Package, color: 'text-slate-500', bg: 'bg-slate-500/10', border: 'border-slate-500/30', count_bg: 'bg-slate-500' },
+      { key: 'postado', label: 'Postado', icon: Send, color: 'text-indigo-500', bg: 'bg-indigo-500/10', border: 'border-indigo-500/30', count_bg: 'bg-indigo-500' },
+      { key: 'em_transito', label: 'Em Trânsito', icon: Truck, color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/30', count_bg: 'bg-blue-500' },
+      { key: 'saiu_para_entrega', label: 'Saiu p/ Entrega', icon: Navigation, color: 'text-cyan-500', bg: 'bg-cyan-500/10', border: 'border-cyan-500/30', count_bg: 'bg-cyan-500' },
+      { key: 'aguardando_retirada', label: 'Aguard. Retirada', icon: MapPin, color: 'text-orange-500', bg: 'bg-orange-500/10', border: 'border-orange-500/30', count_bg: 'bg-orange-500' },
+      { key: 'atrasado', label: 'Atrasado', icon: AlertTriangle, color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/30', count_bg: 'bg-red-500' },
+      { key: 'entregue', label: 'Entregue', icon: PackageCheck, color: 'text-green-500', bg: 'bg-green-500/10', border: 'border-green-500/30', count_bg: 'bg-green-500' },
     ],
   },
   {
