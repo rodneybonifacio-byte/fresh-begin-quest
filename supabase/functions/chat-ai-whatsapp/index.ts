@@ -2954,6 +2954,10 @@ async function detectTicketResolution(supabase: any, conversationId: string, aiR
       "resolvido", "solucionado", "concluído", "foi entregue", "entregue com sucesso",
       "estorno realizado", "problema corrigido", "manifestação registrada",
       "já foi entregue", "entregue ao destinatário", "encomenda entregue",
+      // Despedidas claras — encerramento imediato (evita cron duplicar)
+      "vou encerrar o atendimento", "encerrar o atendimento por aqui",
+      "estou por aqui", "é só chamar", "só chamar",
+      "qualquer ajuda com seus envios", "ajuda com seus envios",
     ];
     
     // Padrões SOFT → marca como "pending_close" (fecha se cliente não responder em 2h)
