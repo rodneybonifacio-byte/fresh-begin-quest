@@ -445,7 +445,8 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
     const matchesSearch =
       (c.contact_name || '').toLowerCase().includes(term) ||
       c.contact_phone.includes(term) ||
-      (c.last_message_preview || '').toLowerCase().includes(term);
+      (c.last_message_preview || '').toLowerCase().includes(term) ||
+      (pipelineSearchData[c.id] || '').includes(term);
     if (!matchesSearch) return false;
 
     const isClosed = closedConversationIds.has(c.id);
