@@ -158,31 +158,42 @@ function isToday(dateString: string): boolean {
 async function enviarWebhookAviso(emissao: EmissaoEmTransito): Promise<boolean> {
   try {
     const nomeRemetente = await resolverNomeRemetente(emissao);
-    const payload = {
-      telefone_destinatario: emissao.destinatario?.celular || '',
-      nome_destinatario: emissao.destinatario?.nome || '',
-      nome_remetente: nomeRemetente,
-      codigo_objeto: emissao.codigoObjeto || '',
-      data_prevista: emissao.dataPrevisaoEntrega || '',
-    };
-
-    console.log(`Enviando webhook para ${emissao.codigoObjeto}:`, payload);
-
-    const response = await fetch(WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      console.error(`Falha ao enviar webhook para ${emissao.codigoObjeto}: ${response.status}`);
+    const celular = emissao.destinatario?.celular || '';
+    
+    if (!celular) {
+      console.warn(`Sem celular para ${emissao.codigoObjeto}, pulando...`);
       return false;
     }
 
-    console.log(`Webhook enviado com sucesso para ${emissao.codigoObjeto}`);
+    // Usar send-whatsapp-template para enviar via MessageBird com imagem no header
+    const response = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp-template`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseServiceKey}`,
+      },
+      body: JSON.stringify({
+        trigger_key: 'atraso',
+        phone: celular,
+        variables: {
+          nome_destinatario: emissao.destinatario?.nome || '',
+          codigo_rastreio: emissao.codigoObjeto || '',
+          nome_remetente: nomeRemetente,
+          header_image_url: HEADER_IMAGE_URL,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error(`Falha ao enviar template atraso para ${emissao.codigoObjeto}: ${response.status} - ${errText}`);
+      return false;
+    }
+
+    console.log(`✅ Template atraso enviado com sucesso para ${emissao.codigoObjeto}`);
     return true;
   } catch (error) {
-    console.error(`Erro ao enviar webhook para ${emissao.codigoObjeto}:`, error);
+    console.error(`Erro ao enviar template atraso para ${emissao.codigoObjeto}:`, error);
     return false;
   }
 }
