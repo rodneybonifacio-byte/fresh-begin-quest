@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { normalizeBrazilianPhone, phoneVariants } from "../_shared/normalize-phone.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -78,11 +79,8 @@ Deno.serve(async (req) => {
       accessKey = def?.access_key || Deno.env.get("MESSAGEBIRD_ACCESS_KEY")!;
     }
 
-    // Normalize phone
-    let normalizedPhone = phone.replace(/\D/g, "");
-    if (!normalizedPhone.startsWith("55")) {
-      normalizedPhone = "55" + normalizedPhone;
-    }
+    // Normalize phone using shared function
+    const normalizedPhone = normalizeBrazilianPhone(phone);
 
     // Build template components with variables grouped by component_type
     const templateVars = (template.variables || []) as {
@@ -317,10 +315,12 @@ Deno.serve(async (req) => {
 
     // Save HSM message to whatsapp_messages for conversation history
     // Find or create conversation for this phone
+    // Find or create conversation for this phone (search all variants)
+    const phoneLookupVariants = phoneVariants(normalizedPhone);
     let { data: existingConv } = await supabase
       .from("whatsapp_conversations")
       .select("id")
-      .eq("contact_phone", normalizedPhone)
+      .in("contact_phone", phoneLookupVariants)
       .order("last_message_at", { ascending: false })
       .limit(1)
       .single();

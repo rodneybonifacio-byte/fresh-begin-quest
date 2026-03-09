@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { resolveChannelByMessageBirdId } from "../_shared/channel-resolver.ts";
+import { normalizeBrazilianPhone, phoneVariants } from "../_shared/normalize-phone.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -165,7 +166,7 @@ serve(async (req) => {
     }
 
     // === RESOLVER NOME REAL DO CLIENTE ===
-    const normalizedPhoneForLookup = contactPhone.replace(/\D/g, "");
+    const normalizedPhoneForLookup = normalizeBrazilianPhone(contactPhone);
 
     // Limpar displayName do WhatsApp (remover "NoLastNameEntered" etc)
     let cleanDisplayName = whatsappDisplayName;
@@ -176,11 +177,12 @@ serve(async (req) => {
 
     let contactName = cleanDisplayName || normalizedPhoneForLookup;
 
-    // 1. Buscar conversa existente
+    // 1. Buscar conversa existente (todas as variantes do telefone)
+    const lookupVariants = phoneVariants(normalizedPhoneForLookup);
     const { data: existingConv } = await supabase
       .from("whatsapp_conversations")
       .select("contact_name, cliente_id")
-      .eq("contact_phone", normalizedPhoneForLookup)
+      .in("contact_phone", lookupVariants)
       .order("created_at", { ascending: false })
       .limit(1)
       .single();
@@ -292,12 +294,13 @@ serve(async (req) => {
     }
     console.log("📡 Canal resolvido:", channel?.name || "nenhum");
 
-    // Buscar ou criar conversa
+    // Buscar ou criar conversa — buscar por todas as variantes do telefone
     const normalizedPhone = normalizedPhoneForLookup;
+    const variants = phoneVariants(normalizedPhone);
     let { data: conversation, error: convError } = await supabase
       .from("whatsapp_conversations")
       .select("*")
-      .eq("contact_phone", normalizedPhone)
+      .in("contact_phone", variants)
       .order("created_at", { ascending: false })
       .limit(1)
       .single();
