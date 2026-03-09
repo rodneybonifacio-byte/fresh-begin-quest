@@ -166,7 +166,7 @@ serve(async (req) => {
     }
 
     // === RESOLVER NOME REAL DO CLIENTE ===
-    const normalizedPhoneForLookup = contactPhone.replace(/\D/g, "");
+    const normalizedPhoneForLookup = normalizeBrazilianPhone(contactPhone);
 
     // Limpar displayName do WhatsApp (remover "NoLastNameEntered" etc)
     let cleanDisplayName = whatsappDisplayName;
