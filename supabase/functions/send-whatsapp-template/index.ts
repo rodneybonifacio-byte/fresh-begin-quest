@@ -422,12 +422,12 @@ Deno.serve(async (req) => {
 
       // === Pipeline automático: criar/atualizar card baseado no trigger ===
       const triggerToPipelineStage: Record<string, { category: string; status: string }> = {
-        etiqueta_criada: { category: "rastreio", status: "verificando" },
-        objeto_postado: { category: "rastreio", status: "em_transito" },
-        saiu_para_entrega: { category: "rastreio", status: "em_transito" },
-        atraso: { category: "rastreio", status: "localizado" },
-        aguardando_retirada: { category: "rastreio", status: "localizado" },
-        retirada_agencia: { category: "rastreio", status: "localizado" },
+        etiqueta_criada: { category: "rastreio", status: "pre_postado" },
+        objeto_postado: { category: "rastreio", status: "postado" },
+        saiu_para_entrega: { category: "rastreio", status: "saiu_para_entrega" },
+        atraso: { category: "rastreio", status: "atrasado" },
+        aguardando_retirada: { category: "rastreio", status: "aguardando_retirada" },
+        retirada_agencia: { category: "rastreio", status: "aguardando_retirada" },
         entregue: { category: "rastreio", status: "entregue" },
         avaliacao: { category: "elogio", status: "recebido" },
       };
@@ -451,7 +451,8 @@ Deno.serve(async (req) => {
 
         if (existingCard) {
           // Update existing card to new stage (only advance, don't go backwards)
-          const stageOrder = ["verificando", "localizado", "em_transito", "entregue"];
+          // Atrasado and aguardando_retirada can override em_transito (lateral moves allowed)
+          const stageOrder = ["pre_postado", "postado", "em_transito", "saiu_para_entrega", "aguardando_retirada", "atrasado", "entregue"];
           const currentIdx = stageOrder.indexOf(existingCard.status);
           const newIdx = stageOrder.indexOf(pipelineMapping.status);
 

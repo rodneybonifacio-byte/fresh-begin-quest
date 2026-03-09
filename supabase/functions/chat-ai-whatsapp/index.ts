@@ -2852,7 +2852,7 @@ async function ensureTicketOpen(supabase: any, conversationId: string, contactPh
 
 const PIPELINE_FLOWS: Record<string, string[]> = {
   reclamacao: ["aberto", "em_andamento", "aguardando_cliente", "resolvido", "fechado"],
-  rastreio: ["verificando", "localizado", "em_transito", "entregue"],
+  rastreio: ["pre_postado", "postado", "em_transito", "saiu_para_entrega", "aguardando_retirada", "atrasado", "entregue"],
   cancelamento: ["aberto", "em_andamento", "aguardando_cliente", "resolvido", "fechado"],
   financeiro: ["aberto", "em_andamento", "aguardando_cliente", "resolvido", "fechado"],
   operacional: ["aberto", "em_andamento", "resolvido", "fechado"],
@@ -2890,11 +2890,17 @@ async function progressPipelineStatus(supabase: any, conversationId: string, use
     let progressReason = "";
 
     if (category === "rastreio") {
-      // Pipeline de rastreio usa estágios logísticos: verificando → localizado → em_transito → entregue
-      if (pipeline.status === "verificando" && (lowerReply.includes("rastr") || lowerReply.includes("verific") || lowerReply.includes("consult") || lowerReply.includes("localiz"))) {
-        shouldProgress = true; newStatus = "localizado"; progressReason = "Pacote localizado pela IA";
-      } else if ((pipeline.status === "verificando" || pipeline.status === "localizado") && (lowerReply.includes("em trânsito") || lowerReply.includes("em transito") || lowerReply.includes("a caminho"))) {
+      // Pipeline de rastreio: pre_postado → postado → em_transito → saiu_para_entrega → aguardando_retirada → atrasado → entregue
+      if (pipeline.status === "pre_postado" && (lowerReply.includes("postado") || lowerReply.includes("postagem"))) {
+        shouldProgress = true; newStatus = "postado"; progressReason = "Objeto postado";
+      } else if ((pipeline.status === "pre_postado" || pipeline.status === "postado") && (lowerReply.includes("em trânsito") || lowerReply.includes("em transito") || lowerReply.includes("a caminho"))) {
         shouldProgress = true; newStatus = "em_transito"; progressReason = "Pacote em trânsito";
+      } else if (lowerReply.includes("saiu para entrega") || lowerReply.includes("saiu p/ entrega")) {
+        shouldProgress = true; newStatus = "saiu_para_entrega"; progressReason = "Saiu para entrega";
+      } else if (lowerReply.includes("aguardando retirada") || lowerReply.includes("retirada")) {
+        shouldProgress = true; newStatus = "aguardando_retirada"; progressReason = "Aguardando retirada";
+      } else if (lowerReply.includes("atraso") || lowerReply.includes("atrasado")) {
+        shouldProgress = true; newStatus = "atrasado"; progressReason = "Atraso detectado";
       } else if ((lowerReply.includes("entregue") || lowerReply.includes("entrega confirmada") || lowerReply.includes("foi entregue"))) {
         shouldProgress = true; newStatus = "entregue"; progressReason = "Entrega confirmada";
       }
