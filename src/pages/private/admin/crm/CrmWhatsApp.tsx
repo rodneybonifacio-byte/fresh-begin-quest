@@ -707,11 +707,37 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
                                   )}
                                   {rendered.buttons && rendered.buttons.length > 0 && (
                                     <div className="border-t border-white/20 pt-1.5 mt-1.5 flex flex-col gap-1">
-                                      {rendered.buttons.map((btn, bi) => (
-                                        <div key={bi} className="text-center text-xs font-medium text-blue-300 py-0.5">
-                                          {btn.text}
-                                        </div>
-                                      ))}
+                                      {rendered.buttons.map((btn: any, bi: number) => {
+                                        // Resolve URL with variables
+                                        let btnUrl = btn.url || '';
+                                        if (btnUrl && msg.metadata?.variables) {
+                                          const vars = msg.metadata.variables as Record<string, string>;
+                                          // Replace {{1}}, {{2}} etc with variable values
+                                          btnUrl = btnUrl.replace(/\{\{(\d+)\}\}/g, (_: string, idx: string) => {
+                                            // Button variables typically map to codigo_rastreio
+                                            return vars.codigo_rastreio || vars[`var_${idx}`] || '';
+                                          });
+                                        }
+                                        
+                                        if (btn.type === 'URL' && btnUrl) {
+                                          return (
+                                            <a
+                                              key={bi}
+                                              href={btnUrl}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-center text-xs font-medium text-blue-300 hover:text-blue-200 py-1 cursor-pointer flex items-center justify-center gap-1"
+                                            >
+                                              🔗 {btn.text}
+                                            </a>
+                                          );
+                                        }
+                                        return (
+                                          <div key={bi} className="text-center text-xs font-medium text-blue-300 py-0.5">
+                                            {btn.text}
+                                          </div>
+                                        );
+                                      })}
                                     </div>
                                   )}
                                 </div>
