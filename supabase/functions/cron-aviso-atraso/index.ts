@@ -7,7 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const WEBHOOK_URL = 'https://api.datacrazy.io/v1/crm/api/crm/flows/webhooks/ab52ed88-dd1c-4bd2-a198-d1845e59e058/181d8bbe-a92e-43f1-9660-b2e3acf2632b';
+const HEADER_IMAGE_URL = 'https://xikvfybxthvqhpjbrszp.supabase.co/storage/v1/object/public/public-assets/aviso-atraso-header.png';
 
 // Inicializar Supabase para resolver nomes de remetentes
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
