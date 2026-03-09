@@ -240,6 +240,7 @@ export const ContactIntelligencePanel = ({
 
     // Phase 2: Use tracking codes to find shipments and client via emissoes_externas
     let clienteId: string | null = null;
+    const allClienteIds = new Set<string>();
     let emissaoShipments: ShipmentRecord[] = [];
     let emissaoTotal = 0;
     let totalGastoEmissoes = 0;
