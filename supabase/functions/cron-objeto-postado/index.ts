@@ -197,7 +197,7 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({
         success: true,
         total: allEmissoes.length,
-        filtradas: emissoesFiltradas.length,
+        pendentes: emissoesPendentes.length,
         ja_notificadas: codigosJaNotificados.size,
         notificados_agora: notificados,
         erros: erros.length > 0 ? erros : undefined,
