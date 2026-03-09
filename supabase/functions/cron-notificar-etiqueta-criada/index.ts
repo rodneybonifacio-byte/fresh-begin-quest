@@ -239,79 +239,152 @@ serve(async (req: Request) => {
     let notificados = 0;
     const erros: string[] = [];
 
-    // DEBUG: Log completo da primeira emissão para análise de campos
-    if (emissoesPendentes.length > 0) {
-      const sample = emissoesPendentes[0];
-      console.log("🔬 [DEBUG] Estrutura completa da emissão:", JSON.stringify(sample, null, 2));
-      console.log("🔬 [DEBUG] Chaves top-level:", Object.keys(sample));
-      console.log("🔬 [DEBUG] Destinatário keys:", Object.keys(sample.destinatario || {}));
-      console.log("🔬 [DEBUG] Remetente keys:", Object.keys(sample.remetente || {}));
-      console.log("🔬 [DEBUG] Cliente keys:", Object.keys(sample.cliente || {}));
+    // ═══════════════════════════════════════════════════════════
+    // AGRUPAMENTO: Agrupar emissões pelo mesmo celular+remetente
+    // quando criadas dentro de 10 minutos entre si
+    // ═══════════════════════════════════════════════════════════
+    
+    // Preparar dados de cada emissão pendente
+    const emissoesParsed = [];
+    for (const envio of emissoesPendentes) {
+      const destinatario = envio.destinatario || {};
+      const codigoRastreio = envio.codigoObjeto || "";
+      
+      let celular =
+        destinatario.celular ||
+        destinatario.telefone ||
+        envio.destinatarioCelular ||
+        envio.destinatario_celular ||
+        "";
+      celular = String(celular).replace(/\D/g, "");
+      if (!celular) {
+        console.log(`⏭️ ${codigoRastreio}: sem celular do destinatário`);
+        erros.push(`${codigoRastreio}: celular vazio`);
+        continue;
+      }
+      if (!celular.startsWith("55")) celular = "55" + celular;
+
+      const nomeDestinatario = formatFullName(
+        destinatario.nome || envio.destinatarioNome || "Cliente"
+      );
+      
+      const remetenteId = envio.remetenteId || envio.remetente_id || "";
+      const dataCriacao = new Date(envio.criadoEm || envio.createdAt || envio.created_at || 0).getTime();
+
+      emissoesParsed.push({
+        envio,
+        celular,
+        nomeDestinatario,
+        remetenteId,
+        codigoRastreio,
+        dataCriacao,
+      });
     }
 
-    for (const envio of emissoesPendentes) {
+    // Agrupar por celular + remetenteId
+    const gruposMap = new Map<string, typeof emissoesParsed>();
+    for (const item of emissoesParsed) {
+      const key = `${item.celular}__${item.remetenteId}`;
+      if (!gruposMap.has(key)) gruposMap.set(key, []);
+      gruposMap.get(key)!.push(item);
+    }
+
+    console.log(`📦 ${emissoesParsed.length} emissões agrupadas em ${gruposMap.size} grupos`);
+
+    // Processar cada grupo
+    for (const [groupKey, items] of gruposMap) {
       try {
-        const destinatario = envio.destinatario || {};
-        const codigoRastreio = envio.codigoObjeto || "";
+        // Ordenar por data de criação
+        items.sort((a, b) => a.dataCriacao - b.dataCriacao);
 
-        // Extrair celular do destinatário
-        let celular =
-          destinatario.celular ||
-          destinatario.telefone ||
-          envio.destinatarioCelular ||
-          envio.destinatario_celular ||
-          "";
-        celular = String(celular).replace(/\D/g, "");
-        if (!celular) {
-          console.log(`⏭️ ${codigoRastreio}: sem celular do destinatário`);
-          erros.push(`${codigoRastreio}: celular vazio`);
-          continue;
-        }
-        if (!celular.startsWith("55")) celular = "55" + celular;
+        // Verificar se todas as emissões do grupo foram criadas dentro de 10 min
+        // da primeira à última
+        const INTERVALO_AGRUPAMENTO_MS = 10 * 60 * 1000; // 10 minutos
+        const primeiraData = items[0].dataCriacao;
+        const ultimaData = items[items.length - 1].dataCriacao;
+        const dentroDoIntervalo = (ultimaData - primeiraData) <= INTERVALO_AGRUPAMENTO_MS;
 
-        // Nome destinatário
-        const nomeDestinatario = formatFullName(
-          destinatario.nome || envio.destinatarioNome || "Cliente"
-        );
+        if (dentroDoIntervalo && items.length > 1) {
+          // ═══ AGRUPADO: enviar UMA mensagem com todos os códigos ═══
+          const codigos = items.map(i => i.codigoRastreio);
+          const nomeDestinatario = items[0].nomeDestinatario;
+          const celular = items[0].celular;
+          const nomeRemetente = await resolverNomeRemetente(supabase, items[0].envio);
 
-        // Nome remetente — passa o envio inteiro para resolução completa
-        const nomeRemetente = await resolverNomeRemetente(supabase, envio);
+          // Concatenar códigos: "AN672758335BR, AN674525090BR"  
+          const codigosTexto = codigos.join(", ");
 
-        console.log(`📲 Notificando ${codigoRastreio}: ${celular} (${nomeDestinatario} / ${nomeRemetente})`);
+          console.log(`📲 [AGRUPADO] ${codigos.length} etiquetas para ${celular} (${nomeDestinatario} / ${nomeRemetente}): ${codigosTexto}`);
 
-        // Chamar send-whatsapp-template internamente
-        const templateRes = await fetch(
-          `${supabaseUrl}/functions/v1/send-whatsapp-template`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${serviceKey}`,
-            },
-            body: JSON.stringify({
-              trigger_key: "etiqueta_criada",
-              phone: celular,
-              variables: {
-                nome_destinatario: nomeDestinatario,
-                nome_remetente: nomeRemetente,
-                codigo_rastreio: codigoRastreio,
+          const templateRes = await fetch(
+            `${supabaseUrl}/functions/v1/send-whatsapp-template`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${serviceKey}`,
               },
-            }),
-          }
-        );
+              body: JSON.stringify({
+                trigger_key: "etiqueta_criada",
+                phone: celular,
+                variables: {
+                  nome_destinatario: nomeDestinatario,
+                  nome_remetente: nomeRemetente,
+                  codigo_rastreio: codigosTexto,
+                },
+              }),
+            }
+          );
 
-        if (templateRes.ok) {
-          notificados++;
-          console.log(`✅ ${codigoRastreio}: notificação enviada`);
+          if (templateRes.ok) {
+            notificados++;
+            console.log(`✅ [AGRUPADO] ${codigosTexto}: notificação única enviada (${codigos.length} códigos)`);
+          } else {
+            const errText = await templateRes.text();
+            console.error(`❌ [AGRUPADO] ${codigosTexto}: falha - ${templateRes.status}: ${errText.substring(0, 200)}`);
+            erros.push(`${codigosTexto}: template error ${templateRes.status}`);
+          }
         } else {
-          const errText = await templateRes.text();
-          console.error(`❌ ${codigoRastreio}: falha no template - ${templateRes.status}: ${errText.substring(0, 200)}`);
-          erros.push(`${codigoRastreio}: template error ${templateRes.status}`);
+          // ═══ INDIVIDUAL: intervalo > 10min ou apenas 1 item ═══
+          for (const item of items) {
+            const nomeRemetente = await resolverNomeRemetente(supabase, item.envio);
+
+            console.log(`📲 Notificando ${item.codigoRastreio}: ${item.celular} (${item.nomeDestinatario} / ${nomeRemetente})`);
+
+            const templateRes = await fetch(
+              `${supabaseUrl}/functions/v1/send-whatsapp-template`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${serviceKey}`,
+                },
+                body: JSON.stringify({
+                  trigger_key: "etiqueta_criada",
+                  phone: item.celular,
+                  variables: {
+                    nome_destinatario: item.nomeDestinatario,
+                    nome_remetente: nomeRemetente,
+                    codigo_rastreio: item.codigoRastreio,
+                  },
+                }),
+              }
+            );
+
+            if (templateRes.ok) {
+              notificados++;
+              console.log(`✅ ${item.codigoRastreio}: notificação enviada`);
+            } else {
+              const errText = await templateRes.text();
+              console.error(`❌ ${item.codigoRastreio}: falha - ${templateRes.status}: ${errText.substring(0, 200)}`);
+              erros.push(`${item.codigoRastreio}: template error ${templateRes.status}`);
+            }
+          }
         }
       } catch (err: any) {
         const msg = err?.message || "erro desconhecido";
-        console.error(`❌ ${envio.codigoObjeto}: ${msg}`);
-        erros.push(`${envio.codigoObjeto}: ${msg}`);
+        console.error(`❌ Grupo ${groupKey}: ${msg}`);
+        erros.push(`grupo ${groupKey}: ${msg}`);
       }
     }
 
