@@ -121,7 +121,8 @@ Deno.serve(async (req) => {
             })
             .eq("id", ticket.id);
 
-          // Atualizar pipeline card se existir
+          // Atualizar pipeline card se existir (NÃO alterar cards de rastreio - o status logístico real é mantido)
+          // Apenas fechar cards de categorias não-rastreio
           await supabase
             .from("ai_support_pipeline")
             .update({
@@ -130,7 +131,8 @@ Deno.serve(async (req) => {
               updated_at: new Date().toISOString(),
             })
             .eq("conversation_id", conv.id)
-            .in("status", ["verificando", "localizado", "em_transito", "novo", "recebido", "aberto"]);
+            .neq("category", "rastreio")
+            .in("status", ["novo", "recebido", "aberto"]);
 
           console.log(`📩 HSM sem resposta fechado: ${conv.contact_name || conv.contact_phone} (conv: ${conv.id})`);
           processed++;
