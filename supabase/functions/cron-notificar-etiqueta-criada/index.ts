@@ -239,6 +239,16 @@ serve(async (req: Request) => {
     let notificados = 0;
     const erros: string[] = [];
 
+    // DEBUG: Log completo da primeira emissão para análise de campos
+    if (emissoesPendentes.length > 0) {
+      const sample = emissoesPendentes[0];
+      console.log("🔬 [DEBUG] Estrutura completa da emissão:", JSON.stringify(sample, null, 2));
+      console.log("🔬 [DEBUG] Chaves top-level:", Object.keys(sample));
+      console.log("🔬 [DEBUG] Destinatário keys:", Object.keys(sample.destinatario || {}));
+      console.log("🔬 [DEBUG] Remetente keys:", Object.keys(sample.remetente || {}));
+      console.log("🔬 [DEBUG] Cliente keys:", Object.keys(sample.cliente || {}));
+    }
+
     for (const envio of emissoesPendentes) {
       try {
         const destinatario = envio.destinatario || {};
