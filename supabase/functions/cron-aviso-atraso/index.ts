@@ -7,7 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const WEBHOOK_URL = 'https://api.datacrazy.io/v1/crm/api/crm/flows/webhooks/ab52ed88-dd1c-4bd2-a198-d1845e59e058/181d8bbe-a92e-43f1-9660-b2e3acf2632b';
+const HEADER_IMAGE_URL = 'https://xikvfybxthvqhpjbrszp.supabase.co/storage/v1/object/public/public-assets/aviso-atraso-header.png';
 
 // Inicializar Supabase para resolver nomes de remetentes
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -158,31 +158,42 @@ function isToday(dateString: string): boolean {
 async function enviarWebhookAviso(emissao: EmissaoEmTransito): Promise<boolean> {
   try {
     const nomeRemetente = await resolverNomeRemetente(emissao);
-    const payload = {
-      telefone_destinatario: emissao.destinatario?.celular || '',
-      nome_destinatario: emissao.destinatario?.nome || '',
-      nome_remetente: nomeRemetente,
-      codigo_objeto: emissao.codigoObjeto || '',
-      data_prevista: emissao.dataPrevisaoEntrega || '',
-    };
-
-    console.log(`Enviando webhook para ${emissao.codigoObjeto}:`, payload);
-
-    const response = await fetch(WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      console.error(`Falha ao enviar webhook para ${emissao.codigoObjeto}: ${response.status}`);
+    const celular = emissao.destinatario?.celular || '';
+    
+    if (!celular) {
+      console.warn(`Sem celular para ${emissao.codigoObjeto}, pulando...`);
       return false;
     }
 
-    console.log(`Webhook enviado com sucesso para ${emissao.codigoObjeto}`);
+    // Usar send-whatsapp-template para enviar via MessageBird com imagem no header
+    const response = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp-template`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseServiceKey}`,
+      },
+      body: JSON.stringify({
+        trigger_key: 'atraso',
+        phone: celular,
+        variables: {
+          nome_destinatario: emissao.destinatario?.nome || '',
+          codigo_rastreio: emissao.codigoObjeto || '',
+          nome_remetente: nomeRemetente,
+          header_image_url: HEADER_IMAGE_URL,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error(`Falha ao enviar template atraso para ${emissao.codigoObjeto}: ${response.status} - ${errText}`);
+      return false;
+    }
+
+    console.log(`✅ Template atraso enviado com sucesso para ${emissao.codigoObjeto}`);
     return true;
   } catch (error) {
-    console.error(`Erro ao enviar webhook para ${emissao.codigoObjeto}:`, error);
+    console.error(`Erro ao enviar template atraso para ${emissao.codigoObjeto}:`, error);
     return false;
   }
 }
