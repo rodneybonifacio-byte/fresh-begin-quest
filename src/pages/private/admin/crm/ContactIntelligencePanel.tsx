@@ -240,6 +240,7 @@ export const ContactIntelligencePanel = ({
 
     // Phase 2: Use tracking codes to find shipments and client via emissoes_externas
     let clienteId: string | null = null;
+    const allClienteIds = new Set<string>();
     let emissaoShipments: ShipmentRecord[] = [];
     let emissaoTotal = 0;
     let totalGastoEmissoes = 0;
@@ -286,6 +287,10 @@ export const ContactIntelligencePanel = ({
       };
 
       if (emissoes && emissoes.length > 0) {
+        // Collect ALL clienteIds from emissões
+        for (const e of emissoes) {
+          if (e.cliente_id) allClienteIds.add(e.cliente_id);
+        }
         if (!clienteId) {
           clienteId = emissoes[0].cliente_id;
         }
@@ -346,6 +351,10 @@ export const ContactIntelligencePanel = ({
               valorVenda: Number(item.valorGasto || 0),
             }));
 
+          // Collect ALL clienteIds from API results
+          for (const item of apiFallback.data) {
+            if (item?.clienteId) allClienteIds.add(item.clienteId);
+          }
           if (!clienteId) {
             const firstClient = apiFallback.data.find((item: any) => item?.clienteId)?.clienteId;
             if (firstClient) clienteId = firstClient;
@@ -531,51 +540,63 @@ export const ContactIntelligencePanel = ({
       }
     }
 
-    // Financial + Historical shipments (only if we have clienteId)
-    if (clienteId) {
-      const [recargasRes, consumosRes, bloqueadosRes] = await Promise.all([
-        supabase
-          .from('transacoes_credito')
-          .select('valor')
-          .eq('cliente_id', clienteId)
-          .eq('tipo', 'recarga'),
-        supabase
-          .from('transacoes_credito')
-          .select('valor')
-          .eq('cliente_id', clienteId)
-          .eq('tipo', 'consumo')
-          .eq('status', 'consumido'),
-        supabase
-          .from('transacoes_credito')
-          .select('valor')
-          .eq('cliente_id', clienteId)
-          .eq('tipo', 'consumo')
-          .eq('status', 'bloqueado'),
-      ]);
+    // Ensure clienteId is also in allClienteIds
+    if (clienteId) allClienteIds.add(clienteId);
 
-      const totalRecargas = recargasRes.data?.reduce((s, t) => s + Number(t.valor), 0) || 0;
-      const totalConsumos = consumosRes.data?.reduce((s, t) => s + Math.abs(Number(t.valor)), 0) || 0;
-      const totalBloqueado = bloqueadosRes.data?.reduce((s, t) => s + Math.abs(Number(t.valor)), 0) || 0;
+    // Financial + Historical shipments (only if we have at least one clienteId)
+    if (allClienteIds.size > 0) {
+      // Financial data uses the primary clienteId
+      if (clienteId) {
+        const [recargasRes, consumosRes, bloqueadosRes] = await Promise.all([
+          supabase
+            .from('transacoes_credito')
+            .select('valor')
+            .eq('cliente_id', clienteId)
+            .eq('tipo', 'recarga'),
+          supabase
+            .from('transacoes_credito')
+            .select('valor')
+            .eq('cliente_id', clienteId)
+            .eq('tipo', 'consumo')
+            .eq('status', 'consumido'),
+          supabase
+            .from('transacoes_credito')
+            .select('valor')
+            .eq('cliente_id', clienteId)
+            .eq('tipo', 'consumo')
+            .eq('status', 'bloqueado'),
+        ]);
 
-      setFinancial({
-        saldoDisponivel: totalRecargas - totalConsumos - totalBloqueado,
-        totalRecargas,
-        totalConsumos,
-        totalBloqueado,
-      });
+        const totalRecargas = recargasRes.data?.reduce((s, t) => s + Number(t.valor), 0) || 0;
+        const totalConsumos = consumosRes.data?.reduce((s, t) => s + Math.abs(Number(t.valor)), 0) || 0;
+        const totalBloqueado = bloqueadosRes.data?.reduce((s, t) => s + Math.abs(Number(t.valor)), 0) || 0;
 
-      // Fetch historical shipments from external API by clienteId
-      // Then filter only shipments where the destinatário matches this contact
-      const { data: historyResponse, error: historyError } = await supabase.functions.invoke('crm-buscar-envio-api', {
-        body: { clienteId, limit: 50 },
-      });
+        setFinancial({
+          saldoDisponivel: totalRecargas - totalConsumos - totalBloqueado,
+          totalRecargas,
+          totalConsumos,
+          totalBloqueado,
+        });
+      }
 
-      if (!historyError && historyResponse?.data?.length) {
-        // Build contact name tokens for fuzzy matching
-        const contactNameNorm = normalizePersonName(contactName || profile?.nome || '')
-          .toLowerCase()
-          .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        const contactTokens = contactNameNorm.split(/\s+/).filter(t => t.length > 2);
+      // Build contact name tokens for fuzzy matching (used across all clienteIds)
+      const contactNameNorm = normalizePersonName(contactName || profile?.nome || '')
+        .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const contactTokens = contactNameNorm.split(/\s+/).filter(t => t.length > 2);
+
+      // Fetch historical shipments from ALL clienteIds in parallel
+      const uniqueClienteIds = Array.from(allClienteIds);
+      const historyResults = await Promise.all(
+        uniqueClienteIds.map(cId =>
+          supabase.functions.invoke('crm-buscar-envio-api', {
+            body: { clienteId: cId, limit: 50 },
+          })
+        )
+      );
+
+      for (const { data: historyResponse, error: historyError } of historyResults) {
+        if (historyError || !historyResponse?.data?.length) continue;
 
         for (const item of historyResponse.data) {
           if (item?.notFound) continue;
@@ -604,12 +625,12 @@ export const ContactIntelligencePanel = ({
             valorVenda: Number(item.valorGasto || 0),
           });
         }
-
-        // Recalculate totalGasto only from matched shipments
-        const matchedGasto = Array.from(shipmentMap.values())
-          .reduce((s, item) => s + Number(item.valorVenda || 0), 0);
-        totalGastoEmissoes = Math.max(totalGastoEmissoes, matchedGasto);
       }
+
+      // Recalculate totalGasto from all matched shipments
+      const matchedGasto = Array.from(shipmentMap.values())
+        .reduce((s, item) => s + Number(item.valorVenda || 0), 0);
+      totalGastoEmissoes = Math.max(totalGastoEmissoes, matchedGasto);
 
       // Re-sort and update shipments with historical data
       const updatedRecentes = Array.from(shipmentMap.values()).sort((a, b) => {
@@ -618,10 +639,29 @@ export const ContactIntelligencePanel = ({
         return tb - ta;
       });
 
+      // Collect unique remetentes from all matched shipments
+      const allRemetenteNames = new Set<string>();
+      for (const s of updatedRecentes) {
+        const rem = normalizePersonName(s.remetenteNome);
+        if (!isGenericSenderName(rem)) allRemetenteNames.add(rem);
+      }
+      if (allRemetenteNames.size > resolvedRemetentes.length) {
+        const mergedRemetentes: RemetenteSummary[] = [...resolvedRemetentes];
+        const existingNames = new Set(mergedRemetentes.map(r => r.nome.toLowerCase()));
+        for (const nome of allRemetenteNames) {
+          if (!existingNames.has(nome.toLowerCase())) {
+            mergedRemetentes.push({ id: `hist-${nome}`, nome, cpfMasked: '', cidade: null, uf: null });
+            existingNames.add(nome.toLowerCase());
+          }
+        }
+        resolvedRemetentes = mergedRemetentes;
+        setRemetentes(mergedRemetentes);
+      }
+
       setShipments({
         total: Math.max(shipmentMap.size, updatedRecentes.length),
         totalGasto: totalGastoEmissoes,
-        recentes: updatedRecentes.slice(0, 10),
+        recentes: updatedRecentes.slice(0, 15),
       });
     }
 
