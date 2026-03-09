@@ -79,11 +79,8 @@ Deno.serve(async (req) => {
       accessKey = def?.access_key || Deno.env.get("MESSAGEBIRD_ACCESS_KEY")!;
     }
 
-    // Normalize phone
-    let normalizedPhone = phone.replace(/\D/g, "");
-    if (!normalizedPhone.startsWith("55")) {
-      normalizedPhone = "55" + normalizedPhone;
-    }
+    // Normalize phone using shared function
+    const normalizedPhone = normalizeBrazilianPhone(phone);
 
     // Build template components with variables grouped by component_type
     const templateVars = (template.variables || []) as {
