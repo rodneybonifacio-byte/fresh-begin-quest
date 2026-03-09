@@ -2890,12 +2890,13 @@ async function progressPipelineStatus(supabase: any, conversationId: string, use
     let progressReason = "";
 
     if (category === "rastreio") {
-      if (pipeline.status === "aberto" && (lowerReply.includes("rastr") || lowerReply.includes("verific") || lowerReply.includes("consult"))) {
-        shouldProgress = true; newStatus = "em_andamento"; progressReason = "IA verificou rastreio";
-      } else if (pipeline.status === "em_andamento" && (lowerReply.includes("localizado") || lowerReply.includes("encontr") || lowerReply.includes("em trânsito") || lowerReply.includes("em transito"))) {
-        shouldProgress = true; newStatus = "aguardando_cliente"; progressReason = "Pacote localizado, aguardando cliente";
+      // Pipeline de rastreio usa estágios logísticos: verificando → localizado → em_transito → entregue
+      if (pipeline.status === "verificando" && (lowerReply.includes("rastr") || lowerReply.includes("verific") || lowerReply.includes("consult") || lowerReply.includes("localiz"))) {
+        shouldProgress = true; newStatus = "localizado"; progressReason = "Pacote localizado pela IA";
+      } else if ((pipeline.status === "verificando" || pipeline.status === "localizado") && (lowerReply.includes("em trânsito") || lowerReply.includes("em transito") || lowerReply.includes("a caminho"))) {
+        shouldProgress = true; newStatus = "em_transito"; progressReason = "Pacote em trânsito";
       } else if ((lowerReply.includes("entregue") || lowerReply.includes("entrega confirmada") || lowerReply.includes("foi entregue"))) {
-        shouldProgress = true; newStatus = "resolvido"; progressReason = "Entrega confirmada";
+        shouldProgress = true; newStatus = "entregue"; progressReason = "Entrega confirmada";
       }
     } else if (category === "reclamacao") {
       if (pipeline.status === "aberto" && lowerReply.length > 50) {
