@@ -427,6 +427,7 @@ Deno.serve(async (req) => {
         saiu_para_entrega: { category: "rastreio", status: "em_transito" },
         atraso: { category: "rastreio", status: "localizado" },
         aguardando_retirada: { category: "rastreio", status: "localizado" },
+        retirada_agencia: { category: "rastreio", status: "localizado" },
         avaliacao: { category: "elogio", status: "recebido" },
       };
 

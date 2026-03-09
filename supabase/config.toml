@@ -188,3 +188,12 @@ verify_jwt = false
 
 [functions.chat-ai-whatsapp]
 verify_jwt = false
+
+[functions.cron-objeto-postado]
+verify_jwt = false
+
+[functions.cron-saiu-para-entrega]
+verify_jwt = false
+
+[functions.cron-avaliacao]
+verify_jwt = false
