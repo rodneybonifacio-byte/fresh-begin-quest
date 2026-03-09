@@ -232,11 +232,11 @@ Deno.serve(async (req: Request) => {
     const emissoesEmTransito = await fetchEmissoesEmTransito(token);
     console.log(`Total de emissões em trânsito: ${emissoesEmTransito.length}`);
 
-    // Filtrar emissões com data prevista = hoje
+    // Filtrar emissões atrasadas (previsão passou OU hoje após 16:05)
     const emissoesParaAvisar = emissoesEmTransito.filter(emissao => 
-      isToday(emissao.dataPrevisaoEntrega)
+      isAtrasado(emissao.dataPrevisaoEntrega)
     );
-    console.log(`Emissões com data prevista hoje: ${emissoesParaAvisar.length}`);
+    console.log(`Emissões atrasadas para notificar: ${emissoesParaAvisar.length}`);
 
     // Enviar webhooks
     let enviados = 0;
