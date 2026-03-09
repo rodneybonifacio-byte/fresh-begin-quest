@@ -351,6 +351,10 @@ export const ContactIntelligencePanel = ({
               valorVenda: Number(item.valorGasto || 0),
             }));
 
+          // Collect ALL clienteIds from API results
+          for (const item of apiFallback.data) {
+            if (item?.clienteId) allClienteIds.add(item.clienteId);
+          }
           if (!clienteId) {
             const firstClient = apiFallback.data.find((item: any) => item?.clienteId)?.clienteId;
             if (firstClient) clienteId = firstClient;
