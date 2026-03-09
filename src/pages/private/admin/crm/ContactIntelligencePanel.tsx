@@ -663,8 +663,6 @@ export const ContactIntelligencePanel = ({
         totalGasto: totalGastoEmissoes,
         recentes: updatedRecentes.slice(0, 15),
       });
-        recentes: updatedRecentes.slice(0, 10),
-      });
     }
 
     // Interactions
