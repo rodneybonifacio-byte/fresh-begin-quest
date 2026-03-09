@@ -287,6 +287,10 @@ export const ContactIntelligencePanel = ({
       };
 
       if (emissoes && emissoes.length > 0) {
+        // Collect ALL clienteIds from emissões
+        for (const e of emissoes) {
+          if (e.cliente_id) allClienteIds.add(e.cliente_id);
+        }
         if (!clienteId) {
           clienteId = emissoes[0].cliente_id;
         }
