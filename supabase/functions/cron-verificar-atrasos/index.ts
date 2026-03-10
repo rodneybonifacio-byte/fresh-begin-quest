@@ -331,39 +331,42 @@ serve(async (req: Request) => {
     let totalAtrasadas = 0
     let totalVerificadas = 0
 
-    // Processar cada emissão
-    for (const emissao of emissoesEmTransito) {
-      if (!emissao.codigoObjeto) continue
+    // Processar emissões em lotes paralelos de 5 para evitar timeout
+    const BATCH_SIZE = 5
+    const emissoesFiltradas = emissoesEmTransito.filter(e => e.codigoObjeto)
+    totalVerificadas = emissoesFiltradas.length
 
-      totalVerificadas++
-
-      // Buscar rastreio
-      const rastreio = await fetchRastreio(token, emissao.codigoObjeto)
+    for (let i = 0; i < emissoesFiltradas.length; i += BATCH_SIZE) {
+      const batch = emissoesFiltradas.slice(i, i + BATCH_SIZE)
       
-      if (!rastreio?.data?.dataPrevisaoEntrega) {
-        console.log(`[CRON-ATRASOS] Sem previsão de entrega para ${emissao.codigoObjeto}`)
-        continue
-      }
+      const results = await Promise.allSettled(
+        batch.map(async (emissao) => {
+          const rastreio = await fetchRastreio(token, emissao.codigoObjeto)
+          
+          if (!rastreio?.data?.dataPrevisaoEntrega) {
+            return false
+          }
 
-      const dataPrevisao = parseDataPrevisao(rastreio.data.dataPrevisaoEntrega)
-      
-      if (!dataPrevisao) {
-        console.log(`[CRON-ATRASOS] Não foi possível parsear data: ${rastreio.data.dataPrevisaoEntrega}`)
-        continue
-      }
+          const dataPrevisao = parseDataPrevisao(rastreio.data.dataPrevisaoEntrega)
+          if (!dataPrevisao || !isAtrasado(dataPrevisao)) {
+            return false
+          }
 
-      if (isAtrasado(dataPrevisao)) {
-        console.log(`[CRON-ATRASOS] Emissão ${emissao.codigoObjeto} está atrasada! Previsão: ${rastreio.data.dataPrevisaoEntrega}`)
-        
-        // Salvar na tabela do Supabase em vez de atualizar API externa
-        const salvo = await salvarEmissaoAtrasada(supabase, emissao, rastreio.data.dataPrevisaoEntrega)
-        if (salvo) {
+          console.log(`[CRON-ATRASOS] Emissão ${emissao.codigoObjeto} está atrasada! Previsão: ${rastreio.data.dataPrevisaoEntrega}`)
+          return salvarEmissaoAtrasada(supabase, emissao, rastreio.data.dataPrevisaoEntrega)
+        })
+      )
+
+      for (const r of results) {
+        if (r.status === 'fulfilled' && r.value === true) {
           totalAtrasadas++
         }
       }
 
-      // Delay para evitar rate limiting
-      await new Promise(resolve => setTimeout(resolve, 200))
+      // Delay entre lotes
+      if (i + BATCH_SIZE < emissoesFiltradas.length) {
+        await new Promise(resolve => setTimeout(resolve, 200))
+      }
     }
 
     const duration = Date.now() - startTime
