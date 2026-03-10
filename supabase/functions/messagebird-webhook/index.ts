@@ -350,6 +350,11 @@ serve(async (req) => {
       }
       if (direction === "inbound") {
         updateData.unread_count = (conversation.unread_count || 0) + 1;
+        // Reativar IA se canal permite e conversa estava desativada (ex: fechada por timeout HSM)
+        if (!conversation.ai_enabled && channel?.ai_enabled) {
+          updateData.ai_enabled = true;
+          console.log("🔄 IA reativada para conversa (mensagem inbound recebida):", conversation.id);
+        }
       }
 
       await supabase
