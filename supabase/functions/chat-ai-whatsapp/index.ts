@@ -1328,6 +1328,7 @@ EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de a
         
         // Buscar dados detalhados do último código (referência primária)
         let shipmentDetail = "";
+        let shipmentStatus = "";
         const { data: pedido } = await supabase
           .from("pedidos_importados")
           .select("destinatario_nome, destinatario_telefone, destinatario_cep, destinatario_cidade, destinatario_estado, remetente_id, cliente_id, servico_frete, numero_pedido, status")
@@ -1336,6 +1337,7 @@ EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de a
           .single();
         
         if (pedido) {
+          shipmentStatus = pedido.status || "";
           let remNome = "N/A";
           if (pedido.remetente_id) {
             const { data: rem } = await supabase.from("remetentes").select("nome, localidade, uf").eq("id", pedido.remetente_id).single();
@@ -1352,6 +1354,7 @@ EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de a
             .single();
           
           if (emissao) {
+            shipmentStatus = emissao.status || "";
             let remNome = "N/A";
             if (emissao.remetente_id) {
               const { data: rem } = await supabase.from("remetentes").select("nome, localidade, uf").eq("id", emissao.remetente_id).single();
