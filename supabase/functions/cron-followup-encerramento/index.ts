@@ -71,7 +71,24 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Pular se a última mensagem já é uma despedida/encerramento (evitar duplicação)
+        // Pular se a última mensagem foi há menos de 5 min (segurança extra)
+        const lastMsgAge = Date.now() - new Date(lastMsg.created_at).getTime();
+        if (lastMsgAge < IDLE_MINUTES * 60 * 1000) {
+          skipped++;
+          continue;
+        }
+
+        // Verificar se tem ticket ativo
+        const { data: ticketList } = await supabase
+          .from("whatsapp_tickets")
+          .select("id, status")
+          .eq("conversation_id", conv.id)
+          .in("status", ["open", "pending_close"])
+          .limit(1);
+
+        const ticket = ticketList?.[0];
+
+        // Verificar se a última mensagem já é uma despedida (evitar enviar follow-up duplicado)
         const lastContent = (lastMsg.content || "").toLowerCase();
         const farewellPatterns = [
           "se precisar de algo",
@@ -90,7 +107,7 @@ Deno.serve(async (req) => {
         ];
         const alreadyFarewell = farewellPatterns.some(p => lastContent.includes(p));
         if (alreadyFarewell) {
-          // Já despediu — apenas fechar ticket silenciosamente sem enviar mensagem
+          // Já despediu — fechar ticket e conversa silenciosamente sem enviar mensagem
           if (ticket) {
             await supabase
               .from("whatsapp_tickets")
@@ -102,32 +119,15 @@ Deno.serve(async (req) => {
               })
               .eq("id", ticket.id);
           }
-          // Fechar conversa
           await supabase
             .from("whatsapp_conversations")
             .update({ status: "closed", ai_enabled: false })
             .eq("id", conv.id);
           console.log(`⏭️ Despedida já enviada, fechando silenciosamente: ${conv.contact_name || conv.contact_phone}`);
-          skipped++;
+          processed++;
           continue;
         }
 
-        // Pular se a última mensagem foi há menos de 5 min (segurança extra)
-        const lastMsgAge = Date.now() - new Date(lastMsg.created_at).getTime();
-        if (lastMsgAge < IDLE_MINUTES * 60 * 1000) {
-          skipped++;
-          continue;
-        }
-
-        // Verificar se tem ticket ativo
-        const { data: ticketList } = await supabase
-          .from("whatsapp_tickets")
-          .select("id, status")
-          .eq("conversation_id", conv.id)
-          .in("status", ["open", "pending_close"])
-          .limit(1);
-
-        const ticket = ticketList?.[0];
         if (!ticket) {
           // Sem ticket ativo — verificar se é conversa HSM sem resposta e fechar silenciosamente
           const { data: inboundCheck } = await supabase
