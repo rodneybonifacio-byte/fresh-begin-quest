@@ -1233,7 +1233,7 @@ EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de a
     }
     console.log("👤 Contexto de contato:", contactContext ? contactContext.substring(0, 120) : "NENHUM (não identificado)");
 
-    const enrichedSystemPrompt = systemPrompt + "\n\nREGRA TÉCNICA: NÃO inclua prefixo como '*Veronica:*' ou '*Felipe:*' no início da sua resposta. O sistema adiciona automaticamente. Responda apenas com o conteúdo da mensagem." + contactContext;
+    const enrichedSystemPrompt = systemPrompt + "\n\nREGRA TÉCNICA: NÃO inclua prefixo como '*Veronica:*' ou '*Felipe:*' no início da sua resposta. O sistema adiciona automaticamente. Responda apenas com o conteúdo da mensagem." + "\n\n[REGRA DE REDIRECIONAMENTO — PRODUTOS E LOJA]\nQuando o cliente perguntar sobre PRODUTOS, COMPRAS, CATÁLOGO, PREÇOS de produtos, ESTOQUE, ou quiser COMPRAR algo na loja, você NÃO atende esse tipo de demanda. Informe educadamente que esse assunto é tratado diretamente pela equipe da loja e forneça o contato:\n📞 WhatsApp da Loja: (48) 99903-1835\nExemplo: \"[Nome], pra falar sobre produtos e compras, o melhor canal é direto com a equipe da loja! Chama eles no WhatsApp: (48) 99903-1835 😊 Posso te ajudar com mais alguma coisa?\"\nIMPORTANTE: Essa regra se aplica APENAS a perguntas sobre produtos/compras. Questões sobre ENVIO, RASTREIO, ETIQUETAS, CRÉDITOS continuam sendo atendidas normalmente por você." + contactContext;
     const messages: any[] = [{ role: "system", content: enrichedSystemPrompt }];
 
     if (history) {
