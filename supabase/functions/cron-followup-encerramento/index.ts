@@ -95,7 +95,26 @@ Deno.serve(async (req) => {
 
         const ticket = ticketList?.[0];
         if (!ticket) {
-          skipped++;
+          // Sem ticket ativo — verificar se é conversa HSM sem resposta e fechar silenciosamente
+          const { data: inboundCheck } = await supabase
+            .from("whatsapp_messages")
+            .select("id")
+            .eq("conversation_id", conv.id)
+            .eq("direction", "inbound")
+            .limit(1);
+
+          if (!inboundCheck || inboundCheck.length === 0) {
+            // HSM sem resposta e sem ticket — fechar conversa diretamente
+            await supabase
+              .from("whatsapp_conversations")
+              .update({ status: "closed", updated_at: new Date().toISOString() })
+              .eq("id", conv.id);
+
+            console.log(`📩 HSM sem ticket fechado: ${conv.contact_name || conv.contact_phone} (conv: ${conv.id})`);
+            processed++;
+          } else {
+            skipped++;
+          }
           continue;
         }
 
