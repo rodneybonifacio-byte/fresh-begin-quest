@@ -152,7 +152,7 @@ serve(async (req) => {
         console.log(`📄 ${fechamento.codigo_fatura} (${fechamento.nome_cliente}): ${situacao}`);
 
         // Situações que indicam pagamento: PAGO, RECEBIDO, BAIXADO
-        if (situacao === 'PAGO' || situacao === 'RECEBIDO' || situacao === 'BAIXADO') {
+        if (situacao === 'PAGO' || situacao === 'RECEBIDO' || situacao === 'BAIXADO' || situacao === 'MARCADO_RECEBIDO') {
           const valorPago = cobranca.valorTotalRecebimento || cobranca.valorPago || cobranca.valorNominal;
           const dataPagamento = cobranca.dataPagamento || cobranca.dataSituacao || new Date().toISOString().split('T')[0];
 
