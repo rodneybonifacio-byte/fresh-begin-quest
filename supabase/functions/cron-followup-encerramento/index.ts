@@ -71,13 +71,6 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Pular se já enviamos follow-up de encerramento (evitar spam)
-        const isFollowup = lastMsg.content?.includes("Se precisar de algo");
-        if (isFollowup) {
-          skipped++;
-          continue;
-        }
-
         // Pular se a última mensagem foi há menos de 5 min (segurança extra)
         const lastMsgAge = Date.now() - new Date(lastMsg.created_at).getTime();
         if (lastMsgAge < IDLE_MINUTES * 60 * 1000) {
@@ -94,6 +87,47 @@ Deno.serve(async (req) => {
           .limit(1);
 
         const ticket = ticketList?.[0];
+
+        // Verificar se a última mensagem já é uma despedida (evitar enviar follow-up duplicado)
+        const lastContent = (lastMsg.content || "").toLowerCase();
+        const farewellPatterns = [
+          "se precisar de algo",
+          "se precisar de qualquer coisa",
+          "é só chamar",
+          "só chamar",
+          "estou aqui pra ajudar",
+          "estou por aqui",
+          "vou encerrar o atendimento",
+          "encerrar o atendimento por aqui",
+          "qualquer dúvida",
+          "à disposição",
+          "a disposição",
+          "conte comigo",
+          "conte com a gente",
+        ];
+        const alreadyFarewell = farewellPatterns.some(p => lastContent.includes(p));
+        if (alreadyFarewell) {
+          // Já despediu — fechar ticket e conversa silenciosamente sem enviar mensagem
+          if (ticket) {
+            await supabase
+              .from("whatsapp_tickets")
+              .update({
+                status: "closed",
+                closed_at: new Date().toISOString(),
+                closed_by: "system_followup",
+                resolution: "Encerrado silenciosamente (despedida já enviada)",
+              })
+              .eq("id", ticket.id);
+          }
+          await supabase
+            .from("whatsapp_conversations")
+            .update({ status: "closed", ai_enabled: false })
+            .eq("id", conv.id);
+          console.log(`⏭️ Despedida já enviada, fechando silenciosamente: ${conv.contact_name || conv.contact_phone}`);
+          processed++;
+          continue;
+        }
+
         if (!ticket) {
           // Sem ticket ativo — verificar se é conversa HSM sem resposta e fechar silenciosamente
           const { data: inboundCheck } = await supabase
