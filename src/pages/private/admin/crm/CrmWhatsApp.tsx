@@ -449,7 +449,7 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
       (pipelineSearchData[c.id] || '').includes(term);
     if (!matchesSearch) return false;
 
-    const isClosed = closedConversationIds.has(c.id);
+    const isClosed = closedConversationIds.has(c.id) || c.status === 'closed';
 
     if (conversationTab === 'sem_atendimento') return !c.ai_enabled && !isClosed;
     if (conversationTab === 'ia') return c.ai_enabled && !isClosed;
