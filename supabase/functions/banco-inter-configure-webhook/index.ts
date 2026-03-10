@@ -164,7 +164,7 @@ async function configurePixWebhook(accessToken: string, webhookUrl: string): Pro
   console.log('📌 Configurando webhook PIX para chave:', chave);
   console.log('URL do webhook PIX:', webhookUrl);
 
-  const url = `https://cdpj.partners.bancointer.com.br/banking/v2/pix/v2/webhook/${encodeURIComponent(chave)}`;
+  const url = `https://cdpj.partners.bancointer.com.br/pix/v2/webhook/${encodeURIComponent(chave)}`;
   
   const response = await fetch(url, {
     method: 'PUT',
