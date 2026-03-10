@@ -484,9 +484,9 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
           {/* Tabs */}
           <div className="flex mt-3 bg-muted rounded-lg p-0.5 gap-0.5">
             {([
-              { key: 'sem_atendimento' as const, label: 'Sem atendimento', count: conversations.filter(c => !c.ai_enabled && !closedConversationIds.has(c.id)).length },
-              { key: 'ia' as const, label: 'IA', count: conversations.filter(c => c.ai_enabled && !closedConversationIds.has(c.id)).length },
-              { key: 'fechados' as const, label: 'Fechados', count: conversations.filter(c => closedConversationIds.has(c.id)).length },
+              { key: 'sem_atendimento' as const, label: 'Sem atendimento', count: conversations.filter(c => !c.ai_enabled && !closedConversationIds.has(c.id) && c.status !== 'closed').length },
+              { key: 'ia' as const, label: 'IA', count: conversations.filter(c => c.ai_enabled && !closedConversationIds.has(c.id) && c.status !== 'closed').length },
+              { key: 'fechados' as const, label: 'Fechados', count: conversations.filter(c => closedConversationIds.has(c.id) || c.status === 'closed').length },
             ]).map(tab => (
               <button
                 key={tab.key}
