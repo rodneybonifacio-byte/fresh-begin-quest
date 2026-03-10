@@ -120,6 +120,14 @@ serve(async (req) => {
     // Detecção por presença de campos no content
     let contentType = rawContentType;
 
+    // === IGNORAR REAÇÕES silenciosamente ===
+    if (rawContentType === "reaction" || message.type === "reaction") {
+      console.log("⏭️ Mensagem de reação ignorada silenciosamente");
+      return new Response(JSON.stringify({ ok: true, skipped: "reaction" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // HSM (template) messages
     if (message.content?.hsm || rawContentType === "hsm" || message.type === "hsm") {
       contentType = "hsm";
