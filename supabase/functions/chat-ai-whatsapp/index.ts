@@ -2867,7 +2867,7 @@ async function ensureTicketOpen(supabase: any, conversationId: string, contactPh
 
 const PIPELINE_FLOWS: Record<string, string[]> = {
   reclamacao: ["aberto", "em_andamento", "aguardando_cliente", "resolvido", "fechado"],
-  rastreio: ["pre_postado", "postado", "em_transito", "saiu_para_entrega", "aguardando_retirada", "atrasado", "entregue"],
+  rastreio: ["pre_postado", "em_transito", "saiu_para_entrega", "aguardando_retirada", "atrasado", "entregue"],
   cancelamento: ["aberto", "em_andamento", "aguardando_cliente", "resolvido", "fechado"],
   financeiro: ["aberto", "em_andamento", "aguardando_cliente", "resolvido", "fechado"],
   operacional: ["aberto", "em_andamento", "resolvido", "fechado"],
