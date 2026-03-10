@@ -144,7 +144,12 @@ serve(async (req) => {
           continue;
         }
 
-        const situacao = boleto.situacao || boleto.status;
+        // Log full response for first boleto to understand structure
+        if (pagos === 0 && erros === 0 && results.length === 0) {
+          console.log('🔍 Resposta completa do primeiro boleto:', JSON.stringify(boleto, null, 2));
+        }
+        
+        const situacao = boleto.situacao || boleto.situacaoCobranca || boleto.status || boleto.estadoAtual;
         console.log(`📄 ${fechamento.codigo_fatura} (${fechamento.nome_cliente}): ${situacao}`);
 
         // Situações que indicam pagamento: PAGO, RECEBIDO, BAIXADO
