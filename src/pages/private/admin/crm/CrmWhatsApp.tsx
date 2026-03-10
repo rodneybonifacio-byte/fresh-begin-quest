@@ -449,7 +449,7 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
       (pipelineSearchData[c.id] || '').includes(term);
     if (!matchesSearch) return false;
 
-    const isClosed = closedConversationIds.has(c.id);
+    const isClosed = closedConversationIds.has(c.id) || c.status === 'closed';
 
     if (conversationTab === 'sem_atendimento') return !c.ai_enabled && !isClosed;
     if (conversationTab === 'ia') return c.ai_enabled && !isClosed;
@@ -484,9 +484,9 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
           {/* Tabs */}
           <div className="flex mt-3 bg-muted rounded-lg p-0.5 gap-0.5">
             {([
-              { key: 'sem_atendimento' as const, label: 'Sem atendimento', count: conversations.filter(c => !c.ai_enabled && !closedConversationIds.has(c.id)).length },
-              { key: 'ia' as const, label: 'IA', count: conversations.filter(c => c.ai_enabled && !closedConversationIds.has(c.id)).length },
-              { key: 'fechados' as const, label: 'Fechados', count: conversations.filter(c => closedConversationIds.has(c.id)).length },
+              { key: 'sem_atendimento' as const, label: 'Sem atendimento', count: conversations.filter(c => !c.ai_enabled && !closedConversationIds.has(c.id) && c.status !== 'closed').length },
+              { key: 'ia' as const, label: 'IA', count: conversations.filter(c => c.ai_enabled && !closedConversationIds.has(c.id) && c.status !== 'closed').length },
+              { key: 'fechados' as const, label: 'Fechados', count: conversations.filter(c => closedConversationIds.has(c.id) || c.status === 'closed').length },
             ]).map(tab => (
               <button
                 key={tab.key}
