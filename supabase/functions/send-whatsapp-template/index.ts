@@ -452,7 +452,7 @@ Deno.serve(async (req) => {
         if (existingCard) {
           // Update existing card to new stage (only advance, don't go backwards)
           // Atrasado and aguardando_retirada can override em_transito (lateral moves allowed)
-          const stageOrder = ["pre_postado", "postado", "em_transito", "saiu_para_entrega", "aguardando_retirada", "atrasado", "entregue"];
+          const stageOrder = ["pre_postado", "em_transito", "saiu_para_entrega", "aguardando_retirada", "atrasado", "entregue"];
           const currentIdx = stageOrder.indexOf(existingCard.status);
           const newIdx = stageOrder.indexOf(pipelineMapping.status);
 

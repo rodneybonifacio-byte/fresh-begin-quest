@@ -33,7 +33,7 @@ function mapTrackingEventToStatus(eventos: any[]): string | null {
 }
 
 // Flow do pipeline de rastreio (ordem de progressão)
-const RASTREIO_FLOW = ["pre_postado", "postado", "em_transito", "saiu_para_entrega", "aguardando_retirada", "atrasado", "entregue"];
+const RASTREIO_FLOW = ["pre_postado", "em_transito", "saiu_para_entrega", "aguardando_retirada", "atrasado", "entregue"];
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {

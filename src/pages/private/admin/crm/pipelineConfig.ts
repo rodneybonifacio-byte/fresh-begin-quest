@@ -44,7 +44,6 @@ export const CATEGORY_PIPELINES: CategoryPipeline[] = [
     color: 'text-blue-500',
     stages: [
       { key: 'pre_postado', label: 'Pré Postado', icon: Package, color: 'text-slate-500', bg: 'bg-slate-500/10', border: 'border-slate-500/30', count_bg: 'bg-slate-500' },
-      { key: 'postado', label: 'Postado', icon: Send, color: 'text-indigo-500', bg: 'bg-indigo-500/10', border: 'border-indigo-500/30', count_bg: 'bg-indigo-500' },
       { key: 'em_transito', label: 'Em Trânsito', icon: Truck, color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/30', count_bg: 'bg-blue-500' },
       { key: 'saiu_para_entrega', label: 'Saiu p/ Entrega', icon: Navigation, color: 'text-cyan-500', bg: 'bg-cyan-500/10', border: 'border-cyan-500/30', count_bg: 'bg-cyan-500' },
       { key: 'aguardando_retirada', label: 'Aguard. Retirada', icon: MapPin, color: 'text-orange-500', bg: 'bg-orange-500/10', border: 'border-orange-500/30', count_bg: 'bg-orange-500' },
