@@ -133,8 +133,20 @@ serve(async (req) => {
       postadasByKey.add(getDedupeKey(em));
     }
 
+    // 3c. Códigos removidos manualmente (exclusão pontual)
+    const codigosExcluidos = new Set([
+      'AN677079480BR',
+      'AN677032672BR',
+    ]);
+
     // 4. Filtrar PRE_POSTADO removendo as que já foram postadas
     const filtradas = prePostadasRecentes.filter(em => {
+      // Exclusão manual por código de objeto
+      const code = (em.codigoObjeto || '').toUpperCase().trim();
+      if (codigosExcluidos.has(code)) {
+        console.log(`🚫 Exclusão manual: removendo ${em.codigoObjeto}`);
+        return false;
+      }
       // Dedup por código de objeto (exato)
       const code = (em.codigoObjeto || '').toUpperCase().trim();
       if (code && postadasByCode.has(code)) {
