@@ -2936,16 +2936,18 @@ async function progressPipelineStatus(supabase: any, conversationId: string, use
       }
     }
 
-    // Detectar resolução por keywords
-    const resolutionPatterns = ["resolvido", "solucionado", "concluído", "foi corrigido", "problema resolvido", "tudo certo", "está tudo ok"];
-    if (resolutionPatterns.some(p => lowerReply.includes(p))) {
-      shouldProgress = true; newStatus = flow[flow.length - 1]; progressReason = "Resolução detectada pela IA";
-    }
+    // Detectar resolução por keywords — NÃO aplicar em cards de rastreio (eles seguem status logístico)
+    if (category !== "rastreio") {
+      const resolutionPatterns = ["resolvido", "solucionado", "concluído", "foi corrigido", "problema resolvido", "tudo certo", "está tudo ok"];
+      if (resolutionPatterns.some(p => lowerReply.includes(p))) {
+        shouldProgress = true; newStatus = flow[flow.length - 1]; progressReason = "Resolução detectada pela IA";
+      }
 
-    // Detectar resolução por agradecimento do cliente (indica satisfação)
-    const gratitudePatterns = ["obrigado", "obrigada", "valeu", "muito obrigado", "agradeço", "perfeito"];
-    if (gratitudePatterns.some(p => lowerMsg.includes(p)) && currentIdx >= 1) {
-      shouldProgress = true; newStatus = flow[flow.length - 1]; progressReason = "Cliente agradeceu — caso resolvido";
+      // Detectar resolução por agradecimento do cliente (indica satisfação)
+      const gratitudePatterns = ["obrigado", "obrigada", "valeu", "muito obrigado", "agradeço", "perfeito"];
+      if (gratitudePatterns.some(p => lowerMsg.includes(p)) && currentIdx >= 1) {
+        shouldProgress = true; newStatus = flow[flow.length - 1]; progressReason = "Cliente agradeceu — caso resolvido";
+      }
     }
 
     if (shouldProgress && newStatus) {
