@@ -127,7 +127,12 @@ serve(async (req) => {
       if (loginRes.ok) {
         const loginData = await loginRes.json();
         apiToken = loginData.token;
+        console.log('🔑 Login na API externa OK');
+      } else {
+        console.error('⚠️ Falha login API externa:', loginRes.status);
       }
+    } else {
+      console.log('⚠️ Credenciais API externa não configuradas');
     }
 
     const results: any[] = [];
