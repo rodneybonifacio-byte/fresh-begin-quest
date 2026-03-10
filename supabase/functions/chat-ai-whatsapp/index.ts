@@ -1364,6 +1364,18 @@ EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de a
         trackingContext = `\n\n[ETIQUETA DE REFERÊNCIA — CHAVE DO ATENDIMENTO]`;
         if (shipmentDetail) {
           trackingContext += `\n${shipmentDetail}`;
+          
+          // === INSTRUÇÃO ESPECIAL PARA PRÉ-POSTADO ===
+          const statusUpper = (pedido?.status || emissao?.status || "").toUpperCase();
+          if (statusUpper === "PRE_POSTADO" || statusUpper === "PRÉ-POSTADO" || statusUpper === "PRE-POSTADO") {
+            trackingContext += `\n\n🚨 INSTRUÇÃO CRÍTICA — STATUS PRÉ-POSTADO:
+Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta criada, aguardando coleta/postagem).
+- NÃO diga que está "em trânsito", "a caminho" ou qualquer outro status inventado.
+- NÃO use a ferramenta rastrear_objeto para este código — ela não retornará dados úteis porque o objeto ainda não foi postado.
+- A orientação correta é: a postagem será realizada no próximo dia útil, de acordo com o horário de coleta do remetente.
+- Resposta ideal: "Seu pacote com o código ${lastCode} já tem a etiqueta emitida e será postado no próximo dia útil. Assim que for postado, você vai receber uma notificação com o rastreio atualizado 😊"
+- Se o cliente perguntar sobre prazo de entrega, diga que o prazo começa a contar a partir da postagem efetiva.`;
+          }
         } else {
           trackingContext += `\nCódigo: ${lastCode} (não encontrado no banco — pode ser de outra transportadora ou ainda não registrado)`;
         }
@@ -1371,7 +1383,7 @@ EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de a
         if (allCodes.length > 1 && currentCodes.length > 0) {
           trackingContext += `\n\n⚠️ ATENÇÃO: O cliente ACABOU DE INFORMAR o código ${currentCodes[currentCodes.length - 1]}. USE ESTE CÓDIGO como referência principal, independente de códigos anteriores no histórico.`;
         } else if (allCodes.length > 1) {
-          trackingContext += `\n\n⚠️ Múltiplos códigos no histórico: ${allCodes.join(", ")}. Referência atual: ${lastCode}. Se o cliente fizer pergunta genérica, pergunte qual código.`;
+          trackingContext += `\n\n⚠️ Múltiplos códigos no histórico: ${allCodes.join(", ")}. Referência atual: ${lastCode}. Se o cliente falar de forma genérica, pergunte qual código.`;
         } else {
           trackingContext += `\nEste é o código de referência para este atendimento.`;
         }
