@@ -1,0 +1,1 @@
+UPDATE ai_support_pipeline SET status = 'em_transito', updated_at = now() WHERE category = 'rastreio' AND status = 'postado';

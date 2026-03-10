@@ -423,7 +423,7 @@ Deno.serve(async (req) => {
       // === Pipeline automático: criar/atualizar card baseado no trigger ===
       const triggerToPipelineStage: Record<string, { category: string; status: string }> = {
         etiqueta_criada: { category: "rastreio", status: "pre_postado" },
-        objeto_postado: { category: "rastreio", status: "postado" },
+        objeto_postado: { category: "rastreio", status: "em_transito" },
         saiu_para_entrega: { category: "rastreio", status: "saiu_para_entrega" },
         atraso: { category: "rastreio", status: "atrasado" },
         aguardando_retirada: { category: "rastreio", status: "aguardando_retirada" },
@@ -452,7 +452,7 @@ Deno.serve(async (req) => {
         if (existingCard) {
           // Update existing card to new stage (only advance, don't go backwards)
           // Atrasado and aguardando_retirada can override em_transito (lateral moves allowed)
-          const stageOrder = ["pre_postado", "postado", "em_transito", "saiu_para_entrega", "aguardando_retirada", "atrasado", "entregue"];
+          const stageOrder = ["pre_postado", "em_transito", "saiu_para_entrega", "aguardando_retirada", "atrasado", "entregue"];
           const currentIdx = stageOrder.indexOf(existingCard.status);
           const newIdx = stageOrder.indexOf(pipelineMapping.status);
 

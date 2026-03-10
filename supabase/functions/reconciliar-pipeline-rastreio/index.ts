@@ -16,7 +16,7 @@ function mapTrackingEventToStatus(eventos: any[]): string | null {
   if (desc.includes("saiu para entrega")) return "saiu_para_entrega";
   if (desc.includes("aguardando retirada") || desc.includes("disponível para retirada")) return "aguardando_retirada";
   if (desc.includes("atraso") || desc.includes("prazo de entrega pode sofrer alterações")) return "atrasado";
-  if (desc.includes("postado") || desc.includes("objeto postado")) return "postado";
+  if (desc.includes("postado") || desc.includes("objeto postado")) return "em_transito";
   
   // Qualquer movimentação entre unidades = em trânsito
   if (
@@ -33,7 +33,7 @@ function mapTrackingEventToStatus(eventos: any[]): string | null {
 }
 
 // Flow do pipeline de rastreio (ordem de progressão)
-const RASTREIO_FLOW = ["pre_postado", "postado", "em_transito", "saiu_para_entrega", "aguardando_retirada", "atrasado", "entregue"];
+const RASTREIO_FLOW = ["pre_postado", "em_transito", "saiu_para_entrega", "aguardando_retirada", "atrasado", "entregue"];
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
