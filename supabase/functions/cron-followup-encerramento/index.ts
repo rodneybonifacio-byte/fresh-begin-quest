@@ -71,9 +71,43 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Pular se já enviamos follow-up de encerramento (evitar spam)
-        const isFollowup = lastMsg.content?.includes("Se precisar de algo");
-        if (isFollowup) {
+        // Pular se a última mensagem já é uma despedida/encerramento (evitar duplicação)
+        const lastContent = (lastMsg.content || "").toLowerCase();
+        const farewellPatterns = [
+          "se precisar de algo",
+          "se precisar de qualquer coisa",
+          "é só chamar",
+          "só chamar",
+          "estou aqui pra ajudar",
+          "estou por aqui",
+          "vou encerrar o atendimento",
+          "encerrar o atendimento por aqui",
+          "qualquer dúvida",
+          "à disposição",
+          "a disposição",
+          "conte comigo",
+          "conte com a gente",
+        ];
+        const alreadyFarewell = farewellPatterns.some(p => lastContent.includes(p));
+        if (alreadyFarewell) {
+          // Já despediu — apenas fechar ticket silenciosamente sem enviar mensagem
+          if (ticket) {
+            await supabase
+              .from("whatsapp_tickets")
+              .update({
+                status: "closed",
+                closed_at: new Date().toISOString(),
+                closed_by: "system_followup",
+                resolution: "Encerrado silenciosamente (despedida já enviada)",
+              })
+              .eq("id", ticket.id);
+          }
+          // Fechar conversa
+          await supabase
+            .from("whatsapp_conversations")
+            .update({ status: "closed", ai_enabled: false })
+            .eq("id", conv.id);
+          console.log(`⏭️ Despedida já enviada, fechando silenciosamente: ${conv.contact_name || conv.contact_phone}`);
           skipped++;
           continue;
         }
