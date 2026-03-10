@@ -101,14 +101,15 @@ interface EmissaoEmTransito {
 }
 
 async function loginAdmin(): Promise<string> {
+  const baseApiUrl = Deno.env.get('BASE_API_URL');
   const email = Deno.env.get('API_ADMIN_EMAIL');
   const password = Deno.env.get('API_ADMIN_PASSWORD');
 
-  if (!email || !password) {
+  if (!email || !password || !baseApiUrl) {
     throw new Error('Credenciais de admin não configuradas');
   }
 
-  const response = await fetch('https://envios.brhubb.com.br/api/auth/login', {
+  const response = await fetch(`${baseApiUrl}/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
@@ -123,7 +124,8 @@ async function loginAdmin(): Promise<string> {
 }
 
 async function fetchEmissoesEmTransito(token: string): Promise<EmissaoEmTransito[]> {
-  const response = await fetch('https://envios.brhubb.com.br/api/emissoes?status=EM_TRANSITO&limit=1000', {
+  const baseApiUrl = Deno.env.get('BASE_API_URL');
+  const response = await fetch(`${baseApiUrl}/emissoes?status=EM_TRANSITO&limit=1000`, {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
