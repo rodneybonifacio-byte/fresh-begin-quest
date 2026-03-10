@@ -2957,11 +2957,12 @@ async function progressPipelineStatus(supabase: any, conversationId: string, use
         resolution: progressReason,
         updated_at: new Date().toISOString(),
       }).eq("id", pipeline.id);
+    }
 
-      // Atualizar sentimento se positivo
-      if (gratitudePatterns.some(p => lowerMsg.includes(p))) {
-        await supabase.from("ai_support_pipeline").update({ sentiment: "positivo" }).eq("id", pipeline.id);
-      }
+    // Atualizar sentimento se positivo (para todas as categorias, incluindo rastreio)
+    const gratitudeForSentiment = ["obrigado", "obrigada", "valeu", "muito obrigado", "agradeço", "perfeito"];
+    if (gratitudeForSentiment.some(p => lowerMsg.includes(p))) {
+      await supabase.from("ai_support_pipeline").update({ sentiment: "positivo" }).eq("id", pipeline.id);
     }
   } catch (e) {
     console.warn("⚠️ Erro pipeline progress:", e);
