@@ -144,18 +144,17 @@ serve(async (req) => {
           continue;
         }
 
-        // Log full response for first boleto to understand structure
-        if (pagos === 0 && erros === 0 && results.length === 0) {
-          console.log('🔍 Resposta completa do primeiro boleto:', JSON.stringify(boleto, null, 2));
-        }
+        // Extrair dados da estrutura aninhada da API Inter v3
+        const cobranca = boleto.cobranca || boleto;
+        const boletoInfo = boleto.boleto || {};
         
-        const situacao = boleto.situacao || boleto.situacaoCobranca || boleto.status || boleto.estadoAtual;
+        const situacao = cobranca.situacao || cobranca.status;
         console.log(`📄 ${fechamento.codigo_fatura} (${fechamento.nome_cliente}): ${situacao}`);
 
         // Situações que indicam pagamento: PAGO, RECEBIDO, BAIXADO
         if (situacao === 'PAGO' || situacao === 'RECEBIDO' || situacao === 'BAIXADO') {
-          const valorPago = boleto.valorTotalRecebimento || boleto.valorPago || boleto.valorNominal;
-          const dataPagamento = boleto.dataPagamento || boleto.dataRecebimento || new Date().toISOString().split('T')[0];
+          const valorPago = cobranca.valorTotalRecebimento || cobranca.valorPago || cobranca.valorNominal;
+          const dataPagamento = cobranca.dataPagamento || cobranca.dataSituacao || new Date().toISOString().split('T')[0];
 
           console.log(`💰 PAGO! ${fechamento.codigo_fatura}: R$ ${valorPago}`);
 
