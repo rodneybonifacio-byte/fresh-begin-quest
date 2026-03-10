@@ -141,14 +141,13 @@ serve(async (req) => {
 
     // 4. Filtrar PRE_POSTADO removendo as que já foram postadas
     const filtradas = prePostadasRecentes.filter(em => {
-      // Exclusão manual por código de objeto
       const code = (em.codigoObjeto || '').toUpperCase().trim();
+      // Exclusão manual por código de objeto
       if (codigosExcluidos.has(code)) {
         console.log(`🚫 Exclusão manual: removendo ${em.codigoObjeto}`);
         return false;
       }
       // Dedup por código de objeto (exato)
-      const code = (em.codigoObjeto || '').toUpperCase().trim();
       if (code && postadasByCode.has(code)) {
         console.log(`🔄 Dedup código: removendo PRE_POSTADO (${em.codigoObjeto}) — mesmo código já POSTADO`);
         return false;
