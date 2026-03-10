@@ -1369,7 +1369,7 @@ EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de a
           trackingContext += `\n${shipmentDetail}`;
           
           // === INSTRUÇÃO ESPECIAL PARA PRÉ-POSTADO ===
-          const statusUpper = (pedido?.status || emissao?.status || "").toUpperCase();
+          const statusUpper = shipmentStatus.toUpperCase();
           if (statusUpper === "PRE_POSTADO" || statusUpper === "PRÉ-POSTADO" || statusUpper === "PRE-POSTADO") {
             trackingContext += `\n\n🚨 INSTRUÇÃO CRÍTICA — STATUS PRÉ-POSTADO:
 Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta criada, aguardando coleta/postagem).
