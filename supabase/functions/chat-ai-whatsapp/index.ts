@@ -193,11 +193,13 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
         let clienteId = args.cliente_id;
         if (!clienteId) clienteId = await resolveClienteId(supabase, contactPhone);
         if (!clienteId) return "Não consegui identificar o cliente.";
-        const { data: remetentes } = await supabase.from("remetentes").select("nome, cep, localidade, uf").eq("cliente_id", clienteId).limit(5);
+        const { data: remetentes } = await supabase.from("remetentes").select("nome, celular, telefone, email, cep, logradouro, numero, bairro, localidade, uf").eq("cliente_id", clienteId).limit(5);
         if (!remetentes || remetentes.length === 0) return "Nenhum remetente cadastrado.";
-        let result = "Remetentes cadastrados:\n";
+        let result = "Remetentes (lojas) cadastrados:\n";
         for (const r of remetentes) {
-          result += `- ${r.nome} (CEP: ${r.cep || "?"}, ${r.localidade || "?"}-${r.uf || "?"})\n`;
+          const tel = r.celular || r.telefone || "não informado";
+          const endereco = [r.logradouro, r.numero, r.bairro, r.localidade ? `${r.localidade}-${r.uf || ""}` : ""].filter(Boolean).join(", ");
+          result += `- ${r.nome} | Tel: ${tel} | Email: ${r.email || "não informado"} | Endereço: ${endereco || "não informado"}\n`;
         }
         return result;
       }
@@ -1233,7 +1235,7 @@ EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de a
     }
     console.log("👤 Contexto de contato:", contactContext ? contactContext.substring(0, 120) : "NENHUM (não identificado)");
 
-    const enrichedSystemPrompt = systemPrompt + "\n\nREGRA TÉCNICA: NÃO inclua prefixo como '*Veronica:*' ou '*Felipe:*' no início da sua resposta. O sistema adiciona automaticamente. Responda apenas com o conteúdo da mensagem." + "\n\n[REGRA DE REDIRECIONAMENTO — PRODUTOS E LOJA]\nQuando o cliente perguntar sobre PRODUTOS, COMPRAS, CATÁLOGO, PREÇOS de produtos, ESTOQUE, ou quiser COMPRAR algo na loja:\n1. Use a ferramenta 'buscar_remetentes_api' para buscar os dados cadastrais do remetente vinculado ao cliente\n2. Responda ao cliente com os dados da loja/remetente (nome, telefone, endereço) orientando ele a entrar em contato direto com a loja\n3. Exemplo: \"[Nome], sobre produtos e compras, entre em contato direto com a loja [Nome do Remetente]! 📞 Telefone: [celular/telefone do remetente] | 📍 Endereço: [logradouro, número, bairro, cidade-UF] 😊 Posso te ajudar com mais alguma coisa?\"\nIMPORTANTE: Essa regra se aplica APENAS a perguntas sobre produtos/compras. Questões sobre ENVIO, RASTREIO, ETIQUETAS, CRÉDITOS continuam sendo atendidas normalmente por você.\nSe não encontrar remetente vinculado, diga que não conseguiu localizar os dados da loja e peça para o cliente informar o nome ou CNPJ da loja." + contactContext;
+    const enrichedSystemPrompt = systemPrompt + "\n\nREGRA TÉCNICA: NÃO inclua prefixo como '*Veronica:*' ou '*Felipe:*' no início da sua resposta. O sistema adiciona automaticamente. Responda apenas com o conteúdo da mensagem." + "\n\n[REGRA DE REDIRECIONAMENTO — PRODUTOS, TROCA E LOJA]\nQuando o cliente perguntar sobre PRODUTOS, COMPRAS, CATÁLOGO, PREÇOS de produtos, ESTOQUE, TROCA DE PRODUTO, DEVOLUÇÃO DE PRODUTO, ou quiser COMPRAR algo na loja:\n1. Use a ferramenta 'buscar_remetentes_api' para buscar os dados cadastrais do remetente vinculado ao cliente\n2. A ferramenta SEMPRE retorna os dados completos (nome, telefone, email, endereço) quando o cliente está identificado. Use esses dados diretamente na resposta.\n3. Responda ao cliente orientando a entrar em contato direto com a loja remetente, fornecendo os dados retornados pela ferramenta.\n4. Exemplo: \"[Nome], para troca/devolução entre em contato direto com a loja [Nome do Remetente]! 📞 [celular/telefone] | 📍 [endereço completo] 😊\"\nIMPORTANTE: Essa regra se aplica APENAS a perguntas sobre produtos/compras/trocas/devoluções. Questões sobre ENVIO, RASTREIO, ETIQUETAS, CRÉDITOS continuam sendo atendidas normalmente por você.\nCRÍTICO: Se a ferramenta retornar dados do remetente, SEMPRE forneça esses dados ao cliente. NUNCA diga que não conseguiu localizar se a ferramenta retornou resultados.\nApenas se a ferramenta retornar 'Nenhum remetente cadastrado' ou 'Não consegui identificar o cliente', aí sim peça o nome ou CNPJ da loja." + contactContext;
     const messages: any[] = [{ role: "system", content: enrichedSystemPrompt }];
 
     if (history) {
