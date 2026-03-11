@@ -193,11 +193,13 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
         let clienteId = args.cliente_id;
         if (!clienteId) clienteId = await resolveClienteId(supabase, contactPhone);
         if (!clienteId) return "Não consegui identificar o cliente.";
-        const { data: remetentes } = await supabase.from("remetentes").select("nome, cep, localidade, uf").eq("cliente_id", clienteId).limit(5);
+        const { data: remetentes } = await supabase.from("remetentes").select("nome, celular, telefone, email, cep, logradouro, numero, bairro, localidade, uf").eq("cliente_id", clienteId).limit(5);
         if (!remetentes || remetentes.length === 0) return "Nenhum remetente cadastrado.";
-        let result = "Remetentes cadastrados:\n";
+        let result = "Remetentes (lojas) cadastrados:\n";
         for (const r of remetentes) {
-          result += `- ${r.nome} (CEP: ${r.cep || "?"}, ${r.localidade || "?"}-${r.uf || "?"})\n`;
+          const tel = r.celular || r.telefone || "não informado";
+          const endereco = [r.logradouro, r.numero, r.bairro, r.localidade ? `${r.localidade}-${r.uf || ""}` : ""].filter(Boolean).join(", ");
+          result += `- ${r.nome} | Tel: ${tel} | Email: ${r.email || "não informado"} | Endereço: ${endereco || "não informado"}\n`;
         }
         return result;
       }
