@@ -421,7 +421,10 @@ serve(async (req) => {
         .from("whatsapp_conversations")
         .update(updateData)
         .eq("id", conversation.id);
-    }
+
+      if (typeof updateData.ai_enabled === "boolean") {
+        conversation.ai_enabled = updateData.ai_enabled;
+      }
 
     // Salvar mensagem (evitar duplicata)
     if (messageBirdId) {
