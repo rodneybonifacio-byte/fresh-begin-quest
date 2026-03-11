@@ -505,14 +505,13 @@ serve(async (req) => {
     console.log("✅ Mensagem salva na conversa:", conversation.id);
 
     // Se mensagem inbound e IA habilitada, chamar chat-ai
-    // Mas verificar se é resposta simples a HSM passivo para não responder fora de contexto
+    // Mas ignorar respostas passivas/autoresponder após HSM de notificação
     let shouldCallAI = direction === "inbound" && conversation.ai_enabled && channel?.ai_enabled;
-    
+
     if (shouldCallAI) {
-      // Verificar se a última mensagem outbound foi HSM passivo e a resposta é simples
       const { data: lastOutMsg } = await supabase
         .from("whatsapp_messages")
-        .select("content_type, sent_by, metadata")
+        .select("content_type, sent_by")
         .eq("conversation_id", conversation.id)
         .eq("direction", "outbound")
         .order("created_at", { ascending: false })
@@ -520,18 +519,16 @@ serve(async (req) => {
         .maybeSingle();
 
       const isPassiveHSM = lastOutMsg?.content_type === "hsm" && lastOutMsg?.sent_by === "system";
-      
-      if (isPassiveHSM) {
-        const respostaSimples = /^(ok|okay|obrigad[oa]|valeu|beleza|blz|top|👍|👌|🙏|certo|entendi|show|boa|massa|legal|tá|ta)\s*[!.]*$/i;
-        if (respostaSimples.test((messageContent || "").trim())) {
-          shouldCallAI = false;
-          console.log("⏭️ Resposta simples a HSM passivo, IA não será chamada:", conversation.id);
-          // Desativar IA e fechar conversa silenciosamente
-          await supabase
-            .from("whatsapp_conversations")
-            .update({ ai_enabled: false })
-            .eq("id", conversation.id);
-        }
+      const shouldSuppress = shouldSuppressAIAfterPassiveHSM(messageContent);
+
+      if (isPassiveHSM && shouldSuppress) {
+        shouldCallAI = false;
+        console.log("⏭️ Inbound passivo após HSM, IA não será chamada:", conversation.id);
+        await supabase
+          .from("whatsapp_conversations")
+          .update({ ai_enabled: false })
+          .eq("id", conversation.id);
+        conversation.ai_enabled = false;
       }
     }
 
