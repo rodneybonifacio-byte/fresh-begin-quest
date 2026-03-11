@@ -37,6 +37,50 @@ function normalizeMessageStatus(status: string | null | undefined): "sent" | "de
   return null;
 }
 
+function hasTrackingIntent(text: string | null | undefined): boolean {
+  const normalized = (text || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+  const trackingHints = [
+    "rastreio", "codigo", "entrega", "encomenda", "pedido", "objeto", "status",
+    "atras", "quando chega", "onde esta", "nao chegou", "correios", "frete",
+  ];
+
+  return trackingHints.some((hint) => normalized.includes(hint));
+}
+
+function isLikelyAutoReply(text: string | null | undefined): boolean {
+  const normalized = (text || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+  const autoReplySignals = [
+    "seja bem-vind",
+    "prazer ter voce conosco",
+    "responderemos as mensagens por ordem de chegada",
+    "ja ja chego em voce",
+    "me fala seu nome para iniciar",
+    "iniciar o atendimento",
+    "nossa equipe",
+    "por ordem de chegada",
+  ];
+
+  return autoReplySignals.some((signal) => normalized.includes(signal));
+}
+
+function shouldSuppressAIAfterPassiveHSM(text: string | null | undefined): boolean {
+  const cleaned = (text || "").trim();
+  if (!cleaned) return true;
+
+  const simpleAckRegex = /^(ok|okay|obrigad[oa]|valeu|beleza|blz|top|👍|👌|🙏|certo|entendi|show|boa|massa|legal|ta|tá)\s*[!.]*$/i;
+
+  if (hasTrackingIntent(cleaned)) return false;
+  return simpleAckRegex.test(cleaned) || isLikelyAutoReply(cleaned);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
