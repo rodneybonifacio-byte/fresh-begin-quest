@@ -42,9 +42,9 @@ Deno.serve(async (req: Request) => {
     if (!loginRes.ok) throw new Error(`Login falhou: ${loginRes.status}`);
     const { token } = await loginRes.json();
 
-    // Buscar emissões com status ENTREGUE (últimas 48h para pegar entregas recentes)
+    // Buscar emissões com status ENTREGUE (todas disponíveis, sem filtro temporal)
     const res = await fetch(
-      `${BASE_API_URL}/emissoes/admin?status=ENTREGUE&limit=50&offset=0`,
+      `${BASE_API_URL}/emissoes/admin?status=ENTREGUE&limit=100&offset=0`,
       { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } }
     );
     if (!res.ok) throw new Error(`Falha ao buscar emissões: ${res.status}`);
@@ -53,26 +53,20 @@ Deno.serve(async (req: Request) => {
 
     console.log(`📦 ${allEmissoes.length} emissões com status ENTREGUE`);
 
-    // Filtrar entregas das últimas 48 horas (mas pelo menos 2h atrás para dar tempo)
+    // Usar todas as emissões ENTREGUE sem filtro temporal
+    // A deduplicação abaixo garante que cada objeto só receba avaliação 1 vez
     const agora = Date.now();
-    const min2hAtras = new Date(agora - 2 * 60 * 60 * 1000).toISOString();
-    const max48hAtras = new Date(agora - 48 * 60 * 60 * 1000).toISOString();
+    const emissoesFiltradas = allEmissoes;
 
-    const emissoesFiltradas = allEmissoes.filter((e: any) => {
-      const dataEntrega = e.dataEntrega || e.atualizadoEm || e.updatedAt || "";
-      // Entregue entre 2h e 48h atrás (dar tempo antes de pedir avaliação)
-      return dataEntrega >= max48hAtras && dataEntrega <= min2hAtras;
-    });
+    console.log(`📋 ${emissoesFiltradas.length} emissões para verificar (dedup abaixo)`);
 
-    console.log(`⏰ ${emissoesFiltradas.length} entregas entre 2h e 48h atrás`);
-
-    // Deduplicar: verificar quais já receberam avaliação
+    // Deduplicar: verificar quais já receberam avaliação (últimos 30 dias)
     const { data: hsmMessages } = await supabase
       .from("whatsapp_messages")
       .select("metadata")
       .eq("content_type", "hsm")
       .eq("direction", "outbound")
-      .gte("created_at", new Date(agora - 7 * 24 * 60 * 60 * 1000).toISOString());
+      .gte("created_at", new Date(agora - 30 * 24 * 60 * 60 * 1000).toISOString());
 
     const telefonesJaNotificados = new Set<string>();
     if (hsmMessages) {
