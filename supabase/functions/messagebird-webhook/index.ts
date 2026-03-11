@@ -396,8 +396,6 @@ serve(async (req) => {
         updateData.unread_count = (conversation.unread_count || 0) + 1;
         // Reativar IA se canal permite e conversa estava desativada
         if (!conversation.ai_enabled && channel?.ai_enabled) {
-          // Verificar se a última mensagem outbound foi um HSM passivo do sistema
-          // Se sim, só reativar se o cliente enviar algo substancial (não apenas "ok", "obrigado", etc.)
           const { data: lastOutbound } = await supabase
             .from("whatsapp_messages")
             .select("content_type, sent_by")
@@ -408,11 +406,10 @@ serve(async (req) => {
             .maybeSingle();
 
           const isLastMsgPassiveHSM = lastOutbound?.content_type === "hsm" && lastOutbound?.sent_by === "system";
-          const respostaSimples = /^(ok|okay|obrigad[oa]|valeu|beleza|blz|top|👍|👌|🙏|certo|entendi|show|boa|massa|legal|tá|ta)\s*[!.]*$/i;
-          const isRespostaSimples = respostaSimples.test((messageContent || "").trim());
+          const shouldSuppress = shouldSuppressAIAfterPassiveHSM(messageContent);
 
-          if (isLastMsgPassiveHSM && isRespostaSimples) {
-            console.log("⏭️ Resposta simples a HSM passivo, IA permanece desativada:", conversation.id);
+          if (isLastMsgPassiveHSM && shouldSuppress) {
+            console.log("⏭️ Inbound passivo após HSM, IA permanece desativada:", conversation.id);
           } else {
             updateData.ai_enabled = true;
             console.log("🔄 IA reativada para conversa (mensagem inbound recebida):", conversation.id);
