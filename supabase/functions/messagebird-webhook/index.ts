@@ -408,6 +408,7 @@ serve(async (req) => {
       if (typeof updateData.ai_enabled === "boolean") {
         conversation.ai_enabled = updateData.ai_enabled;
       }
+    }
 
     // Salvar mensagem (evitar duplicata)
     if (messageBirdId) {
