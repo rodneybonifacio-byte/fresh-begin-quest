@@ -75,10 +75,20 @@ function shouldSuppressAIAfterPassiveHSM(text: string | null | undefined): boole
   const cleaned = (text || "").trim();
   if (!cleaned) return true;
 
-  const simpleAckRegex = /^(ok|okay|obrigad[oa]|valeu|beleza|blz|top|👍|👌|🙏|certo|entendi|show|boa|massa|legal|ta|tá)\s*[!.]*$/i;
-
   if (hasTrackingIntent(cleaned)) return false;
-  return simpleAckRegex.test(cleaned) || isLikelyAutoReply(cleaned);
+
+  const normalized = cleaned
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+  const simpleAcks = [
+    "ok", "okay", "obrigado", "obrigada", "valeu", "beleza", "blz", "certo",
+    "entendi", "show", "boa", "massa", "legal", "ta", "top",
+  ];
+
+  if (simpleAcks.includes(normalized.replace(/[!.]/g, "").trim())) return true;
+  return isLikelyAutoReply(cleaned);
 }
 
 serve(async (req) => {
