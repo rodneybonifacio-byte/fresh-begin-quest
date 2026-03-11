@@ -37,58 +37,31 @@ function normalizeMessageStatus(status: string | null | undefined): "sent" | "de
   return null;
 }
 
-function hasTrackingIntent(text: string | null | undefined): boolean {
-  const normalized = (text || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-
-  const trackingHints = [
-    "rastreio", "codigo", "entrega", "encomenda", "pedido", "objeto", "status",
-    "atras", "quando chega", "onde esta", "nao chegou", "correios", "frete",
-  ];
-
-  return trackingHints.some((hint) => normalized.includes(hint));
-}
-
-function isLikelyAutoReply(text: string | null | undefined): boolean {
-  const normalized = (text || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-
-  const autoReplySignals = [
-    "seja bem-vind",
-    "prazer ter voce conosco",
-    "responderemos as mensagens por ordem de chegada",
-    "ja ja chego em voce",
-    "me fala seu nome para iniciar",
-    "iniciar o atendimento",
-    "nossa equipe",
-    "por ordem de chegada",
-  ];
-
-  return autoReplySignals.some((signal) => normalized.includes(signal));
-}
-
 function shouldSuppressAIAfterPassiveHSM(text: string | null | undefined): boolean {
   const cleaned = (text || "").trim();
   if (!cleaned) return true;
-
-  if (hasTrackingIntent(cleaned)) return false;
 
   const normalized = cleaned
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
 
+  const withoutPunctuation = normalized.replace(/[!.]/g, "").trim();
   const simpleAcks = [
     "ok", "okay", "obrigado", "obrigada", "valeu", "beleza", "blz", "certo",
     "entendi", "show", "boa", "massa", "legal", "ta", "top",
   ];
 
-  if (simpleAcks.includes(normalized.replace(/[!.]/g, "").trim())) return true;
-  return isLikelyAutoReply(cleaned);
+  if (simpleAcks.includes(withoutPunctuation)) return true;
+
+  return (
+    normalized.includes("seja bem-vind") ||
+    normalized.includes("prazer ter voce conosco") ||
+    normalized.includes("por ordem de chegada") ||
+    normalized.includes("ja ja chego em voce") ||
+    normalized.includes("me fala seu nome para iniciar") ||
+    normalized.includes("iniciar o atendimento")
+  );
 }
 
 serve(async (req) => {
