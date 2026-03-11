@@ -60,13 +60,13 @@ Deno.serve(async (req: Request) => {
 
     console.log(`📋 ${emissoesFiltradas.length} emissões para verificar (dedup abaixo)`);
 
-    // Deduplicar: verificar quais já receberam avaliação
+    // Deduplicar: verificar quais já receberam avaliação (últimos 30 dias)
     const { data: hsmMessages } = await supabase
       .from("whatsapp_messages")
       .select("metadata")
       .eq("content_type", "hsm")
       .eq("direction", "outbound")
-      .gte("created_at", new Date(agora - 7 * 24 * 60 * 60 * 1000).toISOString());
+      .gte("created_at", new Date(agora - 30 * 24 * 60 * 60 * 1000).toISOString());
 
     const telefonesJaNotificados = new Set<string>();
     if (hsmMessages) {
