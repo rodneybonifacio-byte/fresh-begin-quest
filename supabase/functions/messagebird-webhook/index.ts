@@ -350,10 +350,29 @@ serve(async (req) => {
       }
       if (direction === "inbound") {
         updateData.unread_count = (conversation.unread_count || 0) + 1;
-        // Reativar IA se canal permite e conversa estava desativada (ex: fechada por timeout HSM)
+        // Reativar IA se canal permite e conversa estava desativada
         if (!conversation.ai_enabled && channel?.ai_enabled) {
-          updateData.ai_enabled = true;
-          console.log("🔄 IA reativada para conversa (mensagem inbound recebida):", conversation.id);
+          // Verificar se a última mensagem outbound foi um HSM passivo do sistema
+          // Se sim, só reativar se o cliente enviar algo substancial (não apenas "ok", "obrigado", etc.)
+          const { data: lastOutbound } = await supabase
+            .from("whatsapp_messages")
+            .select("content_type, sent_by")
+            .eq("conversation_id", conversation.id)
+            .eq("direction", "outbound")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          const isLastMsgPassiveHSM = lastOutbound?.content_type === "hsm" && lastOutbound?.sent_by === "system";
+          const respostaSimples = /^(ok|okay|obrigad[oa]|valeu|beleza|blz|top|👍|👌|🙏|certo|entendi|show|boa|massa|legal|tá|ta)\s*[!.]*$/i;
+          const isRespostaSimples = respostaSimples.test((messageContent || "").trim());
+
+          if (isLastMsgPassiveHSM && isRespostaSimples) {
+            console.log("⏭️ Resposta simples a HSM passivo, IA permanece desativada:", conversation.id);
+          } else {
+            updateData.ai_enabled = true;
+            console.log("🔄 IA reativada para conversa (mensagem inbound recebida):", conversation.id);
+          }
         }
       }
 
@@ -442,7 +461,37 @@ serve(async (req) => {
     console.log("✅ Mensagem salva na conversa:", conversation.id);
 
     // Se mensagem inbound e IA habilitada, chamar chat-ai
-    if (direction === "inbound" && conversation.ai_enabled && channel?.ai_enabled) {
+    // Mas verificar se é resposta simples a HSM passivo para não responder fora de contexto
+    let shouldCallAI = direction === "inbound" && conversation.ai_enabled && channel?.ai_enabled;
+    
+    if (shouldCallAI) {
+      // Verificar se a última mensagem outbound foi HSM passivo e a resposta é simples
+      const { data: lastOutMsg } = await supabase
+        .from("whatsapp_messages")
+        .select("content_type, sent_by, metadata")
+        .eq("conversation_id", conversation.id)
+        .eq("direction", "outbound")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const isPassiveHSM = lastOutMsg?.content_type === "hsm" && lastOutMsg?.sent_by === "system";
+      
+      if (isPassiveHSM) {
+        const respostaSimples = /^(ok|okay|obrigad[oa]|valeu|beleza|blz|top|👍|👌|🙏|certo|entendi|show|boa|massa|legal|tá|ta)\s*[!.]*$/i;
+        if (respostaSimples.test((messageContent || "").trim())) {
+          shouldCallAI = false;
+          console.log("⏭️ Resposta simples a HSM passivo, IA não será chamada:", conversation.id);
+          // Desativar IA e fechar conversa silenciosamente
+          await supabase
+            .from("whatsapp_conversations")
+            .update({ ai_enabled: false })
+            .eq("id", conversation.id);
+        }
+      }
+    }
+
+    if (shouldCallAI) {
       try {
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
         const isMediaMsg = contentType === "audio" || contentType === "voice" || contentType === "ptt" || contentType === "image" || contentType === "video";
@@ -468,7 +517,7 @@ serve(async (req) => {
       } catch (aiError) {
         console.error("⚠️ Erro ao chamar chat-ai (não crítico):", aiError);
       }
-    } else {
+    } else if (direction === "inbound") {
       console.log("⏭️ Não chamou chat-ai:", { direction, ai_enabled: conversation.ai_enabled, channel_ai: channel?.ai_enabled });
     }
 
