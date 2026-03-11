@@ -392,7 +392,22 @@ serve(async (req) => {
           const shouldSuppress = shouldSuppressAIAfterPassiveHSM(messageContent);
 
           if (isLastMsgPassiveHSM && shouldSuppress) {
-            console.log("⏭️ Inbound passivo após HSM, IA permanece desativada:", conversation.id);
+            console.log("⏭️ Inbound passivo após HSM — fechando conversa:", conversation.id);
+            updateData.ai_enabled = false;
+            updateData.status = "closed";
+            // Fechar tickets abertos dessa conversa
+            await supabase
+              .from("whatsapp_tickets")
+              .update({ status: "closed", closed_at: new Date().toISOString() })
+              .eq("conversation_id", conversation.id)
+              .in("status", ["open", "pending", "pending_close"]);
+            // Concluir cards do pipeline (exceto rastreio)
+            await supabase
+              .from("ai_support_pipeline")
+              .update({ status: "concluido" })
+              .eq("conversation_id", conversation.id)
+              .neq("category", "rastreio")
+              .not("status", "in", '("concluido","fechado","cancelado","entregue")');
           } else {
             updateData.ai_enabled = true;
             console.log("🔄 IA reativada para conversa (mensagem inbound recebida):", conversation.id);
@@ -507,12 +522,24 @@ serve(async (req) => {
 
       if (isPassiveHSM && shouldSuppress) {
         shouldCallAI = false;
-        console.log("⏭️ Inbound passivo após HSM, IA não será chamada:", conversation.id);
+        console.log("⏭️ Inbound passivo após HSM — fechando conversa:", conversation.id);
         await supabase
           .from("whatsapp_conversations")
-          .update({ ai_enabled: false })
+          .update({ ai_enabled: false, status: "closed" })
           .eq("id", conversation.id);
         conversation.ai_enabled = false;
+        // Fechar tickets e pipeline
+        await supabase
+          .from("whatsapp_tickets")
+          .update({ status: "closed", closed_at: new Date().toISOString() })
+          .eq("conversation_id", conversation.id)
+          .in("status", ["open", "pending", "pending_close"]);
+        await supabase
+          .from("ai_support_pipeline")
+          .update({ status: "concluido" })
+          .eq("conversation_id", conversation.id)
+          .neq("category", "rastreio")
+          .not("status", "in", '("concluido","fechado","cancelado","entregue")');
       }
     }
 
