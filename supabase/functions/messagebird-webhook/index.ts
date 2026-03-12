@@ -46,13 +46,45 @@ function shouldSuppressAIAfterPassiveHSM(text: string | null | undefined): boole
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
 
-  const withoutPunctuation = normalized.replace(/[!.]/g, "").trim();
+  // Remover emojis para análise de texto puro
+  const withoutEmojis = normalized.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{200D}\u{20E3}]/gu, "").trim();
+  const withoutPunctuation = withoutEmojis.replace(/[!.,;:?]/g, "").trim();
+
+  // Se só tem emojis (texto vazio após remoção), é passivo
+  if (!withoutPunctuation) return true;
+
   const simpleAcks = [
     "ok", "okay", "obrigado", "obrigada", "valeu", "beleza", "blz", "certo",
-    "entendi", "show", "boa", "massa", "legal", "ta", "top",
+    "entendi", "show", "boa", "massa", "legal", "ta", "top", "otimo",
+    "perfeito", "joia", "maravilha", "excelente", "bacana",
   ];
 
   if (simpleAcks.includes(withoutPunctuation)) return true;
+
+  // Palavras/frases compostas passivas (cada linha do texto)
+  const lines = withoutPunctuation.split(/\n/).map(l => l.trim()).filter(Boolean);
+  const passivePhrases = [
+    /^muito\s+obrigad[oa]$/,
+    /^obrigad[oa]\s+/,
+    /^deus\s+(te\s+)?abencoe/,
+    /^que\s+otimo$/,
+    /^que\s+bom$/,
+    /^que\s+maravilha$/,
+    /^boa\s+tarde$/,
+    /^bom\s+dia$/,
+    /^boa\s+noite$/,
+    /^brigaduh?$/,
+    /^brigad[oa]$/,
+    /^amem$/,
+    /^amen$/,
+  ];
+
+  // Se TODAS as linhas são passivas, suprimir
+  const allLinesPassive = lines.every(line => {
+    if (simpleAcks.includes(line)) return true;
+    return passivePhrases.some(p => p.test(line));
+  });
+  if (allLinesPassive) return true;
 
   return (
     normalized.includes("seja bem-vind") ||
@@ -377,42 +409,56 @@ serve(async (req) => {
       }
       if (direction === "inbound") {
         updateData.unread_count = (conversation.unread_count || 0) + 1;
-        // Reativar IA se canal permite e conversa estava desativada
-        if (!conversation.ai_enabled && channel?.ai_enabled) {
-          const { data: lastOutbound } = await supabase
-            .from("whatsapp_messages")
-            .select("content_type, sent_by")
+        
+        // === VERIFICAÇÃO DE SUPRESSÃO PÓS-HSM E PÓS-DESPEDIDA ===
+        // Buscar últimas 2 mensagens outbound para checar contexto
+        const { data: lastOutbounds } = await supabase
+          .from("whatsapp_messages")
+          .select("content_type, sent_by, ai_generated, content")
+          .eq("conversation_id", conversation.id)
+          .eq("direction", "outbound")
+          .order("created_at", { ascending: false })
+          .limit(2);
+
+        const lastOutbound = lastOutbounds?.[0] || null;
+        const isLastMsgPassiveHSM = lastOutbound?.content_type === "hsm" && lastOutbound?.sent_by === "system";
+        const shouldSuppress = shouldSuppressAIAfterPassiveHSM(messageContent);
+
+        // Detectar se a última mensagem da IA já foi uma despedida
+        const farewellPatterns = [
+          /se precisar.*s[oó] chamar/i,
+          /estou.*pra ajudar/i,
+          /qualquer (coisa|ajuda|d[uú]vida)/i,
+          /encerrar.*atendimento/i,
+          /\bé só chamar\b/i,
+          /\bestou [àa] disposi[çc][ãa]o/i,
+        ];
+        const isLastMsgFarewell = lastOutbound?.ai_generated && lastOutbound?.content
+          && farewellPatterns.some(p => p.test(lastOutbound.content));
+
+        if ((isLastMsgPassiveHSM || isLastMsgFarewell) && shouldSuppress) {
+          console.log("⏭️ Inbound passivo após", isLastMsgPassiveHSM ? "HSM" : "despedida IA", "— suprimindo:", conversation.id, "msg:", messageContent);
+          updateData.ai_enabled = false;
+          updateData.status = "closed";
+          // Fechar tickets abertos dessa conversa
+          await supabase
+            .from("whatsapp_tickets")
+            .update({ status: "closed", closed_at: new Date().toISOString() })
             .eq("conversation_id", conversation.id)
-            .eq("direction", "outbound")
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          const isLastMsgPassiveHSM = lastOutbound?.content_type === "hsm" && lastOutbound?.sent_by === "system";
-          const shouldSuppress = shouldSuppressAIAfterPassiveHSM(messageContent);
-
-          if (isLastMsgPassiveHSM && shouldSuppress) {
-            console.log("⏭️ Inbound passivo após HSM — fechando conversa:", conversation.id);
-            updateData.ai_enabled = false;
-            updateData.status = "closed";
-            // Fechar tickets abertos dessa conversa
-            await supabase
-              .from("whatsapp_tickets")
-              .update({ status: "closed", closed_at: new Date().toISOString() })
-              .eq("conversation_id", conversation.id)
-              .in("status", ["open", "pending", "pending_close"]);
-            // Concluir cards do pipeline (exceto rastreio)
-            await supabase
-              .from("ai_support_pipeline")
-              .update({ status: "concluido" })
-              .eq("conversation_id", conversation.id)
-              .neq("category", "rastreio")
-              .not("status", "in", '("concluido","fechado","cancelado","entregue")');
-          } else {
-            updateData.ai_enabled = true;
-            console.log("🔄 IA reativada para conversa (mensagem inbound recebida):", conversation.id);
-          }
+            .in("status", ["open", "pending", "pending_close"]);
+          // Concluir cards do pipeline (exceto rastreio)
+          await supabase
+            .from("ai_support_pipeline")
+            .update({ status: "concluido" })
+            .eq("conversation_id", conversation.id)
+            .neq("category", "rastreio")
+            .not("status", "in", '("concluido","fechado","cancelado","entregue")');
+        } else if (!conversation.ai_enabled && channel?.ai_enabled) {
+          // Reativar IA apenas se estava desativada e a mensagem NÃO é passiva
+          updateData.ai_enabled = true;
+          console.log("🔄 IA reativada para conversa (mensagem inbound recebida):", conversation.id);
         }
+        // Se ai_enabled já é true e mensagem não é passiva, manter como está
       }
 
       await supabase
