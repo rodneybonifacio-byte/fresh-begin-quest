@@ -122,15 +122,24 @@ async function fetchEmissoesEmTransito(token: string): Promise<any[]> {
   let hasMore = true;
 
   while (hasMore) {
-    const response = await fetch(`${baseApiUrl}/emissoes/admin?status=EM_TRANSITO&limit=${limit}&offset=${offset}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    const url = `${baseApiUrl}/emissoes/admin?status=EM_TRANSITO&limit=${limit}&offset=${offset}`;
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+    } catch (err) {
+      console.error(`Erro de rede ao buscar emissões:`, err);
+      break;
+    }
 
     if (!response.ok) {
       console.error(`Erro ao buscar emissões: ${response.status}`);
+      const body = await response.text();
+      console.error(`Body: ${body}`);
       break;
     }
 
