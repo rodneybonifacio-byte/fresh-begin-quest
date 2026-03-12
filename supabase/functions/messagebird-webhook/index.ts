@@ -410,22 +410,34 @@ serve(async (req) => {
       if (direction === "inbound") {
         updateData.unread_count = (conversation.unread_count || 0) + 1;
         
-        // === VERIFICAÇÃO DE SUPRESSÃO PÓS-HSM ===
-        // Buscar última mensagem outbound para checar se foi HSM passivo
-        const { data: lastOutbound } = await supabase
+        // === VERIFICAÇÃO DE SUPRESSÃO PÓS-HSM E PÓS-DESPEDIDA ===
+        // Buscar últimas 2 mensagens outbound para checar contexto
+        const { data: lastOutbounds } = await supabase
           .from("whatsapp_messages")
-          .select("content_type, sent_by, ai_generated")
+          .select("content_type, sent_by, ai_generated, content")
           .eq("conversation_id", conversation.id)
           .eq("direction", "outbound")
           .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+          .limit(2);
 
+        const lastOutbound = lastOutbounds?.[0] || null;
         const isLastMsgPassiveHSM = lastOutbound?.content_type === "hsm" && lastOutbound?.sent_by === "system";
         const shouldSuppress = shouldSuppressAIAfterPassiveHSM(messageContent);
 
-        if (isLastMsgPassiveHSM && shouldSuppress) {
-          console.log("⏭️ Inbound passivo após HSM — suprimindo IA:", conversation.id, "msg:", messageContent);
+        // Detectar se a última mensagem da IA já foi uma despedida
+        const farewellPatterns = [
+          /se precisar.*s[oó] chamar/i,
+          /estou.*pra ajudar/i,
+          /qualquer (coisa|ajuda|d[uú]vida)/i,
+          /encerrar.*atendimento/i,
+          /\bé só chamar\b/i,
+          /\bestou [àa] disposi[çc][ãa]o/i,
+        ];
+        const isLastMsgFarewell = lastOutbound?.ai_generated && lastOutbound?.content
+          && farewellPatterns.some(p => p.test(lastOutbound.content));
+
+        if ((isLastMsgPassiveHSM || isLastMsgFarewell) && shouldSuppress) {
+          console.log("⏭️ Inbound passivo após", isLastMsgPassiveHSM ? "HSM" : "despedida IA", "— suprimindo:", conversation.id, "msg:", messageContent);
           updateData.ai_enabled = false;
           updateData.status = "closed";
           // Fechar tickets abertos dessa conversa
@@ -442,11 +454,11 @@ serve(async (req) => {
             .neq("category", "rastreio")
             .not("status", "in", '("concluido","fechado","cancelado","entregue")');
         } else if (!conversation.ai_enabled && channel?.ai_enabled) {
-          // Reativar IA apenas se estava desativada e a mensagem NÃO é passiva pós-HSM
+          // Reativar IA apenas se estava desativada e a mensagem NÃO é passiva
           updateData.ai_enabled = true;
           console.log("🔄 IA reativada para conversa (mensagem inbound recebida):", conversation.id);
         }
-        // Se ai_enabled já é true e mensagem não é passiva pós-HSM, manter como está
+        // Se ai_enabled já é true e mensagem não é passiva, manter como está
       }
 
       await supabase
