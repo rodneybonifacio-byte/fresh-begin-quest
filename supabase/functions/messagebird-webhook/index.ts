@@ -409,42 +409,44 @@ serve(async (req) => {
       }
       if (direction === "inbound") {
         updateData.unread_count = (conversation.unread_count || 0) + 1;
-        // Reativar IA se canal permite e conversa estava desativada
-        if (!conversation.ai_enabled && channel?.ai_enabled) {
-          const { data: lastOutbound } = await supabase
-            .from("whatsapp_messages")
-            .select("content_type, sent_by")
+        
+        // === VERIFICAÇÃO DE SUPRESSÃO PÓS-HSM ===
+        // Buscar última mensagem outbound para checar se foi HSM passivo
+        const { data: lastOutbound } = await supabase
+          .from("whatsapp_messages")
+          .select("content_type, sent_by, ai_generated")
+          .eq("conversation_id", conversation.id)
+          .eq("direction", "outbound")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const isLastMsgPassiveHSM = lastOutbound?.content_type === "hsm" && lastOutbound?.sent_by === "system";
+        const shouldSuppress = shouldSuppressAIAfterPassiveHSM(messageContent);
+
+        if (isLastMsgPassiveHSM && shouldSuppress) {
+          console.log("⏭️ Inbound passivo após HSM — suprimindo IA:", conversation.id, "msg:", messageContent);
+          updateData.ai_enabled = false;
+          updateData.status = "closed";
+          // Fechar tickets abertos dessa conversa
+          await supabase
+            .from("whatsapp_tickets")
+            .update({ status: "closed", closed_at: new Date().toISOString() })
             .eq("conversation_id", conversation.id)
-            .eq("direction", "outbound")
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          const isLastMsgPassiveHSM = lastOutbound?.content_type === "hsm" && lastOutbound?.sent_by === "system";
-          const shouldSuppress = shouldSuppressAIAfterPassiveHSM(messageContent);
-
-          if (isLastMsgPassiveHSM && shouldSuppress) {
-            console.log("⏭️ Inbound passivo após HSM — fechando conversa:", conversation.id);
-            updateData.ai_enabled = false;
-            updateData.status = "closed";
-            // Fechar tickets abertos dessa conversa
-            await supabase
-              .from("whatsapp_tickets")
-              .update({ status: "closed", closed_at: new Date().toISOString() })
-              .eq("conversation_id", conversation.id)
-              .in("status", ["open", "pending", "pending_close"]);
-            // Concluir cards do pipeline (exceto rastreio)
-            await supabase
-              .from("ai_support_pipeline")
-              .update({ status: "concluido" })
-              .eq("conversation_id", conversation.id)
-              .neq("category", "rastreio")
-              .not("status", "in", '("concluido","fechado","cancelado","entregue")');
-          } else {
-            updateData.ai_enabled = true;
-            console.log("🔄 IA reativada para conversa (mensagem inbound recebida):", conversation.id);
-          }
+            .in("status", ["open", "pending", "pending_close"]);
+          // Concluir cards do pipeline (exceto rastreio)
+          await supabase
+            .from("ai_support_pipeline")
+            .update({ status: "concluido" })
+            .eq("conversation_id", conversation.id)
+            .neq("category", "rastreio")
+            .not("status", "in", '("concluido","fechado","cancelado","entregue")');
+        } else if (!conversation.ai_enabled && channel?.ai_enabled) {
+          // Reativar IA apenas se estava desativada e a mensagem NÃO é passiva pós-HSM
+          updateData.ai_enabled = true;
+          console.log("🔄 IA reativada para conversa (mensagem inbound recebida):", conversation.id);
         }
+        // Se ai_enabled já é true e mensagem não é passiva pós-HSM, manter como está
       }
 
       await supabase
