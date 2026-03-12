@@ -174,7 +174,7 @@ Deno.serve(async (req) => {
         const url = variables[v.system_field || v.key] || variables[v.key] || "";
         return {
           type: "image",
-          image: { link: url },
+          image: { url: url },
         };
       }
       return {
