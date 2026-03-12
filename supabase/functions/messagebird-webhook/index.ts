@@ -46,13 +46,45 @@ function shouldSuppressAIAfterPassiveHSM(text: string | null | undefined): boole
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
 
-  const withoutPunctuation = normalized.replace(/[!.]/g, "").trim();
+  // Remover emojis para análise de texto puro
+  const withoutEmojis = normalized.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{200D}\u{20E3}]/gu, "").trim();
+  const withoutPunctuation = withoutEmojis.replace(/[!.,;:?]/g, "").trim();
+
+  // Se só tem emojis (texto vazio após remoção), é passivo
+  if (!withoutPunctuation) return true;
+
   const simpleAcks = [
     "ok", "okay", "obrigado", "obrigada", "valeu", "beleza", "blz", "certo",
-    "entendi", "show", "boa", "massa", "legal", "ta", "top",
+    "entendi", "show", "boa", "massa", "legal", "ta", "top", "otimo",
+    "perfeito", "joia", "maravilha", "excelente", "bacana",
   ];
 
   if (simpleAcks.includes(withoutPunctuation)) return true;
+
+  // Palavras/frases compostas passivas (cada linha do texto)
+  const lines = withoutPunctuation.split(/\n/).map(l => l.trim()).filter(Boolean);
+  const passivePhrases = [
+    /^muito\s+obrigad[oa]$/,
+    /^obrigad[oa]\s+/,
+    /^deus\s+(te\s+)?abencoe/,
+    /^que\s+otimo$/,
+    /^que\s+bom$/,
+    /^que\s+maravilha$/,
+    /^boa\s+tarde$/,
+    /^bom\s+dia$/,
+    /^boa\s+noite$/,
+    /^brigaduh?$/,
+    /^brigad[oa]$/,
+    /^amem$/,
+    /^amen$/,
+  ];
+
+  // Se TODAS as linhas são passivas, suprimir
+  const allLinesPassive = lines.every(line => {
+    if (simpleAcks.includes(line)) return true;
+    return passivePhrases.some(p => p.test(line));
+  });
+  if (allLinesPassive) return true;
 
   return (
     normalized.includes("seja bem-vind") ||
