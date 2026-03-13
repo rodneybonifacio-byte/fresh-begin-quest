@@ -5,7 +5,8 @@ import {
   Truck, Globe, Warehouse, MapPin, Handshake, ChevronRight,
   ChevronLeft, BarChart3, Zap, Shield, Package,
   ArrowRight, Phone, Brain, Mic, Eye, MessageCircle,
-  AlertTriangle, Clock, Send, Star, ShieldCheck, DollarSign
+  AlertTriangle, Clock, Send, Star, ShieldCheck, DollarSign,
+  TrendingDown, TrendingUp, Activity
 } from "lucide-react";
 import lookChinaProfile from "@/assets/look-china-profile.png";
 
@@ -50,21 +51,24 @@ const C = {
 
 const scenarios = {
   bear: {
-    name: "🐻 Bear Case",
+    name: "Bear Case",
+    icon: TrendingDown,
     sub: "Cenário pessimista",
     conversion: [0.3, 0.5, 0.8, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5],
     digital: [0.024, 0.04, 0.064, 0.08, 0.12, 0.16, 0.20, 0.24, 0.28, 0.32, 0.36, 0.40],
     color: C.textMuted,
   },
   base: {
-    name: "📊 Base Case",
+    name: "Base Case",
+    icon: Activity,
     sub: "Cenário realista",
     conversion: [0.5, 1, 1.5, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     digital: [0.04, 0.08, 0.12, 0.16, 0.24, 0.32, 0.40, 0.48, 0.56, 0.64, 0.72, 0.80],
     color: C.orange,
   },
   bull: {
-    name: "🐂 Bull Case",
+    name: "Bull Case",
+    icon: TrendingUp,
     sub: "Cenário otimista",
     conversion: [1, 2, 3, 5, 7, 9, 11, 13, 15, 17, 19, 22],
     digital: [0.08, 0.16, 0.24, 0.40, 0.56, 0.72, 0.88, 1.04, 1.20, 1.36, 1.52, 1.76],
@@ -255,7 +259,7 @@ export default function PitchPage() {
                         color: active ? "white" : C.navy,
                       }}
                     >
-                      <div className="font-black text-xs">{s.name}</div>
+                      <div className="font-black text-xs flex items-center gap-1.5"><s.icon size={13} /> {s.name}</div>
                       <div className="text-[10px]" style={{ opacity: 0.7 }}>
                         {s.conversion[0]}% → {s.conversion[11]}%
                       </div>
@@ -295,7 +299,7 @@ export default function PitchPage() {
                         borderWidth: isActive ? 2 : 1,
                       }}
                     >
-                      <div className="font-black text-[11px] mb-1.5" style={{ color: s.color }}>{s.name}</div>
+                      <div className="font-black text-[11px] mb-1.5 flex items-center gap-1" style={{ color: s.color }}><s.icon size={12} /> {s.name}</div>
                       <div className="space-y-1 text-[10px]" style={{ color: C.textMuted }}>
                         <div className="flex justify-between">
                           <span>Digital Mês 12</span>
