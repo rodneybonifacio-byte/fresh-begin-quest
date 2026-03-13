@@ -156,7 +156,7 @@ export default function PitchPage() {
                 <button onClick={() => setCurrent(1)} className="text-white px-8 py-3.5 rounded-full font-semibold flex items-center gap-2 transition shadow-lg hover:shadow-xl" style={{ background: C.orange }}>
                   Iniciar Apresentação <ArrowRight size={18} />
                 </button>
-                <p className="text-xs pt-2" style={{ color: C.textMuted }}>→ ou Espaço para avançar · F para tela cheia</p>
+                <p className="text-xs pt-2 flex items-center gap-1" style={{ color: C.textMuted }}><ArrowRight size={12} /> ou Espaço para avançar · F para tela cheia</p>
               </div>
               <div className="flex-1 flex justify-center relative">
                 <div className="w-72 h-72 md:w-96 md:h-96 rounded-full relative" style={{ background: C.orange }}>
@@ -301,12 +301,12 @@ export default function PitchPage() {
                     <AlertTriangle size={32} style={{ color: C.orangeLight }} />
                   </div>
                   <div className="space-y-3">
-                    <h3 className="text-xl font-bold">🧠 Algoritmo Preditivo de Atraso</h3>
+                    <h3 className="text-xl font-bold flex items-center gap-2"><Brain size={20} style={{ color: C.orangeLight }} /> Algoritmo Preditivo de Atraso</h3>
                     <p className="text-white/85 leading-relaxed">
                       Nosso sistema monitora <strong className="text-white">cada objeto em trânsito em tempo real</strong>. A cada 15 minutos, um cron inteligente cruza a data prevista de entrega com o horário atual (fuso de Brasília). Se detecta que o prazo será estourado — ou que já são <strong className="text-white">16h15 do dia previsto</strong> sem movimentação — o cliente recebe automaticamente uma notificação via WhatsApp <strong style={{ color: C.orangeLight }}>antes mesmo de perceber o atraso</strong>.
                     </p>
-                    <p className="text-white/70 text-sm">
-                      → Deduplicação inteligente: cada alerta é enviado apenas 1x a cada 30 dias por objeto, evitando spam.
+                    <p className="text-white/70 text-sm flex items-start gap-2">
+                      <ShieldCheck size={14} className="mt-0.5 shrink-0" style={{ color: C.orangeLight }} /> Deduplicação inteligente: cada alerta é enviado apenas 1x a cada 30 dias por objeto, evitando spam.
                     </p>
                   </div>
                 </div>
@@ -338,7 +338,7 @@ export default function PitchPage() {
               <div className="rounded-xl p-5 border flex items-center gap-4" style={{ background: C.orangeBg, borderColor: C.orangeBorder }}>
                 <ShieldCheck size={24} style={{ color: C.orange }} />
                 <p className="text-sm" style={{ color: C.text }}>
-                  <strong style={{ color: C.navy }}>Pipeline automatizado de 6 estágios</strong> — cada notificação move o card do cliente no CRM automaticamente: <span style={{ color: C.textMuted }}>Pré-postado → Em Trânsito → Saiu p/ Entrega → Aguardando Retirada → Atrasado → Entregue</span>. Progressão estritamente crescente, sem retrocesso.
+                  <strong style={{ color: C.navy }}>Pipeline automatizado de 6 estágios</strong> — cada notificação move o card do cliente no CRM automaticamente: <span style={{ color: C.textMuted }}>Pré-postado <ArrowRight size={12} className="inline" /> Em Trânsito <ArrowRight size={12} className="inline" /> Saiu p/ Entrega <ArrowRight size={12} className="inline" /> Aguardando Retirada <ArrowRight size={12} className="inline" /> Atrasado <ArrowRight size={12} className="inline" /> Entregue</span>. Progressão estritamente crescente, sem retrocesso.
                 </p>
               </div>
             </div>
@@ -359,7 +359,7 @@ export default function PitchPage() {
               </div>
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="rounded-xl p-6 border" style={{ background: C.white, borderColor: C.creamDark }}>
-                  <h4 className="font-bold mb-3" style={{ color: C.orange }}>🖥️ Plataforma Marketplace</h4>
+                  <h4 className="font-bold mb-3 flex items-center gap-2" style={{ color: C.orange }}><Globe size={18} /> Plataforma Marketplace</h4>
                   <ul className="space-y-2 text-sm" style={{ color: C.textMuted }}>
                     <li>• Nova plataforma integrada com contrato Flex Envios</li>
                     <li>• Whitelabel personalizado Look China</li>
@@ -368,7 +368,7 @@ export default function PitchPage() {
                   </ul>
                 </div>
                 <div className="rounded-xl p-6 border" style={{ background: C.white, borderColor: C.creamDark }}>
-                  <h4 className="font-bold mb-3" style={{ color: C.navy }}>📦 Sistema FULL (Galpão)</h4>
+                  <h4 className="font-bold mb-3 flex items-center gap-2" style={{ color: C.navy }}><Warehouse size={18} /> Sistema FULL (Galpão)</h4>
                   <ul className="space-y-2 text-sm" style={{ color: C.textMuted }}>
                     <li>• Fulfillment completo no galpão do parceiro</li>
                     <li>• Desenvolvimento dedicado se necessário</li>
@@ -389,8 +389,8 @@ export default function PitchPage() {
                 <LocationCard name="Look China Shopping" address="Rua Maria Marcolina" type="Ponto de Coleta Secundário" features={["Coleta centralizada do shopping", "Alto volume de lojistas", "Expedição diária", "Integração com marketplace"]} />
               </div>
               <div className="rounded-xl p-6 text-center" style={{ background: C.orangeBg, border: `1px solid ${C.orangeBorder}` }}>
-                <p className="text-lg" style={{ color: C.navy }}>
-                  🎯 Dois pontos estratégicos = <strong>maior cobertura</strong> e <strong>conveniência</strong> para os lojistas do marketplace
+                <p className="text-lg flex items-center justify-center gap-2" style={{ color: C.navy }}>
+                  <MapPin size={20} style={{ color: C.orange }} /> Dois pontos estratégicos = <strong>maior cobertura</strong> e <strong>conveniência</strong> para os lojistas do marketplace
                 </p>
               </div>
             </div>
@@ -434,10 +434,10 @@ export default function PitchPage() {
                 <div className="space-y-4">
                   <h4 className="font-bold mb-2 text-lg" style={{ color: C.navy }}>Avaliação do Modelo</h4>
                   {[
-                    { label: "Flex Envios recebe", detail: "50% dos rendimentos do marketplace + 12% das postagens na agência", verdict: "✅ Receita dupla" },
-                    { label: "BRHUB assume", detail: "100% do desenvolvimento, manutenção e suporte IA", verdict: "⚖️ Investimento alto" },
-                    { label: "Flex opera", detail: "Logística, API e infraestrutura física (galpão + agência)", verdict: "✅ Core business" },
-                    { label: "Risco BRHUB", detail: "Desenvolvimento sem garantia de volume inicial", verdict: "⚠️ Risco mitigado" },
+                    { label: "Flex Envios recebe", detail: "50% dos rendimentos do marketplace + 12% das postagens na agência", verdict: "Receita dupla", verdictIcon: <CheckCircle2 size={14} style={{ color: C.emerald }} /> },
+                    { label: "BRHUB assume", detail: "100% do desenvolvimento, manutenção e suporte IA", verdict: "Investimento alto", verdictIcon: <BarChart3 size={14} style={{ color: C.amber }} /> },
+                    { label: "Flex opera", detail: "Logística, API e infraestrutura física (galpão + agência)", verdict: "Core business", verdictIcon: <CheckCircle2 size={14} style={{ color: C.emerald }} /> },
+                    { label: "Risco BRHUB", detail: "Desenvolvimento sem garantia de volume inicial", verdict: "Risco mitigado", verdictIcon: <AlertTriangle size={14} style={{ color: C.amber }} /> },
                   ].map((item, i) => (
                     <div key={i} className="rounded-lg p-4 border" style={{ background: C.white, borderColor: C.creamDark }}>
                       <div className="flex justify-between items-start">
@@ -445,13 +445,13 @@ export default function PitchPage() {
                           <p className="font-semibold text-sm" style={{ color: C.navy }}>{item.label}</p>
                           <p className="text-xs mt-1" style={{ color: C.textMuted }}>{item.detail}</p>
                         </div>
-                        <span className="text-xs shrink-0 ml-3">{item.verdict}</span>
+                        <span className="text-xs shrink-0 ml-3 flex items-center gap-1">{item.verdictIcon} {item.verdict}</span>
                       </div>
                     </div>
                   ))}
                   <div className="rounded-lg p-4 mt-2" style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)" }}>
-                    <p className="text-sm font-medium" style={{ color: "#065f46" }}>
-                      ✅ O modelo é <strong>justo e equilibrado</strong>. Flex Envios tem receita garantida (12%) + upside do marketplace (50%), enquanto BRHUB investe em tecnologia com retorno proporcional ao crescimento.
+                    <p className="text-sm font-medium flex items-start gap-2" style={{ color: "#065f46" }}>
+                      <CheckCircle2 size={16} className="mt-0.5 shrink-0" style={{ color: C.emerald }} /> O modelo é <strong>justo e equilibrado</strong>. Flex Envios tem receita garantida (12%) + upside do marketplace (50%), enquanto BRHUB investe em tecnologia com retorno proporcional ao crescimento.
                     </p>
                   </div>
                 </div>
