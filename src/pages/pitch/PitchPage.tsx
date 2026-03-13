@@ -51,7 +51,7 @@ const C = {
 
 const scenarios = {
   bear: {
-    name: "Bear Case",
+    name: "Conservador",
     icon: TrendingDown,
     sub: "Cenário pessimista",
     conversion: [0.3, 0.5, 0.8, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5],
