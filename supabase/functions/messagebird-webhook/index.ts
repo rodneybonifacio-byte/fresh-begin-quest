@@ -409,6 +409,50 @@ serve(async (req) => {
       }
       if (direction === "inbound") {
         updateData.unread_count = (conversation.unread_count || 0) + 1;
+
+        // === DETECÇÃO DE "NÚMERO ERRADO / NÃO SOU EU" ===
+        const wrongPersonPatterns = [
+          /n[aã]o\s+sou\s+(eu|ess[ae]?\s+pessoa|esse?\s+(cara|nome|contato))/i,
+          /n[aã]o\s+sou\s+\w+/i, // "não sou Jacson"
+          /n[aã]o\s+conhe[çc]o\s+ess[ae]/i,
+          /n[uú]mero\s+errado/i,
+          /meu\s+n[uú]mero\s+n[aã]o\s+[eé]/i,
+          /esse?\s+n[uú]mero\s+n[aã]o\s+[eé]\s+meu/i,
+          /n[aã]o\s+[eé]\s+pra\s+mim/i,
+          /n[aã]o\s+fiz\s+nenhuma?\s+(compra|pedido|envio)/i,
+          /quem\s+[eé]\s+ess[ae]\s+pessoa/i,
+          /parem\s+de\s+(enviar|mandar)\s+mensag/i,
+          /n[aã]o\s+quero\s+(receber|mais)\s+mensag/i,
+        ];
+        const isWrongPerson = wrongPersonPatterns.some(p => p.test(messageContent || ""));
+        
+        if (isWrongPerson) {
+          console.log(`🚫 WRONG PERSON detectado: ${normalizedPhone} — "${messageContent}". Bloqueando número.`);
+          // Add to blocklist
+          await supabase
+            .from("whatsapp_phone_blocklist")
+            .upsert({
+              phone_number: normalizedPhone,
+              reason: `Auto-detectado: "${(messageContent || "").substring(0, 200)}"`,
+              contact_name: conversation.contact_name,
+              blocked_by: "auto-detection",
+            }, { onConflict: "phone_number" });
+          // Disable AI and close conversation
+          updateData.ai_enabled = false;
+          updateData.status = "closed";
+          // Close tickets
+          await supabase
+            .from("whatsapp_tickets")
+            .update({ status: "closed", closed_at: new Date().toISOString() })
+            .eq("conversation_id", conversation.id)
+            .in("status", ["open", "pending", "pending_close"]);
+          // Close pipeline cards
+          await supabase
+            .from("ai_support_pipeline")
+            .update({ status: "concluido", resolution: "Número errado - bloqueado automaticamente" })
+            .eq("conversation_id", conversation.id)
+            .not("status", "in", '("concluido","fechado","cancelado","entregue")');
+        }
         
         // === VERIFICAÇÃO DE SUPRESSÃO PÓS-HSM E PÓS-DESPEDIDA ===
         // Buscar últimas 2 mensagens outbound para checar contexto
@@ -453,8 +497,8 @@ serve(async (req) => {
             .eq("conversation_id", conversation.id)
             .neq("category", "rastreio")
             .not("status", "in", '("concluido","fechado","cancelado","entregue")');
-        } else if (!conversation.ai_enabled && channel?.ai_enabled) {
-          // Reativar IA apenas se estava desativada e a mensagem NÃO é passiva
+        } else if (!conversation.ai_enabled && channel?.ai_enabled && !isWrongPerson) {
+          // Reativar IA apenas se estava desativada e a mensagem NÃO é passiva e NÃO é wrong person
           updateData.ai_enabled = true;
           console.log("🔄 IA reativada para conversa (mensagem inbound recebida):", conversation.id);
         }
