@@ -46,49 +46,40 @@ const C = {
   border: "rgba(0,0,0,0.08)",
 };
 
-// ─── Chart configs ───────────────────────────────────────────────────────────
+// ─── Scenarios ───────────────────────────────────────────────────────────────
 
-const digitalData = [0.04, 0.08, 0.12, 0.16, 0.24, 0.32, 0.40, 0.48, 0.56, 0.64, 0.72, 0.80];
-const conversionData = [0.5, 1, 1.5, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-
-const projectionChart: { series: ApexOptions["series"]; options: ApexOptions } = {
-  series: [
-    { name: "Faturamento Físico (R$ mi)", data: [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8] },
-    { name: "Projeção Digital (R$ mi)", data: digitalData },
-  ],
-  options: {
-    chart: { type: "area", height: 340, toolbar: { show: false }, background: "transparent", fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" },
-    colors: [C.navy, C.orange],
-    fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.3, opacityTo: 0.02, stops: [0, 100] } },
-    stroke: { curve: "smooth", width: 2.5 },
-    xaxis: { categories: monthLabels, labels: { style: { colors: C.textMuted, fontSize: "10px" } } },
-    yaxis: { labels: { style: { colors: C.textMuted }, formatter: (v: number) => `R$ ${v}M` } },
-    grid: { borderColor: C.border, strokeDashArray: 4 },
-    tooltip: { theme: "light" },
-    legend: { labels: { colors: C.text } },
-    dataLabels: { enabled: false },
+const scenarios = {
+  bear: {
+    name: "🐻 Bear Case",
+    sub: "Cenário pessimista",
+    conversion: [0.3, 0.5, 0.8, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5],
+    digital: [0.024, 0.04, 0.064, 0.08, 0.12, 0.16, 0.20, 0.24, 0.28, 0.32, 0.36, 0.40],
+    color: C.textMuted,
   },
-};
-
-const digitalConversionChart: { series: ApexOptions["series"]; options: ApexOptions } = {
-  series: [{ name: "% Conversão Digital", data: conversionData }],
-  options: {
-    chart: { type: "bar", height: 260, toolbar: { show: false }, background: "transparent" },
-    colors: [C.orange],
-    xaxis: { categories: monthLabels, labels: { style: { colors: C.textMuted, fontSize: "10px" } } },
-    yaxis: { max: 12, labels: { style: { colors: C.textMuted }, formatter: (v: number) => `${v}%` } },
-    grid: { borderColor: C.border, strokeDashArray: 4 },
-    plotOptions: { bar: { borderRadius: 4, columnWidth: "50%" } },
-    dataLabels: { enabled: false },
-    tooltip: { theme: "light", y: { formatter: (v: number) => `${v}% do físico = R$ ${((v / 100) * 8).toFixed(2)}M` } },
+  base: {
+    name: "📊 Base Case",
+    sub: "Cenário realista",
+    conversion: [0.5, 1, 1.5, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    digital: [0.04, 0.08, 0.12, 0.16, 0.24, 0.32, 0.40, 0.48, 0.56, 0.64, 0.72, 0.80],
+    color: C.orange,
   },
-};
+  bull: {
+    name: "🐂 Bull Case",
+    sub: "Cenário otimista",
+    conversion: [1, 2, 3, 5, 7, 9, 11, 13, 15, 17, 19, 22],
+    digital: [0.08, 0.16, 0.24, 0.40, 0.56, 0.72, 0.88, 1.04, 1.20, 1.36, 1.52, 1.76],
+    color: C.emerald,
+  },
+} as const;
+
+type ScenarioKey = keyof typeof scenarios;
+
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function PitchPage() {
   const [current, setCurrent] = useState(0);
-
+  const [scenario, setScenario] = useState<ScenarioKey>("base");
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); setCurrent((p) => Math.min(p + 1, SLIDES.length - 1)); }
@@ -206,73 +197,134 @@ export default function PitchPage() {
           )}
 
           {/* ─── PROJECTIONS ───────────────────────────────────── */}
-          {slide === "projections" && (
-            <div className="space-y-6">
-              <SlideHeader title="Projeção de" accent="mercado" tag="Dados financeiros" />
+          {slide === "projections" && (() => {
+            const sc = scenarios[scenario];
+            const digitalData = sc.digital;
+            const conversionData = sc.conversion;
 
-              <div className="p-4 border-l-4 text-sm" style={{ borderColor: C.orange, background: C.cardBg, color: C.textMuted }}>
-                O grupo movimenta <strong style={{ color: C.navy }}>R$ 8 milhões/mês</strong> (R$ 96M/ano) no físico. Projeção conservadora: <strong style={{ color: C.orange }}>0,5% → 10%</strong> de conversão digital em 12 meses.
+            const projChart: { series: ApexOptions["series"]; options: ApexOptions } = {
+              series: [
+                { name: "Físico (R$ mi)", data: [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8] },
+                { name: "Digital (R$ mi)", data: digitalData as unknown as number[] },
+              ],
+              options: {
+                chart: { type: "area", height: 220, toolbar: { show: false }, background: "transparent", fontFamily: "'Plus Jakarta Sans', sans-serif" },
+                colors: [C.navy, sc.color],
+                fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.3, opacityTo: 0.02, stops: [0, 100] } },
+                stroke: { curve: "smooth", width: 2.5 },
+                xaxis: { categories: monthLabels, labels: { style: { colors: C.textMuted, fontSize: "9px" } } },
+                yaxis: { labels: { style: { colors: C.textMuted, fontSize: "10px" }, formatter: (v: number) => `R$${v}M` } },
+                grid: { borderColor: C.border, strokeDashArray: 4 },
+                tooltip: { theme: "light" },
+                legend: { labels: { colors: C.text }, fontSize: "10px" },
+                dataLabels: { enabled: false },
+              },
+            };
+
+            const convChart: { series: ApexOptions["series"]; options: ApexOptions } = {
+              series: [{ name: "% Conversão", data: conversionData as unknown as number[] }],
+              options: {
+                chart: { type: "bar", height: 220, toolbar: { show: false }, background: "transparent" },
+                colors: [sc.color],
+                xaxis: { categories: monthLabels, labels: { style: { colors: C.textMuted, fontSize: "9px" } } },
+                yaxis: { max: scenario === "bull" ? 25 : 12, labels: { style: { colors: C.textMuted, fontSize: "10px" }, formatter: (v: number) => `${v}%` } },
+                grid: { borderColor: C.border, strokeDashArray: 4 },
+                plotOptions: { bar: { borderRadius: 3, columnWidth: "50%" } },
+                dataLabels: { enabled: false },
+                tooltip: { theme: "light", y: { formatter: (v: number) => `${v}% = R$ ${((v / 100) * 8).toFixed(2)}M` } },
+              },
+            };
+
+            return (
+            <div className="space-y-5">
+              <SlideHeader title="Cenários de" accent="mercado" tag="Dados financeiros" />
+
+              {/* Scenario selector */}
+              <div className="flex gap-2">
+                {(Object.keys(scenarios) as ScenarioKey[]).map((key) => {
+                  const s = scenarios[key];
+                  const active = scenario === key;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setScenario(key)}
+                      className="flex-1 py-3 px-4 text-left border-2 transition-all"
+                      style={{
+                        background: active ? (key === "bull" ? C.emerald : key === "bear" ? C.navy : C.orange) : C.white,
+                        borderColor: active ? (key === "bull" ? C.emerald : key === "bear" ? C.navy : C.orange) : C.border,
+                        color: active ? "white" : C.navy,
+                      }}
+                    >
+                      <div className="font-black text-sm">{s.name}</div>
+                      <div className="text-[10px] mt-0.5" style={{ opacity: 0.8 }}>{s.sub}</div>
+                      <div className="text-[10px] mt-1 font-semibold" style={{ opacity: 0.7 }}>
+                        {s.conversion[0]}% → {s.conversion[11]}% conversão
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
 
-              <div className="grid md:grid-cols-2 gap-5">
-                <div className="p-5 border" style={{ background: C.white, borderColor: C.border }}>
-                  <h4 className="font-bold text-xs mb-2 uppercase tracking-wider" style={{ color: C.textMuted }}>Faturamento Físico vs Digital</h4>
-                  <ReactApexChart options={projectionChart.options} series={projectionChart.series} type="area" height={240} />
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="p-4 border" style={{ background: C.white, borderColor: C.border }}>
+                  <h4 className="font-bold text-[10px] mb-1 uppercase tracking-wider" style={{ color: C.textMuted }}>Faturamento Físico vs Digital</h4>
+                  <ReactApexChart options={projChart.options} series={projChart.series} type="area" height={220} />
                 </div>
-                <div className="p-5 border" style={{ background: C.white, borderColor: C.border }}>
-                  <h4 className="font-bold text-xs mb-2 uppercase tracking-wider" style={{ color: C.textMuted }}>Conversão Digital (%)</h4>
-                  <ReactApexChart options={digitalConversionChart.options} series={digitalConversionChart.series} type="bar" height={240} />
+                <div className="p-4 border" style={{ background: C.white, borderColor: C.border }}>
+                  <h4 className="font-bold text-[10px] mb-1 uppercase tracking-wider" style={{ color: C.textMuted }}>Conversão Digital (%)</h4>
+                  <ReactApexChart options={convChart.options} series={convChart.series} type="bar" height={220} />
                 </div>
               </div>
 
-              {/* Shipment volume table */}
-              <div className="border overflow-hidden" style={{ background: C.white, borderColor: C.border }}>
-                <div className="px-4 py-2.5 border-b flex items-center justify-between" style={{ borderColor: C.border }}>
-                  <h4 className="font-bold text-xs uppercase tracking-wider" style={{ color: C.navy }}>Faturamento → Volume de Envios</h4>
-                  <span className="text-[10px] px-2 py-0.5 font-semibold border" style={{ borderColor: C.orangeBorder, color: C.orange }}>Ticket: R$ 25/etiq.</span>
-                </div>
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr style={{ background: C.cardBg }}>
-                      <th className="px-3 py-2 text-left font-semibold" style={{ color: C.textMuted }}>Mês</th>
-                      <th className="px-3 py-2 text-right font-semibold" style={{ color: C.navy }}>Faturamento</th>
-                      <th className="px-3 py-2 text-right font-semibold" style={{ color: C.orange }}>Envios/mês</th>
-                      <th className="px-3 py-2 text-right font-semibold" style={{ color: C.emerald }}>Envios/dia</th>
-                      <th className="px-3 py-2 text-right font-semibold" style={{ color: C.textMuted }}>Acumulado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {digitalData.map((fat, i) => {
-                      const enviosMes = Math.round((fat * 1_000_000) / 25);
-                      const enviosDia = Math.round(enviosMes / 26);
-                      const acumulado = digitalData.slice(0, i + 1).reduce((sum, v) => sum + Math.round((v * 1_000_000) / 25), 0);
-                      const isLast = i === 11;
-                      return (
-                        <tr key={i} className="border-t" style={{ borderColor: C.border, background: isLast ? C.orangeBg : 'transparent' }}>
-                          <td className="px-3 py-1.5 font-medium" style={{ color: C.text }}>Mês {i + 1}</td>
-                          <td className="px-3 py-1.5 text-right font-semibold" style={{ color: C.navy }}>R$ {fat}M</td>
-                          <td className="px-3 py-1.5 text-right font-bold" style={{ color: C.orange }}>{enviosMes.toLocaleString('pt-BR')}</td>
-                          <td className="px-3 py-1.5 text-right" style={{ color: C.emerald }}>~{enviosDia.toLocaleString('pt-BR')}</td>
-                          <td className="px-3 py-1.5 text-right" style={{ color: C.textMuted }}>{acumulado.toLocaleString('pt-BR')}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+              {/* Summary metrics */}
+              <div className="grid grid-cols-3 gap-4">
+                {(Object.keys(scenarios) as ScenarioKey[]).map((key) => {
+                  const s = scenarios[key];
+                  const last = s.digital[11];
+                  const envios12 = Math.round((last * 1_000_000) / 25);
+                  const total = s.digital.reduce((sum, v) => sum + Math.round((v * 1_000_000) / 25), 0);
+                  const isActive = scenario === key;
+                  return (
+                    <div
+                      key={key}
+                      className="p-4 border cursor-pointer transition-all"
+                      onClick={() => setScenario(key)}
+                      style={{
+                        background: isActive ? C.orangeBg : C.white,
+                        borderColor: isActive ? s.color : C.border,
+                        borderWidth: isActive ? 2 : 1,
+                      }}
+                    >
+                      <div className="font-black text-xs mb-2" style={{ color: s.color }}>{s.name}</div>
+                      <div className="space-y-1.5 text-[11px]" style={{ color: C.textMuted }}>
+                        <div className="flex justify-between">
+                          <span>Digital Mês 12</span>
+                          <strong style={{ color: s.color }}>R$ {last < 1 ? `${(last * 1000).toFixed(0)}k` : `${last.toFixed(2)}M`}</strong>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Envios Mês 12</span>
+                          <strong style={{ color: C.navy }}>{(envios12 / 1000).toFixed(1)}k</strong>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Total Ano 1</span>
+                          <strong style={{ color: C.navy }}>~{(total / 1000).toFixed(0)}k</strong>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Conversão final</span>
+                          <strong style={{ color: s.color }}>{s.conversion[11]}%</strong>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
-              <div className="grid grid-cols-4 gap-4">
-                {[
-                  { label: "Físico/Mês", value: "R$ 8M", color: C.navy },
-                  { label: "Digital Mês 12", value: "R$ 800k", color: C.orange },
-                  { label: "Envios Mês 12", value: "32 mil", color: C.amber },
-                  { label: "Total Ano 1", value: "~180 mil", color: C.emerald },
-                ].map((m, i) => (
-                  <CircleMetric key={i} value={m.value} label={m.label} accent={i === 1} color={m.color} />
-                ))}
+              <div className="p-3 border-l-4 text-xs" style={{ borderColor: sc.color, background: C.cardBg, color: C.textMuted }}>
+                <strong style={{ color: C.navy }}>Base:</strong> Volume físico de <strong>R$ 8M/mês</strong> · Ticket médio <strong>R$ 25/etiqueta</strong> · {sc.name}: conversão de <strong style={{ color: sc.color }}>{sc.conversion[0]}% → {sc.conversion[11]}%</strong> em 12 meses
               </div>
             </div>
-          )}
+            );
+          })()}
 
           {/* ─── INTEGRATION ───────────────────────────────────── */}
           {slide === "integration" && (
