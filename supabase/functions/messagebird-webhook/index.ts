@@ -612,13 +612,122 @@ serve(async (req) => {
 
       if (isPassiveHSM && shouldSuppress) {
         shouldCallAI = false;
-        console.log("⏭️ Inbound passivo após HSM — fechando conversa:", conversation.id);
+        console.log("⏭️ Inbound passivo após HSM — verificando se é confirmação de entrega:", conversation.id);
+
+        // Buscar último HSM para saber o trigger_key
+        const { data: lastHsmMsg } = await supabase
+          .from("whatsapp_messages")
+          .select("metadata")
+          .eq("conversation_id", conversation.id)
+          .eq("direction", "outbound")
+          .eq("content_type", "hsm")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const hsmTriggerKey = (lastHsmMsg?.metadata as any)?.trigger_key || "";
+        const hsmVars = (lastHsmMsg?.metadata as any)?.variables || {};
+        const isDeliveryRelated = ["saiu_para_entrega", "entregue", "aguardando_retirada"].includes(hsmTriggerKey);
+
+        if (isDeliveryRelated) {
+          console.log(`🎉 Confirmação de entrega detectada! Trigger: ${hsmTriggerKey}, Contato: ${contactName}`);
+
+          // 1. RESPOSTA POSITIVA DE ENCERRAMENTO
+          const accessKey = channel?.access_key || Deno.env.get("MESSAGEBIRD_ACCESS_KEY");
+          const mbChannelId = channel?.channel_id || Deno.env.get("MESSAGEBIRD_CHANNEL_ID");
+          const firstName = (contactName || "").split(" ")[0] || "amigo";
+          const positiveMsg = `Que bom que chegou, ${firstName}! 😊 Ficamos felizes! Se precisar de algo, é só chamar.`;
+
+          try {
+            const mbResp = await fetch("https://conversations.messagebird.com/v1/send", {
+              method: "POST",
+              headers: {
+                Authorization: `AccessKey ${accessKey}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                to: normalizedPhone,
+                from: mbChannelId,
+                type: "text",
+                content: { text: positiveMsg },
+              }),
+            });
+            const mbResult = await mbResp.json();
+            console.log("✅ Mensagem positiva enviada:", mbResult.id || "ok");
+
+            // Salvar mensagem de encerramento positivo
+            await supabase.from("whatsapp_messages").insert({
+              conversation_id: conversation.id,
+              messagebird_id: mbResult.id || null,
+              direction: "outbound",
+              content_type: "text",
+              content: positiveMsg,
+              status: "sent",
+              sent_by: "system",
+              ai_generated: false,
+            });
+          } catch (posErr) {
+            console.warn("⚠️ Erro ao enviar mensagem positiva:", posErr);
+          }
+
+          // 2. SALVAR FOTO COMO COMPROVANTE DE ENTREGA
+          const trackingCode = hsmVars.codigo_rastreio || "";
+          if (trackingCode) {
+            const { data: recentImage } = await supabase
+              .from("whatsapp_messages")
+              .select("media_url")
+              .eq("conversation_id", conversation.id)
+              .eq("direction", "inbound")
+              .eq("content_type", "image")
+              .gte("created_at", new Date(Date.now() - 10 * 60 * 1000).toISOString())
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (recentImage?.media_url) {
+              console.log(`📸 Comprovante de entrega vinculado: ${trackingCode} → ${recentImage.media_url}`);
+              // Atualizar pipeline card com comprovante
+              await supabase
+                .from("ai_support_pipeline")
+                .update({
+                  status: "entregue",
+                  resolution: `Entrega confirmada pelo destinatário. Comprovante: ${recentImage.media_url}`,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("conversation_id", conversation.id)
+                .eq("category", "rastreio");
+            }
+          }
+
+          // 3. DISPARAR TEMPLATE DE AVALIAÇÃO (com delay)
+          const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+          const nomeRemetente = hsmVars.nome_remetente || "";
+          fetch(`${supabaseUrl}/functions/v1/send-whatsapp-template`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            },
+            body: JSON.stringify({
+              trigger_key: "avaliacao",
+              phone: normalizedPhone,
+              variables: {
+                nome_destinatario: contactName,
+                codigo_rastreio: trackingCode,
+                nome_remetente: nomeRemetente,
+              },
+            }),
+          }).then(r => r.text()).catch(e => console.warn("⚠️ Erro ao disparar avaliação:", e));
+          console.log(`📊 Avaliação agendada para ${normalizedPhone} (${trackingCode})`);
+        }
+
+        // Fechar conversa
         await supabase
           .from("whatsapp_conversations")
           .update({ ai_enabled: false, status: "closed" })
           .eq("id", conversation.id);
         conversation.ai_enabled = false;
-        // Fechar tickets e pipeline
+        // Fechar tickets e pipeline (non-rastreio)
         await supabase
           .from("whatsapp_tickets")
           .update({ status: "closed", closed_at: new Date().toISOString() })
