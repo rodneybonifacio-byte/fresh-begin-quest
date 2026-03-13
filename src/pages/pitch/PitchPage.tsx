@@ -259,7 +259,7 @@ export default function PitchPage() {
                         color: active ? "white" : C.navy,
                       }}
                     >
-                      <div className="font-black text-xs">{s.name}</div>
+                      <div className="font-black text-xs flex items-center gap-1.5"><s.icon size={13} /> {s.name}</div>
                       <div className="text-[10px]" style={{ opacity: 0.7 }}>
                         {s.conversion[0]}% → {s.conversion[11]}%
                       </div>
