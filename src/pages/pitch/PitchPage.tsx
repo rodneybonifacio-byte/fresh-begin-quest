@@ -48,10 +48,12 @@ const C = {
 };
 
 // ─── Scenarios ───────────────────────────────────────────────────────────────
-// Físico: R$ 8M/mês ≈ 320k envios/mês (ticket R$ 25)
+// Físico: R$ 8M/mês em faturamento ≈ 320k envios/mês (ticket médio R$ 25)
 // Conversão = % do volume físico que migra pro digital
 
-const FISICO_MES = 8; // R$ milhões
+const FISICO_FAT = 8; // R$ milhões/mês (faturamento)
+const TICKET_MEDIO = 25; // R$ por etiqueta
+const FISICO_ENVIOS = (FISICO_FAT * 1_000_000) / TICKET_MEDIO; // ~320.000 envios/mês
 
 const scenarios = {
   bear: {
