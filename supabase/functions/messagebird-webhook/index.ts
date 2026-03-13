@@ -641,9 +641,13 @@ serve(async (req) => {
         .maybeSingle();
 
       const isPassiveHSM = lastOutMsg?.content_type === "hsm" && lastOutMsg?.sent_by === "system";
-      const shouldSuppress = shouldSuppressAIAfterPassiveHSM(messageContent);
+      // Reusar classificação IA já feita acima, ou classificar novamente se necessário
+      const intentForAI = typeof intentResult !== "undefined" 
+        ? intentResult 
+        : await classifyMessageIntent(messageContent, "Resposta a HSM automático");
+      const shouldSuppressForAI = intentForAI.isPassive;
 
-      if (isPassiveHSM && shouldSuppress) {
+      if (isPassiveHSM && shouldSuppressForAI) {
         shouldCallAI = false;
         console.log("⏭️ Inbound passivo após HSM — verificando se é confirmação de entrega:", conversation.id);
 
