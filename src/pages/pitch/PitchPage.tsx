@@ -51,7 +51,7 @@ const C = {
 
 const scenarios = {
   bear: {
-    name: "Bear Case",
+    name: "Conservador",
     icon: TrendingDown,
     sub: "Cenário pessimista",
     conversion: [0.3, 0.5, 0.8, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5],
@@ -59,7 +59,7 @@ const scenarios = {
     color: C.textMuted,
   },
   base: {
-    name: "Base Case",
+    name: "Moderado",
     icon: Activity,
     sub: "Cenário realista",
     conversion: [0.5, 1, 1.5, 2, 3, 4, 5, 6, 7, 8, 9, 10],
@@ -67,7 +67,7 @@ const scenarios = {
     color: C.orange,
   },
   bull: {
-    name: "Bull Case",
+    name: "Acelerado",
     icon: TrendingUp,
     sub: "Cenário otimista",
     conversion: [1, 2, 3, 5, 7, 9, 11, 13, 15, 17, 19, 22],
@@ -107,7 +107,7 @@ export default function PitchPage() {
 
       {/* Slide label - right side */}
       <div className="fixed right-3 top-1/2 -translate-y-1/2 z-40 -rotate-90 text-[10px] font-bold tracking-[0.3em] uppercase" style={{ color: C.textMuted }}>
-        Pitch deck
+        Apresentação
       </div>
 
       {/* Progress bar */}
@@ -342,19 +342,19 @@ export default function PitchPage() {
                     <div className="h-[2px] w-16" style={{ background: C.navy }} />
                     <ArrowRight size={24} style={{ color: C.navy }} />
                   </div>
-                  <IntegrationNode label="Look China" sub="Whitelabel Marketplace" color={C.navy} />
+                  <IntegrationNode label="Look China" sub="Marca própria no Marketplace" color={C.navy} />
                 </div>
               </div>
               <div className="grid md:grid-cols-2 gap-5">
                 <div className="p-6 border" style={{ background: C.white, borderColor: C.border }}>
                   <h4 className="font-bold mb-3 flex items-center gap-2 text-sm" style={{ color: C.orange }}>
-                    <Globe size={16} /> Plataforma Marketplace
+                    <Globe size={16} /> Plataforma Digital
                   </h4>
                   <ul className="space-y-2 text-sm" style={{ color: C.textMuted }}>
                     <li className="flex gap-2"><span style={{ color: C.orange }}>●</span> Nova plataforma integrada com contrato Flex</li>
-                    <li className="flex gap-2"><span style={{ color: C.orange }}>●</span> Whitelabel personalizado Look China</li>
+                    <li className="flex gap-2"><span style={{ color: C.orange }}>●</span> Plataforma personalizada Look China</li>
                     <li className="flex gap-2"><span style={{ color: C.orange }}>●</span> Desenvolvimento 100% BRHUB</li>
-                    <li className="flex gap-2"><span style={{ color: C.orange }}>●</span> Dashboard próprio para o lojista</li>
+                    <li className="flex gap-2"><span style={{ color: C.orange }}>●</span> Painel próprio para o lojista</li>
                   </ul>
                 </div>
                 <div className="p-6 border" style={{ background: C.white, borderColor: C.border }}>
@@ -362,7 +362,7 @@ export default function PitchPage() {
                     <Warehouse size={16} /> Sistema FULL (Galpão)
                   </h4>
                   <ul className="space-y-2 text-sm" style={{ color: C.textMuted }}>
-                    <li className="flex gap-2"><span style={{ color: C.orange }}>●</span> Fulfillment completo no galpão do parceiro</li>
+                    <li className="flex gap-2"><span style={{ color: C.orange }}>●</span> Operação completa no galpão do parceiro</li>
                     <li className="flex gap-2"><span style={{ color: C.orange }}>●</span> Desenvolvimento dedicado se necessário</li>
                     <li className="flex gap-2"><span style={{ color: C.orange }}>●</span> Integração com estoque e expedição</li>
                     <li className="flex gap-2"><span style={{ color: C.orange }}>●</span> Gestão de coleta e despacho automatizada</li>
@@ -379,11 +379,11 @@ export default function PitchPage() {
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[
                   { icon: <Package size={22} />, title: "Emissão de Etiquetas", desc: "Cotação multi-transportadora, etiqueta em segundos" },
-                  { icon: <Truck size={22} />, title: "Rastreamento Inteligente", desc: "Tracking em tempo real com notificações automáticas" },
-                  { icon: <BarChart3 size={22} />, title: "Dashboard Analytics", desc: "Visão 360° de envios, custos e performance" },
+                  { icon: <Truck size={22} />, title: "Rastreamento Inteligente", desc: "Acompanhamento em tempo real com notificações automáticas" },
+                  { icon: <BarChart3 size={22} />, title: "Painel de Análises", desc: "Visão 360° de envios, custos e desempenho" },
                   { icon: <Shield size={22} />, title: "Gestão Financeira", desc: "Faturas, créditos pré-pagos e extrato completo" },
                   { icon: <Globe size={22} />, title: "Integrações", desc: "API aberta para conectar qualquer plataforma" },
-                  { icon: <Warehouse size={22} />, title: "FULL (Galpão)", desc: "Sistema completo de fulfillment e expedição" },
+                  { icon: <Warehouse size={22} />, title: "Galpão Completo", desc: "Sistema completo de logística e expedição" },
                 ].map((f, i) => (
                   <div key={i} className="p-5 border transition hover:border-orange-300 group" style={{ background: C.white, borderColor: C.border }}>
                     <div className="w-11 h-11 rounded-full flex items-center justify-center mb-3 border-2" style={{ borderColor: i % 2 === 0 ? C.orange : C.navy, color: i % 2 === 0 ? C.orange : C.navy }}>
@@ -422,7 +422,7 @@ export default function PitchPage() {
 
               <div className="grid md:grid-cols-5 gap-5">
                 <div className="md:col-span-3 p-6 space-y-4 border-2" style={{ background: C.navy, borderColor: C.navy, color: "white" }}>
-                  <h3 className="text-lg font-bold flex items-center gap-2"><MessageCircle size={20} style={{ color: C.orangeLight }} /> WhatsApp <span style={{ color: C.orange }}>AI Agent</span></h3>
+                  <h3 className="text-lg font-bold flex items-center gap-2"><MessageCircle size={20} style={{ color: C.orangeLight }} /> WhatsApp <span style={{ color: C.orange }}>Agente IA</span></h3>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                     {[
                       "Rastreamento automático por código",
@@ -430,7 +430,7 @@ export default function PitchPage() {
                       "Detecção de sentimento inteligente",
                       "Áudio humanizado via ElevenLabs",
                       "Notificações proativas de entrega",
-                      "Pipeline de suporte automático",
+                      "Fluxo de suporte automático",
                     ].map((item, i) => (
                       <div key={i} className="flex items-start gap-2 text-white/90 text-xs">
                         <span style={{ color: C.orange }}>●</span> {item}
@@ -442,8 +442,8 @@ export default function PitchPage() {
                 <div className="md:col-span-2 space-y-3">
                   {[
                     { icon: <Star size={14} />, title: "Sinalização Inteligente", desc: "Alertas de atraso e entrega falhada. IA sugere ações." },
-                    { icon: <Phone size={14} />, title: "CRM WhatsApp", desc: "Conversas, tickets, templates HSM e métricas." },
-                    { icon: <Zap size={14} />, title: "Tools AI-Powered", desc: "Cotação, rastreio e busca acionados via IA." },
+                    { icon: <Phone size={14} />, title: "Gestão WhatsApp", desc: "Conversas, chamados, modelos de mensagem e métricas." },
+                    { icon: <Zap size={14} />, title: "Ferramentas de IA", desc: "Cotação, rastreio e busca acionados via IA." },
                   ].map((item, i) => (
                     <div key={i} className="p-4 border" style={{ background: C.white, borderColor: C.border }}>
                       <h4 className="font-bold text-xs mb-1 flex items-center gap-1.5" style={{ color: C.navy }}>
@@ -506,7 +506,7 @@ export default function PitchPage() {
               <div className="grid md:grid-cols-2 gap-6">
                 {[
                   { name: "Look China", address: "Rua Carnot", type: "Principal", features: ["Recebimento de encomendas", "Atendimento ao lojista", "Etiquetagem e despacho", "Suporte presencial"] },
-                  { name: "Look China Shopping", address: "Rua Maria Marcolina", type: "Secundário", features: ["Coleta centralizada do shopping", "Alto volume de lojistas", "Expedição diária", "Integração com marketplace"] },
+                  { name: "Look China Shopping", address: "Rua Maria Marcolina", type: "Secundário", features: ["Coleta centralizada do shopping", "Alto volume de lojistas", "Expedição diária", "Integração com a plataforma"] },
                 ].map((loc, i) => (
                   <div key={i} className="p-7 border" style={{ background: C.white, borderColor: C.border }}>
                     <div className="flex items-start gap-3 mb-4">
@@ -541,14 +541,14 @@ export default function PitchPage() {
           {/* ─── TIMELINE ──────────────────────────────────────── */}
           {slide === "timeline" && (
             <div className="space-y-8">
-              <SlideHeader title="Algumas" accent="etapas" tag="Roadmap" />
+              <SlideHeader title="Algumas" accent="etapas" tag="Cronograma" />
               {/* Horizontal timeline like reference "Some milestones" */}
               <div className="flex gap-3">
                 {[
-                  { phase: "Sem 1", title: "Setup & API" },
-                  { phase: "Sem 2", title: "Marketplace" },
+                  { phase: "Sem 1", title: "Configuração" },
+                  { phase: "Sem 2", title: "Plataforma" },
                   { phase: "Sem 3", title: "IA & Automação" },
-                  { phase: "Sem 4", title: "Go-Live" },
+                  { phase: "Sem 4", title: "Lançamento" },
                 ].map((p, i) => (
                   <div key={i} className="flex-1 relative">
                     <div className="py-2 px-3 text-white text-xs font-bold text-center" style={{ background: C.orange, clipPath: "polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%, 12px 50%)", marginLeft: i === 0 ? 0 : -6 }}>
@@ -559,10 +559,10 @@ export default function PitchPage() {
               </div>
               <div className="grid grid-cols-4 gap-3">
                 {[
-                  { items: ["Configuração API Flex Envios", "Ambiente de desenvolvimento", "Whitelabel base Look China"] },
-                  { items: ["Dashboard do lojista", "Emissão de etiquetas integrada", "Rastreamento automático"] },
-                  { items: ["Agente WhatsApp AI", "Notificações automáticas HSM", "Pipeline de suporte"] },
-                  { items: ["Setup Carnot & Marcolina", "Sistema FULL no galpão", "Go-live operação completa"] },
+                  { items: ["Configuração API Flex Envios", "Ambiente de desenvolvimento", "Plataforma base Look China"] },
+                  { items: ["Painel do lojista", "Emissão de etiquetas integrada", "Rastreamento automático"] },
+                  { items: ["Agente WhatsApp IA", "Notificações automáticas", "Fluxo de suporte"] },
+                  { items: ["Ativação Carnot & Marcolina", "Sistema completo no galpão", "Início da operação"] },
                 ].map((col, i) => (
                   <div key={i} className="space-y-2">
                     {col.items.map((item, j) => (
@@ -580,7 +580,7 @@ export default function PitchPage() {
           {/* ─── REVENUE ─────────────────────────────────────── */}
           {slide === "revenue" && (
             <div className="space-y-6">
-              <SlideHeader title="Modelo de" accent="receita" tag="Business model" />
+              <SlideHeader title="Modelo de" accent="receita" tag="Modelo de negócio" />
 
               <div className="p-5 border-2" style={{ background: C.navy, borderColor: C.navy, color: "white" }}>
                 <div className="flex items-start gap-4">
@@ -649,13 +649,13 @@ export default function PitchPage() {
               </h2>
               <div className="w-16 h-1 mx-auto" style={{ background: C.orange }} />
               <p className="text-lg max-w-2xl mx-auto leading-relaxed" style={{ color: C.textMuted }}>
-                Tecnologia BRHUB + Operação Flex Envios = o marketplace logístico mais completo para a comunidade Look China
+                Tecnologia BRHUB + Operação Flex Envios = a plataforma logística mais completa para a comunidade Look China
               </p>
               <div className="grid md:grid-cols-3 gap-5 max-w-3xl mx-auto pt-4">
                 {[
                   { value: "50/50", label: "Rendimentos compartilhados", color: C.navy },
                   { value: "+12%", label: "Margem de agência garantida", color: C.orange },
-                  { value: "4 sem", label: "Time-to-market", color: C.amber },
+                  { value: "4 sem", label: "Prazo de entrega", color: C.amber },
                 ].map((item, i) => (
                   <CircleMetric key={i} value={item.value} label={item.label} accent={i === 1} color={item.color} />
                 ))}
