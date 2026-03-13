@@ -53,7 +53,7 @@ const projectionChart: { series: ApexOptions["series"]; options: ApexOptions } =
     { name: "Projeção Digital (R$ mi)", data: [0.4, 0.8, 1.4, 2.2, 3.2, 4.2, 5.4, 6.8, 8.4, 10.2, 12.2, 14.6] },
   ],
   options: {
-    chart: { type: "area", height: 340, toolbar: { show: false }, background: "transparent", fontFamily: "Inter, sans-serif" },
+    chart: { type: "area", height: 340, toolbar: { show: false }, background: "transparent", fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" },
     colors: [C.navy, C.orange],
     fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 100] } },
     stroke: { curve: "smooth", width: 3 },
