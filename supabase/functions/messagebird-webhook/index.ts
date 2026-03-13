@@ -200,6 +200,20 @@ serve(async (req) => {
       });
     }
 
+    // === IGNORAR MENSAGENS "UNSUPPORTED" do MessageBird ===
+    // MessageBird envia "Received Unsupported message type "unsupported"!" para stickers,
+    // figurinhas, e tipos não reconhecidos. Não são mensagens humanas reais.
+    const rawText = message.content?.text || message.body || "";
+    const isUnsupportedMsg = /received\s+unsupported\s+message\s+type/i.test(rawText)
+      || rawContentType === "unsupported"
+      || message.type === "unsupported";
+    if (isUnsupportedMsg) {
+      console.log("⏭️ Mensagem unsupported ignorada silenciosamente:", rawText.substring(0, 80));
+      return new Response(JSON.stringify({ ok: true, skipped: "unsupported" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // HSM (template) messages
     if (message.content?.hsm || rawContentType === "hsm" || message.type === "hsm") {
       contentType = "hsm";
@@ -511,9 +525,19 @@ serve(async (req) => {
             .neq("category", "rastreio")
             .not("status", "in", '("concluido","fechado","cancelado","entregue")');
         } else if (!conversation.ai_enabled && channel?.ai_enabled && !isWrongPerson) {
-          // Reativar IA apenas se estava desativada e a mensagem NÃO é passiva e NÃO é wrong person
-          updateData.ai_enabled = true;
-          console.log("🔄 IA reativada para conversa (mensagem inbound recebida):", conversation.id);
+          // Reativar IA apenas se:
+          // 1. Estava desativada
+          // 2. A mensagem NÃO é passiva
+          // 3. NÃO é wrong person
+          // 4. A mensagem tem conteúdo substancial (não é ruído)
+          const hasSubstantialContent = (messageContent || "").trim().length > 2
+            && !shouldSuppressAIAfterPassiveHSM(messageContent);
+          if (hasSubstantialContent) {
+            updateData.ai_enabled = true;
+            console.log("🔄 IA reativada para conversa (mensagem substancial recebida):", conversation.id);
+          } else {
+            console.log("⏭️ IA NÃO reativada — mensagem passiva/ruído:", conversation.id, "msg:", (messageContent || "").substring(0, 50));
+          }
         }
         // Se ai_enabled já é true e mensagem não é passiva, manter como está
       }
