@@ -434,10 +434,10 @@ export default function PitchPage() {
                 <div className="space-y-4">
                   <h4 className="font-bold mb-2 text-lg" style={{ color: C.navy }}>Avaliação do Modelo</h4>
                   {[
-                    { label: "Flex Envios recebe", detail: "50% dos rendimentos do marketplace + 12% das postagens na agência", verdict: "✅ Receita dupla" },
-                    { label: "BRHUB assume", detail: "100% do desenvolvimento, manutenção e suporte IA", verdict: "⚖️ Investimento alto" },
-                    { label: "Flex opera", detail: "Logística, API e infraestrutura física (galpão + agência)", verdict: "✅ Core business" },
-                    { label: "Risco BRHUB", detail: "Desenvolvimento sem garantia de volume inicial", verdict: "⚠️ Risco mitigado" },
+                    { label: "Flex Envios recebe", detail: "50% dos rendimentos do marketplace + 12% das postagens na agência", verdict: "Receita dupla", verdictIcon: <CheckCircle2 size={14} style={{ color: C.emerald }} /> },
+                    { label: "BRHUB assume", detail: "100% do desenvolvimento, manutenção e suporte IA", verdict: "Investimento alto", verdictIcon: <BarChart3 size={14} style={{ color: C.amber }} /> },
+                    { label: "Flex opera", detail: "Logística, API e infraestrutura física (galpão + agência)", verdict: "Core business", verdictIcon: <CheckCircle2 size={14} style={{ color: C.emerald }} /> },
+                    { label: "Risco BRHUB", detail: "Desenvolvimento sem garantia de volume inicial", verdict: "Risco mitigado", verdictIcon: <AlertTriangle size={14} style={{ color: C.amber }} /> },
                   ].map((item, i) => (
                     <div key={i} className="rounded-lg p-4 border" style={{ background: C.white, borderColor: C.creamDark }}>
                       <div className="flex justify-between items-start">
