@@ -236,10 +236,10 @@ export default function PitchPage() {
             };
 
             return (
-            <div className="space-y-5">
+            <div className="space-y-3">
               <SlideHeader title="Cenários de" accent="mercado" tag="Dados financeiros" />
 
-              {/* Scenario selector */}
+              {/* Scenario selector - compact */}
               <div className="flex gap-2">
                 {(Object.keys(scenarios) as ScenarioKey[]).map((key) => {
                   const s = scenarios[key];
@@ -248,36 +248,36 @@ export default function PitchPage() {
                     <button
                       key={key}
                       onClick={() => setScenario(key)}
-                      className="flex-1 py-3 px-4 text-left border-2 transition-all"
+                      className="flex-1 py-2 px-3 text-left border-2 transition-all"
                       style={{
                         background: active ? (key === "bull" ? C.emerald : key === "bear" ? C.navy : C.orange) : C.white,
                         borderColor: active ? (key === "bull" ? C.emerald : key === "bear" ? C.navy : C.orange) : C.border,
                         color: active ? "white" : C.navy,
                       }}
                     >
-                      <div className="font-black text-sm">{s.name}</div>
-                      <div className="text-[10px] mt-0.5" style={{ opacity: 0.8 }}>{s.sub}</div>
-                      <div className="text-[10px] mt-1 font-semibold" style={{ opacity: 0.7 }}>
-                        {s.conversion[0]}% → {s.conversion[11]}% conversão
+                      <div className="font-black text-xs">{s.name}</div>
+                      <div className="text-[10px]" style={{ opacity: 0.7 }}>
+                        {s.conversion[0]}% → {s.conversion[11]}%
                       </div>
                     </button>
                   );
                 })}
               </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="p-4 border" style={{ background: C.white, borderColor: C.border }}>
-                  <h4 className="font-bold text-[10px] mb-1 uppercase tracking-wider" style={{ color: C.textMuted }}>Faturamento Físico vs Digital</h4>
-                  <ReactApexChart options={projChart.options} series={projChart.series} type="area" height={220} />
+              {/* Charts row */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 border" style={{ background: C.white, borderColor: C.border }}>
+                  <h4 className="font-bold text-[10px] mb-0 uppercase tracking-wider" style={{ color: C.textMuted }}>Físico vs Digital</h4>
+                  <ReactApexChart options={projChart.options} series={projChart.series} type="area" height={170} />
                 </div>
-                <div className="p-4 border" style={{ background: C.white, borderColor: C.border }}>
-                  <h4 className="font-bold text-[10px] mb-1 uppercase tracking-wider" style={{ color: C.textMuted }}>Conversão Digital (%)</h4>
-                  <ReactApexChart options={convChart.options} series={convChart.series} type="bar" height={220} />
+                <div className="p-3 border" style={{ background: C.white, borderColor: C.border }}>
+                  <h4 className="font-bold text-[10px] mb-0 uppercase tracking-wider" style={{ color: C.textMuted }}>Conversão (%)</h4>
+                  <ReactApexChart options={convChart.options} series={convChart.series} type="bar" height={170} />
                 </div>
               </div>
 
-              {/* Summary metrics */}
-              <div className="grid grid-cols-3 gap-4">
+              {/* 3 scenario cards side by side - compact */}
+              <div className="grid grid-cols-3 gap-3">
                 {(Object.keys(scenarios) as ScenarioKey[]).map((key) => {
                   const s = scenarios[key];
                   const last = s.digital[11];
@@ -287,7 +287,7 @@ export default function PitchPage() {
                   return (
                     <div
                       key={key}
-                      className="p-4 border cursor-pointer transition-all"
+                      className="p-3 border cursor-pointer transition-all"
                       onClick={() => setScenario(key)}
                       style={{
                         background: isActive ? C.orangeBg : C.white,
@@ -295,8 +295,8 @@ export default function PitchPage() {
                         borderWidth: isActive ? 2 : 1,
                       }}
                     >
-                      <div className="font-black text-xs mb-2" style={{ color: s.color }}>{s.name}</div>
-                      <div className="space-y-1.5 text-[11px]" style={{ color: C.textMuted }}>
+                      <div className="font-black text-[11px] mb-1.5" style={{ color: s.color }}>{s.name}</div>
+                      <div className="space-y-1 text-[10px]" style={{ color: C.textMuted }}>
                         <div className="flex justify-between">
                           <span>Digital Mês 12</span>
                           <strong style={{ color: s.color }}>R$ {last < 1 ? `${(last * 1000).toFixed(0)}k` : `${last.toFixed(2)}M`}</strong>
@@ -309,18 +309,14 @@ export default function PitchPage() {
                           <span>Total Ano 1</span>
                           <strong style={{ color: C.navy }}>~{(total / 1000).toFixed(0)}k</strong>
                         </div>
-                        <div className="flex justify-between">
-                          <span>Conversão final</span>
-                          <strong style={{ color: s.color }}>{s.conversion[11]}%</strong>
-                        </div>
                       </div>
                     </div>
                   );
                 })}
               </div>
 
-              <div className="p-3 border-l-4 text-xs" style={{ borderColor: sc.color, background: C.cardBg, color: C.textMuted }}>
-                <strong style={{ color: C.navy }}>Base:</strong> Volume físico de <strong>R$ 8M/mês</strong> · Ticket médio <strong>R$ 25/etiqueta</strong> · {sc.name}: conversão de <strong style={{ color: sc.color }}>{sc.conversion[0]}% → {sc.conversion[11]}%</strong> em 12 meses
+              <div className="p-2 border-l-4 text-[10px]" style={{ borderColor: sc.color, background: C.cardBg, color: C.textMuted }}>
+                Volume físico <strong>R$ 8M/mês</strong> · Ticket <strong>R$ 25/etiq</strong> · {sc.name}: <strong style={{ color: sc.color }}>{sc.conversion[0]}% → {sc.conversion[11]}%</strong> em 12 meses
               </div>
             </div>
             );
