@@ -649,54 +649,118 @@ export default function PitchPage() {
             <div className="space-y-4 md:space-y-6">
               <SlideHeader title="Modelo de" accent="receita" tag="Negócio" />
 
-              <div className="p-4 md:p-5 border-2" style={{ background: C.navy, borderColor: C.navy, color: "white" }}>
-                <div className="flex items-start gap-3 md:gap-4">
-                  <div className="w-9 h-9 md:w-11 md:h-11 rounded-full flex items-center justify-center shrink-0 border-2" style={{ borderColor: C.orange }}>
-                    <ShieldCheck size={18} style={{ color: C.orange }} />
+              {/* Fontes de receita existentes */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                {/* BRHUB */}
+                <div className="p-4 md:p-5 border relative" style={{ background: C.white, borderColor: C.border }}>
+                  <div className="absolute top-0 left-0 w-full h-1" style={{ background: C.navy }} />
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center border" style={{ borderColor: C.navy }}>
+                      <Zap size={14} style={{ color: C.navy }} />
+                    </div>
+                    <h4 className="font-bold text-xs md:text-sm" style={{ color: C.navy }}>BRHUB Tech — Entregas</h4>
                   </div>
-                  <div>
-                    <h4 className="font-bold text-xs md:text-sm">Zero Risco de <span style={{ color: C.orange }}>Inadimplência</span></h4>
-                    <p className="text-white/75 text-[11px] md:text-xs mt-1 leading-relaxed">
-                      A <strong className="text-white">BRHUB assume 100% da cobrança e do risco</strong>. Flex recebe repasses mensais.
+                  <ul className="space-y-2">
+                    {[
+                      { label: "Plataforma tecnológica", desc: "Sistema de emissão, rastreio e gestão" },
+                      { label: "Inteligência Artificial", desc: "Suporte 24/7 automatizado + agentes" },
+                      { label: "Cobrança e faturamento", desc: "Assume risco de inadimplência" },
+                      { label: "Integrações marketplace", desc: "APIs, webhooks, automações" },
+                      { label: "Marca própria (Whitelabel)", desc: "Plataforma com identidade do parceiro" },
+                    ].map((item, j) => (
+                      <li key={j} className="flex items-start gap-2">
+                        <span className="mt-1 w-1.5 h-1.5 rounded-full shrink-0" style={{ background: C.navy }} />
+                        <div>
+                          <span className="text-[11px] md:text-xs font-semibold" style={{ color: C.text }}>{item.label}</span>
+                          <p className="text-[10px] md:text-[11px]" style={{ color: C.textMuted }}>{item.desc}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Flex Envios */}
+                <div className="p-4 md:p-5 border relative" style={{ background: C.white, borderColor: C.border }}>
+                  <div className="absolute top-0 left-0 w-full h-1" style={{ background: C.orange }} />
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center border" style={{ borderColor: C.orange }}>
+                      <Truck size={14} style={{ color: C.orange }} />
+                    </div>
+                    <h4 className="font-bold text-xs md:text-sm" style={{ color: C.orange }}>Flex Envios — Entregas</h4>
+                  </div>
+                  <ul className="space-y-2">
+                    {[
+                      { label: "Contratos com transportadoras", desc: "Preços negociados e rede logística" },
+                      { label: "Operação física", desc: "Coleta, triagem e distribuição" },
+                      { label: "Margem sobre postagens", desc: "Receita por etiqueta emitida" },
+                      { label: "Rede de pontos de coleta", desc: "Capilaridade e conveniência" },
+                      { label: "Suporte operacional", desc: "Atendimento e resolução logística" },
+                    ].map((item, j) => (
+                      <li key={j} className="flex items-start gap-2">
+                        <span className="mt-1 w-1.5 h-1.5 rounded-full shrink-0" style={{ background: C.orange }} />
+                        <div>
+                          <span className="text-[11px] md:text-xs font-semibold" style={{ color: C.text }}>{item.label}</span>
+                          <p className="text-[10px] md:text-[11px]" style={{ color: C.textMuted }}>{item.desc}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              {/* Proposta de divisão — aberto a discussão */}
+              <div className="p-4 md:p-5 border-2 border-dashed" style={{ borderColor: C.orangeBorder, background: C.orangeBg }}>
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: C.orange }}>
+                    <Handshake size={18} className="text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-bold text-xs md:text-sm" style={{ color: C.navy }}>
+                      Divisão de rendimentos — <span style={{ color: C.orange }}>a definir em conjunto</span>
+                    </h4>
+                    <p className="text-[11px] md:text-xs mt-1 leading-relaxed" style={{ color: C.textMuted }}>
+                      A proposta é mapear todas as fontes de receita acima e chegar em um <strong style={{ color: C.text }}>denominador comum</strong> que reflita 
+                      a contribuição de cada parte. Modelo flexível, construído a quatro mãos.
                     </p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-3">
+                      {[
+                        { icon: <BarChart3 size={14} />, title: "Margem líquida por etiqueta", desc: "Quanto cada parte entrega de valor" },
+                        { icon: <ShieldCheck size={14} />, title: "Risco e responsabilidade", desc: "Quem assume cobrança e inadimplência" },
+                        { icon: <TrendingUp size={14} />, title: "Volume e escala", desc: "Crescimento compartilhado" },
+                      ].map((item, i) => (
+                        <div key={i} className="flex items-start gap-2 p-2 md:p-2.5" style={{ background: C.white }}>
+                          <span className="mt-0.5" style={{ color: C.orange }}>{item.icon}</span>
+                          <div>
+                            <span className="text-[10px] md:text-[11px] font-bold" style={{ color: C.text }}>{item.title}</span>
+                            <p className="text-[9px] md:text-[10px]" style={{ color: C.textMuted }}>{item.desc}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-                {[
-                  { value: "50%", label: "BRHUB Tech", sub: "do lucro", color: C.navy, items: ["Infraestrutura tecnológica", "Assume cobrança", "Suporte IA 24/7", "Repassa margens"] },
-                  { value: "50%", label: "Flex Envios", sub: "do lucro", color: C.orange, items: ["Operação logística", "API de contratos", "Repasse sem risco", "Rede distribuição"] },
-                  { value: "+12%", label: "Margem Agência", sub: "sobre volume", color: C.emerald, items: ["Receita sobre postagem", "Garantida", "Independente", "Recorrente"] },
-                ].map((card, i) => (
-                  <div key={i} className="p-4 md:p-5 border relative" style={{ background: C.white, borderColor: C.border }}>
-                    <div className="absolute top-0 left-0 w-full h-1" style={{ background: card.color }} />
-                    <div className="flex md:block items-center gap-3">
-                      <div>
-                        <div className="text-xl md:text-2xl font-black" style={{ color: card.color }}>{card.value}</div>
-                        <div className="font-bold text-xs md:text-sm" style={{ color: card.color }}>{card.label}</div>
-                      </div>
-                      <span className="text-[10px] font-semibold px-2 py-0.5 md:mt-1 md:mb-3 inline-block border" style={{ borderColor: `${card.color}40`, color: card.color }}>{card.sub}</span>
-                    </div>
-                    <ul className="space-y-1 md:space-y-1.5 mt-2 md:mt-0">
-                      {card.items.map((item, j) => (
-                        <li key={j} className="flex items-start gap-2 text-[11px] md:text-xs" style={{ color: C.textMuted }}>
-                          <span className="mt-0.5" style={{ color: card.color }}>●</span> {item}
-                        </li>
-                      ))}
-                    </ul>
+              {/* Zero risco */}
+              <div className="p-3 md:p-4 border-2" style={{ background: C.navy, borderColor: C.navy, color: "white" }}>
+                <div className="flex items-start gap-3">
+                  <ShieldCheck size={18} style={{ color: C.orange }} className="shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-bold text-[11px] md:text-xs">Zero Risco de <span style={{ color: C.orange }}>Inadimplência</span></h4>
+                    <p className="text-white/70 text-[10px] md:text-[11px] mt-0.5">A BRHUB assume 100% da cobrança e do risco. Repasses mensais garantidos.</p>
                   </div>
-                ))}
+                </div>
               </div>
 
+              {/* Fluxo de pagamento — mantido */}
               <div className="p-3 md:p-5 border" style={{ background: C.white, borderColor: C.border }}>
                 <h4 className="font-bold text-[10px] md:text-xs mb-2 md:mb-3 uppercase tracking-wider" style={{ color: C.navy }}>Fluxo de Pagamento</h4>
                 <div className="grid grid-cols-4 gap-1.5 md:gap-3">
                   {[
-                    { step: "1", title: "Usa", desc: "Emite etiquetas", icon: <Package size={14} /> },
+                    { step: "1", title: "Emite", desc: "Cliente gera etiquetas", icon: <Package size={14} /> },
                     { step: "2", title: "Cobra", desc: "Fechamento mensal", icon: <DollarSign size={14} /> },
-                    { step: "3", title: "Calcula", desc: "Divisão 50/50", icon: <BarChart3 size={14} /> },
-                    { step: "4", title: "Repassa", desc: "Flex + 12%", icon: <Handshake size={14} /> },
+                    { step: "3", title: "Apura", desc: "Margem por operação", icon: <BarChart3 size={14} /> },
+                    { step: "4", title: "Repassa", desc: "Divisão acordada", icon: <Handshake size={14} /> },
                   ].map((item, i) => (
                     <div key={i} className="flex flex-col items-center text-center p-2 md:p-3" style={{ background: i === 3 ? C.orangeBg : C.cardBg }}>
                       <div className="w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center mb-1 md:mb-2 text-white text-[10px] md:text-xs font-bold" style={{ background: i === 3 ? C.orange : C.navy }}>
