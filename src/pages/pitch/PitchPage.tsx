@@ -4,7 +4,7 @@ import ReactApexChart from "react-apexcharts";
 import {
   Truck, Bot, Globe, Warehouse, MapPin, Handshake, ChevronRight,
   ChevronLeft, BarChart3, Zap, Shield, Package, TrendingUp,
-  Building2, ArrowRight, CheckCircle2, Sparkles, Phone
+  Building2, ArrowRight, CheckCircle2, Sparkles, Phone, Brain, Mic, Eye, MessageCircle
 } from "lucide-react";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
