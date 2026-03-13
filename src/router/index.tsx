@@ -84,6 +84,7 @@ export const RouterBase = () => {
                     <Route path="/view/pdf/:pdfId/print" element={<VisualizarPdf />} />
                     <Route path="/tv-coleta" element={<TvPainelColeta />} />
                     <Route path="/pitch" element={<PitchPage />} />
+                    <Route path="/pitch/pdf" element={<PitchPdfExport />} />
 
                     {/* Conecta+ Routes */}
                     <Route path="/conecta" element={<LandingConecta />} />
