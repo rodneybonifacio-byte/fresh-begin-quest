@@ -60,7 +60,7 @@ const revenueDonut: { series: number[]; options: ApexOptions } = {
   },
 };
 
-const postageBar: { series: ApexAxisChartSeries; options: ApexOptions } = {
+const postageBar: { series: ApexOptions["series"]; options: ApexOptions } = {
   series: [{ name: "Margem Agência (%)", data: [12, 12, 12, 12, 12, 12] }],
   options: {
     chart: { type: "bar", height: 220, toolbar: { show: false }, background: "transparent" },
