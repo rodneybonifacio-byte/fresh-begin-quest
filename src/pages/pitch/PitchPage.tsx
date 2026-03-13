@@ -5,7 +5,8 @@ import {
   Truck, Globe, Warehouse, MapPin, Handshake, ChevronRight,
   ChevronLeft, BarChart3, Zap, Shield, Package,
   ArrowRight, Phone, Brain, Mic, Eye, MessageCircle,
-  AlertTriangle, Clock, Send, Star, ShieldCheck, DollarSign
+  AlertTriangle, Clock, Send, Star, ShieldCheck, DollarSign,
+  TrendingDown, TrendingUp, Activity
 } from "lucide-react";
 import lookChinaProfile from "@/assets/look-china-profile.png";
 
