@@ -183,7 +183,7 @@ export default function PitchPage() {
                 <div className="md:col-span-3 space-y-5">
                   <h3 className="text-2xl font-black" style={{ color: C.navy }}>Grupo <span style={{ color: C.orange }}>Look China</span></h3>
                   <p className="text-sm leading-relaxed" style={{ color: C.textMuted }}>
-                    Liderado por <strong style={{ color: C.navy }}>Fred China</strong> (@fred_dayyy), o Look China é o <strong style={{ color: C.orange }}>maior shopping de importados do Brasil</strong>, com presença física na Rua Maria Marcolina 369 (Brás/SP) e <strong style={{ color: C.orange }}>1,4 milhão de seguidores</strong> no Instagram.
+                    Liderado por <strong style={{ color: C.navy }}>Fred</strong> (@fred_dayyy), o Look China é um <strong style={{ color: C.orange }}>grande importador com presença física na região do Brás</strong>, na Rua Maria Marcolina 369 (SP) e <strong style={{ color: C.orange }}>1,4 milhão de seguidores</strong> no Instagram.
                   </p>
                   <div className="grid grid-cols-3 gap-4">
                     {[
@@ -493,10 +493,10 @@ export default function PitchPage() {
               {/* Horizontal timeline like reference "Some milestones" */}
               <div className="flex gap-3">
                 {[
-                  { phase: "Sem 1-2", title: "Setup & API" },
-                  { phase: "Sem 3-4", title: "Marketplace" },
-                  { phase: "Sem 5-6", title: "IA & Automação" },
-                  { phase: "Sem 7-8", title: "Go-Live" },
+                  { phase: "Sem 1", title: "Setup & API" },
+                  { phase: "Sem 2", title: "Marketplace" },
+                  { phase: "Sem 3", title: "IA & Automação" },
+                  { phase: "Sem 4", title: "Go-Live" },
                 ].map((p, i) => (
                   <div key={i} className="flex-1 relative">
                     <div className="py-2 px-3 text-white text-xs font-bold text-center" style={{ background: C.orange, clipPath: "polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%, 12px 50%)", marginLeft: i === 0 ? 0 : -6 }}>
@@ -603,7 +603,7 @@ export default function PitchPage() {
                 {[
                   { value: "50/50", label: "Rendimentos compartilhados", color: C.navy },
                   { value: "+12%", label: "Margem de agência garantida", color: C.orange },
-                  { value: "8 sem", label: "Time-to-market", color: C.amber },
+                  { value: "4 sem", label: "Time-to-market", color: C.amber },
                 ].map((item, i) => (
                   <CircleMetric key={i} value={item.value} label={item.label} accent={i === 1} color={item.color} />
                 ))}
