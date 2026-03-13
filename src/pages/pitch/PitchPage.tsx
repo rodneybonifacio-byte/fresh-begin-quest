@@ -156,7 +156,7 @@ export default function PitchPage() {
                 <button onClick={() => setCurrent(1)} className="text-white px-8 py-3.5 rounded-full font-semibold flex items-center gap-2 transition shadow-lg hover:shadow-xl" style={{ background: C.orange }}>
                   Iniciar Apresentação <ArrowRight size={18} />
                 </button>
-                <p className="text-xs pt-2" style={{ color: C.textMuted }}>→ ou Espaço para avançar · F para tela cheia</p>
+                <p className="text-xs pt-2 flex items-center gap-1" style={{ color: C.textMuted }}><ArrowRight size={12} /> ou Espaço para avançar · F para tela cheia</p>
               </div>
               <div className="flex-1 flex justify-center relative">
                 <div className="w-72 h-72 md:w-96 md:h-96 rounded-full relative" style={{ background: C.orange }}>
