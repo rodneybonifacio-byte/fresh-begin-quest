@@ -442,8 +442,8 @@ export default function PitchPage() {
                 <div className="md:col-span-2 space-y-3">
                   {[
                     { icon: <Star size={14} />, title: "Sinalização Inteligente", desc: "Alertas de atraso e entrega falhada. IA sugere ações." },
-                    { icon: <Phone size={14} />, title: "CRM WhatsApp", desc: "Conversas, tickets, templates HSM e métricas." },
-                    { icon: <Zap size={14} />, title: "Tools AI-Powered", desc: "Cotação, rastreio e busca acionados via IA." },
+                    { icon: <Phone size={14} />, title: "Gestão WhatsApp", desc: "Conversas, chamados, modelos de mensagem e métricas." },
+                    { icon: <Zap size={14} />, title: "Ferramentas de IA", desc: "Cotação, rastreio e busca acionados via IA." },
                   ].map((item, i) => (
                     <div key={i} className="p-4 border" style={{ background: C.white, borderColor: C.border }}>
                       <h4 className="font-bold text-xs mb-1 flex items-center gap-1.5" style={{ color: C.navy }}>
