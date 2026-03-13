@@ -301,7 +301,7 @@ export default function PitchPage() {
                     <AlertTriangle size={32} style={{ color: C.orangeLight }} />
                   </div>
                   <div className="space-y-3">
-                    <h3 className="text-xl font-bold">🧠 Algoritmo Preditivo de Atraso</h3>
+                    <h3 className="text-xl font-bold flex items-center gap-2"><Brain size={20} style={{ color: C.orangeLight }} /> Algoritmo Preditivo de Atraso</h3>
                     <p className="text-white/85 leading-relaxed">
                       Nosso sistema monitora <strong className="text-white">cada objeto em trânsito em tempo real</strong>. A cada 15 minutos, um cron inteligente cruza a data prevista de entrega com o horário atual (fuso de Brasília). Se detecta que o prazo será estourado — ou que já são <strong className="text-white">16h15 do dia previsto</strong> sem movimentação — o cliente recebe automaticamente uma notificação via WhatsApp <strong style={{ color: C.orangeLight }}>antes mesmo de perceber o atraso</strong>.
                     </p>
