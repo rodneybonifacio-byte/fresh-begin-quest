@@ -102,10 +102,6 @@ export default function PitchPage() {
   return (
     <div className="pitch-page min-h-screen select-none overflow-hidden relative" style={{ background: C.cream, fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" }}>
       {/* BRHUB Logo - fixed on all slides */}
-      <div className="fixed top-5 left-6 z-50 flex items-center gap-2.5">
-        <img src={logoBrhub} alt="BRHUB Envios" className="h-8 object-contain" />
-        <span className="text-sm font-extrabold tracking-tight" style={{ color: C.navy, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>ENVIOS</span>
-      </div>
       {/* Decorative circles */}
       <div className="fixed top-[-120px] right-[-120px] w-[340px] h-[340px] rounded-full opacity-20 pointer-events-none" style={{ background: C.orange }} />
       <div className="fixed bottom-[-80px] left-[-80px] w-[260px] h-[260px] rounded-full opacity-10 pointer-events-none" style={{ background: C.navy }} />
