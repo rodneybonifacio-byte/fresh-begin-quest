@@ -168,22 +168,22 @@ export default function PitchPage() {
 
           {/* ─── OPPORTUNITY ────────────────────────────────────── */}
           {slide === "opportunity" && (
-            <div className="space-y-8">
+            <div className="space-y-5 md:space-y-8">
               <SlideHeader title="A" accent="Oportunidade" tag="Análise de mercado" />
 
-              <div className="grid md:grid-cols-5 gap-8 items-center">
-                <div className="md:col-span-2 overflow-hidden border" style={{ borderColor: C.orangeBorder }}>
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-5 md:gap-8 items-center">
+                <div className="md:col-span-2 overflow-hidden border max-w-[280px] mx-auto md:max-w-none" style={{ borderColor: C.orangeBorder }}>
                   <img src={lookChinaProfile} alt="Look China - Fred China" className="w-full object-cover" />
                 </div>
-                <div className="md:col-span-3 space-y-5">
-                  <h3 className="text-2xl font-black" style={{ color: C.navy }}>Grupo <span style={{ color: C.orange }}>Look China</span></h3>
-                  <p className="text-sm leading-relaxed" style={{ color: C.textMuted }}>
+                <div className="md:col-span-3 space-y-4 md:space-y-5">
+                  <h3 className="text-xl md:text-2xl font-black text-center md:text-left" style={{ color: C.navy }}>Grupo <span style={{ color: C.orange }}>Look China</span></h3>
+                  <p className="text-xs md:text-sm leading-relaxed" style={{ color: C.textMuted }}>
                     Liderado por <strong style={{ color: C.navy }}>Fred</strong> (@fred_dayyy), o Look China é um <strong style={{ color: C.orange }}>grande importador com presença física na região do Brás</strong>, na Rua Maria Marcolina 369 (SP) e <strong style={{ color: C.orange }}>1,4 milhão de seguidores</strong> no Instagram.
                   </p>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-3 gap-3 md:gap-4">
                     {[
                       { value: "1,4M", label: "Seguidores" },
-                      { value: "R$ 8M", label: "Faturamento/mês" },
+                      { value: "R$ 8M", label: "Fat./mês" },
                       { value: "482+", label: "Conteúdos" },
                     ].map((m, i) => (
                       <CircleMetric key={i} value={m.value} label={m.label} accent={i === 1} />
@@ -192,8 +192,8 @@ export default function PitchPage() {
                 </div>
               </div>
 
-              <div className="p-6 border-l-4" style={{ borderColor: C.orange, background: C.cardBg }}>
-                <p className="text-sm leading-relaxed" style={{ color: C.textMuted }}>
+              <div className="p-4 md:p-6 border-l-4" style={{ borderColor: C.orange, background: C.cardBg }}>
+                <p className="text-xs md:text-sm leading-relaxed" style={{ color: C.textMuted }}>
                   A <strong style={{ color: C.orange }}>BRHUB Tech/Envios</strong> convida o grupo <strong style={{ color: C.navy }}>Flex Envios</strong> a se tornar parceiro e <strong style={{ color: C.orange }}>operador logístico oficial</strong> do marketplace Look China.
                 </p>
               </div>
