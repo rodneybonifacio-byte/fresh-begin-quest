@@ -541,7 +541,7 @@ export default function PitchPage() {
           {/* ─── TIMELINE ──────────────────────────────────────── */}
           {slide === "timeline" && (
             <div className="space-y-8">
-              <SlideHeader title="Algumas" accent="etapas" tag="Roadmap" />
+              <SlideHeader title="Algumas" accent="etapas" tag="Cronograma" />
               {/* Horizontal timeline like reference "Some milestones" */}
               <div className="flex gap-3">
                 {[
