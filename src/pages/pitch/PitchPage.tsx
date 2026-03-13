@@ -567,9 +567,9 @@ export default function PitchPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
                   { label: "Faturamento Físico/Mês", value: "R$ 8M", color: C.navy },
-                  { label: "Digital no Mês 12", value: "R$ 14,6M", color: C.orange },
-                  { label: "Envios no Mês 12", value: "584 mil", color: C.amber },
-                  { label: "Total Envios Ano 1", value: "2,78M", color: C.emerald },
+                  { label: "Digital no Mês 12", value: "R$ 800k", color: C.orange },
+                  { label: "Envios no Mês 12", value: "32 mil", color: C.amber },
+                  { label: "Total Envios Ano 1", value: "~180 mil", color: C.emerald },
                 ].map((m, i) => (
                   <div key={i} className="rounded-xl p-4 text-center border" style={{ background: C.white, borderColor: C.creamDark }}>
                     <div className="text-xl font-extrabold" style={{ color: m.color }}>{m.value}</div>
