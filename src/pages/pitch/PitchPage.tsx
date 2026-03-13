@@ -65,31 +65,18 @@ const projectionChart: { series: ApexOptions["series"]; options: ApexOptions } =
   },
 };
 
-const revenueDonut: { series: number[]; options: ApexOptions } = {
-  series: [50, 50],
+// Digital conversion projection chart (R$8M physical → digital potential)
+const digitalConversionChart: { series: ApexOptions["series"]; options: ApexOptions } = {
+  series: [{ name: "% Conversão Digital", data: [0.5, 1, 1.8, 2.8, 4, 5.4, 7, 8.8, 10.8, 13, 15.5, 18.3] }],
   options: {
-    chart: { type: "donut", height: 300, background: "transparent" },
-    labels: ["BRHUB Tech", "Flex Envios"],
-    colors: [C.navy, C.orange],
-    stroke: { show: true, width: 4, colors: [C.cream] },
-    plotOptions: { pie: { donut: { size: "72%", labels: { show: true, total: { show: true, label: "Rendimentos", color: C.textMuted, formatter: () => "50 / 50" } } } } },
-    legend: { labels: { colors: C.text }, position: "bottom" },
-    dataLabels: { enabled: false },
-    tooltip: { theme: "light" },
-  },
-};
-
-const postageBar: { series: ApexOptions["series"]; options: ApexOptions } = {
-  series: [{ name: "Margem Agência (%)", data: [12, 12, 12, 12, 12, 12] }],
-  options: {
-    chart: { type: "bar", height: 220, toolbar: { show: false }, background: "transparent" },
+    chart: { type: "bar", height: 260, toolbar: { show: false }, background: "transparent" },
     colors: [C.orange],
-    xaxis: { categories: ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun"], labels: { style: { colors: C.textMuted } } },
+    xaxis: { categories: monthLabels, labels: { style: { colors: C.textMuted, fontSize: "10px" } } },
     yaxis: { max: 20, labels: { style: { colors: C.textMuted }, formatter: (v: number) => `${v}%` } },
     grid: { borderColor: "#e2e8f0", strokeDashArray: 4 },
-    plotOptions: { bar: { borderRadius: 8, columnWidth: "45%" } },
-    dataLabels: { enabled: true, formatter: (v: number) => `${v}%`, style: { colors: [C.white] } },
-    tooltip: { theme: "light" },
+    plotOptions: { bar: { borderRadius: 6, columnWidth: "50%" } },
+    dataLabels: { enabled: false },
+    tooltip: { theme: "light", y: { formatter: (v: number) => `${v}% = R$ ${((v / 100) * 8000).toFixed(0)}k` } },
   },
 };
 
