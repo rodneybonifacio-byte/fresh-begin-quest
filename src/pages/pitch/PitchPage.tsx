@@ -379,11 +379,11 @@ export default function PitchPage() {
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[
                   { icon: <Package size={22} />, title: "Emissão de Etiquetas", desc: "Cotação multi-transportadora, etiqueta em segundos" },
-                  { icon: <Truck size={22} />, title: "Rastreamento Inteligente", desc: "Tracking em tempo real com notificações automáticas" },
-                  { icon: <BarChart3 size={22} />, title: "Dashboard Analytics", desc: "Visão 360° de envios, custos e performance" },
+                  { icon: <Truck size={22} />, title: "Rastreamento Inteligente", desc: "Acompanhamento em tempo real com notificações automáticas" },
+                  { icon: <BarChart3 size={22} />, title: "Painel de Análises", desc: "Visão 360° de envios, custos e desempenho" },
                   { icon: <Shield size={22} />, title: "Gestão Financeira", desc: "Faturas, créditos pré-pagos e extrato completo" },
                   { icon: <Globe size={22} />, title: "Integrações", desc: "API aberta para conectar qualquer plataforma" },
-                  { icon: <Warehouse size={22} />, title: "FULL (Galpão)", desc: "Sistema completo de fulfillment e expedição" },
+                  { icon: <Warehouse size={22} />, title: "Galpão Completo", desc: "Sistema completo de logística e expedição" },
                 ].map((f, i) => (
                   <div key={i} className="p-5 border transition hover:border-orange-300 group" style={{ background: C.white, borderColor: C.border }}>
                     <div className="w-11 h-11 rounded-full flex items-center justify-center mb-3 border-2" style={{ borderColor: i % 2 === 0 ? C.orange : C.navy, color: i % 2 === 0 ? C.orange : C.navy }}>
