@@ -426,6 +426,7 @@ serve(async (req) => {
           updateData.contact_name = contactName;
         }
       }
+      let intentResult: { isPassive: boolean; confidence: number; reason: string } | undefined;
       if (direction === "inbound") {
         updateData.unread_count = (conversation.unread_count || 0) + 1;
 
