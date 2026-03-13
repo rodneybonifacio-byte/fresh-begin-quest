@@ -77,6 +77,19 @@ function shouldSuppressAIAfterPassiveHSM(text: string | null | undefined): boole
     /^brigad[oa]$/,
     /^amem$/,
     /^amen$/,
+    /^excelente\s+parabens$/,
+    /^parabens\s*/,
+    /^excelente\s+(trabalho|servico|atendimento)$/,
+    /^muito\s+bom$/,
+    /^nota\s+\d+$/,
+    /^otimo\s+(servico|trabalho|atendimento)$/,
+    /^super\s+(recomendo|indico)$/,
+    /^tudo\s+(certo|otimo|perfeito|ok)$/,
+    /^recebi\s+(sim|ja)$/,
+    /^ja\s+recebi$/,
+    /^chegou\s*(sim|ja)?$/,
+    /^recebid[oa]?$/,
+    /^recebemos$/,
   ];
 
   // Se TODAS as linhas são passivas, suprimir
