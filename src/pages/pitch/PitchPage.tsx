@@ -506,39 +506,39 @@ export default function PitchPage() {
 
           {/* ─── NOTIFICATIONS ─────────────────────────────────── */}
           {slide === "notifications" && (
-            <div className="space-y-6">
+            <div className="space-y-4 md:space-y-6">
               <SlideHeader title="Notificações" accent="proativas" tag="Automação" />
 
-              <div className="p-6 border-2" style={{ background: C.navy, borderColor: C.navy, color: "white" }}>
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 border-2" style={{ borderColor: C.orange }}>
-                    <AlertTriangle size={24} style={{ color: C.orange }} />
+              <div className="p-4 md:p-6 border-2" style={{ background: C.navy, borderColor: C.navy, color: "white" }}>
+                <div className="flex items-start gap-3 md:gap-4">
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center shrink-0 border-2" style={{ borderColor: C.orange }}>
+                    <AlertTriangle size={20} style={{ color: C.orange }} />
                   </div>
-                  <div className="space-y-2">
-                    <h3 className="text-base font-bold flex items-center gap-2"><Brain size={16} style={{ color: C.orangeLight }} /> Algoritmo <span style={{ color: C.orange }}>Preditivo</span> de Atraso</h3>
-                    <p className="text-white/80 text-sm leading-relaxed">
-                      Monitora cada objeto em trânsito. A cada 15 min, cruza previsão com horário atual. Se detecta atraso — o cliente recebe notificação via WhatsApp <strong style={{ color: C.orangeLight }}>antes de perceber</strong>.
+                  <div className="space-y-1 md:space-y-2">
+                    <h3 className="text-sm md:text-base font-bold flex items-center gap-2"><Brain size={14} style={{ color: C.orangeLight }} /> Algoritmo <span style={{ color: C.orange }}>Preditivo</span></h3>
+                    <p className="text-white/80 text-xs md:text-sm leading-relaxed">
+                      Monitora cada objeto. Se detecta atraso — notifica via WhatsApp <strong style={{ color: C.orangeLight }}>antes do cliente perceber</strong>.
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-4">
                 {[
-                  { icon: <Send size={18} />, title: "Etiqueta Criada", desc: "Destinatário recebe código de rastreio e previsão." },
-                  { icon: <Package size={18} />, title: "Objeto Postado", desc: "Confirmação de entrega à transportadora." },
-                  { icon: <Truck size={18} />, title: "Saiu para Entrega", desc: "Notificação quando entra na rota final." },
-                  { icon: <Clock size={18} />, title: "Aguardando Retirada", desc: "Alerta de disponibilidade em agência." },
-                  { icon: <AlertTriangle size={18} />, title: "Alerta de Atraso", desc: "Aviso proativo antes do cliente perceber." },
-                  { icon: <Star size={18} />, title: "Avaliação Pós-Entrega", desc: "Feedback para medir NPS e qualidade." },
+                  { icon: <Send size={16} />, title: "Etiqueta Criada", desc: "Código de rastreio e previsão." },
+                  { icon: <Package size={16} />, title: "Objeto Postado", desc: "Confirmação de entrega." },
+                  { icon: <Truck size={16} />, title: "Saiu p/ Entrega", desc: "Notificação de rota final." },
+                  { icon: <Clock size={16} />, title: "Aguard. Retirada", desc: "Disponível em agência." },
+                  { icon: <AlertTriangle size={16} />, title: "Alerta de Atraso", desc: "Aviso proativo." },
+                  { icon: <Star size={16} />, title: "Avaliação", desc: "Feedback pós-entrega." },
                 ].map((n, i) => (
-                  <div key={i} className="p-4 border flex gap-3" style={{ background: C.white, borderColor: C.border }}>
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 border-2" style={{ borderColor: C.orange, color: C.orange }}>
+                  <div key={i} className="p-3 md:p-4 border flex gap-2 md:gap-3" style={{ background: C.white, borderColor: C.border }}>
+                    <div className="w-7 h-7 md:w-9 md:h-9 rounded-full flex items-center justify-center shrink-0 border-2" style={{ borderColor: C.orange, color: C.orange }}>
                       {n.icon}
                     </div>
                     <div>
-                      <h4 className="font-bold text-xs mb-0.5" style={{ color: C.navy }}>{n.title}</h4>
-                      <p className="text-[11px] leading-relaxed" style={{ color: C.textMuted }}>{n.desc}</p>
+                      <h4 className="font-bold text-[11px] md:text-xs mb-0.5" style={{ color: C.navy }}>{n.title}</h4>
+                      <p className="text-[10px] md:text-[11px] leading-relaxed" style={{ color: C.textMuted }}>{n.desc}</p>
                     </div>
                   </div>
                 ))}
