@@ -350,15 +350,37 @@ export default function PitchPage() {
               <SectionHeader icon={<Globe />} title="Arquitetura de Integração" subtitle="Como funciona tecnicamente" />
               <div className="rounded-2xl p-10 border" style={{ background: C.white, borderColor: C.creamDark }}>
                 <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-                  <CircleBlock label="Flex Envios" sub="Disponibiliza API" color={C.amber} />
-                  <ArrowRight size={32} className="shrink-0 rotate-90 md:rotate-0" style={{ color: C.creamDark }} />
-                  <CircleBlock label="BRHUB Tech" sub="Desenvolve & Integra" color={C.orange} />
-                  <ArrowRight size={32} className="shrink-0 rotate-90 md:rotate-0" style={{ color: C.creamDark }} />
-                  <CircleBlock label="Look China" sub="Whitelabel Marketplace" color={C.navy} />
+                  <div className="integration-node" style={{ animationDelay: "0.2s" }}>
+                    <CircleBlock label="Flex Envios" sub="Disponibiliza API" color={C.amber} />
+                  </div>
+                  <div className="integration-arrow" style={{ animationDelay: "0.6s" }}>
+                    <div className="hidden md:flex items-center gap-1">
+                      <div className="h-[3px] w-12 rounded-full integration-line" style={{ background: C.orange }} />
+                      <ArrowRight size={28} style={{ color: C.orange }} />
+                    </div>
+                    <div className="md:hidden">
+                      <ArrowRight size={28} className="rotate-90" style={{ color: C.orange }} />
+                    </div>
+                  </div>
+                  <div className="integration-node" style={{ animationDelay: "0.9s" }}>
+                    <CircleBlock label="BRHUB Tech" sub="Desenvolve & Integra" color={C.orange} />
+                  </div>
+                  <div className="integration-arrow" style={{ animationDelay: "1.3s" }}>
+                    <div className="hidden md:flex items-center gap-1">
+                      <div className="h-[3px] w-12 rounded-full integration-line" style={{ background: C.navy }} />
+                      <ArrowRight size={28} style={{ color: C.navy }} />
+                    </div>
+                    <div className="md:hidden">
+                      <ArrowRight size={28} className="rotate-90" style={{ color: C.navy }} />
+                    </div>
+                  </div>
+                  <div className="integration-node" style={{ animationDelay: "1.6s" }}>
+                    <CircleBlock label="Look China" sub="Whitelabel Marketplace" color={C.navy} />
+                  </div>
                 </div>
               </div>
               <div className="grid md:grid-cols-2 gap-6">
-                <div className="rounded-xl p-6 border" style={{ background: C.white, borderColor: C.creamDark }}>
+                <div className="integration-card rounded-xl p-6 border" style={{ background: C.white, borderColor: C.creamDark, animationDelay: "2s" }}>
                   <h4 className="font-bold mb-3 flex items-center gap-2" style={{ color: C.orange }}><Globe size={18} /> Plataforma Marketplace</h4>
                   <ul className="space-y-2 text-sm" style={{ color: C.textMuted }}>
                     <li>• Nova plataforma integrada com contrato Flex Envios</li>
@@ -367,7 +389,7 @@ export default function PitchPage() {
                     <li>• Dashboard próprio para o lojista</li>
                   </ul>
                 </div>
-                <div className="rounded-xl p-6 border" style={{ background: C.white, borderColor: C.creamDark }}>
+                <div className="integration-card rounded-xl p-6 border" style={{ background: C.white, borderColor: C.creamDark, animationDelay: "2.2s" }}>
                   <h4 className="font-bold mb-3 flex items-center gap-2" style={{ color: C.navy }}><Warehouse size={18} /> Sistema FULL (Galpão)</h4>
                   <ul className="space-y-2 text-sm" style={{ color: C.textMuted }}>
                     <li>• Fulfillment completo no galpão do parceiro</li>
@@ -556,6 +578,44 @@ export default function PitchPage() {
       <style>{`
         @keyframes pitch-fade-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
         .animate-pitch-fade { animation: pitch-fade-in 0.45s ease-out; }
+
+        @keyframes node-enter {
+          0% { opacity: 0; transform: scale(0.5); }
+          60% { transform: scale(1.08); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+        .integration-node {
+          opacity: 0;
+          animation: node-enter 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        @keyframes arrow-enter {
+          0% { opacity: 0; transform: translateX(-16px); }
+          100% { opacity: 1; transform: translateX(0); }
+        }
+        .integration-arrow {
+          opacity: 0;
+          animation: arrow-enter 0.4s ease-out forwards;
+        }
+
+        @keyframes line-grow {
+          0% { transform: scaleX(0); }
+          100% { transform: scaleX(1); }
+        }
+        .integration-line {
+          transform-origin: left center;
+          animation: line-grow 0.5s ease-out forwards;
+          animation-delay: inherit;
+        }
+
+        @keyframes card-slide-up {
+          0% { opacity: 0; transform: translateY(24px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        .integration-card {
+          opacity: 0;
+          animation: card-slide-up 0.5s ease-out forwards;
+        }
       `}</style>
     </div>
   );
