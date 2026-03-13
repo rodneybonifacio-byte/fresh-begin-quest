@@ -48,16 +48,16 @@ const C = {
 
 const projectionChart: { series: ApexOptions["series"]; options: ApexOptions } = {
   series: [
-    { name: "Envios Estimados", data: [800, 1400, 2200, 3200, 4500, 5800, 7200, 8800, 10500, 12500, 14800, 17500] },
-    { name: "Faturamento (R$ mil)", data: [12, 22, 35, 52, 72, 93, 115, 140, 168, 200, 237, 280] },
+    { name: "Faturamento Físico (R$ mil)", data: [667, 667, 667, 667, 667, 667, 667, 667, 667, 667, 667, 667] },
+    { name: "Projeção Digital (R$ mil)", data: [40, 80, 140, 220, 320, 430, 560, 700, 860, 1040, 1240, 1460] },
   ],
   options: {
     chart: { type: "area", height: 340, toolbar: { show: false }, background: "transparent", fontFamily: "Inter, sans-serif" },
-    colors: [C.orange, C.navy],
+    colors: [C.navy, C.orange],
     fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 100] } },
     stroke: { curve: "smooth", width: 3 },
     xaxis: { categories: monthLabels, labels: { style: { colors: C.textMuted } } },
-    yaxis: { labels: { style: { colors: C.textMuted } } },
+    yaxis: { labels: { style: { colors: C.textMuted }, formatter: (v: number) => `R$ ${v}k` } },
     grid: { borderColor: "#e2e8f0", strokeDashArray: 4 },
     tooltip: { theme: "light" },
     legend: { labels: { colors: C.text } },
