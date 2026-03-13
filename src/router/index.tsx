@@ -82,6 +82,7 @@ export const RouterBase = () => {
                     <Route path="/manutencao" element={<Manutencao />} />
                     <Route path="/view/pdf/:pdfId/print" element={<VisualizarPdf />} />
                     <Route path="/tv-coleta" element={<TvPainelColeta />} />
+                    <Route path="/pitch" element={<PitchPage />} />
 
                     {/* Conecta+ Routes */}
                     <Route path="/conecta" element={<LandingConecta />} />
