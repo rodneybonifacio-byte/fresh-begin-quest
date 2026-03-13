@@ -548,27 +548,27 @@ export default function PitchPage() {
 
           {/* ─── COLLECTION POINTS ─────────────────────────────── */}
           {slide === "collection-points" && (
-            <div className="space-y-8">
+            <div className="space-y-5 md:space-y-8">
               <SlideHeader title="Pontos de" accent="coleta" tag="Localização" />
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                 {[
                   { name: "Look China", address: "Rua Carnot", type: "Principal", features: ["Recebimento de encomendas", "Atendimento ao lojista", "Etiquetagem e despacho", "Suporte presencial"] },
-                  { name: "Look China Shopping", address: "Rua Maria Marcolina", type: "Secundário", features: ["Coleta centralizada do shopping", "Alto volume de lojistas", "Expedição diária", "Integração com a plataforma"] },
+                  { name: "Look China Shopping", address: "Rua Maria Marcolina", type: "Secundário", features: ["Coleta centralizada", "Alto volume de lojistas", "Expedição diária", "Integração com plataforma"] },
                 ].map((loc, i) => (
-                  <div key={i} className="p-7 border" style={{ background: C.white, borderColor: C.border }}>
-                    <div className="flex items-start gap-3 mb-4">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center border-2 shrink-0" style={{ borderColor: C.orange, color: C.orange }}>
-                        <MapPin size={18} />
+                  <div key={i} className="p-4 md:p-7 border" style={{ background: C.white, borderColor: C.border }}>
+                    <div className="flex items-start gap-3 mb-3 md:mb-4">
+                      <div className="w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center border-2 shrink-0" style={{ borderColor: C.orange, color: C.orange }}>
+                        <MapPin size={16} />
                       </div>
                       <div>
-                        <h3 className="text-lg font-bold" style={{ color: C.navy }}>{loc.name}</h3>
-                        <p className="text-xs" style={{ color: C.textMuted }}>{loc.address}</p>
+                        <h3 className="text-base md:text-lg font-bold" style={{ color: C.navy }}>{loc.name}</h3>
+                        <p className="text-[11px] md:text-xs" style={{ color: C.textMuted }}>{loc.address}</p>
                         <span className="text-[10px] font-semibold px-2 py-0.5 mt-1 inline-block border" style={{ borderColor: C.orangeBorder, color: C.orange }}>{loc.type}</span>
                       </div>
                     </div>
-                    <ul className="space-y-2">
+                    <ul className="space-y-1.5 md:space-y-2">
                       {loc.features.map((f, j) => (
-                        <li key={j} className="flex items-center gap-2 text-sm" style={{ color: C.textMuted }}>
+                        <li key={j} className="flex items-center gap-2 text-xs md:text-sm" style={{ color: C.textMuted }}>
                           <span style={{ color: C.orange }}>●</span> {f}
                         </li>
                       ))}
@@ -576,9 +576,9 @@ export default function PitchPage() {
                   </div>
                 ))}
               </div>
-              <div className="p-4 text-center border-l-4" style={{ borderColor: C.orange, background: C.cardBg }}>
-                <p className="text-sm" style={{ color: C.navy }}>
-                  <MapPin size={16} className="inline mr-1" style={{ color: C.orange }} />
+              <div className="p-3 md:p-4 text-center border-l-4" style={{ borderColor: C.orange, background: C.cardBg }}>
+                <p className="text-xs md:text-sm" style={{ color: C.navy }}>
+                  <MapPin size={14} className="inline mr-1" style={{ color: C.orange }} />
                   Dois pontos estratégicos = <strong>maior cobertura</strong> e <strong>conveniência</strong>
                 </p>
               </div>
