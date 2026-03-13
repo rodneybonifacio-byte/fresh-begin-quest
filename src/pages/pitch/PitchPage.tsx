@@ -649,7 +649,7 @@ export default function PitchPage() {
               </h2>
               <div className="w-16 h-1 mx-auto" style={{ background: C.orange }} />
               <p className="text-lg max-w-2xl mx-auto leading-relaxed" style={{ color: C.textMuted }}>
-                Tecnologia BRHUB + Operação Flex Envios = o marketplace logístico mais completo para a comunidade Look China
+                Tecnologia BRHUB + Operação Flex Envios = a plataforma logística mais completa para a comunidade Look China
               </p>
               <div className="grid md:grid-cols-3 gap-5 max-w-3xl mx-auto pt-4">
                 {[
