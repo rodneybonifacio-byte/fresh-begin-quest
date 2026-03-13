@@ -98,8 +98,7 @@ Deno.serve(async (req) => {
       accessKey = def?.access_key || Deno.env.get("MESSAGEBIRD_ACCESS_KEY")!;
     }
 
-    // Normalize phone using shared function
-    const normalizedPhone = normalizeBrazilianPhone(phone);
+    // Phone already normalized above (line 34)
 
     // Build template components with variables grouped by component_type
     const templateVars = (template.variables || []) as {
