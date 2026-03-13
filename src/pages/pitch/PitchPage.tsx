@@ -5,7 +5,7 @@ import {
   Truck, Bot, Globe, Warehouse, MapPin, Handshake, ChevronRight,
   ChevronLeft, BarChart3, Zap, Shield, Package, TrendingUp,
   Building2, ArrowRight, CheckCircle2, Sparkles, Phone, Brain, Mic, Eye, MessageCircle,
-  Bell, AlertTriangle, Clock, Send, Star, ShieldCheck
+  Bell, AlertTriangle, Clock, Send, Star, ShieldCheck, DollarSign
 } from "lucide-react";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
@@ -397,7 +397,30 @@ export default function PitchPage() {
           {/* ─── REVENUE (now near closing) ─────────────────── */}
           {slide === "revenue" && (
             <div className="space-y-7">
-              <SectionHeader icon={<Handshake />} title="Modelo de Receita" subtitle="Divisão e cobrança" />
+              <SectionHeader icon={<Handshake />} title="Modelo de Receita & Pagamento" subtitle="Divisão de lucros, fluxo financeiro e eliminação de risco" />
+
+              {/* Highlight: BRHUB assumes payment */}
+              <div className="rounded-2xl p-6 border relative overflow-hidden" style={{ background: C.navy }}>
+                <div className="absolute top-[-40px] right-[-40px] w-32 h-32 rounded-full opacity-15" style={{ background: C.orange }} />
+                <div className="flex items-start gap-5">
+                  <div className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(249,115,22,0.2)" }}>
+                    <ShieldCheck size={28} style={{ color: C.orangeLight }} />
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="text-xl font-bold text-white">Zero Risco de Inadimplência para a Flex</h4>
+                    <p className="text-white/80 leading-relaxed">
+                      A <strong className="text-white">BRHUB assume 100% da cobrança e do risco de inadimplência</strong>. A Flex Envios recebe repasses mensais já com todo o cálculo de margem efetuado — sem preocupação com recebimentos ou calotes.
+                    </p>
+                    <div className="flex flex-wrap gap-3 pt-2">
+                      {["BRHUB cobra o cliente", "Zero inadimplência Flex", "Repasse mensal garantido", "Margem já calculada"].map((tag, i) => (
+                        <span key={i} className="text-xs font-semibold rounded-full px-4 py-1.5" style={{ background: "rgba(249,115,22,0.15)", color: C.orangeLight }}>{tag}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Division cards */}
               <div className="grid md:grid-cols-3 gap-5">
                 <div className="rounded-2xl p-6 border relative overflow-hidden" style={{ background: C.white, borderColor: C.creamDark }}>
                   <div className="absolute top-0 left-0 w-full h-1.5 rounded-t-2xl" style={{ background: C.navy }} />
@@ -406,11 +429,12 @@ export default function PitchPage() {
                   </div>
                   <h4 className="font-extrabold text-2xl mb-1" style={{ color: C.navy }}>50%</h4>
                   <h5 className="font-bold mb-2" style={{ color: C.navy }}>BRHUB Tech</h5>
+                  <p className="text-xs font-semibold mb-3 px-2 py-1 rounded-full inline-block" style={{ background: C.navyBg, color: C.navy }}>do lucro das etiquetas</p>
                   <ul className="space-y-1.5 text-sm" style={{ color: C.textMuted }}>
                     <li className="flex items-start gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0" style={{ color: C.navy }} /> Infraestrutura tecnológica</li>
-                    <li className="flex items-start gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0" style={{ color: C.navy }} /> Desenvolvimento contínuo</li>
+                    <li className="flex items-start gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0" style={{ color: C.navy }} /> Assume cobrança e inadimplência</li>
                     <li className="flex items-start gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0" style={{ color: C.navy }} /> Suporte com IA 24/7</li>
-                    <li className="flex items-start gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0" style={{ color: C.navy }} /> Manutenção e evolução</li>
+                    <li className="flex items-start gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0" style={{ color: C.navy }} /> Calcula e repassa margens</li>
                   </ul>
                 </div>
                 <div className="rounded-2xl p-6 border relative overflow-hidden" style={{ background: C.white, borderColor: C.creamDark }}>
@@ -420,10 +444,11 @@ export default function PitchPage() {
                   </div>
                   <h4 className="font-extrabold text-2xl mb-1" style={{ color: C.orange }}>50%</h4>
                   <h5 className="font-bold mb-2" style={{ color: C.orange }}>Flex Envios</h5>
+                  <p className="text-xs font-semibold mb-3 px-2 py-1 rounded-full inline-block" style={{ background: C.orangeBg, color: C.orange }}>do lucro das etiquetas</p>
                   <ul className="space-y-1.5 text-sm" style={{ color: C.textMuted }}>
                     <li className="flex items-start gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0" style={{ color: C.orange }} /> Operação logística</li>
                     <li className="flex items-start gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0" style={{ color: C.orange }} /> API de contratos</li>
-                    <li className="flex items-start gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0" style={{ color: C.orange }} /> Infraestrutura de transporte</li>
+                    <li className="flex items-start gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0" style={{ color: C.orange }} /> Recebe repasse sem risco</li>
                     <li className="flex items-start gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0" style={{ color: C.orange }} /> Rede de distribuição</li>
                   </ul>
                 </div>
@@ -434,8 +459,9 @@ export default function PitchPage() {
                   </div>
                   <h4 className="font-extrabold text-2xl mb-1" style={{ color: C.emerald }}>+12%</h4>
                   <h5 className="font-bold mb-2" style={{ color: C.emerald }}>Margem Agência</h5>
+                  <p className="text-xs font-semibold mb-3 px-2 py-1 rounded-full inline-block" style={{ background: "rgba(16,185,129,0.1)", color: C.emerald }}>sobre volume postado</p>
                   <ul className="space-y-1.5 text-sm" style={{ color: C.textMuted }}>
-                    <li className="flex items-start gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0" style={{ color: C.emerald }} /> Sobre volume postado</li>
+                    <li className="flex items-start gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0" style={{ color: C.emerald }} /> Receita da Flex sobre postagem</li>
                     <li className="flex items-start gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0" style={{ color: C.emerald }} /> Receita garantida</li>
                     <li className="flex items-start gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0" style={{ color: C.emerald }} /> Independe do marketplace</li>
                     <li className="flex items-start gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0" style={{ color: C.emerald }} /> Recorrente mensal</li>
@@ -443,24 +469,25 @@ export default function PitchPage() {
                 </div>
               </div>
 
-              {/* Monthly billing model */}
-              <div className="rounded-2xl p-7 border relative overflow-hidden" style={{ background: C.navy }}>
-                <div className="absolute top-[-40px] right-[-40px] w-32 h-32 rounded-full opacity-15" style={{ background: C.orange }} />
-                <div className="flex items-start gap-5">
-                  <div className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(249,115,22,0.2)" }}>
-                    <Clock size={28} style={{ color: C.orangeLight }} />
-                  </div>
-                  <div className="space-y-2">
-                    <h4 className="text-xl font-bold text-white">Modelo de Cobrança Mensal</h4>
-                    <p className="text-white/80 leading-relaxed">
-                      Todo o consumo do mês é consolidado em um fechamento único. No final de cada período, é gerado o faturamento completo com detalhamento de envios, valores e margens — e o pagamento é realizado de forma simples e transparente.
-                    </p>
-                    <div className="flex flex-wrap gap-3 pt-2">
-                      {["Fechamento mensal", "Fatura detalhada", "Pagamento único", "Sem surpresas"].map((tag, i) => (
-                        <span key={i} className="text-xs font-semibold rounded-full px-4 py-1.5" style={{ background: "rgba(249,115,22,0.15)", color: C.orangeLight }}>{tag}</span>
-                      ))}
+              {/* Payment flow */}
+              <div className="rounded-2xl p-6 border" style={{ background: C.white, borderColor: C.creamDark }}>
+                <h4 className="font-bold text-sm mb-4" style={{ color: C.navy }}>Fluxo de Pagamento Mensal</h4>
+                <div className="grid md:grid-cols-4 gap-4">
+                  {[
+                    { step: "1", title: "Cliente usa", desc: "Emite etiquetas durante o mês todo", icon: <Package size={20} /> },
+                    { step: "2", title: "BRHUB cobra", desc: "Fechamento mensal consolidado e cobrança ao cliente", icon: <DollarSign size={20} /> },
+                    { step: "3", title: "Calcula margem", desc: "Custo, lucro e divisão 50/50 apurados automaticamente", icon: <BarChart3 size={20} /> },
+                    { step: "4", title: "Repassa à Flex", desc: "Flex recebe sua parte + 12% agência, sem inadimplência", icon: <Handshake size={20} /> },
+                  ].map((item, i) => (
+                    <div key={i} className="flex flex-col items-center text-center p-4 rounded-xl" style={{ background: i === 3 ? C.orangeBg : C.cream }}>
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center mb-2 text-white font-bold text-sm" style={{ background: i === 3 ? C.orange : C.navy }}>
+                        {item.step}
+                      </div>
+                      <div className="mb-1" style={{ color: i === 3 ? C.orange : C.navy }}>{item.icon}</div>
+                      <h5 className="font-bold text-sm" style={{ color: C.text }}>{item.title}</h5>
+                      <p className="text-xs mt-1" style={{ color: C.textMuted }}>{item.desc}</p>
                     </div>
-                  </div>
+                  ))}
                 </div>
               </div>
             </div>
