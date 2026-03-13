@@ -587,10 +587,10 @@ export default function PitchPage() {
 
           {/* ─── TIMELINE ──────────────────────────────────────── */}
           {slide === "timeline" && (
-            <div className="space-y-8">
+            <div className="space-y-5 md:space-y-8">
               <SlideHeader title="Algumas" accent="etapas" tag="Cronograma" />
-              {/* Horizontal timeline like reference "Some milestones" */}
-              <div className="flex gap-3">
+              {/* Timeline: horizontal on desktop, vertical on mobile */}
+              <div className="hidden md:flex gap-3">
                 {[
                   { phase: "Sem 1", title: "Configuração" },
                   { phase: "Sem 2", title: "Plataforma" },
@@ -604,7 +604,28 @@ export default function PitchPage() {
                   </div>
                 ))}
               </div>
-              <div className="grid grid-cols-4 gap-3">
+              {/* Mobile: vertical timeline */}
+              <div className="md:hidden space-y-3">
+                {[
+                  { phase: "Sem 1", items: ["Configuração API Flex Envios", "Ambiente de desenvolvimento", "Plataforma base Look China"] },
+                  { phase: "Sem 2", items: ["Painel do lojista", "Emissão de etiquetas integrada", "Rastreamento automático"] },
+                  { phase: "Sem 3", items: ["Agente WhatsApp IA", "Notificações automáticas", "Fluxo de suporte"] },
+                  { phase: "Sem 4", items: ["Ativação Carnot & Marcolina", "Sistema completo no galpão", "Início da operação"] },
+                ].map((col, i) => (
+                  <div key={i} className="border p-3" style={{ background: C.white, borderColor: C.border }}>
+                    <div className="text-[10px] font-black uppercase tracking-wider mb-1.5 px-2 py-0.5 inline-block" style={{ background: C.orange, color: "white" }}>{col.phase}</div>
+                    <div className="space-y-1">
+                      {col.items.map((item, j) => (
+                        <div key={j} className="flex items-start gap-2 text-xs" style={{ color: C.textMuted }}>
+                          <span className="mt-0.5" style={{ color: C.orange }}>●</span> {item}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {/* Desktop items grid */}
+              <div className="hidden md:grid grid-cols-4 gap-3">
                 {[
                   { items: ["Configuração API Flex Envios", "Ambiente de desenvolvimento", "Plataforma base Look China"] },
                   { items: ["Painel do lojista", "Emissão de etiquetas integrada", "Rastreamento automático"] },
@@ -614,8 +635,7 @@ export default function PitchPage() {
                   <div key={i} className="space-y-2">
                     {col.items.map((item, j) => (
                       <div key={j} className="flex items-start gap-2 text-xs" style={{ color: C.textMuted }}>
-                        <span className="mt-0.5" style={{ color: C.orange }}>●</span>
-                        {item}
+                        <span className="mt-0.5" style={{ color: C.orange }}>●</span> {item}
                       </div>
                     ))}
                   </div>
