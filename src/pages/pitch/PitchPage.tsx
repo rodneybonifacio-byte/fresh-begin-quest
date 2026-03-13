@@ -507,7 +507,7 @@ export default function PitchPage() {
               <div className="rounded-xl p-5 border flex items-start gap-4" style={{ background: C.orangeBg, borderColor: C.orangeBorder }}>
                 <BarChart3 size={22} className="mt-0.5 shrink-0" style={{ color: C.orange }} />
                 <p className="text-sm" style={{ color: C.text }}>
-                  O grupo já movimenta <strong style={{ color: C.navy }}>R$ 8 milhões por mês</strong> (R$ 96M/ano) no comércio físico. A projeção estima a conversão progressiva para o digital, começando em <strong style={{ color: C.orange }}>5%</strong> e crescendo até <strong style={{ color: C.orange }}>182%</strong> do faturamento físico em 12 meses — representando a expansão do canal digital como novo motor de receita.
+                  O grupo já movimenta <strong style={{ color: C.navy }}>R$ 8 milhões por mês</strong> (R$ 96M/ano) no comércio físico. A projeção conservadora estima a conversão progressiva para o digital, começando em <strong style={{ color: C.orange }}>0,5%</strong> e atingindo <strong style={{ color: C.orange }}>10%</strong> do faturamento físico em 12 meses — um crescimento orgânico e sustentável.
                 </p>
               </div>
 
