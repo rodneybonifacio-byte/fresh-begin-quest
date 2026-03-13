@@ -488,7 +488,7 @@ serve(async (req) => {
         const isLastMsgPassiveHSM = lastOutbound?.content_type === "hsm" && lastOutbound?.sent_by === "system";
         
         // === CLASSIFICAÇÃO DE INTENÇÃO VIA IA ===
-        const intentResult = await classifyMessageIntent(messageContent, 
+        intentResult = await classifyMessageIntent(messageContent, 
           isLastMsgPassiveHSM ? "Resposta a notificação HSM automática de logística" : "Mensagem após atendimento da IA");
         const shouldSuppress = intentResult.isPassive;
 
