@@ -305,8 +305,8 @@ export default function PitchPage() {
                     <p className="text-white/85 leading-relaxed">
                       Nosso sistema monitora <strong className="text-white">cada objeto em trânsito em tempo real</strong>. A cada 15 minutos, um cron inteligente cruza a data prevista de entrega com o horário atual (fuso de Brasília). Se detecta que o prazo será estourado — ou que já são <strong className="text-white">16h15 do dia previsto</strong> sem movimentação — o cliente recebe automaticamente uma notificação via WhatsApp <strong style={{ color: C.orangeLight }}>antes mesmo de perceber o atraso</strong>.
                     </p>
-                    <p className="text-white/70 text-sm">
-                      → Deduplicação inteligente: cada alerta é enviado apenas 1x a cada 30 dias por objeto, evitando spam.
+                    <p className="text-white/70 text-sm flex items-start gap-2">
+                      <ShieldCheck size={14} className="mt-0.5 shrink-0" style={{ color: C.orangeLight }} /> Deduplicação inteligente: cada alerta é enviado apenas 1x a cada 30 dias por objeto, evitando spam.
                     </p>
                   </div>
                 </div>
