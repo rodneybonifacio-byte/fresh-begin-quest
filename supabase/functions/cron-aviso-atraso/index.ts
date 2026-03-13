@@ -207,8 +207,12 @@ async function buscarJaNotificados(): Promise<Set<string>> {
   if (msgs) {
     for (const msg of msgs) {
       const meta = msg.metadata as any;
-      if (meta?.trigger_key === 'atraso' && meta?.tracking_code) {
-        notificados.add(meta.tracking_code);
+      if (meta?.trigger_key === 'atraso') {
+        // tracking_code pode estar no topo OU dentro de variables.codigo_rastreio
+        const code = meta?.tracking_code || meta?.variables?.codigo_rastreio;
+        if (code) {
+          notificados.add(code);
+        }
       }
     }
   }
