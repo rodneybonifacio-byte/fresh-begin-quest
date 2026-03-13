@@ -580,7 +580,7 @@ export default function PitchPage() {
           {/* ─── REVENUE ─────────────────────────────────────── */}
           {slide === "revenue" && (
             <div className="space-y-6">
-              <SlideHeader title="Modelo de" accent="receita" tag="Business model" />
+              <SlideHeader title="Modelo de" accent="receita" tag="Modelo de negócio" />
 
               <div className="p-5 border-2" style={{ background: C.navy, borderColor: C.navy, color: "white" }}>
                 <div className="flex items-start gap-4">
