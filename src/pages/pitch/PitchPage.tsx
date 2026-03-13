@@ -7,7 +7,7 @@ import {
   Building2, ArrowRight, CheckCircle2, Sparkles, Phone, Brain, Mic, Eye, MessageCircle,
   Bell, AlertTriangle, Clock, Send, Star, ShieldCheck, DollarSign
 } from "lucide-react";
-
+import lookChinaProfile from "@/assets/look-china-profile.png";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
