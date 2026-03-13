@@ -7,6 +7,7 @@ import {
   Building2, ArrowRight, CheckCircle2, Sparkles, Phone, Brain, Mic, Eye, MessageCircle,
   Bell, AlertTriangle, Clock, Send, Star, ShieldCheck, DollarSign
 } from "lucide-react";
+import logoBrhub from "@/assets/logo-brhub-new.png";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -52,7 +53,7 @@ const projectionChart: { series: ApexOptions["series"]; options: ApexOptions } =
     { name: "Projeção Digital (R$ mi)", data: [0.4, 0.8, 1.4, 2.2, 3.2, 4.2, 5.4, 6.8, 8.4, 10.2, 12.2, 14.6] },
   ],
   options: {
-    chart: { type: "area", height: 340, toolbar: { show: false }, background: "transparent", fontFamily: "Inter, sans-serif" },
+    chart: { type: "area", height: 340, toolbar: { show: false }, background: "transparent", fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" },
     colors: [C.navy, C.orange],
     fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 100] } },
     stroke: { curve: "smooth", width: 3 },
@@ -99,7 +100,12 @@ export default function PitchPage() {
   const slide = SLIDES[current];
 
   return (
-    <div className="pitch-page min-h-screen select-none overflow-hidden relative" style={{ background: C.cream }}>
+    <div className="pitch-page min-h-screen select-none overflow-hidden relative" style={{ background: C.cream, fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" }}>
+      {/* BRHUB Logo - fixed on all slides */}
+      <div className="fixed top-5 left-6 z-50 flex items-center gap-2.5">
+        <img src={logoBrhub} alt="BRHUB Envios" className="h-8 object-contain" />
+        <span className="text-sm font-extrabold tracking-tight" style={{ color: C.navy, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>ENVIOS</span>
+      </div>
       {/* Decorative circles */}
       <div className="fixed top-[-120px] right-[-120px] w-[340px] h-[340px] rounded-full opacity-20 pointer-events-none" style={{ background: C.orange }} />
       <div className="fixed bottom-[-80px] left-[-80px] w-[260px] h-[260px] rounded-full opacity-10 pointer-events-none" style={{ background: C.navy }} />
