@@ -37,76 +37,68 @@ function normalizeMessageStatus(status: string | null | undefined): "sent" | "de
   return null;
 }
 
-function shouldSuppressAIAfterPassiveHSM(text: string | null | undefined): boolean {
+/**
+ * Classifica intenção da mensagem usando IA (Gemini Flash Lite).
+ * Retorna true se a mensagem é PASSIVE (não requer atendimento).
+ * Fallback local rápido para emojis puros e mensagens vazias.
+ */
+async function classifyMessageIntent(
+  text: string | null | undefined,
+  context?: string
+): Promise<{ isPassive: boolean; confidence: number; reason: string }> {
   const cleaned = (text || "").trim();
-  if (!cleaned) return true;
+  
+  // Fast-path: vazio ou só espaços
+  if (!cleaned) {
+    return { isPassive: true, confidence: 1.0, reason: "empty" };
+  }
 
-  const normalized = cleaned
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
+  // Fast-path: só emojis
+  const withoutEmojis = cleaned
+    .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{200D}\u{20E3}]/gu, "")
+    .replace(/[!.,;:?]/g, "")
+    .trim();
+  if (!withoutEmojis) {
+    return { isPassive: true, confidence: 1.0, reason: "emoji_only" };
+  }
 
-  // Remover emojis para análise de texto puro
-  const withoutEmojis = normalized.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{200D}\u{20E3}]/gu, "").trim();
-  const withoutPunctuation = withoutEmojis.replace(/[!.,;:?]/g, "").trim();
+  // Chamar a edge function classify-intent
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    
+    const response = await fetch(`${supabaseUrl}/functions/v1/classify-intent`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${serviceKey}`,
+      },
+      body: JSON.stringify({ message: cleaned, context }),
+    });
 
-  // Se só tem emojis (texto vazio após remoção), é passivo
-  if (!withoutPunctuation) return true;
+    if (response.ok) {
+      const result = await response.json();
+      console.log(`🧠 Intent: ${result.intent} (${result.confidence}) — ${result.reason} — msg: "${cleaned.substring(0, 40)}"`);
+      return {
+        isPassive: result.intent === "PASSIVE",
+        confidence: result.confidence || 0.7,
+        reason: result.reason || "ai_classified",
+      };
+    } else {
+      console.warn(`⚠️ classify-intent retornou ${response.status}, usando fallback`);
+    }
+  } catch (err) {
+    console.warn("⚠️ Erro ao chamar classify-intent, usando fallback:", err);
+  }
 
-  const simpleAcks = [
-    "ok", "okay", "obrigado", "obrigada", "valeu", "beleza", "blz", "certo",
-    "entendi", "show", "boa", "massa", "legal", "ta", "top", "otimo",
-    "perfeito", "joia", "maravilha", "excelente", "bacana",
-  ];
-
-  if (simpleAcks.includes(withoutPunctuation)) return true;
-
-  // Palavras/frases compostas passivas (cada linha do texto)
-  const lines = withoutPunctuation.split(/\n/).map(l => l.trim()).filter(Boolean);
-  const passivePhrases = [
-    /^muito\s+obrigad[oa]$/,
-    /^obrigad[oa]\s+/,
-    /^deus\s+(te\s+)?abencoe/,
-    /^que\s+otimo$/,
-    /^que\s+bom$/,
-    /^que\s+maravilha$/,
-    /^boa\s+tarde$/,
-    /^bom\s+dia$/,
-    /^boa\s+noite$/,
-    /^brigaduh?$/,
-    /^brigad[oa]$/,
-    /^amem$/,
-    /^amen$/,
-    /^excelente\s+parabens$/,
-    /^parabens\s*/,
-    /^excelente\s+(trabalho|servico|atendimento)$/,
-    /^muito\s+bom$/,
-    /^nota\s+\d+$/,
-    /^otimo\s+(servico|trabalho|atendimento)$/,
-    /^super\s+(recomendo|indico)$/,
-    /^tudo\s+(certo|otimo|perfeito|ok)$/,
-    /^recebi\s+(sim|ja)$/,
-    /^ja\s+recebi$/,
-    /^chegou\s*(sim|ja)?$/,
-    /^recebid[oa]?$/,
-    /^recebemos$/,
-  ];
-
-  // Se TODAS as linhas são passivas, suprimir
-  const allLinesPassive = lines.every(line => {
-    if (simpleAcks.includes(line)) return true;
-    return passivePhrases.some(p => p.test(line));
-  });
-  if (allLinesPassive) return true;
-
-  return (
-    normalized.includes("seja bem-vind") ||
-    normalized.includes("prazer ter voce conosco") ||
-    normalized.includes("por ordem de chegada") ||
-    normalized.includes("ja ja chego em voce") ||
-    normalized.includes("me fala seu nome para iniciar") ||
-    normalized.includes("iniciar o atendimento")
-  );
+  // Fallback local: se a IA falhar, usar heurística simples
+  const normalized = cleaned.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const hasQuestion = /\?|cade|onde|quando|qual|como|porque|por que|quero|preciso|nao\s+recebi|atras|cancel/i.test(normalized);
+  return {
+    isPassive: !hasQuestion && withoutEmojis.length <= 40,
+    confidence: 0.4,
+    reason: "local_fallback",
+  };
 }
 
 serve(async (req) => {
