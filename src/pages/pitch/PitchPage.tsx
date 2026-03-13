@@ -183,7 +183,7 @@ export default function PitchPage() {
                 <div className="md:col-span-3 space-y-5">
                   <h3 className="text-2xl font-black" style={{ color: C.navy }}>Grupo <span style={{ color: C.orange }}>Look China</span></h3>
                   <p className="text-sm leading-relaxed" style={{ color: C.textMuted }}>
-                    Liderado por <strong style={{ color: C.navy }}>Fred China</strong> (@fred_dayyy), o Look China é o <strong style={{ color: C.orange }}>maior shopping de importados do Brasil</strong>, com presença física na Rua Maria Marcolina 369 (Brás/SP) e <strong style={{ color: C.orange }}>1,4 milhão de seguidores</strong> no Instagram.
+                    Liderado por <strong style={{ color: C.navy }}>Fred</strong> (@fred_dayyy), o Look China é um <strong style={{ color: C.orange }}>grande importador com presença física na região do Brás</strong>, na Rua Maria Marcolina 369 (SP) e <strong style={{ color: C.orange }}>1,4 milhão de seguidores</strong> no Instagram.
                   </p>
                   <div className="grid grid-cols-3 gap-4">
                     {[
