@@ -421,23 +421,23 @@ export default function PitchPage() {
 
           {/* ─── PLATFORM ──────────────────────────────────────── */}
           {slide === "platform" && (
-            <div className="space-y-8">
-              <SlideHeader title="Plataforma" accent="BRHUB" tag="Recursos principais" />
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="space-y-5 md:space-y-8">
+              <SlideHeader title="Plataforma" accent="BRHUB" tag="Recursos" />
+              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                 {[
-                  { icon: <Package size={22} />, title: "Emissão de Etiquetas", desc: "Cotação multi-transportadora, etiqueta em segundos" },
-                  { icon: <Truck size={22} />, title: "Rastreamento Inteligente", desc: "Acompanhamento em tempo real com notificações automáticas" },
-                  { icon: <BarChart3 size={22} />, title: "Painel de Análises", desc: "Visão 360° de envios, custos e desempenho" },
-                  { icon: <Shield size={22} />, title: "Gestão Financeira", desc: "Faturas, créditos pré-pagos e extrato completo" },
-                  { icon: <Globe size={22} />, title: "Integrações", desc: "API aberta para conectar qualquer plataforma" },
-                  { icon: <Warehouse size={22} />, title: "Galpão Completo", desc: "Sistema completo de logística e expedição" },
+                  { icon: <Package size={18} />, title: "Emissão de Etiquetas", desc: "Cotação multi-transportadora, etiqueta em segundos" },
+                  { icon: <Truck size={18} />, title: "Rastreamento", desc: "Acompanhamento em tempo real com notificações" },
+                  { icon: <BarChart3 size={18} />, title: "Painel de Análises", desc: "Visão 360° de envios, custos e desempenho" },
+                  { icon: <Shield size={18} />, title: "Gestão Financeira", desc: "Faturas, créditos pré-pagos e extrato" },
+                  { icon: <Globe size={18} />, title: "Integrações", desc: "API aberta para qualquer plataforma" },
+                  { icon: <Warehouse size={18} />, title: "Galpão Completo", desc: "Sistema completo de logística" },
                 ].map((f, i) => (
-                  <div key={i} className="p-5 border transition hover:border-orange-300 group" style={{ background: C.white, borderColor: C.border }}>
-                    <div className="w-11 h-11 rounded-full flex items-center justify-center mb-3 border-2" style={{ borderColor: i % 2 === 0 ? C.orange : C.navy, color: i % 2 === 0 ? C.orange : C.navy }}>
+                  <div key={i} className="p-3 md:p-5 border" style={{ background: C.white, borderColor: C.border }}>
+                    <div className="w-9 h-9 md:w-11 md:h-11 rounded-full flex items-center justify-center mb-2 md:mb-3 border-2" style={{ borderColor: i % 2 === 0 ? C.orange : C.navy, color: i % 2 === 0 ? C.orange : C.navy }}>
                       {f.icon}
                     </div>
-                    <h4 className="font-bold text-sm mb-1" style={{ color: C.navy }}>{f.title}</h4>
-                    <p className="text-xs leading-relaxed" style={{ color: C.textMuted }}>{f.desc}</p>
+                    <h4 className="font-bold text-xs md:text-sm mb-0.5 md:mb-1" style={{ color: C.navy }}>{f.title}</h4>
+                    <p className="text-[10px] md:text-xs leading-relaxed" style={{ color: C.textMuted }}>{f.desc}</p>
                   </div>
                 ))}
               </div>
