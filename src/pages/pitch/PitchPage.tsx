@@ -430,7 +430,7 @@ export default function PitchPage() {
                       "Detecção de sentimento inteligente",
                       "Áudio humanizado via ElevenLabs",
                       "Notificações proativas de entrega",
-                      "Pipeline de suporte automático",
+                      "Fluxo de suporte automático",
                     ].map((item, i) => (
                       <div key={i} className="flex items-start gap-2 text-white/90 text-xs">
                         <span style={{ color: C.orange }}>●</span> {item}
