@@ -14,6 +14,7 @@ const SLIDES = [
   "opportunity",
   "platform",
   "ai-features",
+  "notifications",
   "integration",
   "collection-points",
   "revenue",
