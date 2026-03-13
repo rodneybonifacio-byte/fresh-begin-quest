@@ -545,10 +545,10 @@ export default function PitchPage() {
               {/* Horizontal timeline like reference "Some milestones" */}
               <div className="flex gap-3">
                 {[
-                  { phase: "Sem 1", title: "Setup & API" },
-                  { phase: "Sem 2", title: "Marketplace" },
+                  { phase: "Sem 1", title: "Configuração" },
+                  { phase: "Sem 2", title: "Plataforma" },
                   { phase: "Sem 3", title: "IA & Automação" },
-                  { phase: "Sem 4", title: "Go-Live" },
+                  { phase: "Sem 4", title: "Lançamento" },
                 ].map((p, i) => (
                   <div key={i} className="flex-1 relative">
                     <div className="py-2 px-3 text-white text-xs font-bold text-center" style={{ background: C.orange, clipPath: "polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%, 12px 50%)", marginLeft: i === 0 ? 0 : -6 }}>
