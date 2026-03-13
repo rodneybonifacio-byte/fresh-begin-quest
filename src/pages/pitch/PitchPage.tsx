@@ -352,9 +352,9 @@ export default function PitchPage() {
                   </h4>
                   <ul className="space-y-2 text-sm" style={{ color: C.textMuted }}>
                     <li className="flex gap-2"><span style={{ color: C.orange }}>●</span> Nova plataforma integrada com contrato Flex</li>
-                    <li className="flex gap-2"><span style={{ color: C.orange }}>●</span> Whitelabel personalizado Look China</li>
+                    <li className="flex gap-2"><span style={{ color: C.orange }}>●</span> Plataforma personalizada Look China</li>
                     <li className="flex gap-2"><span style={{ color: C.orange }}>●</span> Desenvolvimento 100% BRHUB</li>
-                    <li className="flex gap-2"><span style={{ color: C.orange }}>●</span> Dashboard próprio para o lojista</li>
+                    <li className="flex gap-2"><span style={{ color: C.orange }}>●</span> Painel próprio para o lojista</li>
                   </ul>
                 </div>
                 <div className="p-6 border" style={{ background: C.white, borderColor: C.border }}>
