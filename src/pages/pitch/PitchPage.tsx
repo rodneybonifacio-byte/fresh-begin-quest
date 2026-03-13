@@ -106,13 +106,13 @@ export default function PitchPage() {
   return (
     <div className="pitch-page min-h-screen select-none overflow-hidden relative" style={{ background: C.bg, fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" }}>
 
-      {/* Year marker - left side */}
-      <div className="fixed left-3 top-1/2 -translate-y-1/2 z-40 -rotate-90 text-[10px] font-bold tracking-[0.3em] uppercase" style={{ color: C.textMuted }}>
+      {/* Year marker - left side (hidden on mobile) */}
+      <div className="fixed left-3 top-1/2 -translate-y-1/2 z-40 -rotate-90 text-[10px] font-bold tracking-[0.3em] uppercase hidden md:block" style={{ color: C.textMuted }}>
         2026
       </div>
 
-      {/* Slide label - right side */}
-      <div className="fixed right-3 top-1/2 -translate-y-1/2 z-40 -rotate-90 text-[10px] font-bold tracking-[0.3em] uppercase" style={{ color: C.textMuted }}>
+      {/* Slide label - right side (hidden on mobile) */}
+      <div className="fixed right-3 top-1/2 -translate-y-1/2 z-40 -rotate-90 text-[10px] font-bold tracking-[0.3em] uppercase hidden md:block" style={{ color: C.textMuted }}>
         Apresentação
       </div>
 
@@ -122,19 +122,19 @@ export default function PitchPage() {
       </div>
 
       {/* Navigation */}
-      <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-2.5 rounded-full" style={{ background: "rgba(26,26,26,0.06)", backdropFilter: "blur(10px)", border: `1px solid ${C.border}` }}>
-        <button onClick={() => setCurrent((p) => Math.max(p - 1, 0))} className="p-1 transition disabled:opacity-20" style={{ color: C.navy }} disabled={current === 0}><ChevronLeft size={18} /></button>
-        <div className="flex gap-1.5">
+      <div className="fixed bottom-3 md:bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2 md:py-2.5 rounded-full" style={{ background: "rgba(26,26,26,0.06)", backdropFilter: "blur(10px)", border: `1px solid ${C.border}` }}>
+        <button onClick={() => setCurrent((p) => Math.max(p - 1, 0))} className="p-1 transition disabled:opacity-20" style={{ color: C.navy }} disabled={current === 0}><ChevronLeft size={16} /></button>
+        <div className="flex gap-1">
           {SLIDES.map((_, i) => (
-            <button key={i} onClick={() => setCurrent(i)} className="transition-all rounded-full" style={{ width: i === current ? 24 : 8, height: 8, background: i === current ? C.orange : C.border }} />
+            <button key={i} onClick={() => setCurrent(i)} className="transition-all rounded-full" style={{ width: i === current ? 18 : 6, height: 6, background: i === current ? C.orange : C.border }} />
           ))}
         </div>
-        <button onClick={() => setCurrent((p) => Math.min(p + 1, SLIDES.length - 1))} className="p-1 transition disabled:opacity-20" style={{ color: C.navy }} disabled={current === SLIDES.length - 1}><ChevronRight size={18} /></button>
-        <span className="text-[10px] ml-1 font-mono" style={{ color: C.textMuted }}>{current + 1}/{SLIDES.length}</span>
+        <button onClick={() => setCurrent((p) => Math.min(p + 1, SLIDES.length - 1))} className="p-1 transition disabled:opacity-20" style={{ color: C.navy }} disabled={current === SLIDES.length - 1}><ChevronRight size={16} /></button>
+        <span className="text-[9px] ml-0.5 font-mono" style={{ color: C.textMuted }}>{current + 1}/{SLIDES.length}</span>
       </div>
 
       {/* Slides */}
-      <div className="h-screen flex items-center justify-center px-14 py-10">
+      <div className="h-screen flex items-start md:items-center justify-center px-4 md:px-14 pt-6 pb-16 md:py-10 overflow-y-auto">
         <div className="w-full max-w-6xl mx-auto animate-pitch-fade" key={slide}>
 
           {/* ─── COVER ─────────────────────────────────────────── */}
