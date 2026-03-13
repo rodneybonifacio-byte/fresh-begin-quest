@@ -2,10 +2,10 @@ import { useState, useEffect } from "react";
 import { ApexOptions } from "apexcharts";
 import ReactApexChart from "react-apexcharts";
 import {
-  Truck, Bot, Globe, Warehouse, MapPin, Handshake, ChevronRight,
-  ChevronLeft, BarChart3, Zap, Shield, Package, TrendingUp,
-  Building2, ArrowRight, CheckCircle2, Phone, Brain, Mic, Eye, MessageCircle,
-  Bell, AlertTriangle, Clock, Send, Star, ShieldCheck, DollarSign
+  Truck, Globe, Warehouse, MapPin, Handshake, ChevronRight,
+  ChevronLeft, BarChart3, Zap, Shield, Package,
+  ArrowRight, Phone, Brain, Mic, Eye, MessageCircle,
+  AlertTriangle, Clock, Send, Star, ShieldCheck, DollarSign
 } from "lucide-react";
 import lookChinaProfile from "@/assets/look-china-profile.png";
 
