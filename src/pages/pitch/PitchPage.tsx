@@ -201,9 +201,6 @@ export default function PitchPage() {
             const sc = scenarios[scenario];
             const digitalData = sc.digital;
             const conversionData = sc.conversion;
-            const lastDigital = digitalData[11];
-            const enviosMes12 = Math.round((lastDigital * 1_000_000) / 25);
-            const totalAno = digitalData.reduce((sum, v) => sum + Math.round((v * 1_000_000) / 25), 0);
 
             const projChart: { series: ApexOptions["series"]; options: ApexOptions } = {
               series: [
