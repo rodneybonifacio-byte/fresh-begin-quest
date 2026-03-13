@@ -518,13 +518,53 @@ export default function PitchPage() {
                 </div>
               </div>
 
+              {/* Shipment volume table */}
+              <div className="rounded-2xl border overflow-hidden" style={{ background: C.white, borderColor: C.creamDark }}>
+                <div className="px-5 py-3 border-b flex items-center justify-between" style={{ borderColor: C.creamDark }}>
+                  <h4 className="font-bold text-sm" style={{ color: C.navy }}>Evolução: Faturamento → Volume de Envios</h4>
+                  <span className="text-[10px] px-2.5 py-1 rounded-full font-semibold" style={{ background: C.orangeBg, color: C.orange }}>Ticket médio: R$ 25/etiqueta</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr style={{ background: C.cream }}>
+                        <th className="px-3 py-2.5 text-left font-semibold" style={{ color: C.textMuted }}>Mês</th>
+                        <th className="px-3 py-2.5 text-right font-semibold" style={{ color: C.navy }}>Faturamento Digital</th>
+                        <th className="px-3 py-2.5 text-right font-semibold" style={{ color: C.orange }}>Envios/mês</th>
+                        <th className="px-3 py-2.5 text-right font-semibold" style={{ color: C.emerald }}>Envios/dia</th>
+                        <th className="px-3 py-2.5 text-right font-semibold" style={{ color: C.amber }}>Acumulado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[0.4, 0.8, 1.4, 2.2, 3.2, 4.2, 5.4, 6.8, 8.4, 10.2, 12.2, 14.6].map((fat, i) => {
+                        const enviosMes = Math.round((fat * 1_000_000) / 25);
+                        const enviosDia = Math.round(enviosMes / 26);
+                        const acumulado = [0.4, 0.8, 1.4, 2.2, 3.2, 4.2, 5.4, 6.8, 8.4, 10.2, 12.2, 14.6]
+                          .slice(0, i + 1)
+                          .reduce((sum, v) => sum + Math.round((v * 1_000_000) / 25), 0);
+                        const isLast = i === 11;
+                        return (
+                          <tr key={i} className="border-t" style={{ borderColor: C.creamDark, background: isLast ? C.orangeBg : 'transparent' }}>
+                            <td className="px-3 py-2 font-medium" style={{ color: C.text }}>Mês {i + 1}</td>
+                            <td className="px-3 py-2 text-right font-semibold" style={{ color: C.navy }}>R$ {fat}M</td>
+                            <td className="px-3 py-2 text-right font-bold" style={{ color: C.orange }}>{enviosMes.toLocaleString('pt-BR')}</td>
+                            <td className="px-3 py-2 text-right" style={{ color: C.emerald }}>~{enviosDia.toLocaleString('pt-BR')}</td>
+                            <td className="px-3 py-2 text-right" style={{ color: C.amber }}>{acumulado.toLocaleString('pt-BR')}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
               {/* Key metrics */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
                   { label: "Faturamento Físico/Mês", value: "R$ 8M", color: C.navy },
                   { label: "Digital no Mês 12", value: "R$ 14,6M", color: C.orange },
-                  { label: "Faturamento Físico/Ano", value: "R$ 96M", color: C.amber },
-                  { label: "Digital Acumulado Ano 1", value: "R$ 69,6M", color: C.emerald },
+                  { label: "Envios no Mês 12", value: "584 mil", color: C.amber },
+                  { label: "Total Envios Ano 1", value: "2,78M", color: C.emerald },
                 ].map((m, i) => (
                   <div key={i} className="rounded-xl p-4 text-center border" style={{ background: C.white, borderColor: C.creamDark }}>
                     <div className="text-xl font-extrabold" style={{ color: m.color }}>{m.value}</div>
