@@ -578,6 +578,44 @@ export default function PitchPage() {
       <style>{`
         @keyframes pitch-fade-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
         .animate-pitch-fade { animation: pitch-fade-in 0.45s ease-out; }
+
+        @keyframes node-enter {
+          0% { opacity: 0; transform: scale(0.5); }
+          60% { transform: scale(1.08); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+        .integration-node {
+          opacity: 0;
+          animation: node-enter 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        @keyframes arrow-enter {
+          0% { opacity: 0; transform: translateX(-16px); }
+          100% { opacity: 1; transform: translateX(0); }
+        }
+        .integration-arrow {
+          opacity: 0;
+          animation: arrow-enter 0.4s ease-out forwards;
+        }
+
+        @keyframes line-grow {
+          0% { transform: scaleX(0); }
+          100% { transform: scaleX(1); }
+        }
+        .integration-line {
+          transform-origin: left center;
+          animation: line-grow 0.5s ease-out forwards;
+          animation-delay: inherit;
+        }
+
+        @keyframes card-slide-up {
+          0% { opacity: 0; transform: translateY(24px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        .integration-card {
+          opacity: 0;
+          animation: card-slide-up 0.5s ease-out forwards;
+        }
       `}</style>
     </div>
   );
