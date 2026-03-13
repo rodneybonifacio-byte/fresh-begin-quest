@@ -749,11 +749,11 @@ export default function PitchPage() {
 
 function SlideHeader({ title, accent, tag }: { title: string; accent: string; tag: string }) {
   return (
-    <div className="flex items-start justify-between">
-      <h2 className="text-4xl font-black tracking-tight" style={{ color: C.navy }}>
+    <div className="flex items-start justify-between gap-2">
+      <h2 className="text-2xl md:text-4xl font-black tracking-tight" style={{ color: C.navy }}>
         {title} <span style={{ color: C.orange }}>{accent}</span>
       </h2>
-      <span className="text-xs font-semibold border-b-2 pb-0.5 shrink-0 mt-2" style={{ borderColor: C.orange, color: C.navy }}>{tag}</span>
+      <span className="text-[10px] md:text-xs font-semibold border-b-2 pb-0.5 shrink-0 mt-1 md:mt-2" style={{ borderColor: C.orange, color: C.navy }}>{tag}</span>
     </div>
   );
 }
@@ -763,22 +763,22 @@ function CircleMetric({ value, label, accent = false, color }: { value: string; 
   const textColor = color || (accent ? C.orange : C.navy);
   return (
     <div className="flex flex-col items-center text-center">
-      <div className="w-20 h-20 rounded-full flex items-center justify-center border-2 mb-2" style={{ borderColor }}>
-        <span className="text-lg font-black" style={{ color: textColor }}>{value}</span>
+      <div className="w-14 h-14 md:w-20 md:h-20 rounded-full flex items-center justify-center border-2 mb-1.5 md:mb-2" style={{ borderColor }}>
+        <span className="text-sm md:text-lg font-black" style={{ color: textColor }}>{value}</span>
       </div>
-      <p className="text-xs font-medium" style={{ color: C.textMuted }}>{label}</p>
+      <p className="text-[10px] md:text-xs font-medium" style={{ color: C.textMuted }}>{label}</p>
     </div>
   );
 }
 
 function IntegrationNode({ label, sub, color }: { label: string; sub: string; color: string }) {
   return (
-    <div className="text-center min-w-[140px]">
-      <div className="w-20 h-20 rounded-full mx-auto flex items-center justify-center border-2 mb-2" style={{ borderColor: color, background: C.white }}>
-        <span className="font-black text-xs" style={{ color }}>{label.split(" ")[0]}</span>
+    <div className="text-center min-w-[100px] md:min-w-[140px]">
+      <div className="w-14 h-14 md:w-20 md:h-20 rounded-full mx-auto flex items-center justify-center border-2 mb-1.5 md:mb-2" style={{ borderColor: color, background: C.white }}>
+        <span className="font-black text-[10px] md:text-xs" style={{ color }}>{label.split(" ")[0]}</span>
       </div>
-      <p className="font-bold text-sm" style={{ color: C.navy }}>{label}</p>
-      <p className="text-[11px]" style={{ color: C.textMuted }}>{sub}</p>
+      <p className="font-bold text-xs md:text-sm" style={{ color: C.navy }}>{label}</p>
+      <p className="text-[10px] md:text-[11px]" style={{ color: C.textMuted }}>{sub}</p>
     </div>
   );
 }
