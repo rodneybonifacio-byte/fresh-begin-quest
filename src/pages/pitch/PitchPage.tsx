@@ -202,7 +202,7 @@ export default function PitchPage() {
                   { icon: <Truck size={24} />, title: "Rastreamento Inteligente", desc: "Tracking em tempo real com notificações automáticas" },
                   { icon: <BarChart3 size={24} />, title: "Dashboard Analytics", desc: "Visão 360° de envios, custos e performance" },
                   { icon: <Shield size={24} />, title: "Gestão Financeira", desc: "Faturas, créditos pré-pagos e extrato completo" },
-                  { icon: <Globe size={24} />, title: "Integrações", desc: "Shopify, API aberta, importação em massa" },
+                  { icon: <Globe size={24} />, title: "Integrações", desc: "API aberta para conectar qualquer plataforma" },
                   { icon: <Warehouse size={24} />, title: "FULL (Galpão)", desc: "Sistema completo de fulfillment e expedição" },
                 ].map((f, i) => (
                   <FeatureCard key={i} icon={f.icon} title={f.title} desc={f.desc} index={i} />
