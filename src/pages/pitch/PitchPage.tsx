@@ -541,10 +541,10 @@ export default function PitchPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {[0.4, 0.8, 1.4, 2.2, 3.2, 4.2, 5.4, 6.8, 8.4, 10.2, 12.2, 14.6].map((fat, i) => {
+                      {digitalData.map((fat, i) => {
                         const enviosMes = Math.round((fat * 1_000_000) / 25);
                         const enviosDia = Math.round(enviosMes / 26);
-                        const acumulado = [0.4, 0.8, 1.4, 2.2, 3.2, 4.2, 5.4, 6.8, 8.4, 10.2, 12.2, 14.6]
+                        const acumulado = digitalData
                           .slice(0, i + 1)
                           .reduce((sum, v) => sum + Math.round((v * 1_000_000) / 25), 0);
                         const isLast = i === 11;
