@@ -417,63 +417,72 @@ export default function PitchPage() {
             </div>
           )}
 
-          {/* ─── REVENUE ───────────────────────────────────────── */}
+          {/* ─── REVENUE (now near closing) ─────────────────── */}
           {slide === "revenue" && (
-            <div className="space-y-8">
-              <SectionHeader icon={<Handshake />} title="Modelo de Receita" subtitle="Divisão dos rendimentos" />
-              <div className="grid md:grid-cols-2 gap-8 items-center">
-                <div className="rounded-2xl p-6 border" style={{ background: C.white, borderColor: C.creamDark }}>
-                  <ReactApexChart options={revenueDonut.options} series={revenueDonut.series} type="donut" height={300} />
+            <div className="space-y-7">
+              <SectionHeader icon={<Handshake />} title="Modelo de Receita" subtitle="Divisão e cobrança" />
+              <div className="grid md:grid-cols-3 gap-5">
+                <div className="rounded-2xl p-6 border relative overflow-hidden" style={{ background: C.white, borderColor: C.creamDark }}>
+                  <div className="absolute top-0 left-0 w-full h-1.5 rounded-t-2xl" style={{ background: C.navy }} />
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center mb-4" style={{ background: C.navyBg }}>
+                    <Building2 size={24} style={{ color: C.navy }} />
+                  </div>
+                  <h4 className="font-extrabold text-2xl mb-1" style={{ color: C.navy }}>50%</h4>
+                  <h5 className="font-bold mb-2" style={{ color: C.navy }}>BRHUB Tech</h5>
+                  <ul className="space-y-1.5 text-sm" style={{ color: C.textMuted }}>
+                    <li className="flex items-start gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0" style={{ color: C.navy }} /> Infraestrutura tecnológica</li>
+                    <li className="flex items-start gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0" style={{ color: C.navy }} /> Desenvolvimento contínuo</li>
+                    <li className="flex items-start gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0" style={{ color: C.navy }} /> Suporte com IA 24/7</li>
+                    <li className="flex items-start gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0" style={{ color: C.navy }} /> Manutenção e evolução</li>
+                  </ul>
                 </div>
-                <div className="space-y-5">
-                  <div className="rounded-xl p-5 border-l-4" style={{ background: C.navyBg, borderColor: C.navy }}>
-                    <h4 className="font-bold mb-2" style={{ color: C.navy }}>BRHUB Tech — 50%</h4>
-                    <p className="text-sm" style={{ color: C.textMuted }}>Responsável por toda infraestrutura tecnológica, desenvolvimento, manutenção da plataforma, suporte com IA e integração.</p>
+                <div className="rounded-2xl p-6 border relative overflow-hidden" style={{ background: C.white, borderColor: C.creamDark }}>
+                  <div className="absolute top-0 left-0 w-full h-1.5 rounded-t-2xl" style={{ background: C.orange }} />
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center mb-4" style={{ background: C.orangeBg }}>
+                    <Truck size={24} style={{ color: C.orange }} />
                   </div>
-                  <div className="rounded-xl p-5 border-l-4" style={{ background: C.orangeBg, borderColor: C.orange }}>
-                    <h4 className="font-bold mb-2" style={{ color: C.orange }}>Flex Envios — 50%</h4>
-                    <p className="text-sm" style={{ color: C.textMuted }}>Operação logística, API de contratos, infraestrutura de transporte e rede de distribuição.</p>
+                  <h4 className="font-extrabold text-2xl mb-1" style={{ color: C.orange }}>50%</h4>
+                  <h5 className="font-bold mb-2" style={{ color: C.orange }}>Flex Envios</h5>
+                  <ul className="space-y-1.5 text-sm" style={{ color: C.textMuted }}>
+                    <li className="flex items-start gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0" style={{ color: C.orange }} /> Operação logística</li>
+                    <li className="flex items-start gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0" style={{ color: C.orange }} /> API de contratos</li>
+                    <li className="flex items-start gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0" style={{ color: C.orange }} /> Infraestrutura de transporte</li>
+                    <li className="flex items-start gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0" style={{ color: C.orange }} /> Rede de distribuição</li>
+                  </ul>
+                </div>
+                <div className="rounded-2xl p-6 border relative overflow-hidden" style={{ background: C.white, borderColor: C.creamDark }}>
+                  <div className="absolute top-0 left-0 w-full h-1.5 rounded-t-2xl" style={{ background: C.emerald }} />
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center mb-4" style={{ background: "rgba(16,185,129,0.1)" }}>
+                    <TrendingUp size={24} style={{ color: C.emerald }} />
                   </div>
-                  <div className="rounded-xl p-5 border-l-4" style={{ background: "rgba(16,185,129,0.06)", borderColor: C.emerald }}>
-                    <h4 className="font-bold mb-2" style={{ color: C.emerald }}>+ 12% Margem de Agência</h4>
-                    <p className="text-sm" style={{ color: C.textMuted }}>Adicional sobre todo volume postado na agência — receita garantida independente da operação do marketplace.</p>
-                  </div>
+                  <h4 className="font-extrabold text-2xl mb-1" style={{ color: C.emerald }}>+12%</h4>
+                  <h5 className="font-bold mb-2" style={{ color: C.emerald }}>Margem Agência</h5>
+                  <ul className="space-y-1.5 text-sm" style={{ color: C.textMuted }}>
+                    <li className="flex items-start gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0" style={{ color: C.emerald }} /> Sobre volume postado</li>
+                    <li className="flex items-start gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0" style={{ color: C.emerald }} /> Receita garantida</li>
+                    <li className="flex items-start gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0" style={{ color: C.emerald }} /> Independe do marketplace</li>
+                    <li className="flex items-start gap-2"><CheckCircle2 size={14} className="mt-0.5 shrink-0" style={{ color: C.emerald }} /> Recorrente mensal</li>
+                  </ul>
                 </div>
               </div>
-            </div>
-          )}
 
-          {/* ─── FAIRNESS ──────────────────────────────────────── */}
-          {slide === "fairness" && (
-            <div className="space-y-8">
-              <SectionHeader icon={<BarChart3 />} title="Análise de Viabilidade" subtitle="O modelo é justo?" />
-              <div className="grid md:grid-cols-2 gap-8">
-                <div className="rounded-2xl p-6 border" style={{ background: C.white, borderColor: C.creamDark }}>
-                  <h4 className="font-bold mb-4 text-lg" style={{ color: C.navy }}>Margem de 12% sobre postagens</h4>
-                  <ReactApexChart options={postageBar.options} series={postageBar.series} type="bar" height={220} />
-                </div>
-                <div className="space-y-4">
-                  <h4 className="font-bold mb-2 text-lg" style={{ color: C.navy }}>Avaliação do Modelo</h4>
-                  {[
-                    { label: "Flex Envios recebe", detail: "50% dos rendimentos do marketplace + 12% das postagens na agência", verdict: "Receita dupla", verdictIcon: <CheckCircle2 size={14} style={{ color: C.emerald }} /> },
-                    { label: "BRHUB assume", detail: "100% do desenvolvimento, manutenção e suporte IA", verdict: "Investimento alto", verdictIcon: <BarChart3 size={14} style={{ color: C.amber }} /> },
-                    { label: "Flex opera", detail: "Logística, API e infraestrutura física (galpão + agência)", verdict: "Core business", verdictIcon: <CheckCircle2 size={14} style={{ color: C.emerald }} /> },
-                    { label: "Risco BRHUB", detail: "Desenvolvimento sem garantia de volume inicial", verdict: "Risco mitigado", verdictIcon: <AlertTriangle size={14} style={{ color: C.amber }} /> },
-                  ].map((item, i) => (
-                    <div key={i} className="rounded-lg p-4 border" style={{ background: C.white, borderColor: C.creamDark }}>
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-semibold text-sm" style={{ color: C.navy }}>{item.label}</p>
-                          <p className="text-xs mt-1" style={{ color: C.textMuted }}>{item.detail}</p>
-                        </div>
-                        <span className="text-xs shrink-0 ml-3 flex items-center gap-1">{item.verdictIcon} {item.verdict}</span>
-                      </div>
-                    </div>
-                  ))}
-                  <div className="rounded-lg p-4 mt-2" style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)" }}>
-                    <p className="text-sm font-medium flex items-start gap-2" style={{ color: "#065f46" }}>
-                      <CheckCircle2 size={16} className="mt-0.5 shrink-0" style={{ color: C.emerald }} /> O modelo é <strong>justo e equilibrado</strong>. Flex Envios tem receita garantida (12%) + upside do marketplace (50%), enquanto BRHUB investe em tecnologia com retorno proporcional ao crescimento.
+              {/* Monthly billing model */}
+              <div className="rounded-2xl p-7 border relative overflow-hidden" style={{ background: C.navy }}>
+                <div className="absolute top-[-40px] right-[-40px] w-32 h-32 rounded-full opacity-15" style={{ background: C.orange }} />
+                <div className="flex items-start gap-5">
+                  <div className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(249,115,22,0.2)" }}>
+                    <Clock size={28} style={{ color: C.orangeLight }} />
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="text-xl font-bold text-white">Modelo de Cobrança Mensal</h4>
+                    <p className="text-white/80 leading-relaxed">
+                      Todo o consumo do mês é consolidado em um fechamento único. No final de cada período, é gerado o faturamento completo com detalhamento de envios, valores e margens — e o pagamento é realizado de forma simples e transparente.
                     </p>
+                    <div className="flex flex-wrap gap-3 pt-2">
+                      {["Fechamento mensal", "Fatura detalhada", "Pagamento único", "Sem surpresas"].map((tag, i) => (
+                        <span key={i} className="text-xs font-semibold rounded-full px-4 py-1.5" style={{ background: "rgba(249,115,22,0.15)", color: C.orangeLight }}>{tag}</span>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
