@@ -478,20 +478,39 @@ export default function PitchPage() {
 
           {/* ─── PROJECTIONS ───────────────────────────────────── */}
           {slide === "projections" && (
-            <div className="space-y-8">
-              <SectionHeader icon={<TrendingUp />} title="Projeção 12 Meses" subtitle="Crescimento estimado da operação" />
-              <div className="rounded-2xl p-6 border" style={{ background: C.white, borderColor: C.creamDark }}>
-                <ReactApexChart options={projectionChart.options} series={projectionChart.series} type="area" height={340} />
+            <div className="space-y-7">
+              <SectionHeader icon={<TrendingUp />} title="Projeção de Mercado" subtitle="R$ 8 milhões/ano no físico — e no digital?" />
+
+              {/* Context card */}
+              <div className="rounded-xl p-5 border flex items-start gap-4" style={{ background: C.orangeBg, borderColor: C.orangeBorder }}>
+                <BarChart3 size={22} className="mt-0.5 shrink-0" style={{ color: C.orange }} />
+                <p className="text-sm" style={{ color: C.text }}>
+                  O grupo já movimenta <strong style={{ color: C.navy }}>R$ 8 milhões/ano</strong> no comércio físico. A projeção abaixo estima a conversão progressiva desse volume para o canal digital, começando conservadoramente em <strong style={{ color: C.orange }}>0,5%</strong> e atingindo <strong style={{ color: C.orange }}>18,3%</strong> em 12 meses.
+                </p>
               </div>
+
+              {/* Charts side by side */}
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="rounded-2xl p-6 border" style={{ background: C.white, borderColor: C.creamDark }}>
+                  <h4 className="font-bold mb-2 text-sm" style={{ color: C.navy }}>Faturamento Físico vs Digital (R$ mil/mês)</h4>
+                  <ReactApexChart options={projectionChart.options} series={projectionChart.series} type="area" height={280} />
+                </div>
+                <div className="rounded-2xl p-6 border" style={{ background: C.white, borderColor: C.creamDark }}>
+                  <h4 className="font-bold mb-2 text-sm" style={{ color: C.navy }}>% de Conversão Física para Digital</h4>
+                  <ReactApexChart options={digitalConversionChart.options} series={digitalConversionChart.series} type="bar" height={280} />
+                </div>
+              </div>
+
+              {/* Key metrics */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
-                  { label: "Envios Mês 12", value: "17.500" },
-                  { label: "Faturamento Mês 12", value: "R$ 280k" },
-                  { label: "Receita Flex (50%+12%)", value: "R$ 174k" },
-                  { label: "Receita BRHUB (50%)", value: "R$ 140k" },
+                  { label: "Faturamento Físico/Ano", value: "R$ 8M", color: C.navy },
+                  { label: "Projeção Digital Mês 12", value: "R$ 1,46M", color: C.orange },
+                  { label: "Conversão no Mês 12", value: "18,3%", color: C.amber },
+                  { label: "Digital Acumulado Ano 1", value: "R$ 5,8M", color: C.emerald },
                 ].map((m, i) => (
                   <div key={i} className="rounded-xl p-4 text-center border" style={{ background: C.white, borderColor: C.creamDark }}>
-                    <div className="text-xl font-extrabold" style={{ color: C.navy }}>{m.value}</div>
+                    <div className="text-xl font-extrabold" style={{ color: m.color }}>{m.value}</div>
                     <p className="text-xs mt-1" style={{ color: C.textMuted }}>{m.label}</p>
                   </div>
                 ))}
