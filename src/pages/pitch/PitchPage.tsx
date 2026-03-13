@@ -48,30 +48,34 @@ const C = {
 };
 
 // ─── Scenarios ───────────────────────────────────────────────────────────────
+// Físico: R$ 8M/mês ≈ 320k envios/mês (ticket R$ 25)
+// Conversão = % do volume físico que migra pro digital
+
+const FISICO_MES = 8; // R$ milhões
 
 const scenarios = {
   bear: {
     name: "Conservador",
     icon: TrendingDown,
-    sub: "Cenário pessimista",
-    conversion: [0.3, 0.5, 0.8, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5],
-    digital: [0.024, 0.04, 0.064, 0.08, 0.12, 0.16, 0.20, 0.24, 0.28, 0.32, 0.36, 0.40],
+    sub: "Crescimento orgânico lento",
+    // 0,5% → 3% do volume físico em 12 meses
+    conversion: [0.5, 0.7, 1, 1.2, 1.5, 1.8, 2, 2.2, 2.5, 2.7, 2.8, 3],
     color: C.textMuted,
   },
   base: {
     name: "Moderado",
     icon: Activity,
-    sub: "Cenário realista",
-    conversion: [0.5, 1, 1.5, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-    digital: [0.04, 0.08, 0.12, 0.16, 0.24, 0.32, 0.40, 0.48, 0.56, 0.64, 0.72, 0.80],
+    sub: "Adoção progressiva com incentivos",
+    // 1% → 8% do volume físico em 12 meses
+    conversion: [1, 1.5, 2, 3, 3.5, 4, 5, 5.5, 6, 7, 7.5, 8],
     color: C.orange,
   },
   bull: {
     name: "Acelerado",
     icon: TrendingUp,
-    sub: "Cenário otimista",
-    conversion: [1, 2, 3, 5, 7, 9, 11, 13, 15, 17, 19, 22],
-    digital: [0.08, 0.16, 0.24, 0.40, 0.56, 0.72, 0.88, 1.04, 1.20, 1.36, 1.52, 1.76],
+    sub: "Migração ativa com equipe dedicada",
+    // 2% → 15% do volume físico em 12 meses
+    conversion: [2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14, 15],
     color: C.emerald,
   },
 } as const;
