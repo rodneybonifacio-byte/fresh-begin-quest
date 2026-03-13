@@ -1807,6 +1807,36 @@ export type Database = {
           },
         ]
       }
+      whatsapp_phone_blocklist: {
+        Row: {
+          blocked_at: string | null
+          blocked_by: string | null
+          contact_name: string | null
+          id: string
+          is_active: boolean | null
+          phone_number: string
+          reason: string
+        }
+        Insert: {
+          blocked_at?: string | null
+          blocked_by?: string | null
+          contact_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          phone_number: string
+          reason?: string
+        }
+        Update: {
+          blocked_at?: string | null
+          blocked_by?: string | null
+          contact_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          phone_number?: string
+          reason?: string
+        }
+        Relationships: []
+      }
       whatsapp_tickets: {
         Row: {
           category: string | null
