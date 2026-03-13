@@ -646,37 +646,41 @@ export default function PitchPage() {
 
           {/* ─── REVENUE ─────────────────────────────────────── */}
           {slide === "revenue" && (
-            <div className="space-y-6">
-              <SlideHeader title="Modelo de" accent="receita" tag="Modelo de negócio" />
+            <div className="space-y-4 md:space-y-6">
+              <SlideHeader title="Modelo de" accent="receita" tag="Negócio" />
 
-              <div className="p-5 border-2" style={{ background: C.navy, borderColor: C.navy, color: "white" }}>
-                <div className="flex items-start gap-4">
-                  <div className="w-11 h-11 rounded-full flex items-center justify-center shrink-0 border-2" style={{ borderColor: C.orange }}>
-                    <ShieldCheck size={22} style={{ color: C.orange }} />
+              <div className="p-4 md:p-5 border-2" style={{ background: C.navy, borderColor: C.navy, color: "white" }}>
+                <div className="flex items-start gap-3 md:gap-4">
+                  <div className="w-9 h-9 md:w-11 md:h-11 rounded-full flex items-center justify-center shrink-0 border-2" style={{ borderColor: C.orange }}>
+                    <ShieldCheck size={18} style={{ color: C.orange }} />
                   </div>
                   <div>
-                    <h4 className="font-bold text-sm">Zero Risco de <span style={{ color: C.orange }}>Inadimplência</span> para a Flex</h4>
-                    <p className="text-white/75 text-xs mt-1 leading-relaxed">
-                      A <strong className="text-white">BRHUB assume 100% da cobrança e do risco</strong>. A Flex recebe repasses mensais com margem já calculada.
+                    <h4 className="font-bold text-xs md:text-sm">Zero Risco de <span style={{ color: C.orange }}>Inadimplência</span></h4>
+                    <p className="text-white/75 text-[11px] md:text-xs mt-1 leading-relaxed">
+                      A <strong className="text-white">BRHUB assume 100% da cobrança e do risco</strong>. Flex recebe repasses mensais.
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
                 {[
-                  { value: "50%", label: "BRHUB Tech", sub: "do lucro das etiquetas", color: C.navy, items: ["Infraestrutura tecnológica", "Assume cobrança e inadimplência", "Suporte com IA 24/7", "Calcula e repassa margens"] },
-                  { value: "50%", label: "Flex Envios", sub: "do lucro das etiquetas", color: C.orange, items: ["Operação logística", "API de contratos", "Recebe repasse sem risco", "Rede de distribuição"] },
-                  { value: "+12%", label: "Margem Agência", sub: "sobre volume postado", color: C.emerald, items: ["Receita da Flex sobre postagem", "Receita garantida", "Independe do marketplace", "Recorrente mensal"] },
+                  { value: "50%", label: "BRHUB Tech", sub: "do lucro", color: C.navy, items: ["Infraestrutura tecnológica", "Assume cobrança", "Suporte IA 24/7", "Repassa margens"] },
+                  { value: "50%", label: "Flex Envios", sub: "do lucro", color: C.orange, items: ["Operação logística", "API de contratos", "Repasse sem risco", "Rede distribuição"] },
+                  { value: "+12%", label: "Margem Agência", sub: "sobre volume", color: C.emerald, items: ["Receita sobre postagem", "Garantida", "Independente", "Recorrente"] },
                 ].map((card, i) => (
-                  <div key={i} className="p-5 border relative" style={{ background: C.white, borderColor: C.border }}>
+                  <div key={i} className="p-4 md:p-5 border relative" style={{ background: C.white, borderColor: C.border }}>
                     <div className="absolute top-0 left-0 w-full h-1" style={{ background: card.color }} />
-                    <div className="text-2xl font-black mb-0.5" style={{ color: card.color }}>{card.value}</div>
-                    <div className="font-bold text-sm" style={{ color: card.color }}>{card.label}</div>
-                    <span className="text-[10px] font-semibold px-2 py-0.5 mt-1 mb-3 inline-block border" style={{ borderColor: `${card.color}40`, color: card.color }}>{card.sub}</span>
-                    <ul className="space-y-1.5">
+                    <div className="flex md:block items-center gap-3">
+                      <div>
+                        <div className="text-xl md:text-2xl font-black" style={{ color: card.color }}>{card.value}</div>
+                        <div className="font-bold text-xs md:text-sm" style={{ color: card.color }}>{card.label}</div>
+                      </div>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 md:mt-1 md:mb-3 inline-block border" style={{ borderColor: `${card.color}40`, color: card.color }}>{card.sub}</span>
+                    </div>
+                    <ul className="space-y-1 md:space-y-1.5 mt-2 md:mt-0">
                       {card.items.map((item, j) => (
-                        <li key={j} className="flex items-start gap-2 text-xs" style={{ color: C.textMuted }}>
+                        <li key={j} className="flex items-start gap-2 text-[11px] md:text-xs" style={{ color: C.textMuted }}>
                           <span className="mt-0.5" style={{ color: card.color }}>●</span> {item}
                         </li>
                       ))}
@@ -685,22 +689,22 @@ export default function PitchPage() {
                 ))}
               </div>
 
-              <div className="p-5 border" style={{ background: C.white, borderColor: C.border }}>
-                <h4 className="font-bold text-xs mb-3 uppercase tracking-wider" style={{ color: C.navy }}>Fluxo de Pagamento Mensal</h4>
-                <div className="grid grid-cols-4 gap-3">
+              <div className="p-3 md:p-5 border" style={{ background: C.white, borderColor: C.border }}>
+                <h4 className="font-bold text-[10px] md:text-xs mb-2 md:mb-3 uppercase tracking-wider" style={{ color: C.navy }}>Fluxo de Pagamento</h4>
+                <div className="grid grid-cols-4 gap-1.5 md:gap-3">
                   {[
-                    { step: "1", title: "Cliente usa", desc: "Emite etiquetas durante o mês", icon: <Package size={18} /> },
-                    { step: "2", title: "BRHUB cobra", desc: "Fechamento mensal consolidado", icon: <DollarSign size={18} /> },
-                    { step: "3", title: "Calcula margem", desc: "Divisão 50/50 apurada", icon: <BarChart3 size={18} /> },
-                    { step: "4", title: "Repassa à Flex", desc: "Flex recebe + 12% agência", icon: <Handshake size={18} /> },
+                    { step: "1", title: "Usa", desc: "Emite etiquetas", icon: <Package size={14} /> },
+                    { step: "2", title: "Cobra", desc: "Fechamento mensal", icon: <DollarSign size={14} /> },
+                    { step: "3", title: "Calcula", desc: "Divisão 50/50", icon: <BarChart3 size={14} /> },
+                    { step: "4", title: "Repassa", desc: "Flex + 12%", icon: <Handshake size={14} /> },
                   ].map((item, i) => (
-                    <div key={i} className="flex flex-col items-center text-center p-3" style={{ background: i === 3 ? C.orangeBg : C.cardBg }}>
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center mb-2 text-white text-xs font-bold" style={{ background: i === 3 ? C.orange : C.navy }}>
+                    <div key={i} className="flex flex-col items-center text-center p-2 md:p-3" style={{ background: i === 3 ? C.orangeBg : C.cardBg }}>
+                      <div className="w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center mb-1 md:mb-2 text-white text-[10px] md:text-xs font-bold" style={{ background: i === 3 ? C.orange : C.navy }}>
                         {item.step}
                       </div>
-                      <div className="mb-0.5" style={{ color: i === 3 ? C.orange : C.navy }}>{item.icon}</div>
-                      <h5 className="font-bold text-xs" style={{ color: C.text }}>{item.title}</h5>
-                      <p className="text-[10px] mt-0.5" style={{ color: C.textMuted }}>{item.desc}</p>
+                      <div className="mb-0.5 hidden md:block" style={{ color: i === 3 ? C.orange : C.navy }}>{item.icon}</div>
+                      <h5 className="font-bold text-[10px] md:text-xs" style={{ color: C.text }}>{item.title}</h5>
+                      <p className="text-[8px] md:text-[10px] mt-0.5" style={{ color: C.textMuted }}>{item.desc}</p>
                     </div>
                   ))}
                 </div>
@@ -710,24 +714,24 @@ export default function PitchPage() {
 
           {/* ─── CLOSING ───────────────────────────────────────── */}
           {slide === "closing" && (
-            <div className="text-center space-y-8">
-              <h2 className="text-5xl md:text-7xl font-black tracking-tight" style={{ color: C.navy }}>
+            <div className="text-center space-y-6 md:space-y-8">
+              <h2 className="text-4xl md:text-5xl lg:text-7xl font-black tracking-tight" style={{ color: C.navy }}>
                 Vamos construir<br /><span style={{ color: C.orange }}>juntos</span>
               </h2>
               <div className="w-16 h-1 mx-auto" style={{ background: C.orange }} />
-              <p className="text-lg max-w-2xl mx-auto leading-relaxed" style={{ color: C.textMuted }}>
+              <p className="text-sm md:text-lg max-w-2xl mx-auto leading-relaxed" style={{ color: C.textMuted }}>
                 Tecnologia BRHUB + Operação Flex Envios = a plataforma logística mais completa para a comunidade Look China
               </p>
-              <div className="grid md:grid-cols-3 gap-5 max-w-3xl mx-auto pt-4">
+              <div className="grid grid-cols-3 gap-4 md:gap-5 max-w-3xl mx-auto pt-2 md:pt-4">
                 {[
                   { value: "50/50", label: "Rendimentos compartilhados", color: C.navy },
-                  { value: "+12%", label: "Margem de agência garantida", color: C.orange },
+                  { value: "+12%", label: "Margem agência garantida", color: C.orange },
                   { value: "4 sem", label: "Prazo de entrega", color: C.amber },
                 ].map((item, i) => (
                   <CircleMetric key={i} value={item.value} label={item.label} accent={i === 1} color={item.color} />
                 ))}
               </div>
-              <p className="text-xs font-medium pt-4" style={{ color: C.textMuted }}>BRHUB Tech/Envios • {new Date().getFullYear()}</p>
+              <p className="text-[10px] md:text-xs font-medium pt-2 md:pt-4" style={{ color: C.textMuted }}>BRHUB Tech/Envios • {new Date().getFullYear()}</p>
             </div>
           )}
         </div>
