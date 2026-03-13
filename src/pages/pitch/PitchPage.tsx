@@ -210,38 +210,6 @@ export default function PitchPage() {
             const conversionData = sc.conversion;
             const digitalData = conversionData.map((pct: number) => parseFloat(((pct / 100) * FISICO_MES).toFixed(3)));
 
-            const projChart: { series: ApexOptions["series"]; options: ApexOptions } = {
-              series: [
-                { name: "Físico (R$ mi)", data: [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8] },
-                { name: "Digital (R$ mi)", data: digitalData as unknown as number[] },
-              ],
-              options: {
-                chart: { type: "area", height: 220, toolbar: { show: false }, background: "transparent", fontFamily: "'Plus Jakarta Sans', sans-serif" },
-                colors: [C.navy, sc.color],
-                fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.3, opacityTo: 0.02, stops: [0, 100] } },
-                stroke: { curve: "smooth", width: 2.5 },
-                xaxis: { categories: monthLabels, labels: { style: { colors: C.textMuted, fontSize: "9px" } } },
-                yaxis: { labels: { style: { colors: C.textMuted, fontSize: "10px" }, formatter: (v: number) => `R$${v}M` } },
-                grid: { borderColor: C.border, strokeDashArray: 4 },
-                tooltip: { theme: "light" },
-                legend: { labels: { colors: C.text }, fontSize: "10px" },
-                dataLabels: { enabled: false },
-              },
-            };
-
-            const convChart: { series: ApexOptions["series"]; options: ApexOptions } = {
-              series: [{ name: "% Conversão", data: conversionData as unknown as number[] }],
-              options: {
-                chart: { type: "bar", height: 220, toolbar: { show: false }, background: "transparent" },
-                colors: [sc.color],
-                xaxis: { categories: monthLabels, labels: { style: { colors: C.textMuted, fontSize: "9px" } } },
-                yaxis: { max: scenario === "bull" ? 25 : 12, labels: { style: { colors: C.textMuted, fontSize: "10px" }, formatter: (v: number) => `${v}%` } },
-                grid: { borderColor: C.border, strokeDashArray: 4 },
-                plotOptions: { bar: { borderRadius: 3, columnWidth: "50%" } },
-                dataLabels: { enabled: false },
-                tooltip: { theme: "light", y: { formatter: (v: number) => `${v}% = R$ ${((v / 100) * 8).toFixed(2)}M` } },
-              },
-            };
 
             // Dados derivados para tabela
             const enviosMes = digitalData.map((v: number) => Math.round((v * 1_000_000) / 25));
