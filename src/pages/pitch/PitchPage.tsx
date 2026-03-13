@@ -213,33 +213,32 @@ export default function PitchPage() {
             let acumFat = 0;
             const acumuladosFat = fatMesR$.map((v: number) => { acumFat += v; return acumFat; });
 
+            const chartHeight = 180;
+            const mobileLabels = ["M1","M2","M3","M4","M5","M6","M7","M8","M9","M10","M11","M12"];
+
             const enviosChart: { series: ApexOptions["series"]; options: ApexOptions } = {
-              series: [
-                { name: "Envios/mês", data: enviosMes },
-              ],
+              series: [{ name: "Envios/mês", data: enviosMes }],
               options: {
-                chart: { type: "bar", height: 200, toolbar: { show: false }, background: "transparent" },
+                chart: { type: "bar", height: chartHeight, toolbar: { show: false }, background: "transparent" },
                 colors: [sc.color],
-                xaxis: { categories: monthLabels, labels: { style: { colors: C.textMuted, fontSize: "9px" } } },
-                yaxis: { labels: { style: { colors: C.textMuted, fontSize: "10px" }, formatter: (v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : `${v}` } },
+                xaxis: { categories: mobileLabels, labels: { style: { colors: C.textMuted, fontSize: "8px" }, rotate: -45 } },
+                yaxis: { labels: { style: { colors: C.textMuted, fontSize: "9px" }, formatter: (v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : `${v}` } },
                 grid: { borderColor: C.border, strokeDashArray: 4 },
-                plotOptions: { bar: { borderRadius: 3, columnWidth: "55%" } },
+                plotOptions: { bar: { borderRadius: 2, columnWidth: "60%" } },
                 dataLabels: { enabled: false },
                 tooltip: { theme: "light", y: { formatter: (v: number) => `${v.toLocaleString('pt-BR')} envios` } },
               },
             };
 
             const fatChart: { series: ApexOptions["series"]; options: ApexOptions } = {
-              series: [
-                { name: "Faturamento digital (R$)", data: digitalFat.map((v: number) => parseFloat((v * 1000).toFixed(0))) },
-              ],
+              series: [{ name: "Faturamento (R$)", data: digitalFat.map((v: number) => parseFloat((v * 1000).toFixed(0))) }],
               options: {
-                chart: { type: "area", height: 200, toolbar: { show: false }, background: "transparent" },
+                chart: { type: "area", height: chartHeight, toolbar: { show: false }, background: "transparent" },
                 colors: [sc.color],
                 fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.3, opacityTo: 0.02, stops: [0, 100] } },
-                stroke: { curve: "smooth", width: 2.5 },
-                xaxis: { categories: monthLabels, labels: { style: { colors: C.textMuted, fontSize: "9px" } } },
-                yaxis: { labels: { style: { colors: C.textMuted, fontSize: "10px" }, formatter: (v: number) => `R$${v}k` } },
+                stroke: { curve: "smooth", width: 2 },
+                xaxis: { categories: mobileLabels, labels: { style: { colors: C.textMuted, fontSize: "8px" }, rotate: -45 } },
+                yaxis: { labels: { style: { colors: C.textMuted, fontSize: "9px" }, formatter: (v: number) => `R$${v}k` } },
                 grid: { borderColor: C.border, strokeDashArray: 4 },
                 dataLabels: { enabled: false },
                 tooltip: { theme: "light", y: { formatter: (v: number) => `R$ ${v.toLocaleString('pt-BR')}k` } },
@@ -249,11 +248,11 @@ export default function PitchPage() {
             const fmtR$ = (v: number) => v >= 1_000_000 ? `R$ ${(v / 1_000_000).toFixed(1)}M` : `R$ ${(v / 1000).toFixed(0)}k`;
 
             return (
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               <SlideHeader title="Projeção de" accent="envios e faturamento" tag="Cenários" />
 
-              {/* Scenario selector */}
-              <div className="flex gap-2">
+              {/* Scenario selector — vertical on mobile */}
+              <div className="flex flex-col md:flex-row gap-1.5 md:gap-2">
                 {(Object.keys(scenarios) as ScenarioKey[]).map((key) => {
                   const s = scenarios[key];
                   const active = scenario === key;
@@ -263,41 +262,42 @@ export default function PitchPage() {
                     <button
                       key={key}
                       onClick={() => setScenario(key)}
-                      className="flex-1 py-2 px-3 text-left border-2 transition-all"
+                      className="flex-1 py-2 px-3 text-left border-2 transition-all flex items-center md:block gap-3"
                       style={{
                         background: active ? (key === "bull" ? C.emerald : key === "bear" ? C.navy : C.orange) : C.white,
                         borderColor: active ? (key === "bull" ? C.emerald : key === "bear" ? C.navy : C.orange) : C.border,
                         color: active ? "white" : C.navy,
                       }}
                     >
-                      <div className="font-black text-xs flex items-center gap-1.5"><s.icon size={13} /> {s.name}</div>
-                      <div className="text-[10px] mt-0.5" style={{ opacity: 0.8 }}>
-                        {s.conversion[11]}% → <strong>{(sEnvios12/1000).toFixed(1)}k envios</strong> · {fmtR$(sFat12)}/mês
+                      <div className="font-black text-xs flex items-center gap-1.5 shrink-0"><s.icon size={13} /> {s.name}</div>
+                      <div className="text-[10px] md:mt-0.5" style={{ opacity: 0.8 }}>
+                        {s.conversion[11]}% → <strong>{(sEnvios12/1000).toFixed(1)}k env.</strong> · {fmtR$(sFat12)}/mês
                       </div>
                     </button>
                   );
                 })}
               </div>
 
-              {/* Charts: Envios + Faturamento */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 border" style={{ background: C.white, borderColor: C.border }}>
+              {/* Charts: stacked on mobile, side by side on desktop */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
+                <div className="p-2 md:p-3 border" style={{ background: C.white, borderColor: C.border }}>
                   <h4 className="font-bold text-[10px] mb-0 uppercase tracking-wider" style={{ color: C.textMuted }}>Volume de envios/mês</h4>
-                  <ReactApexChart options={enviosChart.options} series={enviosChart.series} type="bar" height={200} />
+                  <ReactApexChart options={enviosChart.options} series={enviosChart.series} type="bar" height={chartHeight} />
                 </div>
-                <div className="p-3 border" style={{ background: C.white, borderColor: C.border }}>
+                <div className="p-2 md:p-3 border" style={{ background: C.white, borderColor: C.border }}>
                   <h4 className="font-bold text-[10px] mb-0 uppercase tracking-wider" style={{ color: C.textMuted }}>Faturamento digital (R$ mil)</h4>
-                  <ReactApexChart options={fatChart.options} series={fatChart.series} type="area" height={200} />
+                  <ReactApexChart options={fatChart.options} series={fatChart.series} type="area" height={chartHeight} />
                 </div>
               </div>
 
-              {/* Tabela resumo */}
-              <div className="border overflow-hidden" style={{ background: C.white, borderColor: C.border }}>
+              {/* Mobile: cards instead of table / Desktop: table */}
+              {/* Desktop table */}
+              <div className="hidden md:block border overflow-hidden" style={{ background: C.white, borderColor: C.border }}>
                 <div className="px-3 py-1.5 border-b flex items-center justify-between" style={{ borderColor: C.border, background: C.cardBg }}>
                   <h4 className="font-bold text-[10px] uppercase tracking-wider" style={{ color: C.navy }}>
                     {sc.name} ({sc.conversion[0]}% → {sc.conversion[11]}% do volume físico)
                   </h4>
-                  <span className="text-[9px] px-2 py-0.5 font-semibold border" style={{ borderColor: C.orangeBorder, color: C.orange }}>Físico: 320k envios · R$ 8M/mês · Ticket R$ 25</span>
+                  <span className="text-[9px] px-2 py-0.5 font-semibold border" style={{ borderColor: C.orangeBorder, color: C.orange }}>Físico: 320k envios · R$ 8M/mês</span>
                 </div>
                 <table className="w-full text-[10px]">
                   <thead>
@@ -330,8 +330,32 @@ export default function PitchPage() {
                 </table>
               </div>
 
-              {/* Resumo final - Volume + Faturamento */}
-              <div className="grid grid-cols-5 gap-2">
+              {/* Mobile: compact cards */}
+              <div className="md:hidden space-y-1.5">
+                <div className="px-3 py-1.5 flex items-center justify-between" style={{ background: C.cardBg }}>
+                  <h4 className="font-bold text-[10px] uppercase tracking-wider" style={{ color: C.navy }}>
+                    {sc.name} · {sc.conversion[0]}% → {sc.conversion[11]}%
+                  </h4>
+                </div>
+                {[0, 2, 5, 8, 11].map((i) => {
+                  const isLast = i === 11;
+                  return (
+                    <div key={i} className="p-2.5 border flex items-center justify-between" style={{ background: isLast ? C.orangeBg : C.white, borderColor: isLast ? C.orangeBorder : C.border }}>
+                      <div>
+                        <div className="font-bold text-xs" style={{ color: C.text }}>Mês {i + 1} <span className="font-normal text-[10px]" style={{ color: sc.color }}>({conversionData[i]}%)</span></div>
+                        <div className="text-[10px] mt-0.5" style={{ color: C.textMuted }}>~{enviosDia[i].toLocaleString('pt-BR')}/dia · acum. {(acumuladosEnv[i]/1000).toFixed(0)}k</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-black text-xs" style={{ color: C.orange }}>{(enviosMes[i]/1000).toFixed(1)}k env.</div>
+                        <div className="font-semibold text-[10px]" style={{ color: C.navy }}>{fmtR$(fatMesR$[i])}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Summary metrics */}
+              <div className="grid grid-cols-3 md:grid-cols-5 gap-1.5 md:gap-2">
                 {[
                   { label: "Envios Mês 12", value: `${(enviosMes[11]/1000).toFixed(1)}k`, color: C.orange },
                   { label: "Envios/dia", value: `~${enviosDia[11]}`, color: C.emerald },
@@ -339,9 +363,9 @@ export default function PitchPage() {
                   { label: "Envios Ano 1", value: `${(acumuladosEnv[11]/1000).toFixed(0)}k`, color: sc.color },
                   { label: "Fat. Ano 1", value: fmtR$(acumuladosFat[11]), color: C.amber },
                 ].map((m, i) => (
-                  <div key={i} className="text-center p-2 border" style={{ background: C.white, borderColor: C.border }}>
-                    <div className="text-base font-black" style={{ color: m.color }}>{m.value}</div>
-                    <div className="text-[9px] font-medium" style={{ color: C.textMuted }}>{m.label}</div>
+                  <div key={i} className={`text-center p-2 border ${i >= 3 ? 'hidden md:block' : ''}`} style={{ background: C.white, borderColor: C.border }}>
+                    <div className="text-sm md:text-base font-black" style={{ color: m.color }}>{m.value}</div>
+                    <div className="text-[8px] md:text-[9px] font-medium" style={{ color: C.textMuted }}>{m.label}</div>
                   </div>
                 ))}
               </div>
