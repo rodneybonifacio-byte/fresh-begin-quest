@@ -47,10 +47,13 @@ const C = {
 
 // ─── Chart configs ───────────────────────────────────────────────────────────
 
+const digitalData = [0.04, 0.08, 0.12, 0.16, 0.24, 0.32, 0.40, 0.48, 0.56, 0.64, 0.72, 0.80];
+const conversionData = [0.5, 1, 1.5, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
 const projectionChart: { series: ApexOptions["series"]; options: ApexOptions } = {
   series: [
     { name: "Faturamento Físico (R$ mi)", data: [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8] },
-    { name: "Projeção Digital (R$ mi)", data: [0.4, 0.8, 1.4, 2.2, 3.2, 4.2, 5.4, 6.8, 8.4, 10.2, 12.2, 14.6] },
+    { name: "Projeção Digital (R$ mi)", data: digitalData },
   ],
   options: {
     chart: { type: "area", height: 340, toolbar: { show: false }, background: "transparent", fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" },
@@ -68,16 +71,16 @@ const projectionChart: { series: ApexOptions["series"]; options: ApexOptions } =
 
 // Digital conversion projection chart (R$8M/mês physical → digital potential)
 const digitalConversionChart: { series: ApexOptions["series"]; options: ApexOptions } = {
-  series: [{ name: "% Conversão Digital", data: [5, 10, 17.5, 27.5, 40, 52.5, 67.5, 85, 105, 127.5, 152.5, 182.5] }],
+  series: [{ name: "% Conversão Digital", data: conversionData }],
   options: {
     chart: { type: "bar", height: 260, toolbar: { show: false }, background: "transparent" },
     colors: [C.orange],
     xaxis: { categories: monthLabels, labels: { style: { colors: C.textMuted, fontSize: "10px" } } },
-    yaxis: { labels: { style: { colors: C.textMuted }, formatter: (v: number) => `${v}%` } },
+    yaxis: { max: 12, labels: { style: { colors: C.textMuted }, formatter: (v: number) => `${v}%` } },
     grid: { borderColor: "#e2e8f0", strokeDashArray: 4 },
     plotOptions: { bar: { borderRadius: 6, columnWidth: "50%" } },
     dataLabels: { enabled: false },
-    tooltip: { theme: "light", y: { formatter: (v: number) => `${v}% do físico = R$ ${((v / 100) * 8).toFixed(1)}M` } },
+    tooltip: { theme: "light", y: { formatter: (v: number) => `${v}% do físico = R$ ${((v / 100) * 8).toFixed(2)}M` } },
   },
 };
 
@@ -504,7 +507,7 @@ export default function PitchPage() {
               <div className="rounded-xl p-5 border flex items-start gap-4" style={{ background: C.orangeBg, borderColor: C.orangeBorder }}>
                 <BarChart3 size={22} className="mt-0.5 shrink-0" style={{ color: C.orange }} />
                 <p className="text-sm" style={{ color: C.text }}>
-                  O grupo já movimenta <strong style={{ color: C.navy }}>R$ 8 milhões por mês</strong> (R$ 96M/ano) no comércio físico. A projeção estima a conversão progressiva para o digital, começando em <strong style={{ color: C.orange }}>5%</strong> e crescendo até <strong style={{ color: C.orange }}>182%</strong> do faturamento físico em 12 meses — representando a expansão do canal digital como novo motor de receita.
+                  O grupo já movimenta <strong style={{ color: C.navy }}>R$ 8 milhões por mês</strong> (R$ 96M/ano) no comércio físico. A projeção conservadora estima a conversão progressiva para o digital, começando em <strong style={{ color: C.orange }}>0,5%</strong> e atingindo <strong style={{ color: C.orange }}>10%</strong> do faturamento físico em 12 meses — um crescimento orgânico e sustentável.
                 </p>
               </div>
 
@@ -538,10 +541,10 @@ export default function PitchPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {[0.4, 0.8, 1.4, 2.2, 3.2, 4.2, 5.4, 6.8, 8.4, 10.2, 12.2, 14.6].map((fat, i) => {
+                      {digitalData.map((fat, i) => {
                         const enviosMes = Math.round((fat * 1_000_000) / 25);
                         const enviosDia = Math.round(enviosMes / 26);
-                        const acumulado = [0.4, 0.8, 1.4, 2.2, 3.2, 4.2, 5.4, 6.8, 8.4, 10.2, 12.2, 14.6]
+                        const acumulado = digitalData
                           .slice(0, i + 1)
                           .reduce((sum, v) => sum + Math.round((v * 1_000_000) / 25), 0);
                         const isLast = i === 11;
@@ -564,9 +567,9 @@ export default function PitchPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
                   { label: "Faturamento Físico/Mês", value: "R$ 8M", color: C.navy },
-                  { label: "Digital no Mês 12", value: "R$ 14,6M", color: C.orange },
-                  { label: "Envios no Mês 12", value: "584 mil", color: C.amber },
-                  { label: "Total Envios Ano 1", value: "2,78M", color: C.emerald },
+                  { label: "Digital no Mês 12", value: "R$ 800k", color: C.orange },
+                  { label: "Envios no Mês 12", value: "32 mil", color: C.amber },
+                  { label: "Total Envios Ano 1", value: "~180 mil", color: C.emerald },
                 ].map((m, i) => (
                   <div key={i} className="rounded-xl p-4 text-center border" style={{ background: C.white, borderColor: C.creamDark }}>
                     <div className="text-xl font-extrabold" style={{ color: m.color }}>{m.value}</div>
