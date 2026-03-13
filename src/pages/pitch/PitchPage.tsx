@@ -7,7 +7,7 @@ import {
   Building2, ArrowRight, CheckCircle2, Sparkles, Phone, Brain, Mic, Eye, MessageCircle,
   Bell, AlertTriangle, Clock, Send, Star, ShieldCheck, DollarSign
 } from "lucide-react";
-import logoBrhub from "@/assets/logo-brhub-new.png";
+
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
