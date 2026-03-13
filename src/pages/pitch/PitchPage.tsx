@@ -348,7 +348,7 @@ export default function PitchPage() {
               <div className="grid md:grid-cols-2 gap-5">
                 <div className="p-6 border" style={{ background: C.white, borderColor: C.border }}>
                   <h4 className="font-bold mb-3 flex items-center gap-2 text-sm" style={{ color: C.orange }}>
-                    <Globe size={16} /> Plataforma Marketplace
+                    <Globe size={16} /> Plataforma Digital
                   </h4>
                   <ul className="space-y-2 text-sm" style={{ color: C.textMuted }}>
                     <li className="flex gap-2"><span style={{ color: C.orange }}>●</span> Nova plataforma integrada com contrato Flex</li>
