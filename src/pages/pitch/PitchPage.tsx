@@ -5,7 +5,7 @@ import {
   Truck, Bot, Globe, Warehouse, MapPin, Handshake, ChevronRight,
   ChevronLeft, BarChart3, Zap, Shield, Package, TrendingUp,
   Building2, ArrowRight, CheckCircle2, Sparkles, Phone, Brain, Mic, Eye, MessageCircle,
-  Bell, AlertTriangle, Clock, Send, Star, ShieldCheck
+  Bell, AlertTriangle, Clock, Send, Star, ShieldCheck, DollarSign
 } from "lucide-react";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
