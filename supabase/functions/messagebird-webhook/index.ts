@@ -200,6 +200,20 @@ serve(async (req) => {
       });
     }
 
+    // === IGNORAR MENSAGENS "UNSUPPORTED" do MessageBird ===
+    // MessageBird envia "Received Unsupported message type "unsupported"!" para stickers,
+    // figurinhas, e tipos não reconhecidos. Não são mensagens humanas reais.
+    const rawText = message.content?.text || message.body || "";
+    const isUnsupportedMsg = /received\s+unsupported\s+message\s+type/i.test(rawText)
+      || rawContentType === "unsupported"
+      || message.type === "unsupported";
+    if (isUnsupportedMsg) {
+      console.log("⏭️ Mensagem unsupported ignorada silenciosamente:", rawText.substring(0, 80));
+      return new Response(JSON.stringify({ ok: true, skipped: "unsupported" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // HSM (template) messages
     if (message.content?.hsm || rawContentType === "hsm" || message.type === "hsm") {
       contentType = "hsm";
