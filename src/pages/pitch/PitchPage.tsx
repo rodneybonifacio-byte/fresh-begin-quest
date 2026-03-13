@@ -67,7 +67,8 @@ const scenarios = {
     color: C.orange,
   },
   bull: {
-    name: "🐂 Bull Case",
+    name: "Bull Case",
+    icon: TrendingUp,
     sub: "Cenário otimista",
     conversion: [1, 2, 3, 5, 7, 9, 11, 13, 15, 17, 19, 22],
     digital: [0.08, 0.16, 0.24, 0.40, 0.56, 0.72, 0.88, 1.04, 1.20, 1.36, 1.52, 1.76],
