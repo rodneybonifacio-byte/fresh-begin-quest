@@ -48,8 +48,8 @@ const C = {
 
 const projectionChart: { series: ApexOptions["series"]; options: ApexOptions } = {
   series: [
-    { name: "Faturamento Físico (R$ mil)", data: [667, 667, 667, 667, 667, 667, 667, 667, 667, 667, 667, 667] },
-    { name: "Projeção Digital (R$ mil)", data: [40, 80, 140, 220, 320, 430, 560, 700, 860, 1040, 1240, 1460] },
+    { name: "Faturamento Físico (R$ mi)", data: [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8] },
+    { name: "Projeção Digital (R$ mi)", data: [0.4, 0.8, 1.4, 2.2, 3.2, 4.2, 5.4, 6.8, 8.4, 10.2, 12.2, 14.6] },
   ],
   options: {
     chart: { type: "area", height: 340, toolbar: { show: false }, background: "transparent", fontFamily: "Inter, sans-serif" },
@@ -57,7 +57,7 @@ const projectionChart: { series: ApexOptions["series"]; options: ApexOptions } =
     fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 100] } },
     stroke: { curve: "smooth", width: 3 },
     xaxis: { categories: monthLabels, labels: { style: { colors: C.textMuted } } },
-    yaxis: { labels: { style: { colors: C.textMuted }, formatter: (v: number) => `R$ ${v}k` } },
+    yaxis: { labels: { style: { colors: C.textMuted }, formatter: (v: number) => `R$ ${v}M` } },
     grid: { borderColor: "#e2e8f0", strokeDashArray: 4 },
     tooltip: { theme: "light" },
     legend: { labels: { colors: C.text } },
@@ -65,18 +65,18 @@ const projectionChart: { series: ApexOptions["series"]; options: ApexOptions } =
   },
 };
 
-// Digital conversion projection chart (R$8M physical → digital potential)
+// Digital conversion projection chart (R$8M/mês physical → digital potential)
 const digitalConversionChart: { series: ApexOptions["series"]; options: ApexOptions } = {
-  series: [{ name: "% Conversão Digital", data: [0.5, 1, 1.8, 2.8, 4, 5.4, 7, 8.8, 10.8, 13, 15.5, 18.3] }],
+  series: [{ name: "% Conversão Digital", data: [5, 10, 17.5, 27.5, 40, 52.5, 67.5, 85, 105, 127.5, 152.5, 182.5] }],
   options: {
     chart: { type: "bar", height: 260, toolbar: { show: false }, background: "transparent" },
     colors: [C.orange],
     xaxis: { categories: monthLabels, labels: { style: { colors: C.textMuted, fontSize: "10px" } } },
-    yaxis: { max: 20, labels: { style: { colors: C.textMuted }, formatter: (v: number) => `${v}%` } },
+    yaxis: { labels: { style: { colors: C.textMuted }, formatter: (v: number) => `${v}%` } },
     grid: { borderColor: "#e2e8f0", strokeDashArray: 4 },
     plotOptions: { bar: { borderRadius: 6, columnWidth: "50%" } },
     dataLabels: { enabled: false },
-    tooltip: { theme: "light", y: { formatter: (v: number) => `${v}% = R$ ${((v / 100) * 8000).toFixed(0)}k` } },
+    tooltip: { theme: "light", y: { formatter: (v: number) => `${v}% do físico = R$ ${((v / 100) * 8).toFixed(1)}M` } },
   },
 };
 
