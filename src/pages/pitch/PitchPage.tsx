@@ -422,7 +422,7 @@ export default function PitchPage() {
 
               <div className="grid md:grid-cols-5 gap-5">
                 <div className="md:col-span-3 p-6 space-y-4 border-2" style={{ background: C.navy, borderColor: C.navy, color: "white" }}>
-                  <h3 className="text-lg font-bold flex items-center gap-2"><MessageCircle size={20} style={{ color: C.orangeLight }} /> WhatsApp <span style={{ color: C.orange }}>AI Agent</span></h3>
+                  <h3 className="text-lg font-bold flex items-center gap-2"><MessageCircle size={20} style={{ color: C.orangeLight }} /> WhatsApp <span style={{ color: C.orange }}>Agente IA</span></h3>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                     {[
                       "Rastreamento automático por código",
