@@ -4,7 +4,8 @@ import ReactApexChart from "react-apexcharts";
 import {
   Truck, Bot, Globe, Warehouse, MapPin, Handshake, ChevronRight,
   ChevronLeft, BarChart3, Zap, Shield, Package, TrendingUp,
-  Building2, ArrowRight, CheckCircle2, Sparkles, Phone, Brain, Mic, Eye, MessageCircle
+  Building2, ArrowRight, CheckCircle2, Sparkles, Phone, Brain, Mic, Eye, MessageCircle,
+  Bell, AlertTriangle, Clock, Send, Star, ShieldCheck
 } from "lucide-react";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
@@ -14,6 +15,7 @@ const SLIDES = [
   "opportunity",
   "platform",
   "ai-features",
+  "notifications",
   "integration",
   "collection-points",
   "revenue",
@@ -282,6 +284,62 @@ export default function PitchPage() {
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* ─── NOTIFICATIONS ─────────────────────────────────── */}
+          {slide === "notifications" && (
+            <div className="space-y-7">
+              <SectionHeader icon={<Bell />} title="Notificações Proativas" subtitle="O cliente sabe antes de perguntar" />
+
+              {/* Delay Algorithm highlight */}
+              <div className="rounded-2xl p-8 relative overflow-hidden text-white" style={{ background: `linear-gradient(135deg, ${C.navy}, #2d5a8e)` }}>
+                <div className="absolute top-[-30px] right-[-30px] w-40 h-40 rounded-full opacity-15" style={{ background: C.orange }} />
+                <div className="flex items-start gap-5">
+                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0" style={{ background: "rgba(249,115,22,0.2)" }}>
+                    <AlertTriangle size={32} style={{ color: C.orangeLight }} />
+                  </div>
+                  <div className="space-y-3">
+                    <h3 className="text-xl font-bold">🧠 Algoritmo Preditivo de Atraso</h3>
+                    <p className="text-white/85 leading-relaxed">
+                      Nosso sistema monitora <strong className="text-white">cada objeto em trânsito em tempo real</strong>. A cada 15 minutos, um cron inteligente cruza a data prevista de entrega com o horário atual (fuso de Brasília). Se detecta que o prazo será estourado — ou que já são <strong className="text-white">16h15 do dia previsto</strong> sem movimentação — o cliente recebe automaticamente uma notificação via WhatsApp <strong style={{ color: C.orangeLight }}>antes mesmo de perceber o atraso</strong>.
+                    </p>
+                    <p className="text-white/70 text-sm">
+                      → Deduplicação inteligente: cada alerta é enviado apenas 1x a cada 30 dias por objeto, evitando spam.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* All notification types */}
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[
+                  { icon: <Send size={20} />, color: C.orange, title: "Etiqueta Criada", desc: "Assim que o envio é gerado, o destinatário recebe código de rastreio e previsão de entrega." },
+                  { icon: <Package size={20} />, color: C.navy, title: "Objeto Postado", desc: "Confirmação de que o pacote foi entregue à transportadora com data atualizada via API de rastreio." },
+                  { icon: <Truck size={20} />, color: C.emerald, title: "Saiu para Entrega", desc: "Notificação em tempo real quando o objeto entra na rota final de entrega ao destinatário." },
+                  { icon: <Clock size={20} />, color: C.amber, title: "Aguardando Retirada", desc: "Alerta quando o objeto está disponível para retirada em agência, evitando devoluções." },
+                  { icon: <AlertTriangle size={20} />, color: "#ef4444", title: "Alerta de Atraso", desc: "Algoritmo preditivo avisa o cliente proativamente antes que ele perceba o atraso na entrega." },
+                  { icon: <Star size={20} />, color: C.orange, title: "Avaliação Pós-Entrega", desc: "Solicita feedback após a entrega para medir NPS e qualidade do serviço logístico." },
+                ].map((n, i) => (
+                  <div key={i} className="rounded-xl p-5 border flex gap-4" style={{ background: C.white, borderColor: C.creamDark }}>
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${n.color}15` }}>
+                      <span style={{ color: n.color }}>{n.icon}</span>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm mb-1" style={{ color: C.navy }}>{n.title}</h4>
+                      <p className="text-xs leading-relaxed" style={{ color: C.textMuted }}>{n.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Bottom highlight */}
+              <div className="rounded-xl p-5 border flex items-center gap-4" style={{ background: C.orangeBg, borderColor: C.orangeBorder }}>
+                <ShieldCheck size={24} style={{ color: C.orange }} />
+                <p className="text-sm" style={{ color: C.text }}>
+                  <strong style={{ color: C.navy }}>Pipeline automatizado de 6 estágios</strong> — cada notificação move o card do cliente no CRM automaticamente: <span style={{ color: C.textMuted }}>Pré-postado → Em Trânsito → Saiu p/ Entrega → Aguardando Retirada → Atrasado → Entregue</span>. Progressão estritamente crescente, sem retrocesso.
+                </p>
               </div>
             </div>
           )}
