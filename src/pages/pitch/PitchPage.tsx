@@ -139,33 +139,27 @@ export default function PitchPage() {
 
           {/* ─── COVER ─────────────────────────────────────────── */}
           {slide === "cover" && (
-            <div className="flex flex-col md:flex-row items-center gap-16">
-              <div className="flex-1 space-y-6">
-                <h1 className="text-6xl md:text-7xl font-black leading-[0.95] tracking-tight" style={{ color: C.navy }}>
+            <div className="flex flex-col items-center md:flex-row gap-8 md:gap-16">
+              <div className="flex-1 space-y-4 md:space-y-6 text-center md:text-left">
+                <h1 className="text-4xl md:text-6xl lg:text-7xl font-black leading-[0.95] tracking-tight" style={{ color: C.navy }}>
                   Proposta de<br />
                   <span style={{ color: C.orange }}>Negócio</span>
                 </h1>
-                <div className="w-16 h-1" style={{ background: C.orange }} />
-                <p className="text-lg leading-relaxed max-w-lg" style={{ color: C.textMuted }}>
+                <div className="w-16 h-1 mx-auto md:mx-0" style={{ background: C.orange }} />
+                <p className="text-sm md:text-lg leading-relaxed max-w-lg mx-auto md:mx-0" style={{ color: C.textMuted }}>
                   Marketplace logístico integrado com tecnologia de ponta, suporte IA e operação omnichannel — <strong style={{ color: C.navy }}>BRHUB Tech × Flex Envios × Look China</strong>
                 </p>
-                <button onClick={() => setCurrent(1)} className="text-white px-8 py-3 font-semibold flex items-center gap-2 transition hover:opacity-90" style={{ background: C.orange }}>
-                  Iniciar Apresentação <ArrowRight size={18} />
+                <button onClick={() => setCurrent(1)} className="text-white px-6 py-2.5 md:px-8 md:py-3 font-semibold flex items-center gap-2 transition hover:opacity-90 mx-auto md:mx-0 text-sm md:text-base" style={{ background: C.orange }}>
+                  Iniciar <ArrowRight size={16} />
                 </button>
-                <p className="text-[11px] flex items-center gap-1" style={{ color: C.textMuted }}>
-                  <ArrowRight size={11} /> ou Espaço para avançar · F para tela cheia
-                </p>
               </div>
               <div className="flex-1 flex justify-center">
-                {/* Checkerboard pattern like reference */}
-                <div className="grid grid-cols-6 gap-0 w-72 h-72 md:w-80 md:h-80 rounded-sm overflow-hidden">
+                <div className="grid grid-cols-6 gap-0 w-48 h-48 md:w-72 md:h-72 lg:w-80 lg:h-80 rounded-sm overflow-hidden">
                   {Array.from({ length: 36 }).map((_, i) => {
                     const row = Math.floor(i / 6);
                     const col = i % 6;
                     const isOrange = (row + col) % 2 === 0;
-                    return (
-                      <div key={i} style={{ background: isOrange ? C.orange : C.cardBg }} />
-                    );
+                    return <div key={i} style={{ background: isOrange ? C.orange : C.cardBg }} />;
                   })}
                 </div>
               </div>
