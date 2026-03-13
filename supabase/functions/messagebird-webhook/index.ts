@@ -635,27 +635,43 @@ serve(async (req) => {
 
     if (shouldCallAI) {
       try {
-        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-        const isMediaMsg = contentType === "audio" || contentType === "voice" || contentType === "ptt" || contentType === "image" || contentType === "video";
-        console.log("🤖 Chamando chat-ai:", { contentType, isMediaMsg, hasMediaUrl: !!finalMediaUrl, messageLen: messageContent?.length || 0 });
+        // === DEBOUNCE: esperar 3s e verificar se chegaram msgs mais novas ===
+        await new Promise(resolve => setTimeout(resolve, 3000));
         
-        const response = await fetch(`${supabaseUrl}/functions/v1/chat-ai-whatsapp`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-          },
-          body: JSON.stringify({
-            conversationId: conversation.id,
-            message: messageContent,
-            contactPhone: normalizedPhone,
-            channelId: channel?.id,
-            agent: conversation.active_agent || channel?.ai_agent || "veronica",
-            contentType,
-            mediaUrl: finalMediaUrl,
-          }),
-        });
-        console.log("🤖 Chat AI response status:", response.status);
+        const { data: newerMsgs } = await supabase
+          .from("whatsapp_messages")
+          .select("id")
+          .eq("conversation_id", conversation.id)
+          .eq("direction", "inbound")
+          .gt("created_at", new Date(Date.now() - 2500).toISOString())
+          .neq("messagebird_id", messageBirdId || "")
+          .limit(1);
+        
+        if (newerMsgs && newerMsgs.length > 0) {
+          console.log("⏭️ DEBOUNCE: mensagem mais nova detectada, pulando AI para esta:", messageBirdId);
+        } else {
+          const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+          const isMediaMsg = contentType === "audio" || contentType === "voice" || contentType === "ptt" || contentType === "image" || contentType === "video";
+          console.log("🤖 Chamando chat-ai:", { contentType, isMediaMsg, hasMediaUrl: !!finalMediaUrl, messageLen: messageContent?.length || 0 });
+          
+          const response = await fetch(`${supabaseUrl}/functions/v1/chat-ai-whatsapp`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            },
+            body: JSON.stringify({
+              conversationId: conversation.id,
+              message: messageContent,
+              contactPhone: normalizedPhone,
+              channelId: channel?.id,
+              agent: conversation.active_agent || channel?.ai_agent || "veronica",
+              contentType,
+              mediaUrl: finalMediaUrl,
+            }),
+          });
+          console.log("🤖 Chat AI response status:", response.status);
+        }
       } catch (aiError) {
         console.error("⚠️ Erro ao chamar chat-ai (não crítico):", aiError);
       }
