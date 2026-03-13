@@ -26,7 +26,7 @@ const SLIDES = [
   "closing",
 ] as const;
 
-const monthLabels = ["Mês 1", "Mês 2", "Mês 3", "Mês 4", "Mês 5", "Mês 6", "Mês 7", "Mês 8", "Mês 9", "Mês 10", "Mês 11", "Mês 12"];
+// monthLabels moved inline as mobileLabels
 
 // ─── Colors (editorial pitch deck) ───────────────────────────────────────────
 const C = {
