@@ -169,16 +169,44 @@ export default function PitchPage() {
 
           {/* ─── OPPORTUNITY ────────────────────────────────────── */}
           {slide === "opportunity" && (
-            <div className="space-y-8">
-              <SectionHeader icon={<TrendingUp />} title="A Oportunidade" subtitle="Por que agora?" />
-              <div className="grid md:grid-cols-3 gap-6">
-                <OrangeMetricCard icon={<Globe size={28} />} value="R$ 8M/mês" label="Volume atual Look China (físico)" />
-                <OrangeMetricCard icon={<Package size={28} />} value="R$ 96M/ano" label="Potencial de conversão digital" />
-                <OrangeMetricCard icon={<Building2 size={28} />} value="Look China" label="2 pontos estratégicos prontos" />
+            <div className="space-y-7">
+              <SectionHeader icon={<TrendingUp />} title="A Oportunidade" subtitle="Quem é o Look China e por que agora?" />
+
+              {/* Who is Look China */}
+              <div className="grid md:grid-cols-5 gap-6 items-center">
+                <div className="md:col-span-2 rounded-2xl overflow-hidden border shadow-lg" style={{ borderColor: C.creamDark }}>
+                  <img src={lookChinaProfile} alt="Look China - Fred China - Instagram" className="w-full object-cover" />
+                </div>
+                <div className="md:col-span-3 space-y-4">
+                  <h3 className="text-2xl font-extrabold" style={{ color: C.navy }}>Grupo Look China</h3>
+                  <p className="text-base leading-relaxed" style={{ color: C.textMuted }}>
+                    Liderado por <strong style={{ color: C.navy }}>Fred China</strong> (@fred_dayyy), o Look China é o <strong style={{ color: C.orange }}>maior shopping de importados do Brasil</strong>, com presença física na Rua Maria Marcolina 369 (Brás/SP) e <strong style={{ color: C.orange }}>1,4 milhão de seguidores</strong> no Instagram. Agora lançando o <strong style={{ color: C.navy }}>Aplicativo Look China</strong> para expandir as vendas digitais.
+                  </p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[
+                      { value: "1,4M", label: "Seguidores" },
+                      { value: "R$ 8M", label: "Faturamento/mês" },
+                      { value: "482+", label: "Conteúdos" },
+                    ].map((m, i) => (
+                      <div key={i} className="rounded-xl p-3 text-center border" style={{ background: C.cream, borderColor: C.creamDark }}>
+                        <div className="text-lg font-extrabold" style={{ color: i === 1 ? C.orange : C.navy }}>{m.value}</div>
+                        <p className="text-[10px] font-medium" style={{ color: C.textMuted }}>{m.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-              <div className="rounded-2xl p-8 border" style={{ background: C.white, borderColor: C.creamDark }}>
-                <h3 className="text-xl font-bold mb-3" style={{ color: C.navy }}>A Proposta</h3>
-                <p className="leading-relaxed text-lg" style={{ color: C.textMuted }}>
+
+              {/* Metrics & Proposal */}
+              <div className="grid md:grid-cols-3 gap-5">
+                <OrangeMetricCard icon={<Globe size={28} />} value="R$ 8M/mês" label="Volume atual no físico" />
+                <OrangeMetricCard icon={<Package size={28} />} value="R$ 96M/ano" label="Potencial de conversão digital" />
+                <OrangeMetricCard icon={<Building2 size={28} />} value="2 pontos" label="Rua Carnot + Maria Marcolina" />
+              </div>
+
+              <div className="rounded-2xl p-6 border" style={{ background: C.white, borderColor: C.creamDark }}>
+                <h3 className="text-lg font-bold mb-2" style={{ color: C.navy }}>A Proposta</h3>
+                <p className="leading-relaxed" style={{ color: C.textMuted }}>
                   A <strong style={{ color: C.orange }}>BRHUB Tech/Envios</strong> convida o grupo <strong style={{ color: C.navy }}>Flex Envios</strong> a se tornar parceiro e <strong style={{ color: C.orange }}>operador logístico oficial</strong> do marketplace Look China, com infraestrutura tecnológica completa, pontos de coleta estratégicos e modelo de receita compartilhada.
                 </p>
               </div>
