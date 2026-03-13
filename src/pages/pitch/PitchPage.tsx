@@ -167,8 +167,8 @@ export default function PitchPage() {
             <div className="space-y-8">
               <SectionHeader icon={<TrendingUp />} title="A Oportunidade" subtitle="Por que agora?" />
               <div className="grid md:grid-cols-3 gap-6">
-                <OrangeMetricCard icon={<Globe size={28} />} value="R$ 185B" label="Mercado e-commerce Brasil 2025" />
-                <OrangeMetricCard icon={<Package size={28} />} value="+23%" label="Crescimento anual de envios" />
+                <OrangeMetricCard icon={<Globe size={28} />} value="R$ 8M/mês" label="Volume atual Look China (físico)" />
+                <OrangeMetricCard icon={<Package size={28} />} value="R$ 96M/ano" label="Potencial de conversão digital" />
                 <OrangeMetricCard icon={<Building2 size={28} />} value="Look China" label="2 pontos estratégicos prontos" />
               </div>
               <div className="rounded-2xl p-8 border" style={{ background: C.white, borderColor: C.creamDark }}>
