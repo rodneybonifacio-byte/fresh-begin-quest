@@ -375,40 +375,40 @@ export default function PitchPage() {
 
           {/* ─── INTEGRATION ───────────────────────────────────── */}
           {slide === "integration" && (
-            <div className="space-y-8">
+            <div className="space-y-5 md:space-y-8">
               <SlideHeader title="Arquitetura de" accent="integração" tag="Fluxo técnico" />
-              <div className="p-10 border" style={{ background: C.white, borderColor: C.border }}>
-                <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+              <div className="p-5 md:p-10 border" style={{ background: C.white, borderColor: C.border }}>
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4 md:gap-8">
                   <IntegrationNode label="Flex Envios" sub="Disponibiliza API" color={C.amber} />
-                  <div className="hidden md:flex items-center gap-1">
-                    <div className="h-[2px] w-16" style={{ background: C.orange }} />
-                    <ArrowRight size={24} style={{ color: C.orange }} />
+                  <div className="flex items-center gap-1 rotate-90 md:rotate-0">
+                    <div className="h-[2px] w-8 md:w-16" style={{ background: C.orange }} />
+                    <ArrowRight size={18} style={{ color: C.orange }} />
                   </div>
                   <IntegrationNode label="BRHUB Tech" sub="Desenvolve & Integra" color={C.orange} />
-                  <div className="hidden md:flex items-center gap-1">
-                    <div className="h-[2px] w-16" style={{ background: C.navy }} />
-                    <ArrowRight size={24} style={{ color: C.navy }} />
+                  <div className="flex items-center gap-1 rotate-90 md:rotate-0">
+                    <div className="h-[2px] w-8 md:w-16" style={{ background: C.navy }} />
+                    <ArrowRight size={18} style={{ color: C.navy }} />
                   </div>
-                  <IntegrationNode label="Look China" sub="Marca própria no Marketplace" color={C.navy} />
+                  <IntegrationNode label="Look China" sub="Marca própria" color={C.navy} />
                 </div>
               </div>
-              <div className="grid md:grid-cols-2 gap-5">
-                <div className="p-6 border" style={{ background: C.white, borderColor: C.border }}>
-                  <h4 className="font-bold mb-3 flex items-center gap-2 text-sm" style={{ color: C.orange }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-5">
+                <div className="p-4 md:p-6 border" style={{ background: C.white, borderColor: C.border }}>
+                  <h4 className="font-bold mb-2 md:mb-3 flex items-center gap-2 text-sm" style={{ color: C.orange }}>
                     <Globe size={16} /> Plataforma Digital
                   </h4>
-                  <ul className="space-y-2 text-sm" style={{ color: C.textMuted }}>
+                  <ul className="space-y-1.5 md:space-y-2 text-xs md:text-sm" style={{ color: C.textMuted }}>
                     <li className="flex gap-2"><span style={{ color: C.orange }}>●</span> Nova plataforma integrada com contrato Flex</li>
                     <li className="flex gap-2"><span style={{ color: C.orange }}>●</span> Plataforma personalizada Look China</li>
                     <li className="flex gap-2"><span style={{ color: C.orange }}>●</span> Desenvolvimento 100% BRHUB</li>
                     <li className="flex gap-2"><span style={{ color: C.orange }}>●</span> Painel próprio para o lojista</li>
                   </ul>
                 </div>
-                <div className="p-6 border" style={{ background: C.white, borderColor: C.border }}>
-                  <h4 className="font-bold mb-3 flex items-center gap-2 text-sm" style={{ color: C.navy }}>
+                <div className="p-4 md:p-6 border" style={{ background: C.white, borderColor: C.border }}>
+                  <h4 className="font-bold mb-2 md:mb-3 flex items-center gap-2 text-sm" style={{ color: C.navy }}>
                     <Warehouse size={16} /> Sistema FULL (Galpão)
                   </h4>
-                  <ul className="space-y-2 text-sm" style={{ color: C.textMuted }}>
+                  <ul className="space-y-1.5 md:space-y-2 text-xs md:text-sm" style={{ color: C.textMuted }}>
                     <li className="flex gap-2"><span style={{ color: C.orange }}>●</span> Operação completa no galpão do parceiro</li>
                     <li className="flex gap-2"><span style={{ color: C.orange }}>●</span> Desenvolvimento dedicado se necessário</li>
                     <li className="flex gap-2"><span style={{ color: C.orange }}>●</span> Integração com estoque e expedição</li>
