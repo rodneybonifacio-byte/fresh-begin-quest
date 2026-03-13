@@ -136,7 +136,7 @@ export default function PitchPage() {
             <div className="flex flex-col md:flex-row items-center gap-12">
               <div className="flex-1 space-y-6">
                 <div className="inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-semibold" style={{ background: C.orangeBg, color: C.orange, border: `1px solid ${C.orangeBorder}` }}>
-                  <Sparkles size={16} /> Proposta de Parceria 2025
+                  <Sparkles size={16} /> Proposta de Parceria 2026
                 </div>
                 <h1 className="text-5xl md:text-6xl font-extrabold leading-tight" style={{ color: C.navy }}>
                   Proposta de<br />
