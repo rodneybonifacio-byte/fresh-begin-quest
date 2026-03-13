@@ -342,7 +342,7 @@ export default function PitchPage() {
                     <div className="h-[2px] w-16" style={{ background: C.navy }} />
                     <ArrowRight size={24} style={{ color: C.navy }} />
                   </div>
-                  <IntegrationNode label="Look China" sub="Whitelabel Marketplace" color={C.navy} />
+                  <IntegrationNode label="Look China" sub="Marca própria no Marketplace" color={C.navy} />
                 </div>
               </div>
               <div className="grid md:grid-cols-2 gap-5">
