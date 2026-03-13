@@ -527,7 +527,7 @@ serve(async (req) => {
           // 3. NÃO é wrong person
           // 4. A mensagem tem conteúdo substancial (não é ruído)
           const hasSubstantialContent = (messageContent || "").trim().length > 2
-            && !shouldSuppressAIAfterPassiveHSM(messageContent);
+            && !intentResult.isPassive;
           if (hasSubstantialContent) {
             updateData.ai_enabled = true;
             console.log("🔄 IA reativada para conversa (mensagem substancial recebida):", conversation.id);
