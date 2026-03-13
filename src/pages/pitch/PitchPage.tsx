@@ -446,31 +446,31 @@ export default function PitchPage() {
 
           {/* ─── AI FEATURES ───────────────────────────────────── */}
           {slide === "ai-features" && (
-            <div className="space-y-6">
-              <SlideHeader title="Ecossistema de" accent="IA" tag="Inteligência artificial" />
+            <div className="space-y-4 md:space-y-6">
+              <SlideHeader title="Ecossistema de" accent="IA" tag="IA" />
 
-              <div className="grid md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
                 {[
-                  { icon: <Brain size={20} />, name: "Google Gemini", desc: "Raciocínio multimodal. Texto, imagens e contextos massivos." },
-                  { icon: <Eye size={20} />, name: "OpenAI GPT-5", desc: "Compreensão de linguagem, sentimento e respostas empáticas." },
-                  { icon: <Mic size={20} />, name: "ElevenLabs", desc: "Voz indistinguível de humano. Áudios gerados em tempo real." },
+                  { icon: <Brain size={18} />, name: "Google Gemini", desc: "Raciocínio multimodal. Texto, imagens e contextos massivos." },
+                  { icon: <Eye size={18} />, name: "OpenAI GPT-5", desc: "Linguagem, sentimento e respostas empáticas." },
+                  { icon: <Mic size={18} />, name: "ElevenLabs", desc: "Voz indistinguível de humano em tempo real." },
                 ].map((p, i) => (
-                  <div key={i} className="p-4 border flex items-start gap-3" style={{ background: C.white, borderColor: C.border }}>
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center border-2 shrink-0" style={{ borderColor: C.orange, color: C.orange }}>
+                  <div key={i} className="p-3 md:p-4 border flex items-start gap-3" style={{ background: C.white, borderColor: C.border }}>
+                    <div className="w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center border-2 shrink-0" style={{ borderColor: C.orange, color: C.orange }}>
                       {p.icon}
                     </div>
                     <div>
-                      <h4 className="font-bold text-sm" style={{ color: C.navy }}>{p.name}</h4>
-                      <p className="text-xs mt-0.5 leading-relaxed" style={{ color: C.textMuted }}>{p.desc}</p>
+                      <h4 className="font-bold text-xs md:text-sm" style={{ color: C.navy }}>{p.name}</h4>
+                      <p className="text-[10px] md:text-xs mt-0.5 leading-relaxed" style={{ color: C.textMuted }}>{p.desc}</p>
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="grid md:grid-cols-5 gap-5">
-                <div className="md:col-span-3 p-6 space-y-4 border-2" style={{ background: C.navy, borderColor: C.navy, color: "white" }}>
-                  <h3 className="text-lg font-bold flex items-center gap-2"><MessageCircle size={20} style={{ color: C.orangeLight }} /> WhatsApp <span style={{ color: C.orange }}>Agente IA</span></h3>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-3 md:gap-5">
+                <div className="md:col-span-3 p-4 md:p-6 space-y-3 md:space-y-4 border-2" style={{ background: C.navy, borderColor: C.navy, color: "white" }}>
+                  <h3 className="text-sm md:text-lg font-bold flex items-center gap-2"><MessageCircle size={18} style={{ color: C.orangeLight }} /> WhatsApp <span style={{ color: C.orange }}>Agente IA</span></h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1.5 md:gap-y-2">
                     {[
                       "Rastreamento automático por código",
                       "Resolução 24/7 sem intervenção",
@@ -479,24 +479,24 @@ export default function PitchPage() {
                       "Notificações proativas de entrega",
                       "Fluxo de suporte automático",
                     ].map((item, i) => (
-                      <div key={i} className="flex items-start gap-2 text-white/90 text-xs">
+                      <div key={i} className="flex items-start gap-2 text-white/90 text-[11px] md:text-xs">
                         <span style={{ color: C.orange }}>●</span> {item}
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div className="md:col-span-2 space-y-3">
+                <div className="md:col-span-2 space-y-2 md:space-y-3">
                   {[
-                    { icon: <Star size={14} />, title: "Sinalização Inteligente", desc: "Alertas de atraso e entrega falhada. IA sugere ações." },
-                    { icon: <Phone size={14} />, title: "Gestão WhatsApp", desc: "Conversas, chamados, modelos de mensagem e métricas." },
-                    { icon: <Zap size={14} />, title: "Ferramentas de IA", desc: "Cotação, rastreio e busca acionados via IA." },
+                    { icon: <Star size={14} />, title: "Sinalização Inteligente", desc: "Alertas de atraso e entrega falhada." },
+                    { icon: <Phone size={14} />, title: "Gestão WhatsApp", desc: "Conversas, chamados e métricas." },
+                    { icon: <Zap size={14} />, title: "Ferramentas de IA", desc: "Cotação, rastreio via IA." },
                   ].map((item, i) => (
-                    <div key={i} className="p-4 border" style={{ background: C.white, borderColor: C.border }}>
-                      <h4 className="font-bold text-xs mb-1 flex items-center gap-1.5" style={{ color: C.navy }}>
+                    <div key={i} className="p-3 md:p-4 border" style={{ background: C.white, borderColor: C.border }}>
+                      <h4 className="font-bold text-[11px] md:text-xs mb-0.5 flex items-center gap-1.5" style={{ color: C.navy }}>
                         <span style={{ color: C.orange }}>{item.icon}</span> {item.title}
                       </h4>
-                      <p className="text-[11px] leading-relaxed" style={{ color: C.textMuted }}>{item.desc}</p>
+                      <p className="text-[10px] md:text-[11px] leading-relaxed" style={{ color: C.textMuted }}>{item.desc}</p>
                     </div>
                   ))}
                 </div>
