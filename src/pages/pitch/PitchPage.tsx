@@ -287,7 +287,7 @@ export default function PitchPage() {
               {/* 3 scenario cards side by side - compact */}
               <div className="grid grid-cols-3 gap-3">
                 {(Object.keys(scenarios) as ScenarioKey[]).map((key) => {
-                  const conv = s.conversion;
+                  const s = scenarios[key];
                   const digitalArr = conv.map((pct: number) => parseFloat(((pct / 100) * FISICO_MES).toFixed(3)));
                   const last = digitalArr[11];
                   const envios12 = Math.round((last * 1_000_000) / 25);
