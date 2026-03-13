@@ -450,8 +450,8 @@ export default function PitchPage() {
                     </div>
                   ))}
                   <div className="rounded-lg p-4 mt-2" style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)" }}>
-                    <p className="text-sm font-medium" style={{ color: "#065f46" }}>
-                      ✅ O modelo é <strong>justo e equilibrado</strong>. Flex Envios tem receita garantida (12%) + upside do marketplace (50%), enquanto BRHUB investe em tecnologia com retorno proporcional ao crescimento.
+                    <p className="text-sm font-medium flex items-start gap-2" style={{ color: "#065f46" }}>
+                      <CheckCircle2 size={16} className="mt-0.5 shrink-0" style={{ color: C.emerald }} /> O modelo é <strong>justo e equilibrado</strong>. Flex Envios tem receita garantida (12%) + upside do marketplace (50%), enquanto BRHUB investe em tecnologia com retorno proporcional ao crescimento.
                     </p>
                   </div>
                 </div>
