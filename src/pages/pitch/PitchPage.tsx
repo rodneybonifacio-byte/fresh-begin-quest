@@ -445,7 +445,7 @@ export default function PitchPage() {
                           <p className="font-semibold text-sm" style={{ color: C.navy }}>{item.label}</p>
                           <p className="text-xs mt-1" style={{ color: C.textMuted }}>{item.detail}</p>
                         </div>
-                        <span className="text-xs shrink-0 ml-3">{item.verdict}</span>
+                        <span className="text-xs shrink-0 ml-3 flex items-center gap-1">{item.verdictIcon} {item.verdict}</span>
                       </div>
                     </div>
                   ))}
