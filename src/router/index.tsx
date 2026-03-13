@@ -36,6 +36,7 @@ const DashboardParceiro = lazy(() => import('../pages/conecta/dashboard/Dashboar
 const BeneficiosConecta = lazy(() => import('../pages/conecta/BeneficiosConecta'));
 const TvPainelColeta = lazy(() => import('../pages/public/TvPainelColeta'));
 const PitchPage = lazy(() => import('../pages/pitch/PitchPage'));
+const PitchPdfExport = lazy(() => import('../pages/pitch/PitchPdfExport'));
 
 // Loading component
 const LoadingFallback = () => (
