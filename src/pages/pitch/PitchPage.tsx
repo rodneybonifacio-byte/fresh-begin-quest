@@ -133,8 +133,8 @@ export default function PitchPage() {
                   <Sparkles size={16} /> Proposta de Parceria 2025
                 </div>
                 <h1 className="text-5xl md:text-6xl font-extrabold leading-tight" style={{ color: C.navy }}>
-                  Business<br />
-                  <span style={{ color: C.orange }}>Proposal</span>
+                  Proposta de<br />
+                  <span style={{ color: C.orange }}>Negócio</span>
                 </h1>
                 <p className="text-lg leading-relaxed max-w-lg" style={{ color: C.textMuted }}>
                   Marketplace logístico integrado com tecnologia de ponta, suporte IA e operação omnichannel — <strong style={{ color: C.navy }}>BRHUB Tech × Flex Envios × Look China</strong>
