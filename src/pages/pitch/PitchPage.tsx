@@ -25,6 +25,24 @@ const SLIDES = [
 
 const monthLabels = ["Mês 1", "Mês 2", "Mês 3", "Mês 4", "Mês 5", "Mês 6", "Mês 7", "Mês 8", "Mês 9", "Mês 10", "Mês 11", "Mês 12"];
 
+// ─── Colors ──────────────────────────────────────────────────────────────────
+const C = {
+  orange: "#f97316",
+  orangeLight: "#fdba74",
+  orangeBg: "rgba(249,115,22,0.08)",
+  orangeBorder: "rgba(249,115,22,0.2)",
+  navy: "#1e3a5f",
+  navyLight: "#2d5a8e",
+  navyBg: "rgba(30,58,95,0.06)",
+  cream: "#fdf6ee",
+  creamDark: "#f5e6d0",
+  white: "#ffffff",
+  text: "#1e293b",
+  textMuted: "#64748b",
+  amber: "#f59e0b",
+  emerald: "#10b981",
+};
+
 // ─── Chart configs ───────────────────────────────────────────────────────────
 
 const projectionChart: { series: ApexOptions["series"]; options: ApexOptions } = {
@@ -34,14 +52,14 @@ const projectionChart: { series: ApexOptions["series"]; options: ApexOptions } =
   ],
   options: {
     chart: { type: "area", height: 340, toolbar: { show: false }, background: "transparent", fontFamily: "Inter, sans-serif" },
-    colors: ["#6366f1", "#10b981"],
-    fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.45, opacityTo: 0.05, stops: [0, 100] } },
+    colors: [C.orange, C.navy],
+    fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 100] } },
     stroke: { curve: "smooth", width: 3 },
-    xaxis: { categories: monthLabels, labels: { style: { colors: "#94a3b8" } } },
-    yaxis: { labels: { style: { colors: "#94a3b8" } } },
-    grid: { borderColor: "#1e293b", strokeDashArray: 4 },
-    tooltip: { theme: "dark" },
-    legend: { labels: { colors: "#e2e8f0" } },
+    xaxis: { categories: monthLabels, labels: { style: { colors: C.textMuted } } },
+    yaxis: { labels: { style: { colors: C.textMuted } } },
+    grid: { borderColor: "#e2e8f0", strokeDashArray: 4 },
+    tooltip: { theme: "light" },
+    legend: { labels: { colors: C.text } },
     dataLabels: { enabled: false },
   },
 };
@@ -51,12 +69,12 @@ const revenueDonut: { series: number[]; options: ApexOptions } = {
   options: {
     chart: { type: "donut", height: 300, background: "transparent" },
     labels: ["BRHUB Tech", "Flex Envios"],
-    colors: ["#6366f1", "#f59e0b"],
-    stroke: { show: false },
-    plotOptions: { pie: { donut: { size: "70%", labels: { show: true, total: { show: true, label: "Rendimentos", color: "#94a3b8", formatter: () => "50/50" } } } } },
-    legend: { labels: { colors: "#e2e8f0" }, position: "bottom" },
+    colors: [C.navy, C.orange],
+    stroke: { show: true, width: 4, colors: [C.cream] },
+    plotOptions: { pie: { donut: { size: "72%", labels: { show: true, total: { show: true, label: "Rendimentos", color: C.textMuted, formatter: () => "50 / 50" } } } } },
+    legend: { labels: { colors: C.text }, position: "bottom" },
     dataLabels: { enabled: false },
-    tooltip: { theme: "dark" },
+    tooltip: { theme: "light" },
   },
 };
 
@@ -64,13 +82,13 @@ const postageBar: { series: ApexOptions["series"]; options: ApexOptions } = {
   series: [{ name: "Margem Agência (%)", data: [12, 12, 12, 12, 12, 12] }],
   options: {
     chart: { type: "bar", height: 220, toolbar: { show: false }, background: "transparent" },
-    colors: ["#10b981"],
-    xaxis: { categories: ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun"], labels: { style: { colors: "#94a3b8" } } },
-    yaxis: { max: 20, labels: { style: { colors: "#94a3b8" }, formatter: (v: number) => `${v}%` } },
-    grid: { borderColor: "#1e293b", strokeDashArray: 4 },
-    plotOptions: { bar: { borderRadius: 6, columnWidth: "50%" } },
-    dataLabels: { enabled: true, formatter: (v: number) => `${v}%`, style: { colors: ["#fff"] } },
-    tooltip: { theme: "dark" },
+    colors: [C.orange],
+    xaxis: { categories: ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun"], labels: { style: { colors: C.textMuted } } },
+    yaxis: { max: 20, labels: { style: { colors: C.textMuted }, formatter: (v: number) => `${v}%` } },
+    grid: { borderColor: "#e2e8f0", strokeDashArray: 4 },
+    plotOptions: { bar: { borderRadius: 8, columnWidth: "45%" } },
+    dataLabels: { enabled: true, formatter: (v: number) => `${v}%`, style: { colors: [C.white] } },
+    tooltip: { theme: "light" },
   },
 };
 
@@ -93,48 +111,66 @@ export default function PitchPage() {
   const slide = SLIDES[current];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white select-none overflow-hidden relative">
+    <div className="pitch-page min-h-screen select-none overflow-hidden relative" style={{ background: C.cream }}>
+      {/* Decorative circles */}
+      <div className="fixed top-[-120px] right-[-120px] w-[340px] h-[340px] rounded-full opacity-20 pointer-events-none" style={{ background: C.orange }} />
+      <div className="fixed bottom-[-80px] left-[-80px] w-[260px] h-[260px] rounded-full opacity-10 pointer-events-none" style={{ background: C.navy }} />
+
       {/* Progress bar */}
-      <div className="fixed top-0 left-0 right-0 h-1 z-50 bg-slate-800">
-        <div className="h-full bg-gradient-to-r from-indigo-500 to-emerald-400 transition-all duration-500" style={{ width: `${((current + 1) / SLIDES.length) * 100}%` }} />
+      <div className="fixed top-0 left-0 right-0 h-1.5 z-50" style={{ background: C.creamDark }}>
+        <div className="h-full transition-all duration-500 rounded-r-full" style={{ width: `${((current + 1) / SLIDES.length) * 100}%`, background: `linear-gradient(90deg, ${C.orange}, ${C.amber})` }} />
       </div>
 
       {/* Navigation */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-slate-800/80 backdrop-blur-lg rounded-full px-5 py-2 border border-slate-700/50">
-        <button onClick={() => setCurrent((p) => Math.max(p - 1, 0))} className="p-1 hover:text-indigo-400 transition disabled:opacity-30" disabled={current === 0}><ChevronLeft size={20} /></button>
-        <div className="flex gap-1.5">
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-full px-6 py-3 shadow-lg border" style={{ background: C.white, borderColor: C.creamDark }}>
+        <button onClick={() => setCurrent((p) => Math.max(p - 1, 0))} className="p-1 transition disabled:opacity-30" style={{ color: C.navy }} disabled={current === 0}><ChevronLeft size={20} /></button>
+        <div className="flex gap-2">
           {SLIDES.map((_, i) => (
-            <button key={i} onClick={() => setCurrent(i)} className={`w-2 h-2 rounded-full transition-all ${i === current ? "bg-indigo-400 w-6" : "bg-slate-600 hover:bg-slate-500"}`} />
+            <button key={i} onClick={() => setCurrent(i)} className="transition-all rounded-full" style={{ width: i === current ? 28 : 10, height: 10, background: i === current ? C.orange : C.creamDark }} />
           ))}
         </div>
-        <button onClick={() => setCurrent((p) => Math.min(p + 1, SLIDES.length - 1))} className="p-1 hover:text-indigo-400 transition disabled:opacity-30" disabled={current === SLIDES.length - 1}><ChevronRight size={20} /></button>
-        <span className="text-xs text-slate-400 ml-2 font-mono">{current + 1}/{SLIDES.length}</span>
+        <button onClick={() => setCurrent((p) => Math.min(p + 1, SLIDES.length - 1))} className="p-1 transition disabled:opacity-30" style={{ color: C.navy }} disabled={current === SLIDES.length - 1}><ChevronRight size={20} /></button>
+        <span className="text-xs ml-2 font-mono" style={{ color: C.textMuted }}>{current + 1}/{SLIDES.length}</span>
       </div>
 
       {/* Slides */}
       <div className="h-screen flex items-center justify-center p-6 md:p-12">
-        <div className="w-full max-w-6xl mx-auto animate-fade-in" key={slide}>
+        <div className="w-full max-w-6xl mx-auto animate-pitch-fade" key={slide}>
 
           {/* ─── COVER ─────────────────────────────────────────── */}
           {slide === "cover" && (
-            <div className="text-center space-y-8">
-              <div className="inline-flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/30 rounded-full px-5 py-2 text-indigo-300 text-sm font-medium">
-                <Sparkles size={16} /> Proposta de Parceria Estratégica
-              </div>
-              <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight">
-                <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-emerald-400 bg-clip-text text-transparent">BRHUB Tech</span>
-                <br />
-                <span className="text-3xl md:text-4xl text-slate-300 font-light">× Flex Envios × Look China</span>
-              </h1>
-              <p className="text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
-                Marketplace logístico integrado com tecnologia de ponta, suporte IA e operação omnichannel
-              </p>
-              <div className="flex justify-center gap-4 pt-4">
-                <button onClick={() => setCurrent(1)} className="bg-indigo-600 hover:bg-indigo-500 px-8 py-3 rounded-xl font-semibold flex items-center gap-2 transition shadow-lg shadow-indigo-500/25">
+            <div className="flex flex-col md:flex-row items-center gap-12">
+              <div className="flex-1 space-y-6">
+                <div className="inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-semibold" style={{ background: C.orangeBg, color: C.orange, border: `1px solid ${C.orangeBorder}` }}>
+                  <Sparkles size={16} /> Proposta de Parceria 2025
+                </div>
+                <h1 className="text-5xl md:text-6xl font-extrabold leading-tight" style={{ color: C.navy }}>
+                  Business<br />
+                  <span style={{ color: C.orange }}>Proposal</span>
+                </h1>
+                <p className="text-lg leading-relaxed max-w-lg" style={{ color: C.textMuted }}>
+                  Marketplace logístico integrado com tecnologia de ponta, suporte IA e operação omnichannel — <strong style={{ color: C.navy }}>BRHUB Tech × Flex Envios × Look China</strong>
+                </p>
+                <button onClick={() => setCurrent(1)} className="text-white px-8 py-3.5 rounded-full font-semibold flex items-center gap-2 transition shadow-lg hover:shadow-xl" style={{ background: C.orange }}>
                   Iniciar Apresentação <ArrowRight size={18} />
                 </button>
+                <p className="text-xs pt-2" style={{ color: C.textMuted }}>→ ou Espaço para avançar · F para tela cheia</p>
               </div>
-              <p className="text-xs text-slate-600 pt-6">Pressione → ou Espaço para avançar · F para tela cheia</p>
+              <div className="flex-1 flex justify-center relative">
+                <div className="w-72 h-72 md:w-96 md:h-96 rounded-full relative" style={{ background: C.orange }}>
+                  <div className="absolute inset-4 rounded-full" style={{ background: C.navy }} />
+                  <div className="absolute inset-10 rounded-full flex items-center justify-center" style={{ background: C.cream }}>
+                    <div className="text-center">
+                      <Truck size={64} style={{ color: C.orange }} className="mx-auto mb-3" />
+                      <p className="font-extrabold text-2xl" style={{ color: C.navy }}>BRHUB</p>
+                      <p className="text-sm font-medium" style={{ color: C.orange }}>Tech / Envios</p>
+                    </div>
+                  </div>
+                </div>
+                {/* Small accent circles */}
+                <div className="absolute top-0 right-0 w-16 h-16 rounded-full" style={{ background: C.amber }} />
+                <div className="absolute bottom-8 left-0 w-10 h-10 rounded-full border-4" style={{ borderColor: C.orange }} />
+              </div>
             </div>
           )}
 
@@ -143,14 +179,14 @@ export default function PitchPage() {
             <div className="space-y-8">
               <SectionHeader icon={<TrendingUp />} title="A Oportunidade" subtitle="Por que agora?" />
               <div className="grid md:grid-cols-3 gap-6">
-                <MetricCard icon={<Globe />} value="R$ 185B" label="Mercado de e-commerce Brasil 2025" accent="indigo" />
-                <MetricCard icon={<Package />} value="+23%" label="Crescimento anual de envios" accent="emerald" />
-                <MetricCard icon={<Building2 />} value="Look China" label="2 pontos estratégicos prontos" accent="amber" />
+                <OrangeMetricCard icon={<Globe size={28} />} value="R$ 185B" label="Mercado e-commerce Brasil 2025" />
+                <OrangeMetricCard icon={<Package size={28} />} value="+23%" label="Crescimento anual de envios" />
+                <OrangeMetricCard icon={<Building2 size={28} />} value="Look China" label="2 pontos estratégicos prontos" />
               </div>
-              <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-8">
-                <h3 className="text-xl font-bold mb-4">A Proposta</h3>
-                <p className="text-slate-300 leading-relaxed text-lg">
-                  A <strong className="text-indigo-400">BRHUB Tech/Envios</strong> convida o grupo <strong className="text-amber-400">Flex Envios</strong> a se tornar parceiro e <strong className="text-emerald-400">operador logístico oficial</strong> do marketplace Look China, com infraestrutura tecnológica completa, pontos de coleta estratégicos e modelo de receita compartilhada.
+              <div className="rounded-2xl p-8 border" style={{ background: C.white, borderColor: C.creamDark }}>
+                <h3 className="text-xl font-bold mb-3" style={{ color: C.navy }}>A Proposta</h3>
+                <p className="leading-relaxed text-lg" style={{ color: C.textMuted }}>
+                  A <strong style={{ color: C.orange }}>BRHUB Tech/Envios</strong> convida o grupo <strong style={{ color: C.navy }}>Flex Envios</strong> a se tornar parceiro e <strong style={{ color: C.orange }}>operador logístico oficial</strong> do marketplace Look China, com infraestrutura tecnológica completa, pontos de coleta estratégicos e modelo de receita compartilhada.
                 </p>
               </div>
             </div>
@@ -169,11 +205,7 @@ export default function PitchPage() {
                   { icon: <Globe size={24} />, title: "Integrações", desc: "Shopify, API aberta, importação em massa" },
                   { icon: <Warehouse size={24} />, title: "FULL (Galpão)", desc: "Sistema completo de fulfillment e expedição" },
                 ].map((f, i) => (
-                  <div key={i} className="bg-slate-800/40 border border-slate-700/40 rounded-xl p-6 hover:border-indigo-500/40 transition group">
-                    <div className="text-indigo-400 mb-3 group-hover:scale-110 transition-transform">{f.icon}</div>
-                    <h4 className="font-bold mb-1">{f.title}</h4>
-                    <p className="text-sm text-slate-400">{f.desc}</p>
-                  </div>
+                  <FeatureCard key={i} icon={f.icon} title={f.title} desc={f.desc} index={i} />
                 ))}
               </div>
             </div>
@@ -184,8 +216,9 @@ export default function PitchPage() {
             <div className="space-y-8">
               <SectionHeader icon={<Bot />} title="Suporte com IA" subtitle="Inteligência artificial integrada" />
               <div className="grid md:grid-cols-2 gap-6">
-                <div className="bg-gradient-to-br from-indigo-900/40 to-purple-900/40 border border-indigo-700/30 rounded-2xl p-8 space-y-5">
-                  <h3 className="text-2xl font-bold flex items-center gap-3"><Bot className="text-indigo-400" /> WhatsApp AI Agent</h3>
+                <div className="rounded-2xl p-8 space-y-5 text-white relative overflow-hidden" style={{ background: C.navy }}>
+                  <div className="absolute top-[-40px] right-[-40px] w-32 h-32 rounded-full opacity-20" style={{ background: C.orange }} />
+                  <h3 className="text-2xl font-bold flex items-center gap-3"><Bot style={{ color: C.orangeLight }} /> WhatsApp AI Agent</h3>
                   <ul className="space-y-3">
                     {[
                       "Rastreamento automático por código ou pedido",
@@ -194,25 +227,25 @@ export default function PitchPage() {
                       "Notificações proativas: saiu para entrega, aguardando retirada",
                       "Pipeline de suporte com categorização automática",
                     ].map((item, i) => (
-                      <li key={i} className="flex items-start gap-3 text-slate-300">
-                        <CheckCircle2 size={18} className="text-emerald-400 mt-0.5 shrink-0" /> {item}
+                      <li key={i} className="flex items-start gap-3 text-white/90">
+                        <CheckCircle2 size={18} className="mt-0.5 shrink-0" style={{ color: C.orangeLight }} /> {item}
                       </li>
                     ))}
                   </ul>
                 </div>
                 <div className="space-y-5">
-                  <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6">
-                    <h4 className="font-bold mb-2 flex items-center gap-2"><Sparkles size={18} className="text-amber-400" /> Sinalização Inteligente</h4>
-                    <p className="text-slate-400 text-sm">Alertas automáticos de atraso, entrega falhada e objetos retidos. IA identifica padrões e sugere ações antes que o cliente reclame.</p>
-                  </div>
-                  <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6">
-                    <h4 className="font-bold mb-2 flex items-center gap-2"><Phone size={18} className="text-emerald-400" /> CRM WhatsApp</h4>
-                    <p className="text-slate-400 text-sm">Gestão completa de conversas, tickets, templates HSM, histórico de interações e métricas de atendimento em tempo real.</p>
-                  </div>
-                  <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-6">
-                    <h4 className="font-bold mb-2 flex items-center gap-2"><Zap size={18} className="text-indigo-400" /> Ferramentas AI-Powered</h4>
-                    <p className="text-slate-400 text-sm">Consulta de rastreio, cotação de frete, abertura de tickets e busca de dados — tudo acionado via IA direto no WhatsApp.</p>
-                  </div>
+                  {[
+                    { icon: <Sparkles size={18} />, color: C.amber, title: "Sinalização Inteligente", desc: "Alertas automáticos de atraso, entrega falhada e objetos retidos. IA identifica padrões e sugere ações antes que o cliente reclame." },
+                    { icon: <Phone size={18} />, color: C.emerald, title: "CRM WhatsApp", desc: "Gestão completa de conversas, tickets, templates HSM, histórico de interações e métricas de atendimento em tempo real." },
+                    { icon: <Zap size={18} />, color: C.orange, title: "Ferramentas AI-Powered", desc: "Consulta de rastreio, cotação de frete, abertura de tickets e busca de dados — tudo acionado via IA direto no WhatsApp." },
+                  ].map((item, i) => (
+                    <div key={i} className="rounded-xl p-5 border" style={{ background: C.white, borderColor: C.creamDark }}>
+                      <h4 className="font-bold mb-2 flex items-center gap-2" style={{ color: C.navy }}>
+                        <span style={{ color: item.color }}>{item.icon}</span> {item.title}
+                      </h4>
+                      <p className="text-sm" style={{ color: C.textMuted }}>{item.desc}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -222,28 +255,28 @@ export default function PitchPage() {
           {slide === "integration" && (
             <div className="space-y-8">
               <SectionHeader icon={<Globe />} title="Arquitetura de Integração" subtitle="Como funciona tecnicamente" />
-              <div className="bg-slate-800/40 border border-slate-700/40 rounded-2xl p-8">
+              <div className="rounded-2xl p-10 border" style={{ background: C.white, borderColor: C.creamDark }}>
                 <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-                  <IntegrationBlock label="Flex Envios" sub="Disponibiliza API" color="amber" />
-                  <ArrowRight size={32} className="text-slate-600 shrink-0 rotate-90 md:rotate-0" />
-                  <IntegrationBlock label="BRHUB Tech" sub="Desenvolve & Integra" color="indigo" />
-                  <ArrowRight size={32} className="text-slate-600 shrink-0 rotate-90 md:rotate-0" />
-                  <IntegrationBlock label="Look China" sub="Whitelabel Marketplace" color="emerald" />
+                  <CircleBlock label="Flex Envios" sub="Disponibiliza API" color={C.amber} />
+                  <ArrowRight size={32} className="shrink-0 rotate-90 md:rotate-0" style={{ color: C.creamDark }} />
+                  <CircleBlock label="BRHUB Tech" sub="Desenvolve & Integra" color={C.orange} />
+                  <ArrowRight size={32} className="shrink-0 rotate-90 md:rotate-0" style={{ color: C.creamDark }} />
+                  <CircleBlock label="Look China" sub="Whitelabel Marketplace" color={C.navy} />
                 </div>
               </div>
               <div className="grid md:grid-cols-2 gap-6">
-                <div className="bg-slate-800/40 border border-slate-700/40 rounded-xl p-6">
-                  <h4 className="font-bold mb-3 text-indigo-400">🖥️ Plataforma Marketplace</h4>
-                  <ul className="space-y-2 text-slate-300 text-sm">
+                <div className="rounded-xl p-6 border" style={{ background: C.white, borderColor: C.creamDark }}>
+                  <h4 className="font-bold mb-3" style={{ color: C.orange }}>🖥️ Plataforma Marketplace</h4>
+                  <ul className="space-y-2 text-sm" style={{ color: C.textMuted }}>
                     <li>• Nova plataforma integrada com contrato Flex Envios</li>
                     <li>• Whitelabel personalizado Look China</li>
                     <li>• Desenvolvimento 100% BRHUB</li>
                     <li>• Dashboard próprio para o lojista</li>
                   </ul>
                 </div>
-                <div className="bg-slate-800/40 border border-slate-700/40 rounded-xl p-6">
-                  <h4 className="font-bold mb-3 text-amber-400">📦 Sistema FULL (Galpão)</h4>
-                  <ul className="space-y-2 text-slate-300 text-sm">
+                <div className="rounded-xl p-6 border" style={{ background: C.white, borderColor: C.creamDark }}>
+                  <h4 className="font-bold mb-3" style={{ color: C.navy }}>📦 Sistema FULL (Galpão)</h4>
+                  <ul className="space-y-2 text-sm" style={{ color: C.textMuted }}>
                     <li>• Fulfillment completo no galpão do parceiro</li>
                     <li>• Desenvolvimento dedicado se necessário</li>
                     <li>• Integração com estoque e expedição</li>
@@ -259,21 +292,11 @@ export default function PitchPage() {
             <div className="space-y-8">
               <SectionHeader icon={<MapPin />} title="Pontos de Coleta" subtitle="Localização estratégica em São Paulo" />
               <div className="grid md:grid-cols-2 gap-8">
-                <LocationCard
-                  name="Look China"
-                  address="Rua Carnot"
-                  type="Ponto de Coleta Principal"
-                  features={["Recebimento de encomendas", "Atendimento ao lojista", "Etiquetagem e despacho", "Suporte presencial"]}
-                />
-                <LocationCard
-                  name="Look China Shopping"
-                  address="Rua Maria Marcolina"
-                  type="Ponto de Coleta Secundário"
-                  features={["Coleta centralizada do shopping", "Alto volume de lojistas", "Expedição diária", "Integração com marketplace"]}
-                />
+                <LocationCard name="Look China" address="Rua Carnot" type="Ponto de Coleta Principal" features={["Recebimento de encomendas", "Atendimento ao lojista", "Etiquetagem e despacho", "Suporte presencial"]} />
+                <LocationCard name="Look China Shopping" address="Rua Maria Marcolina" type="Ponto de Coleta Secundário" features={["Coleta centralizada do shopping", "Alto volume de lojistas", "Expedição diária", "Integração com marketplace"]} />
               </div>
-              <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-6 text-center">
-                <p className="text-indigo-300 text-lg">
+              <div className="rounded-xl p-6 text-center" style={{ background: C.orangeBg, border: `1px solid ${C.orangeBorder}` }}>
+                <p className="text-lg" style={{ color: C.navy }}>
                   🎯 Dois pontos estratégicos = <strong>maior cobertura</strong> e <strong>conveniência</strong> para os lojistas do marketplace
                 </p>
               </div>
@@ -285,21 +308,21 @@ export default function PitchPage() {
             <div className="space-y-8">
               <SectionHeader icon={<Handshake />} title="Modelo de Receita" subtitle="Divisão dos rendimentos" />
               <div className="grid md:grid-cols-2 gap-8 items-center">
-                <div>
+                <div className="rounded-2xl p-6 border" style={{ background: C.white, borderColor: C.creamDark }}>
                   <ReactApexChart options={revenueDonut.options} series={revenueDonut.series} type="donut" height={300} />
                 </div>
                 <div className="space-y-5">
-                  <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-5">
-                    <h4 className="font-bold text-indigo-400 mb-2">BRHUB Tech — 50%</h4>
-                    <p className="text-slate-300 text-sm">Responsável por toda infraestrutura tecnológica, desenvolvimento, manutenção da plataforma, suporte com IA e integração.</p>
+                  <div className="rounded-xl p-5 border-l-4" style={{ background: C.navyBg, borderColor: C.navy }}>
+                    <h4 className="font-bold mb-2" style={{ color: C.navy }}>BRHUB Tech — 50%</h4>
+                    <p className="text-sm" style={{ color: C.textMuted }}>Responsável por toda infraestrutura tecnológica, desenvolvimento, manutenção da plataforma, suporte com IA e integração.</p>
                   </div>
-                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-5">
-                    <h4 className="font-bold text-amber-400 mb-2">Flex Envios — 50%</h4>
-                    <p className="text-slate-300 text-sm">Operação logística, API de contratos, infraestrutura de transporte e rede de distribuição.</p>
+                  <div className="rounded-xl p-5 border-l-4" style={{ background: C.orangeBg, borderColor: C.orange }}>
+                    <h4 className="font-bold mb-2" style={{ color: C.orange }}>Flex Envios — 50%</h4>
+                    <p className="text-sm" style={{ color: C.textMuted }}>Operação logística, API de contratos, infraestrutura de transporte e rede de distribuição.</p>
                   </div>
-                  <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-5">
-                    <h4 className="font-bold text-emerald-400 mb-2">+ 12% Margem de Agência</h4>
-                    <p className="text-slate-300 text-sm">Adicional sobre todo volume postado na agência — receita garantida independente da operação do marketplace.</p>
+                  <div className="rounded-xl p-5 border-l-4" style={{ background: "rgba(16,185,129,0.06)", borderColor: C.emerald }}>
+                    <h4 className="font-bold mb-2" style={{ color: C.emerald }}>+ 12% Margem de Agência</h4>
+                    <p className="text-sm" style={{ color: C.textMuted }}>Adicional sobre todo volume postado na agência — receita garantida independente da operação do marketplace.</p>
                   </div>
                 </div>
               </div>
@@ -311,30 +334,30 @@ export default function PitchPage() {
             <div className="space-y-8">
               <SectionHeader icon={<BarChart3 />} title="Análise de Viabilidade" subtitle="O modelo é justo?" />
               <div className="grid md:grid-cols-2 gap-8">
-                <div>
-                  <h4 className="font-bold mb-4 text-lg">Margem de 12% sobre postagens</h4>
+                <div className="rounded-2xl p-6 border" style={{ background: C.white, borderColor: C.creamDark }}>
+                  <h4 className="font-bold mb-4 text-lg" style={{ color: C.navy }}>Margem de 12% sobre postagens</h4>
                   <ReactApexChart options={postageBar.options} series={postageBar.series} type="bar" height={220} />
                 </div>
                 <div className="space-y-4">
-                  <h4 className="font-bold mb-2 text-lg">Avaliação do Modelo</h4>
+                  <h4 className="font-bold mb-2 text-lg" style={{ color: C.navy }}>Avaliação do Modelo</h4>
                   {[
                     { label: "Flex Envios recebe", detail: "50% dos rendimentos do marketplace + 12% das postagens na agência", verdict: "✅ Receita dupla" },
                     { label: "BRHUB assume", detail: "100% do desenvolvimento, manutenção e suporte IA", verdict: "⚖️ Investimento alto" },
                     { label: "Flex opera", detail: "Logística, API e infraestrutura física (galpão + agência)", verdict: "✅ Core business" },
-                    { label: "Risco BRHUB", detail: "Desenvolvimento sem garantia de volume inicial", verdict: "⚠️ Risco mitigado pela parceria" },
+                    { label: "Risco BRHUB", detail: "Desenvolvimento sem garantia de volume inicial", verdict: "⚠️ Risco mitigado" },
                   ].map((item, i) => (
-                    <div key={i} className="bg-slate-800/40 border border-slate-700/40 rounded-lg p-4">
+                    <div key={i} className="rounded-lg p-4 border" style={{ background: C.white, borderColor: C.creamDark }}>
                       <div className="flex justify-between items-start">
                         <div>
-                          <p className="font-semibold text-sm">{item.label}</p>
-                          <p className="text-slate-400 text-xs mt-1">{item.detail}</p>
+                          <p className="font-semibold text-sm" style={{ color: C.navy }}>{item.label}</p>
+                          <p className="text-xs mt-1" style={{ color: C.textMuted }}>{item.detail}</p>
                         </div>
                         <span className="text-xs shrink-0 ml-3">{item.verdict}</span>
                       </div>
                     </div>
                   ))}
-                  <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-4 mt-2">
-                    <p className="text-emerald-300 text-sm font-medium">
+                  <div className="rounded-lg p-4 mt-2" style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)" }}>
+                    <p className="text-sm font-medium" style={{ color: "#065f46" }}>
                       ✅ O modelo é <strong>justo e equilibrado</strong>. Flex Envios tem receita garantida (12%) + upside do marketplace (50%), enquanto BRHUB investe em tecnologia com retorno proporcional ao crescimento.
                     </p>
                   </div>
@@ -347,12 +370,21 @@ export default function PitchPage() {
           {slide === "projections" && (
             <div className="space-y-8">
               <SectionHeader icon={<TrendingUp />} title="Projeção 12 Meses" subtitle="Crescimento estimado da operação" />
-              <ReactApexChart options={projectionChart.options} series={projectionChart.series} type="area" height={340} />
+              <div className="rounded-2xl p-6 border" style={{ background: C.white, borderColor: C.creamDark }}>
+                <ReactApexChart options={projectionChart.options} series={projectionChart.series} type="area" height={340} />
+              </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <MiniMetric label="Envios Mês 12" value="17.500" />
-                <MiniMetric label="Faturamento Mês 12" value="R$ 280k" />
-                <MiniMetric label="Receita Flex (50%+12%)" value="R$ 174k" />
-                <MiniMetric label="Receita BRHUB (50%)" value="R$ 140k" />
+                {[
+                  { label: "Envios Mês 12", value: "17.500" },
+                  { label: "Faturamento Mês 12", value: "R$ 280k" },
+                  { label: "Receita Flex (50%+12%)", value: "R$ 174k" },
+                  { label: "Receita BRHUB (50%)", value: "R$ 140k" },
+                ].map((m, i) => (
+                  <div key={i} className="rounded-xl p-4 text-center border" style={{ background: C.white, borderColor: C.creamDark }}>
+                    <div className="text-xl font-extrabold" style={{ color: C.navy }}>{m.value}</div>
+                    <p className="text-xs mt-1" style={{ color: C.textMuted }}>{m.label}</p>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -360,27 +392,29 @@ export default function PitchPage() {
           {/* ─── TIMELINE ──────────────────────────────────────── */}
           {slide === "timeline" && (
             <div className="space-y-8">
-              <SectionHeader icon={<Zap />} title="Roadmap de Implementação" subtitle="Fases do projeto" />
+              <SectionHeader icon={<Zap />} title="Roadmap" subtitle="Fases do projeto" />
               <div className="space-y-4">
                 {[
-                  { phase: "Fase 1", period: "Semana 1-2", title: "Setup & Integração API", items: ["Configuração API Flex Envios", "Ambiente de desenvolvimento", "Whitelabel base Look China"] },
-                  { phase: "Fase 2", period: "Semana 3-4", title: "Plataforma Marketplace", items: ["Dashboard do lojista", "Emissão de etiquetas integrada", "Rastreamento automático"] },
-                  { phase: "Fase 3", period: "Semana 5-6", title: "IA & Automação", items: ["Agente WhatsApp AI", "Notificações automáticas HSM", "Pipeline de suporte"] },
-                  { phase: "Fase 4", period: "Semana 7-8", title: "Pontos de Coleta & FULL", items: ["Setup Rua Carnot & Maria Marcolina", "Sistema FULL no galpão", "Go-live operação completa"] },
+                  { phase: "01", period: "Semana 1-2", title: "Setup & Integração API", items: ["Configuração API Flex Envios", "Ambiente de desenvolvimento", "Whitelabel base Look China"] },
+                  { phase: "02", period: "Semana 3-4", title: "Plataforma Marketplace", items: ["Dashboard do lojista", "Emissão de etiquetas integrada", "Rastreamento automático"] },
+                  { phase: "03", period: "Semana 5-6", title: "IA & Automação", items: ["Agente WhatsApp AI", "Notificações automáticas HSM", "Pipeline de suporte"] },
+                  { phase: "04", period: "Semana 7-8", title: "Pontos de Coleta & FULL", items: ["Setup Rua Carnot & Maria Marcolina", "Sistema FULL no galpão", "Go-live operação completa"] },
                 ].map((p, i) => (
-                  <div key={i} className="flex gap-4 items-start">
+                  <div key={i} className="flex gap-5 items-start">
                     <div className="flex flex-col items-center">
-                      <div className="w-10 h-10 rounded-full bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 font-bold text-sm shrink-0">{i + 1}</div>
-                      {i < 3 && <div className="w-0.5 h-full bg-slate-700 mt-1" />}
+                      <div className="w-14 h-14 rounded-full flex items-center justify-center text-white font-extrabold text-lg shrink-0 shadow-lg" style={{ background: C.orange }}>
+                        {p.phase}
+                      </div>
+                      {i < 3 && <div className="w-0.5 h-full mt-1" style={{ background: C.creamDark }} />}
                     </div>
-                    <div className="bg-slate-800/40 border border-slate-700/40 rounded-xl p-5 flex-1 mb-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="text-xs bg-indigo-500/20 text-indigo-300 rounded-full px-3 py-0.5 font-mono">{p.period}</span>
-                        <span className="font-bold">{p.phase}: {p.title}</span>
+                    <div className="rounded-xl p-5 flex-1 mb-1 border" style={{ background: C.white, borderColor: C.creamDark }}>
+                      <div className="flex items-center gap-3 mb-3">
+                        <span className="text-xs rounded-full px-3 py-1 font-mono font-semibold" style={{ background: C.orangeBg, color: C.orange }}>{p.period}</span>
+                        <span className="font-bold" style={{ color: C.navy }}>{p.title}</span>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {p.items.map((item, j) => (
-                          <span key={j} className="text-xs bg-slate-700/50 text-slate-300 rounded-lg px-3 py-1">{item}</span>
+                          <span key={j} className="text-xs rounded-lg px-3 py-1.5" style={{ background: C.cream, color: C.textMuted }}>{item}</span>
                         ))}
                       </div>
                     </div>
@@ -393,29 +427,33 @@ export default function PitchPage() {
           {/* ─── CLOSING ───────────────────────────────────────── */}
           {slide === "closing" && (
             <div className="text-center space-y-8">
-              <div className="text-6xl mb-4">🚀</div>
-              <h2 className="text-4xl md:text-6xl font-extrabold">
-                <span className="bg-gradient-to-r from-indigo-400 to-emerald-400 bg-clip-text text-transparent">Vamos Construir Juntos</span>
+              <div className="relative inline-block">
+                <div className="w-28 h-28 rounded-full mx-auto flex items-center justify-center" style={{ background: C.orange }}>
+                  <div className="w-20 h-20 rounded-full flex items-center justify-center" style={{ background: C.navy }}>
+                    <Handshake size={36} className="text-white" />
+                  </div>
+                </div>
+              </div>
+              <h2 className="text-4xl md:text-6xl font-extrabold" style={{ color: C.navy }}>
+                Vamos Construir <span style={{ color: C.orange }}>Juntos</span>
               </h2>
-              <p className="text-xl text-slate-400 max-w-2xl mx-auto">
+              <p className="text-xl max-w-2xl mx-auto leading-relaxed" style={{ color: C.textMuted }}>
                 Tecnologia BRHUB + Operação Flex Envios = o marketplace logístico mais completo para a comunidade Look China
               </p>
               <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto pt-6">
-                <div className="bg-slate-800/40 border border-slate-700/40 rounded-xl p-6">
-                  <div className="text-3xl font-extrabold text-indigo-400">50/50</div>
-                  <p className="text-slate-400 text-sm mt-2">Rendimentos compartilhados</p>
-                </div>
-                <div className="bg-slate-800/40 border border-slate-700/40 rounded-xl p-6">
-                  <div className="text-3xl font-extrabold text-emerald-400">+12%</div>
-                  <p className="text-slate-400 text-sm mt-2">Margem de agência garantida</p>
-                </div>
-                <div className="bg-slate-800/40 border border-slate-700/40 rounded-xl p-6">
-                  <div className="text-3xl font-extrabold text-amber-400">8 sem</div>
-                  <p className="text-slate-400 text-sm mt-2">Time-to-market</p>
-                </div>
+                {[
+                  { value: "50/50", label: "Rendimentos compartilhados", color: C.navy },
+                  { value: "+12%", label: "Margem de agência garantida", color: C.orange },
+                  { value: "8 sem", label: "Time-to-market", color: C.amber },
+                ].map((item, i) => (
+                  <div key={i} className="rounded-2xl p-6 border shadow-sm" style={{ background: C.white, borderColor: C.creamDark }}>
+                    <div className="text-3xl font-extrabold" style={{ color: item.color }}>{item.value}</div>
+                    <p className="text-sm mt-2" style={{ color: C.textMuted }}>{item.label}</p>
+                  </div>
+                ))}
               </div>
               <div className="pt-6">
-                <p className="text-slate-500 text-sm">BRHUB Tech/Envios • {new Date().getFullYear()}</p>
+                <p className="text-sm font-medium" style={{ color: C.textMuted }}>BRHUB Tech/Envios • {new Date().getFullYear()}</p>
               </div>
             </div>
           )}
@@ -423,8 +461,8 @@ export default function PitchPage() {
       </div>
 
       <style>{`
-        @keyframes fade-in { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fade-in { animation: fade-in 0.5s ease-out; }
+        @keyframes pitch-fade-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-pitch-fade { animation: pitch-fade-in 0.45s ease-out; }
       `}</style>
     </div>
   );
@@ -435,67 +473,73 @@ export default function PitchPage() {
 function SectionHeader({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle: string }) {
   return (
     <div className="flex items-center gap-4">
-      <div className="p-3 rounded-xl bg-indigo-500/10 text-indigo-400">{icon}</div>
+      <div className="p-3 rounded-full text-white" style={{ background: C.orange }}>
+        {icon}
+      </div>
       <div>
-        <h2 className="text-3xl font-extrabold">{title}</h2>
-        <p className="text-slate-400">{subtitle}</p>
+        <h2 className="text-3xl font-extrabold" style={{ color: C.navy }}>{title}</h2>
+        <p style={{ color: C.textMuted }}>{subtitle}</p>
       </div>
     </div>
   );
 }
 
-function MetricCard({ icon, value, label, accent }: { icon: React.ReactNode; value: string; label: string; accent: string }) {
-  const colors: Record<string, string> = {
-    indigo: "from-indigo-500/10 to-indigo-900/10 border-indigo-500/20 text-indigo-400",
-    emerald: "from-emerald-500/10 to-emerald-900/10 border-emerald-500/20 text-emerald-400",
-    amber: "from-amber-500/10 to-amber-900/10 border-amber-500/20 text-amber-400",
-  };
+function OrangeMetricCard({ icon, value, label }: { icon: React.ReactNode; value: string; label: string }) {
   return (
-    <div className={`bg-gradient-to-br ${colors[accent]} border rounded-2xl p-6 text-center`}>
-      <div className={`mx-auto mb-3 ${colors[accent].split(" ").pop()}`}>{icon}</div>
-      <div className="text-3xl font-extrabold">{value}</div>
-      <p className="text-slate-400 text-sm mt-1">{label}</p>
+    <div className="rounded-2xl p-6 text-center border relative overflow-hidden" style={{ background: C.white, borderColor: C.creamDark }}>
+      <div className="absolute top-0 right-0 w-20 h-20 rounded-bl-full opacity-40" style={{ background: C.orangeBg }} />
+      <div className="mx-auto mb-3" style={{ color: C.orange }}>{icon}</div>
+      <div className="text-3xl font-extrabold" style={{ color: C.navy }}>{value}</div>
+      <p className="text-sm mt-1" style={{ color: C.textMuted }}>{label}</p>
     </div>
   );
 }
 
-function IntegrationBlock({ label, sub, color }: { label: string; sub: string; color: string }) {
-  const border: Record<string, string> = { amber: "border-amber-500/40 text-amber-400", indigo: "border-indigo-500/40 text-indigo-400", emerald: "border-emerald-500/40 text-emerald-400" };
+function FeatureCard({ icon, title, desc, index }: { icon: React.ReactNode; title: string; desc: string; index: number }) {
+  const isOrange = index % 2 === 0;
   return (
-    <div className={`border-2 ${border[color]} rounded-2xl p-6 text-center min-w-[160px]`}>
-      <p className="font-bold text-lg">{label}</p>
-      <p className="text-slate-400 text-sm">{sub}</p>
+    <div className="rounded-xl p-6 border transition hover:shadow-md group" style={{ background: C.white, borderColor: C.creamDark }}>
+      <div className="w-12 h-12 rounded-full flex items-center justify-center mb-3 text-white transition group-hover:scale-110" style={{ background: isOrange ? C.orange : C.navy }}>
+        {icon}
+      </div>
+      <h4 className="font-bold mb-1" style={{ color: C.navy }}>{title}</h4>
+      <p className="text-sm" style={{ color: C.textMuted }}>{desc}</p>
+    </div>
+  );
+}
+
+function CircleBlock({ label, sub, color }: { label: string; sub: string; color: string }) {
+  return (
+    <div className="text-center min-w-[150px]">
+      <div className="w-24 h-24 rounded-full mx-auto flex items-center justify-center border-4 mb-3" style={{ borderColor: color, background: C.white }}>
+        <span className="font-extrabold text-sm" style={{ color }}>{label.split(" ")[0]}</span>
+      </div>
+      <p className="font-bold text-sm" style={{ color: C.navy }}>{label}</p>
+      <p className="text-xs" style={{ color: C.textMuted }}>{sub}</p>
     </div>
   );
 }
 
 function LocationCard({ name, address, type, features }: { name: string; address: string; type: string; features: string[] }) {
   return (
-    <div className="bg-slate-800/40 border border-slate-700/40 rounded-2xl p-8 hover:border-emerald-500/30 transition">
+    <div className="rounded-2xl p-8 border transition hover:shadow-md" style={{ background: C.white, borderColor: C.creamDark }}>
       <div className="flex items-start gap-3 mb-4">
-        <MapPin className="text-emerald-400 shrink-0 mt-1" />
+        <div className="p-2 rounded-full" style={{ background: C.orangeBg }}>
+          <MapPin style={{ color: C.orange }} />
+        </div>
         <div>
-          <h3 className="text-xl font-bold">{name}</h3>
-          <p className="text-slate-400 text-sm">{address}</p>
-          <span className="text-xs bg-emerald-500/20 text-emerald-300 rounded-full px-3 py-0.5 mt-2 inline-block">{type}</span>
+          <h3 className="text-xl font-bold" style={{ color: C.navy }}>{name}</h3>
+          <p className="text-sm" style={{ color: C.textMuted }}>{address}</p>
+          <span className="text-xs rounded-full px-3 py-0.5 mt-2 inline-block font-medium" style={{ background: C.orangeBg, color: C.orange }}>{type}</span>
         </div>
       </div>
       <ul className="space-y-2 mt-4">
         {features.map((f, i) => (
-          <li key={i} className="flex items-center gap-2 text-slate-300 text-sm">
-            <CheckCircle2 size={14} className="text-emerald-400 shrink-0" /> {f}
+          <li key={i} className="flex items-center gap-2 text-sm" style={{ color: C.textMuted }}>
+            <CheckCircle2 size={14} style={{ color: C.orange }} className="shrink-0" /> {f}
           </li>
         ))}
       </ul>
-    </div>
-  );
-}
-
-function MiniMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bg-slate-800/40 border border-slate-700/40 rounded-xl p-4 text-center">
-      <div className="text-xl font-extrabold text-white">{value}</div>
-      <p className="text-slate-400 text-xs mt-1">{label}</p>
     </div>
   );
 }
