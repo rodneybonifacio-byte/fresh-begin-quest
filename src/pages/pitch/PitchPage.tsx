@@ -362,7 +362,7 @@ export default function PitchPage() {
                     <Warehouse size={16} /> Sistema FULL (Galpão)
                   </h4>
                   <ul className="space-y-2 text-sm" style={{ color: C.textMuted }}>
-                    <li className="flex gap-2"><span style={{ color: C.orange }}>●</span> Fulfillment completo no galpão do parceiro</li>
+                    <li className="flex gap-2"><span style={{ color: C.orange }}>●</span> Operação completa no galpão do parceiro</li>
                     <li className="flex gap-2"><span style={{ color: C.orange }}>●</span> Desenvolvimento dedicado se necessário</li>
                     <li className="flex gap-2"><span style={{ color: C.orange }}>●</span> Integração com estoque e expedição</li>
                     <li className="flex gap-2"><span style={{ color: C.orange }}>●</span> Gestão de coleta e despacho automatizada</li>
