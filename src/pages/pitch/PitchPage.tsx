@@ -79,7 +79,7 @@ type ScenarioKey = keyof typeof scenarios;
 
 export default function PitchPage() {
   const [current, setCurrent] = useState(0);
-
+  const [scenario, setScenario] = useState<ScenarioKey>("base");
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); setCurrent((p) => Math.min(p + 1, SLIDES.length - 1)); }
