@@ -338,7 +338,7 @@ export default function PitchPage() {
               <div className="rounded-xl p-5 border flex items-center gap-4" style={{ background: C.orangeBg, borderColor: C.orangeBorder }}>
                 <ShieldCheck size={24} style={{ color: C.orange }} />
                 <p className="text-sm" style={{ color: C.text }}>
-                  <strong style={{ color: C.navy }}>Pipeline automatizado de 6 estágios</strong> — cada notificação move o card do cliente no CRM automaticamente: <span style={{ color: C.textMuted }}>Pré-postado → Em Trânsito → Saiu p/ Entrega → Aguardando Retirada → Atrasado → Entregue</span>. Progressão estritamente crescente, sem retrocesso.
+                  <strong style={{ color: C.navy }}>Pipeline automatizado de 6 estágios</strong> — cada notificação move o card do cliente no CRM automaticamente: <span style={{ color: C.textMuted }}>Pré-postado <ArrowRight size={12} className="inline" /> Em Trânsito <ArrowRight size={12} className="inline" /> Saiu p/ Entrega <ArrowRight size={12} className="inline" /> Aguardando Retirada <ArrowRight size={12} className="inline" /> Atrasado <ArrowRight size={12} className="inline" /> Entregue</span>. Progressão estritamente crescente, sem retrocesso.
                 </p>
               </div>
             </div>
