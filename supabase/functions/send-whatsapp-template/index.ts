@@ -30,6 +30,25 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
+    // ===== BLOCKLIST CHECK =====
+    const normalizedPhone = normalizeBrazilianPhone(phone);
+    const phonesToCheck = phoneVariants(phone);
+    const { data: blocked } = await supabase
+      .from("whatsapp_phone_blocklist")
+      .select("id, reason")
+      .in("phone_number", phonesToCheck)
+      .eq("is_active", true)
+      .limit(1)
+      .maybeSingle();
+
+    if (blocked) {
+      console.log(`🚫 BLOCKLIST: Número ${normalizedPhone} bloqueado. Motivo: ${blocked.reason}. Template ${trigger_key} NÃO enviado.`);
+      return new Response(
+        JSON.stringify({ blocked: true, reason: blocked.reason, phone: normalizedPhone }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Fetch template config
     const { data: template, error: tErr } = await supabase
       .from("whatsapp_notification_templates")
