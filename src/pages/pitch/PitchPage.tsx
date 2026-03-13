@@ -107,7 +107,7 @@ export default function PitchPage() {
 
       {/* Slide label - right side */}
       <div className="fixed right-3 top-1/2 -translate-y-1/2 z-40 -rotate-90 text-[10px] font-bold tracking-[0.3em] uppercase" style={{ color: C.textMuted }}>
-        Pitch deck
+        Apresentação
       </div>
 
       {/* Progress bar */}
