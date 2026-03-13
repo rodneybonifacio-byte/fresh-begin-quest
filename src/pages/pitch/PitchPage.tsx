@@ -14,12 +14,12 @@ import logoBrhub from "@/assets/logo-brhub-new.png";
 const SLIDES = [
   "cover",
   "opportunity",
+  "projections",
   "platform",
   "ai-features",
   "notifications",
   "integration",
   "collection-points",
-  "projections",
   "timeline",
   "revenue",
   "closing",
