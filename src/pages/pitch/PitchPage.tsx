@@ -506,7 +506,7 @@ export default function PitchPage() {
               <div className="grid md:grid-cols-2 gap-6">
                 {[
                   { name: "Look China", address: "Rua Carnot", type: "Principal", features: ["Recebimento de encomendas", "Atendimento ao lojista", "Etiquetagem e despacho", "Suporte presencial"] },
-                  { name: "Look China Shopping", address: "Rua Maria Marcolina", type: "Secundário", features: ["Coleta centralizada do shopping", "Alto volume de lojistas", "Expedição diária", "Integração com marketplace"] },
+                  { name: "Look China Shopping", address: "Rua Maria Marcolina", type: "Secundário", features: ["Coleta centralizada do shopping", "Alto volume de lojistas", "Expedição diária", "Integração com a plataforma"] },
                 ].map((loc, i) => (
                   <div key={i} className="p-7 border" style={{ background: C.white, borderColor: C.border }}>
                     <div className="flex items-start gap-3 mb-4">
