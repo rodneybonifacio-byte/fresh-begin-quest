@@ -368,7 +368,7 @@ export default function PitchPage() {
                   </ul>
                 </div>
                 <div className="rounded-xl p-6 border" style={{ background: C.white, borderColor: C.creamDark }}>
-                  <h4 className="font-bold mb-3" style={{ color: C.navy }}>📦 Sistema FULL (Galpão)</h4>
+                  <h4 className="font-bold mb-3 flex items-center gap-2" style={{ color: C.navy }}><Warehouse size={18} /> Sistema FULL (Galpão)</h4>
                   <ul className="space-y-2 text-sm" style={{ color: C.textMuted }}>
                     <li>• Fulfillment completo no galpão do parceiro</li>
                     <li>• Desenvolvimento dedicado se necessário</li>
