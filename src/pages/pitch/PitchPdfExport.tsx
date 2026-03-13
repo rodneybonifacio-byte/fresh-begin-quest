@@ -80,7 +80,7 @@ export default function PitchPdfExport() {
       const opt = {
         margin: 0,
         filename: `BRHUB_Proposta_LookChina_${new Date().toISOString().split("T")[0]}.pdf`,
-        image: { type: "jpeg", quality: 0.98 },
+        image: { type: "jpeg" as const, quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, backgroundColor: C.bg },
         jsPDF: { unit: "mm", format: "a4", orientation: "landscape" as const },
         pagebreak: { mode: ["css", "legacy"] as any },
