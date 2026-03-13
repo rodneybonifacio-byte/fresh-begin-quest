@@ -299,7 +299,7 @@ export default function PitchPage() {
                         borderWidth: isActive ? 2 : 1,
                       }}
                     >
-                      <div className="font-black text-[11px] mb-1.5" style={{ color: s.color }}>{s.name}</div>
+                      <div className="font-black text-[11px] mb-1.5 flex items-center gap-1" style={{ color: s.color }}><s.icon size={12} /> {s.name}</div>
                       <div className="space-y-1 text-[10px]" style={{ color: C.textMuted }}>
                         <div className="flex justify-between">
                           <span>Digital Mês 12</span>
