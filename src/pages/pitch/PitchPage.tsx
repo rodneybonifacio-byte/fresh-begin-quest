@@ -788,8 +788,8 @@ export default function PitchPage() {
               </p>
               <div className="grid grid-cols-3 gap-4 md:gap-5 max-w-3xl mx-auto pt-2 md:pt-4">
                 {[
-                  { value: "50/50", label: "Rendimentos compartilhados", color: C.navy },
-                  { value: "+12%", label: "Margem agência garantida", color: C.orange },
+                  { value: "Win-Win", label: "Rendimentos compartilhados", color: C.navy },
+                  { value: "Zero risco", label: "BRHUB assume inadimplência", color: C.orange },
                   { value: "4 sem", label: "Prazo de entrega", color: C.amber },
                 ].map((item, i) => (
                   <CircleMetric key={i} value={item.value} label={item.label} accent={i === 1} color={item.color} />
