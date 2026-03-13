@@ -603,7 +603,7 @@ export default function PitchPage() {
                 {[
                   { value: "50/50", label: "Rendimentos compartilhados", color: C.navy },
                   { value: "+12%", label: "Margem de agência garantida", color: C.orange },
-                  { value: "8 sem", label: "Time-to-market", color: C.amber },
+                  { value: "4 sem", label: "Time-to-market", color: C.amber },
                 ].map((item, i) => (
                   <CircleMetric key={i} value={item.value} label={item.label} accent={i === 1} color={item.color} />
                 ))}
