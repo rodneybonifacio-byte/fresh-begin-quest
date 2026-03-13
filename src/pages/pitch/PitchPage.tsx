@@ -48,10 +48,12 @@ const C = {
 };
 
 // ─── Scenarios ───────────────────────────────────────────────────────────────
-// Físico: R$ 8M/mês ≈ 320k envios/mês (ticket R$ 25)
+// Físico: R$ 8M/mês em faturamento ≈ 320k envios/mês (ticket médio R$ 25)
 // Conversão = % do volume físico que migra pro digital
 
-const FISICO_MES = 8; // R$ milhões
+const FISICO_FAT = 8; // R$ milhões/mês (faturamento)
+const TICKET_MEDIO = 25; // R$ por etiqueta
+const FISICO_ENVIOS = (FISICO_FAT * 1_000_000) / TICKET_MEDIO; // ~320.000 envios/mês
 
 const scenarios = {
   bear: {
@@ -208,14 +210,14 @@ export default function PitchPage() {
           {slide === "projections" && (() => {
             const sc = scenarios[scenario];
             const conversionData = sc.conversion;
-            const digitalData = conversionData.map((pct: number) => parseFloat(((pct / 100) * FISICO_MES).toFixed(3)));
-
-
-            // Dados derivados para tabela
-            const enviosMes = digitalData.map((v: number) => Math.round((v * 1_000_000) / 25));
+            const digitalFat = conversionData.map((pct: number) => parseFloat(((pct / 100) * FISICO_FAT).toFixed(3)));
+            const enviosMes = conversionData.map((pct: number) => Math.round((pct / 100) * FISICO_ENVIOS));
+            const fatMesR$ = enviosMes.map((v: number) => v * TICKET_MEDIO);
             const enviosDia = enviosMes.map((v: number) => Math.round(v / 26));
-            let acumulado = 0;
-            const acumulados = enviosMes.map((v: number) => { acumulado += v; return acumulado; });
+            let acumEnv = 0;
+            const acumuladosEnv = enviosMes.map((v: number) => { acumEnv += v; return acumEnv; });
+            let acumFat = 0;
+            const acumuladosFat = fatMesR$.map((v: number) => { acumFat += v; return acumFat; });
 
             const enviosChart: { series: ApexOptions["series"]; options: ApexOptions } = {
               series: [
@@ -235,7 +237,7 @@ export default function PitchPage() {
 
             const fatChart: { series: ApexOptions["series"]; options: ApexOptions } = {
               series: [
-                { name: "Faturamento digital (R$)", data: digitalData.map((v: number) => parseFloat((v * 1000).toFixed(0))) },
+                { name: "Faturamento digital (R$)", data: digitalFat.map((v: number) => parseFloat((v * 1000).toFixed(0))) },
               ],
               options: {
                 chart: { type: "area", height: 200, toolbar: { show: false }, background: "transparent" },
@@ -250,6 +252,8 @@ export default function PitchPage() {
               },
             };
 
+            const fmtR$ = (v: number) => v >= 1_000_000 ? `R$ ${(v / 1_000_000).toFixed(1)}M` : `R$ ${(v / 1000).toFixed(0)}k`;
+
             return (
             <div className="space-y-2.5">
               <SlideHeader title="Projeção de" accent="envios e faturamento" tag="Cenários" />
@@ -259,9 +263,8 @@ export default function PitchPage() {
                 {(Object.keys(scenarios) as ScenarioKey[]).map((key) => {
                   const s = scenarios[key];
                   const active = scenario === key;
-                  const sDigital = s.conversion.map((pct: number) => parseFloat(((pct / 100) * FISICO_MES).toFixed(3)));
-                  const sEnvios12 = Math.round((sDigital[11] * 1_000_000) / 25);
-                  const sFat12 = sDigital[11];
+                  const sEnvios12 = Math.round((s.conversion[11] / 100) * FISICO_ENVIOS);
+                  const sFat12 = sEnvios12 * TICKET_MEDIO;
                   return (
                     <button
                       key={key}
@@ -275,7 +278,7 @@ export default function PitchPage() {
                     >
                       <div className="font-black text-xs flex items-center gap-1.5"><s.icon size={13} /> {s.name}</div>
                       <div className="text-[10px] mt-0.5" style={{ opacity: 0.8 }}>
-                        {s.conversion[11]}% → <strong>{(sEnvios12/1000).toFixed(1)}k envios</strong> · R$ {sFat12 < 1 ? `${(sFat12*1000).toFixed(0)}k` : `${sFat12.toFixed(1)}M`}/mês
+                        {s.conversion[11]}% → <strong>{(sEnvios12/1000).toFixed(1)}k envios</strong> · {fmtR$(sFat12)}/mês
                       </div>
                     </button>
                   );
@@ -285,7 +288,7 @@ export default function PitchPage() {
               {/* Charts: Envios + Faturamento */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 border" style={{ background: C.white, borderColor: C.border }}>
-                  <h4 className="font-bold text-[10px] mb-0 uppercase tracking-wider" style={{ color: C.textMuted }}>Envios por mês</h4>
+                  <h4 className="font-bold text-[10px] mb-0 uppercase tracking-wider" style={{ color: C.textMuted }}>Volume de envios/mês</h4>
                   <ReactApexChart options={enviosChart.options} series={enviosChart.series} type="bar" height={200} />
                 </div>
                 <div className="p-3 border" style={{ background: C.white, borderColor: C.border }}>
@@ -294,37 +297,38 @@ export default function PitchPage() {
                 </div>
               </div>
 
-              {/* Tabela resumo trimestral */}
+              {/* Tabela resumo */}
               <div className="border overflow-hidden" style={{ background: C.white, borderColor: C.border }}>
                 <div className="px-3 py-1.5 border-b flex items-center justify-between" style={{ borderColor: C.border, background: C.cardBg }}>
                   <h4 className="font-bold text-[10px] uppercase tracking-wider" style={{ color: C.navy }}>
-                    Projeção mensal — {sc.name} ({sc.conversion[0]}% → {sc.conversion[11]}%)
+                    {sc.name} ({sc.conversion[0]}% → {sc.conversion[11]}% do volume físico)
                   </h4>
-                  <span className="text-[9px] px-2 py-0.5 font-semibold border" style={{ borderColor: C.orangeBorder, color: C.orange }}>Físico: R$ 8M/mês · Ticket: R$ 25</span>
+                  <span className="text-[9px] px-2 py-0.5 font-semibold border" style={{ borderColor: C.orangeBorder, color: C.orange }}>Físico: 320k envios · R$ 8M/mês · Ticket R$ 25</span>
                 </div>
                 <table className="w-full text-[10px]">
                   <thead>
                     <tr style={{ background: C.cardBg }}>
                       <th className="px-2 py-1.5 text-left font-semibold" style={{ color: C.textMuted }}>Mês</th>
-                      <th className="px-2 py-1.5 text-right font-semibold" style={{ color: sc.color }}>Conversão</th>
-                      <th className="px-2 py-1.5 text-right font-semibold" style={{ color: C.navy }}>Faturamento</th>
+                      <th className="px-2 py-1.5 text-right font-semibold" style={{ color: sc.color }}>% Digital</th>
                       <th className="px-2 py-1.5 text-right font-semibold" style={{ color: C.orange }}>Envios/mês</th>
                       <th className="px-2 py-1.5 text-right font-semibold" style={{ color: C.emerald }}>Envios/dia</th>
-                      <th className="px-2 py-1.5 text-right font-semibold" style={{ color: C.textMuted }}>Acumulado</th>
+                      <th className="px-2 py-1.5 text-right font-semibold" style={{ color: C.navy }}>Faturamento</th>
+                      <th className="px-2 py-1.5 text-right font-semibold" style={{ color: C.textMuted }}>Envios acum.</th>
+                      <th className="px-2 py-1.5 text-right font-semibold" style={{ color: C.textMuted }}>Fat. acum.</th>
                     </tr>
                   </thead>
                   <tbody>
                     {[0, 2, 5, 8, 11].map((i) => {
                       const isLast = i === 11;
-                      const fat = digitalData[i];
                       return (
                         <tr key={i} className="border-t" style={{ borderColor: C.border, background: isLast ? C.orangeBg : 'transparent' }}>
                           <td className="px-2 py-1 font-semibold" style={{ color: C.text }}>Mês {i + 1}</td>
                           <td className="px-2 py-1 text-right font-bold" style={{ color: sc.color }}>{conversionData[i]}%</td>
-                          <td className="px-2 py-1 text-right font-semibold" style={{ color: C.navy }}>R$ {fat < 1 ? `${(fat * 1000).toFixed(0)}k` : `${fat.toFixed(2)}M`}</td>
                           <td className="px-2 py-1 text-right font-bold" style={{ color: C.orange }}>{enviosMes[i].toLocaleString('pt-BR')}</td>
                           <td className="px-2 py-1 text-right" style={{ color: C.emerald }}>~{enviosDia[i].toLocaleString('pt-BR')}</td>
-                          <td className="px-2 py-1 text-right" style={{ color: C.textMuted }}>{acumulados[i].toLocaleString('pt-BR')}</td>
+                          <td className="px-2 py-1 text-right font-semibold" style={{ color: C.navy }}>{fmtR$(fatMesR$[i])}</td>
+                          <td className="px-2 py-1 text-right" style={{ color: C.textMuted }}>{acumuladosEnv[i].toLocaleString('pt-BR')}</td>
+                          <td className="px-2 py-1 text-right" style={{ color: C.textMuted }}>{fmtR$(acumuladosFat[i])}</td>
                         </tr>
                       );
                     })}
@@ -332,16 +336,17 @@ export default function PitchPage() {
                 </table>
               </div>
 
-              {/* Resumo final */}
-              <div className="grid grid-cols-4 gap-2">
+              {/* Resumo final - Volume + Faturamento */}
+              <div className="grid grid-cols-5 gap-2">
                 {[
                   { label: "Envios Mês 12", value: `${(enviosMes[11]/1000).toFixed(1)}k`, color: C.orange },
-                  { label: "Envios/dia Mês 12", value: `~${enviosDia[11]}`, color: C.emerald },
-                  { label: "Total Ano 1", value: `${(acumulados[11]/1000).toFixed(0)}k`, color: C.navy },
-                  { label: "Fat. Digital Mês 12", value: `R$ ${digitalData[11] < 1 ? `${(digitalData[11]*1000).toFixed(0)}k` : `${digitalData[11].toFixed(1)}M`}`, color: sc.color },
+                  { label: "Envios/dia", value: `~${enviosDia[11]}`, color: C.emerald },
+                  { label: "Fat. Mês 12", value: fmtR$(fatMesR$[11]), color: C.navy },
+                  { label: "Envios Ano 1", value: `${(acumuladosEnv[11]/1000).toFixed(0)}k`, color: sc.color },
+                  { label: "Fat. Ano 1", value: fmtR$(acumuladosFat[11]), color: C.amber },
                 ].map((m, i) => (
                   <div key={i} className="text-center p-2 border" style={{ background: C.white, borderColor: C.border }}>
-                    <div className="text-lg font-black" style={{ color: m.color }}>{m.value}</div>
+                    <div className="text-base font-black" style={{ color: m.color }}>{m.value}</div>
                     <div className="text-[9px] font-medium" style={{ color: C.textMuted }}>{m.label}</div>
                   </div>
                 ))}
