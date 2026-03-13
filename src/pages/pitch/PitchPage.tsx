@@ -559,10 +559,10 @@ export default function PitchPage() {
               </div>
               <div className="grid grid-cols-4 gap-3">
                 {[
-                  { items: ["Configuração API Flex Envios", "Ambiente de desenvolvimento", "Whitelabel base Look China"] },
-                  { items: ["Dashboard do lojista", "Emissão de etiquetas integrada", "Rastreamento automático"] },
-                  { items: ["Agente WhatsApp AI", "Notificações automáticas HSM", "Pipeline de suporte"] },
-                  { items: ["Setup Carnot & Marcolina", "Sistema FULL no galpão", "Go-live operação completa"] },
+                  { items: ["Configuração API Flex Envios", "Ambiente de desenvolvimento", "Plataforma base Look China"] },
+                  { items: ["Painel do lojista", "Emissão de etiquetas integrada", "Rastreamento automático"] },
+                  { items: ["Agente WhatsApp IA", "Notificações automáticas", "Fluxo de suporte"] },
+                  { items: ["Ativação Carnot & Marcolina", "Sistema completo no galpão", "Início da operação"] },
                 ].map((col, i) => (
                   <div key={i} className="space-y-2">
                     {col.items.map((item, j) => (
