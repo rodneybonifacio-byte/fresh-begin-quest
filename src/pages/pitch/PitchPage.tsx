@@ -206,9 +206,9 @@ export default function PitchPage() {
 
           {/* ─── PROJECTIONS ───────────────────────────────────── */}
           {slide === "projections" && (() => {
-            const sc = scenarios[scenario];
-            const digitalData = sc.digital;
             const conversionData = sc.conversion;
+            // Derivar faturamento digital a partir da % de conversão sobre o físico
+            const digitalData = conversionData.map((pct: number) => parseFloat(((pct / 100) * FISICO_MES).toFixed(3)));
 
             const projChart: { series: ApexOptions["series"]; options: ApexOptions } = {
               series: [
