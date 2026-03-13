@@ -210,14 +210,14 @@ export default function PitchPage() {
           {slide === "projections" && (() => {
             const sc = scenarios[scenario];
             const conversionData = sc.conversion;
-            const digitalData = conversionData.map((pct: number) => parseFloat(((pct / 100) * FISICO_MES).toFixed(3)));
-
-
-            // Dados derivados para tabela
-            const enviosMes = digitalData.map((v: number) => Math.round((v * 1_000_000) / 25));
+            const digitalFat = conversionData.map((pct: number) => parseFloat(((pct / 100) * FISICO_FAT).toFixed(3)));
+            const enviosMes = conversionData.map((pct: number) => Math.round((pct / 100) * FISICO_ENVIOS));
+            const fatMesR$ = enviosMes.map((v: number) => v * TICKET_MEDIO);
             const enviosDia = enviosMes.map((v: number) => Math.round(v / 26));
-            let acumulado = 0;
-            const acumulados = enviosMes.map((v: number) => { acumulado += v; return acumulado; });
+            let acumEnv = 0;
+            const acumuladosEnv = enviosMes.map((v: number) => { acumEnv += v; return acumEnv; });
+            let acumFat = 0;
+            const acumuladosFat = fatMesR$.map((v: number) => { acumFat += v; return acumFat; });
 
             const enviosChart: { series: ApexOptions["series"]; options: ApexOptions } = {
               series: [
