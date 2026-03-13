@@ -18,10 +18,9 @@ const SLIDES = [
   "notifications",
   "integration",
   "collection-points",
-  "revenue",
-  "fairness",
   "projections",
   "timeline",
+  "revenue",
   "closing",
 ] as const;
 
