@@ -46,43 +46,34 @@ const C = {
   border: "rgba(0,0,0,0.08)",
 };
 
-// ─── Chart configs ───────────────────────────────────────────────────────────
+// ─── Scenarios ───────────────────────────────────────────────────────────────
 
-const digitalData = [0.04, 0.08, 0.12, 0.16, 0.24, 0.32, 0.40, 0.48, 0.56, 0.64, 0.72, 0.80];
-const conversionData = [0.5, 1, 1.5, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-
-const projectionChart: { series: ApexOptions["series"]; options: ApexOptions } = {
-  series: [
-    { name: "Faturamento Físico (R$ mi)", data: [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8] },
-    { name: "Projeção Digital (R$ mi)", data: digitalData },
-  ],
-  options: {
-    chart: { type: "area", height: 340, toolbar: { show: false }, background: "transparent", fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif" },
-    colors: [C.navy, C.orange],
-    fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.3, opacityTo: 0.02, stops: [0, 100] } },
-    stroke: { curve: "smooth", width: 2.5 },
-    xaxis: { categories: monthLabels, labels: { style: { colors: C.textMuted, fontSize: "10px" } } },
-    yaxis: { labels: { style: { colors: C.textMuted }, formatter: (v: number) => `R$ ${v}M` } },
-    grid: { borderColor: C.border, strokeDashArray: 4 },
-    tooltip: { theme: "light" },
-    legend: { labels: { colors: C.text } },
-    dataLabels: { enabled: false },
+const scenarios = {
+  bear: {
+    name: "🐻 Bear Case",
+    sub: "Cenário pessimista",
+    conversion: [0.3, 0.5, 0.8, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5],
+    digital: [0.024, 0.04, 0.064, 0.08, 0.12, 0.16, 0.20, 0.24, 0.28, 0.32, 0.36, 0.40],
+    color: C.textMuted,
   },
-};
-
-const digitalConversionChart: { series: ApexOptions["series"]; options: ApexOptions } = {
-  series: [{ name: "% Conversão Digital", data: conversionData }],
-  options: {
-    chart: { type: "bar", height: 260, toolbar: { show: false }, background: "transparent" },
-    colors: [C.orange],
-    xaxis: { categories: monthLabels, labels: { style: { colors: C.textMuted, fontSize: "10px" } } },
-    yaxis: { max: 12, labels: { style: { colors: C.textMuted }, formatter: (v: number) => `${v}%` } },
-    grid: { borderColor: C.border, strokeDashArray: 4 },
-    plotOptions: { bar: { borderRadius: 4, columnWidth: "50%" } },
-    dataLabels: { enabled: false },
-    tooltip: { theme: "light", y: { formatter: (v: number) => `${v}% do físico = R$ ${((v / 100) * 8).toFixed(2)}M` } },
+  base: {
+    name: "📊 Base Case",
+    sub: "Cenário realista",
+    conversion: [0.5, 1, 1.5, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    digital: [0.04, 0.08, 0.12, 0.16, 0.24, 0.32, 0.40, 0.48, 0.56, 0.64, 0.72, 0.80],
+    color: C.orange,
   },
-};
+  bull: {
+    name: "🐂 Bull Case",
+    sub: "Cenário otimista",
+    conversion: [1, 2, 3, 5, 7, 9, 11, 13, 15, 17, 19, 22],
+    digital: [0.08, 0.16, 0.24, 0.40, 0.56, 0.72, 0.88, 1.04, 1.20, 1.36, 1.52, 1.76],
+    color: C.emerald,
+  },
+} as const;
+
+type ScenarioKey = keyof typeof scenarios;
+
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
