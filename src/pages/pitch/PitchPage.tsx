@@ -23,13 +23,11 @@ const SLIDES = [
   "closing",
 ] as const;
 
-type Slide = (typeof SLIDES)[number];
-
 const monthLabels = ["Mês 1", "Mês 2", "Mês 3", "Mês 4", "Mês 5", "Mês 6", "Mês 7", "Mês 8", "Mês 9", "Mês 10", "Mês 11", "Mês 12"];
 
 // ─── Chart configs ───────────────────────────────────────────────────────────
 
-const projectionChart: { series: ApexAxisChartSeries; options: ApexOptions } = {
+const projectionChart: { series: ApexOptions["series"]; options: ApexOptions } = {
   series: [
     { name: "Envios Estimados", data: [800, 1400, 2200, 3200, 4500, 5800, 7200, 8800, 10500, 12500, 14800, 17500] },
     { name: "Faturamento (R$ mil)", data: [12, 22, 35, 52, 72, 93, 115, 140, 168, 200, 237, 280] },
