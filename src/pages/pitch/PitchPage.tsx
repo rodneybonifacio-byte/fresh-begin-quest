@@ -59,7 +59,8 @@ const scenarios = {
     color: C.textMuted,
   },
   base: {
-    name: "📊 Base Case",
+    name: "Base Case",
+    icon: Activity,
     sub: "Cenário realista",
     conversion: [0.5, 1, 1.5, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     digital: [0.04, 0.08, 0.12, 0.16, 0.24, 0.32, 0.40, 0.48, 0.56, 0.64, 0.72, 0.80],
