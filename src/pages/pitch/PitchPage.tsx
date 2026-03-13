@@ -359,7 +359,7 @@ export default function PitchPage() {
               </div>
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="rounded-xl p-6 border" style={{ background: C.white, borderColor: C.creamDark }}>
-                  <h4 className="font-bold mb-3" style={{ color: C.orange }}>🖥️ Plataforma Marketplace</h4>
+                  <h4 className="font-bold mb-3 flex items-center gap-2" style={{ color: C.orange }}><Globe size={18} /> Plataforma Marketplace</h4>
                   <ul className="space-y-2 text-sm" style={{ color: C.textMuted }}>
                     <li>• Nova plataforma integrada com contrato Flex Envios</li>
                     <li>• Whitelabel personalizado Look China</li>
