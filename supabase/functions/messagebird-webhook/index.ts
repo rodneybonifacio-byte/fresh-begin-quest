@@ -628,6 +628,7 @@ serve(async (req) => {
         const hsmTriggerKey = (lastHsmMsg?.metadata as any)?.trigger_key || "";
         const hsmVars = (lastHsmMsg?.metadata as any)?.variables || {};
         const isDeliveryRelated = ["saiu_para_entrega", "entregue", "aguardando_retirada"].includes(hsmTriggerKey);
+        const isNPSRelated = hsmTriggerKey === "avaliacao";
 
         if (isDeliveryRelated) {
           console.log(`🎉 Confirmação de entrega detectada! Trigger: ${hsmTriggerKey}, Contato: ${contactName}`);
