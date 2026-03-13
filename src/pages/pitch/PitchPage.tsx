@@ -4,7 +4,7 @@ import ReactApexChart from "react-apexcharts";
 import {
   Truck, Bot, Globe, Warehouse, MapPin, Handshake, ChevronRight,
   ChevronLeft, BarChart3, Zap, Shield, Package, TrendingUp,
-  Building2, ArrowRight, CheckCircle2, Sparkles, Phone
+  Building2, ArrowRight, CheckCircle2, Sparkles, Phone, Brain, Mic, Eye, MessageCircle
 } from "lucide-react";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
@@ -214,16 +214,51 @@ export default function PitchPage() {
           {/* ─── AI FEATURES ───────────────────────────────────── */}
           {slide === "ai-features" && (
             <div className="space-y-8">
-              <SectionHeader icon={<Bot />} title="Suporte com IA" subtitle="Inteligência artificial integrada" />
+              <SectionHeader icon={<Bot />} title="Ecossistema de IA" subtitle="Inteligência artificial de ponta a ponta" />
+              
+              {/* AI Ecosystem intro */}
+              <div className="rounded-2xl p-8 border text-center" style={{ background: C.white, borderColor: C.creamDark }}>
+                <p className="text-lg leading-relaxed max-w-3xl mx-auto" style={{ color: C.textMuted }}>
+                  Construímos um ecossistema de inteligência artificial que combina o <strong style={{ color: C.navy }}>raciocínio avançado do Google Gemini</strong>, a <strong style={{ color: C.orange }}>versatilidade do OpenAI GPT-5</strong> e a <strong style={{ color: C.amber }}>voz humana ultra-realista da ElevenLabs</strong> — operando 24/7 dentro do WhatsApp para transformar cada interação em uma experiência que nenhum concorrente consegue replicar.
+                </p>
+              </div>
+
+              {/* AI Providers */}
+              <div className="grid md:grid-cols-3 gap-5">
+                <div className="rounded-2xl p-6 border text-center space-y-3" style={{ background: C.white, borderColor: C.creamDark }}>
+                  <div className="w-14 h-14 rounded-full mx-auto flex items-center justify-center" style={{ background: C.orangeBg }}>
+                    <Brain size={28} style={{ color: C.orange }} />
+                  </div>
+                  <h4 className="font-bold text-lg" style={{ color: C.navy }}>Google Gemini</h4>
+                  <p className="text-sm" style={{ color: C.textMuted }}>Raciocínio multimodal de última geração. Processa texto, imagens e contextos massivos para decisões complexas em tempo real.</p>
+                </div>
+                <div className="rounded-2xl p-6 border text-center space-y-3" style={{ background: C.white, borderColor: C.creamDark }}>
+                  <div className="w-14 h-14 rounded-full mx-auto flex items-center justify-center" style={{ background: C.navyBg }}>
+                    <Eye size={28} style={{ color: C.navy }} />
+                  </div>
+                  <h4 className="font-bold text-lg" style={{ color: C.navy }}>OpenAI GPT-5</h4>
+                  <p className="text-sm" style={{ color: C.textMuted }}>Modelo mais poderoso do mercado para compreensão de linguagem, análise de sentimento e geração de respostas precisas e empáticas.</p>
+                </div>
+                <div className="rounded-2xl p-6 border text-center space-y-3" style={{ background: C.white, borderColor: C.creamDark }}>
+                  <div className="w-14 h-14 rounded-full mx-auto flex items-center justify-center" style={{ background: "rgba(245,158,11,0.1)" }}>
+                    <Mic size={28} style={{ color: C.amber }} />
+                  </div>
+                  <h4 className="font-bold text-lg" style={{ color: C.navy }}>ElevenLabs</h4>
+                  <p className="text-sm" style={{ color: C.textMuted }}>Síntese de voz indistinguível de um humano. Áudios gerados em tempo real no WhatsApp — o cliente ouve, não apenas lê.</p>
+                </div>
+              </div>
+
+              {/* Agent + Features */}
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="rounded-2xl p-8 space-y-5 text-white relative overflow-hidden" style={{ background: C.navy }}>
                   <div className="absolute top-[-40px] right-[-40px] w-32 h-32 rounded-full opacity-20" style={{ background: C.orange }} />
-                  <h3 className="text-2xl font-bold flex items-center gap-3"><Bot style={{ color: C.orangeLight }} /> WhatsApp AI Agent</h3>
+                  <h3 className="text-2xl font-bold flex items-center gap-3"><MessageCircle style={{ color: C.orangeLight }} /> WhatsApp AI Agent</h3>
                   <ul className="space-y-3">
                     {[
                       "Rastreamento automático por código ou pedido",
                       "Resolução de dúvidas 24/7 sem intervenção humana",
                       "Detecção de sentimento e escalonamento inteligente",
+                      "Respostas em áudio com voz humanizada (ElevenLabs)",
                       "Notificações proativas: saiu para entrega, aguardando retirada",
                       "Pipeline de suporte com categorização automática",
                     ].map((item, i) => (
@@ -233,11 +268,11 @@ export default function PitchPage() {
                     ))}
                   </ul>
                 </div>
-                <div className="space-y-5">
+                <div className="space-y-4">
                   {[
-                    { icon: <Sparkles size={18} />, color: C.amber, title: "Sinalização Inteligente", desc: "Alertas automáticos de atraso, entrega falhada e objetos retidos. IA identifica padrões e sugere ações antes que o cliente reclame." },
-                    { icon: <Phone size={18} />, color: C.emerald, title: "CRM WhatsApp", desc: "Gestão completa de conversas, tickets, templates HSM, histórico de interações e métricas de atendimento em tempo real." },
-                    { icon: <Zap size={18} />, color: C.orange, title: "Ferramentas AI-Powered", desc: "Consulta de rastreio, cotação de frete, abertura de tickets e busca de dados — tudo acionado via IA direto no WhatsApp." },
+                    { icon: <Sparkles size={18} />, color: C.amber, title: "Sinalização Inteligente", desc: "Alertas automáticos de atraso, entrega falhada e objetos retidos. A IA identifica padrões e sugere ações antes que o cliente reclame." },
+                    { icon: <Phone size={18} />, color: C.emerald, title: "CRM WhatsApp Completo", desc: "Gestão de conversas, tickets, templates HSM, histórico de interações e métricas de atendimento em tempo real." },
+                    { icon: <Zap size={18} />, color: C.orange, title: "Ferramentas AI-Powered", desc: "Cotação de frete, rastreio, abertura de tickets e busca de dados — tudo acionado via IA direto no WhatsApp." },
                   ].map((item, i) => (
                     <div key={i} className="rounded-xl p-5 border" style={{ background: C.white, borderColor: C.creamDark }}>
                       <h4 className="font-bold mb-2 flex items-center gap-2" style={{ color: C.navy }}>
