@@ -1,10 +1,10 @@
 import { useRef, useState } from "react";
 import {
-  Truck, Globe, Warehouse, MapPin, Handshake,
+  Truck, Globe, Warehouse, MapPin,
   BarChart3, Zap, Shield, Package,
   Phone, Brain, Mic, Eye, MessageCircle,
-  AlertTriangle, Clock, Send, Star, ShieldCheck, DollarSign,
-  TrendingUp, Download, Loader2
+  AlertTriangle, Clock, Send, Star, ShieldCheck,
+  Download, Loader2
 } from "lucide-react";
 import lookChinaProfile from "@/assets/look-china-profile.png";
 
