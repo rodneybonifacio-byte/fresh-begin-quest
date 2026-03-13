@@ -243,15 +243,57 @@ export default function PitchPage() {
               },
             };
 
-            return (
-            <div className="space-y-3">
-              <SlideHeader title="Cenários de" accent="mercado" tag="Dados financeiros" />
+            // Dados derivados para tabela
+            const enviosMes = digitalData.map((v: number) => Math.round((v * 1_000_000) / 25));
+            const enviosDia = enviosMes.map((v: number) => Math.round(v / 26));
+            let acumulado = 0;
+            const acumulados = enviosMes.map((v: number) => { acumulado += v; return acumulado; });
 
-              {/* Scenario selector - compact */}
+            const enviosChart: { series: ApexOptions["series"]; options: ApexOptions } = {
+              series: [
+                { name: "Envios/mês", data: enviosMes },
+              ],
+              options: {
+                chart: { type: "bar", height: 200, toolbar: { show: false }, background: "transparent" },
+                colors: [sc.color],
+                xaxis: { categories: monthLabels, labels: { style: { colors: C.textMuted, fontSize: "9px" } } },
+                yaxis: { labels: { style: { colors: C.textMuted, fontSize: "10px" }, formatter: (v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : `${v}` } },
+                grid: { borderColor: C.border, strokeDashArray: 4 },
+                plotOptions: { bar: { borderRadius: 3, columnWidth: "55%" } },
+                dataLabels: { enabled: false },
+                tooltip: { theme: "light", y: { formatter: (v: number) => `${v.toLocaleString('pt-BR')} envios` } },
+              },
+            };
+
+            const fatChart: { series: ApexOptions["series"]; options: ApexOptions } = {
+              series: [
+                { name: "Faturamento digital (R$)", data: digitalData.map((v: number) => parseFloat((v * 1000).toFixed(0))) },
+              ],
+              options: {
+                chart: { type: "area", height: 200, toolbar: { show: false }, background: "transparent" },
+                colors: [sc.color],
+                fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.3, opacityTo: 0.02, stops: [0, 100] } },
+                stroke: { curve: "smooth", width: 2.5 },
+                xaxis: { categories: monthLabels, labels: { style: { colors: C.textMuted, fontSize: "9px" } } },
+                yaxis: { labels: { style: { colors: C.textMuted, fontSize: "10px" }, formatter: (v: number) => `R$${v}k` } },
+                grid: { borderColor: C.border, strokeDashArray: 4 },
+                dataLabels: { enabled: false },
+                tooltip: { theme: "light", y: { formatter: (v: number) => `R$ ${v.toLocaleString('pt-BR')}k` } },
+              },
+            };
+
+            return (
+            <div className="space-y-2.5">
+              <SlideHeader title="Projeção de" accent="envios e faturamento" tag="Cenários" />
+
+              {/* Scenario selector */}
               <div className="flex gap-2">
                 {(Object.keys(scenarios) as ScenarioKey[]).map((key) => {
                   const s = scenarios[key];
                   const active = scenario === key;
+                  const sDigital = s.conversion.map((pct: number) => parseFloat(((pct / 100) * FISICO_MES).toFixed(3)));
+                  const sEnvios12 = Math.round((sDigital[11] * 1_000_000) / 25);
+                  const sFat12 = sDigital[11];
                   return (
                     <button
                       key={key}
@@ -264,68 +306,77 @@ export default function PitchPage() {
                       }}
                     >
                       <div className="font-black text-xs flex items-center gap-1.5"><s.icon size={13} /> {s.name}</div>
-                      <div className="text-[10px]" style={{ opacity: 0.7 }}>
-                        {s.conversion[0]}% → {s.conversion[11]}%
+                      <div className="text-[10px] mt-0.5" style={{ opacity: 0.8 }}>
+                        {s.conversion[11]}% → <strong>{(sEnvios12/1000).toFixed(1)}k envios</strong> · R$ {sFat12 < 1 ? `${(sFat12*1000).toFixed(0)}k` : `${sFat12.toFixed(1)}M`}/mês
                       </div>
                     </button>
                   );
                 })}
               </div>
 
-              {/* Charts row */}
+              {/* Charts: Envios + Faturamento */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 border" style={{ background: C.white, borderColor: C.border }}>
-                  <h4 className="font-bold text-[10px] mb-0 uppercase tracking-wider" style={{ color: C.textMuted }}>Físico vs Digital</h4>
-                  <ReactApexChart options={projChart.options} series={projChart.series} type="area" height={170} />
+                  <h4 className="font-bold text-[10px] mb-0 uppercase tracking-wider" style={{ color: C.textMuted }}>Envios por mês</h4>
+                  <ReactApexChart options={enviosChart.options} series={enviosChart.series} type="bar" height={200} />
                 </div>
                 <div className="p-3 border" style={{ background: C.white, borderColor: C.border }}>
-                  <h4 className="font-bold text-[10px] mb-0 uppercase tracking-wider" style={{ color: C.textMuted }}>Conversão (%)</h4>
-                  <ReactApexChart options={convChart.options} series={convChart.series} type="bar" height={170} />
+                  <h4 className="font-bold text-[10px] mb-0 uppercase tracking-wider" style={{ color: C.textMuted }}>Faturamento digital (R$ mil)</h4>
+                  <ReactApexChart options={fatChart.options} series={fatChart.series} type="area" height={200} />
                 </div>
               </div>
 
-              {/* 3 scenario cards side by side - compact */}
-              <div className="grid grid-cols-3 gap-3">
-                {(Object.keys(scenarios) as ScenarioKey[]).map((key) => {
-                  const s = scenarios[key];
-                  const digitalArr = s.conversion.map((pct: number) => parseFloat(((pct / 100) * FISICO_MES).toFixed(3)));
-                  const last = digitalArr[11];
-                  const envios12 = Math.round((last * 1_000_000) / 25);
-                  const total = digitalArr.reduce((sum: number, v: number) => sum + Math.round((v * 1_000_000) / 25), 0);
-                  const isActive = scenario === key;
-                  return (
-                    <div
-                      key={key}
-                      className="p-3 border cursor-pointer transition-all"
-                      onClick={() => setScenario(key)}
-                      style={{
-                        background: isActive ? C.orangeBg : C.white,
-                        borderColor: isActive ? s.color : C.border,
-                        borderWidth: isActive ? 2 : 1,
-                      }}
-                    >
-                      <div className="font-black text-[11px] mb-1.5 flex items-center gap-1" style={{ color: s.color }}><s.icon size={12} /> {s.name}</div>
-                      <div className="space-y-1 text-[10px]" style={{ color: C.textMuted }}>
-                        <div className="flex justify-between">
-                          <span>Digital Mês 12</span>
-                          <strong style={{ color: s.color }}>R$ {last < 1 ? `${(last * 1000).toFixed(0)}k` : `${last.toFixed(2)}M`}</strong>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Envios Mês 12</span>
-                          <strong style={{ color: C.navy }}>{(envios12 / 1000).toFixed(1)}k</strong>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Total Ano 1</span>
-                          <strong style={{ color: C.navy }}>~{(total / 1000).toFixed(0)}k</strong>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+              {/* Tabela resumo trimestral */}
+              <div className="border overflow-hidden" style={{ background: C.white, borderColor: C.border }}>
+                <div className="px-3 py-1.5 border-b flex items-center justify-between" style={{ borderColor: C.border, background: C.cardBg }}>
+                  <h4 className="font-bold text-[10px] uppercase tracking-wider" style={{ color: C.navy }}>
+                    Projeção mensal — {sc.name} ({sc.conversion[0]}% → {sc.conversion[11]}%)
+                  </h4>
+                  <span className="text-[9px] px-2 py-0.5 font-semibold border" style={{ borderColor: C.orangeBorder, color: C.orange }}>Físico: R$ 8M/mês · Ticket: R$ 25</span>
+                </div>
+                <table className="w-full text-[10px]">
+                  <thead>
+                    <tr style={{ background: C.cardBg }}>
+                      <th className="px-2 py-1.5 text-left font-semibold" style={{ color: C.textMuted }}>Mês</th>
+                      <th className="px-2 py-1.5 text-right font-semibold" style={{ color: sc.color }}>Conversão</th>
+                      <th className="px-2 py-1.5 text-right font-semibold" style={{ color: C.navy }}>Faturamento</th>
+                      <th className="px-2 py-1.5 text-right font-semibold" style={{ color: C.orange }}>Envios/mês</th>
+                      <th className="px-2 py-1.5 text-right font-semibold" style={{ color: C.emerald }}>Envios/dia</th>
+                      <th className="px-2 py-1.5 text-right font-semibold" style={{ color: C.textMuted }}>Acumulado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[0, 2, 5, 8, 11].map((i) => {
+                      const isLast = i === 11;
+                      const fat = digitalData[i];
+                      return (
+                        <tr key={i} className="border-t" style={{ borderColor: C.border, background: isLast ? C.orangeBg : 'transparent' }}>
+                          <td className="px-2 py-1 font-semibold" style={{ color: C.text }}>Mês {i + 1}</td>
+                          <td className="px-2 py-1 text-right font-bold" style={{ color: sc.color }}>{conversionData[i]}%</td>
+                          <td className="px-2 py-1 text-right font-semibold" style={{ color: C.navy }}>R$ {fat < 1 ? `${(fat * 1000).toFixed(0)}k` : `${fat.toFixed(2)}M`}</td>
+                          <td className="px-2 py-1 text-right font-bold" style={{ color: C.orange }}>{enviosMes[i].toLocaleString('pt-BR')}</td>
+                          <td className="px-2 py-1 text-right" style={{ color: C.emerald }}>~{enviosDia[i].toLocaleString('pt-BR')}</td>
+                          <td className="px-2 py-1 text-right" style={{ color: C.textMuted }}>{acumulados[i].toLocaleString('pt-BR')}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
 
-              <div className="p-2 border-l-4 text-[10px]" style={{ borderColor: sc.color, background: C.cardBg, color: C.textMuted }}>
-                Volume físico <strong>R$ 8M/mês</strong> · Ticket <strong>R$ 25/etiq</strong> · {sc.name}: <strong style={{ color: sc.color }}>{sc.conversion[0]}% → {sc.conversion[11]}%</strong> em 12 meses
+              {/* Resumo final */}
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { label: "Envios Mês 12", value: `${(enviosMes[11]/1000).toFixed(1)}k`, color: C.orange },
+                  { label: "Envios/dia Mês 12", value: `~${enviosDia[11]}`, color: C.emerald },
+                  { label: "Total Ano 1", value: `${(acumulados[11]/1000).toFixed(0)}k`, color: C.navy },
+                  { label: "Fat. Digital Mês 12", value: `R$ ${digitalData[11] < 1 ? `${(digitalData[11]*1000).toFixed(0)}k` : `${digitalData[11].toFixed(1)}M`}`, color: sc.color },
+                ].map((m, i) => (
+                  <div key={i} className="text-center p-2 border" style={{ background: C.white, borderColor: C.border }}>
+                    <div className="text-lg font-black" style={{ color: m.color }}>{m.value}</div>
+                    <div className="text-[9px] font-medium" style={{ color: C.textMuted }}>{m.label}</div>
+                  </div>
+                ))}
               </div>
             </div>
             );
