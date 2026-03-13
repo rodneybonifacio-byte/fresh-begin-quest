@@ -389,8 +389,8 @@ export default function PitchPage() {
                 <LocationCard name="Look China Shopping" address="Rua Maria Marcolina" type="Ponto de Coleta Secundário" features={["Coleta centralizada do shopping", "Alto volume de lojistas", "Expedição diária", "Integração com marketplace"]} />
               </div>
               <div className="rounded-xl p-6 text-center" style={{ background: C.orangeBg, border: `1px solid ${C.orangeBorder}` }}>
-                <p className="text-lg" style={{ color: C.navy }}>
-                  🎯 Dois pontos estratégicos = <strong>maior cobertura</strong> e <strong>conveniência</strong> para os lojistas do marketplace
+                <p className="text-lg flex items-center justify-center gap-2" style={{ color: C.navy }}>
+                  <MapPin size={20} style={{ color: C.orange }} /> Dois pontos estratégicos = <strong>maior cobertura</strong> e <strong>conveniência</strong> para os lojistas do marketplace
                 </p>
               </div>
             </div>
