@@ -524,7 +524,7 @@ export default function PitchPdfExport() {
             <div style={{ display: "flex", justifyContent: "center", gap: 40 }}>
               {[
                 { value: "Win-Win", label: "Rendimentos compartilhados", color: C.navy },
-                { value: "Zero risco", label: "BRHUB assume inadimplência", color: C.orange },
+                { value: "Operação", label: "BRHUB cuida de tudo", color: C.orange },
                 { value: "4 sem", label: "Prazo de entrega", color: C.amber },
               ].map((item, i) => (
                 <CircleMetric key={i} value={item.value} label={item.label} color={item.color} />
