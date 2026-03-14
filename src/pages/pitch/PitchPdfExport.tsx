@@ -95,13 +95,15 @@ export default function PitchPdfExport() {
   };
 
   const pageStyle: React.CSSProperties = {
-    width: "100%",
-    minHeight: 500,
-    padding: "40px 50px",
+    width: "297mm",
+    height: "210mm",
+    padding: "32px 40px",
     background: C.bg,
     pageBreakAfter: "always" as any,
     boxSizing: "border-box",
     fontFamily: "'Plus Jakarta Sans', 'Inter', sans-serif",
+    overflow: "hidden",
+    position: "relative",
   };
 
   return (
