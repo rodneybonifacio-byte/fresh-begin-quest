@@ -470,7 +470,7 @@ export default function PitchPdfExport() {
               { title: "BRHUB Tech — Entregas", color: C.navy, icon: <Zap size={14} />, items: [
                 { label: "Plataforma tecnológica", desc: "Sistema de emissão, rastreio e gestão" },
                 { label: "Inteligência Artificial", desc: "Suporte 24/7 automatizado + agentes" },
-                { label: "Cobrança e faturamento", desc: "Assume risco de inadimplência" },
+                { label: "Cobrança e faturamento", desc: "Gestão completa de cobranças e repasses" },
                 { label: "Integrações marketplace", desc: "APIs, webhooks, automações" },
                 { label: "Marca própria (Whitelabel)", desc: "Plataforma com identidade do parceiro" },
               ]},
@@ -505,8 +505,8 @@ export default function PitchPdfExport() {
           <div style={{ padding: 14, background: C.navy, border: `2px solid ${C.navy}`, color: "white", display: "flex", gap: 12, alignItems: "flex-start" }}>
             <ShieldCheck size={18} style={{ color: C.orange, flexShrink: 0, marginTop: 2 }} />
             <div>
-              <h4 style={{ fontWeight: 700, fontSize: 11, margin: 0 }}>Zero Risco de <span style={{ color: C.orange }}>Inadimplência</span></h4>
-              <p style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", margin: "2px 0 0" }}>A BRHUB assume 100% da cobrança e do risco. Repasses mensais garantidos.</p>
+              <h4 style={{ fontWeight: 700, fontSize: 11, margin: 0 }}>Gestão <span style={{ color: C.orange }}>Completa</span></h4>
+              <p style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", margin: "2px 0 0" }}>A BRHUB cuida de toda a operação logística, cobrança e repasses mensais garantidos.</p>
             </div>
           </div>
         </div>
@@ -524,7 +524,7 @@ export default function PitchPdfExport() {
             <div style={{ display: "flex", justifyContent: "center", gap: 40 }}>
               {[
                 { value: "Win-Win", label: "Rendimentos compartilhados", color: C.navy },
-                { value: "Zero risco", label: "BRHUB assume inadimplência", color: C.orange },
+                { value: "Operação", label: "BRHUB cuida de tudo", color: C.orange },
                 { value: "4 sem", label: "Prazo de entrega", color: C.amber },
               ].map((item, i) => (
                 <CircleMetric key={i} value={item.value} label={item.label} color={item.color} />
