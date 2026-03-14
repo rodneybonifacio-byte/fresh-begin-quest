@@ -21,11 +21,15 @@ export default function RealizarFechamento() {
             
             console.log('Testando conexão via edge function...');
             
+            const token = localStorage.getItem('token');
             const { data, error } = await supabase.functions.invoke('realizar-fechamento', {
                 body: {
                     dataInicio: testDataInicio,
                     dataFim: testDataFim,
-                }
+                },
+                headers: {
+                    'x-brhub-authorization': `Bearer ${token}`,
+                },
             });
 
             if (error) {
