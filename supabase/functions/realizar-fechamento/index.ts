@@ -1,10 +1,9 @@
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-brhub-authorization, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 serve(async (req) => {
@@ -13,35 +12,29 @@ serve(async (req) => {
   }
 
   try {
-    // Validar autenticação
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
+    // Validar autenticação via JWT externo BRHUB
+    const brhubToken = req.headers.get('x-brhub-authorization')?.replace('Bearer ', '') || '';
+    
+    if (!brhubToken) {
       return new Response(
-        JSON.stringify({ status: 'error', mensagem: 'Não autorizado' }),
+        JSON.stringify({ status: 'error', mensagem: 'Token BRHUB não fornecido' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    
-    if (claimsError || !claimsData?.claims) {
+    // Decodificar JWT para verificar role
+    let claims;
+    try {
+      claims = JSON.parse(atob(brhubToken.split('.')[1]));
+    } catch {
       return new Response(
         JSON.stringify({ status: 'error', mensagem: 'Token inválido' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Verificar se é admin
-    const role = claimsData.claims.role;
-    if (role !== 'ADMIN') {
-      console.log('❌ Acesso negado - role:', role);
+    if (claims.role !== 'ADMIN') {
+      console.log('❌ Acesso negado - role:', claims.role);
       return new Response(
         JSON.stringify({ status: 'error', mensagem: 'Acesso restrito a administradores' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -52,18 +45,12 @@ serve(async (req) => {
 
     if (!dataInicio || !dataFim) {
       return new Response(
-        JSON.stringify({ 
-          status: 'error', 
-          mensagem: 'dataInicio e dataFim são obrigatórios' 
-        }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
+        JSON.stringify({ status: 'error', mensagem: 'dataInicio e dataFim são obrigatórios' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('🚀 Iniciando faturamento:', { dataInicio, dataFim, userId: claimsData.claims.sub });
+    console.log('🚀 Iniciando faturamento:', { dataInicio, dataFim, userId: claims.sub });
 
     const apiToken = Deno.env.get('FATURAMENTO_API_TOKEN');
     
@@ -94,15 +81,8 @@ serve(async (req) => {
     console.log('✅ Faturamento realizado com sucesso');
 
     return new Response(
-      JSON.stringify({ 
-        status: 'success', 
-        mensagem: 'Faturamento realizado com sucesso',
-        data 
-      }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      JSON.stringify({ status: 'success', mensagem: 'Faturamento realizado com sucesso', data }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error: any) {
@@ -112,12 +92,8 @@ serve(async (req) => {
       JSON.stringify({ 
         status: 'error', 
         mensagem: error.message || 'Erro ao processar faturamento',
-        erro_detalhado: error.toString()
       }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
