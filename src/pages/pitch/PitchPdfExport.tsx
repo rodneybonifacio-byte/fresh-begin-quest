@@ -470,7 +470,7 @@ export default function PitchPdfExport() {
               { title: "BRHUB Tech — Entregas", color: C.navy, icon: <Zap size={14} />, items: [
                 { label: "Plataforma tecnológica", desc: "Sistema de emissão, rastreio e gestão" },
                 { label: "Inteligência Artificial", desc: "Suporte 24/7 automatizado + agentes" },
-                { label: "Cobrança e faturamento", desc: "Assume risco de inadimplência" },
+                { label: "Cobrança e faturamento", desc: "Gestão completa de cobranças e repasses" },
                 { label: "Integrações marketplace", desc: "APIs, webhooks, automações" },
                 { label: "Marca própria (Whitelabel)", desc: "Plataforma com identidade do parceiro" },
               ]},
