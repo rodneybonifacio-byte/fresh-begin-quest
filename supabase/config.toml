@@ -197,3 +197,6 @@ verify_jwt = false
 
 [functions.cron-avaliacao]
 verify_jwt = false
+
+[functions.realizar-fechamento]
+verify_jwt = false
