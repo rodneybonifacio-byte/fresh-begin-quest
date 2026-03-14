@@ -505,8 +505,8 @@ export default function PitchPdfExport() {
           <div style={{ padding: 14, background: C.navy, border: `2px solid ${C.navy}`, color: "white", display: "flex", gap: 12, alignItems: "flex-start" }}>
             <ShieldCheck size={18} style={{ color: C.orange, flexShrink: 0, marginTop: 2 }} />
             <div>
-              <h4 style={{ fontWeight: 700, fontSize: 11, margin: 0 }}>Zero Risco de <span style={{ color: C.orange }}>Inadimplência</span></h4>
-              <p style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", margin: "2px 0 0" }}>A BRHUB assume 100% da cobrança e do risco. Repasses mensais garantidos.</p>
+              <h4 style={{ fontWeight: 700, fontSize: 11, margin: 0 }}>Gestão <span style={{ color: C.orange }}>Completa</span></h4>
+              <p style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", margin: "2px 0 0" }}>A BRHUB cuida de toda a operação logística, cobrança e repasses mensais garantidos.</p>
             </div>
           </div>
         </div>
