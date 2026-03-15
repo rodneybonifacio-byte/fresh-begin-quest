@@ -177,7 +177,7 @@ function isAtrasado(dateString: string): boolean {
     if (hojeDia.getTime() === previsaoDia.getTime()) {
       const hora = agoraBrasilia.getHours();
       const minuto = agoraBrasilia.getMinutes();
-      return (hora > 16) || (hora === 16 && minuto >= 15);
+      return (hora > 16) || (hora === 16 && minuto >= 30);
     }
     
     return false;
