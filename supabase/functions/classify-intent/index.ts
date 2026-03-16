@@ -45,7 +45,15 @@ serve(async (req) => {
       );
     }
 
-    // Fast-path: acks e confirmações comuns → passivo instantâneo (sem chamar IA)
+    // Fast-path: códigos de rastreio → ACTIVE instantâneo (cliente quer info do pacote)
+    const trackingCodePattern = /^[A-Z]{2}\d{9}[A-Z]{2}$/i;
+    if (trackingCodePattern.test(cleaned)) {
+      return new Response(
+        JSON.stringify({ intent: "ACTIVE", confidence: 1.0, reason: "tracking_code" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const normalized = withoutEmojis.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const passiveAcks = [
       "ok", "oks", "okey", "okay", "okk", "okei",
