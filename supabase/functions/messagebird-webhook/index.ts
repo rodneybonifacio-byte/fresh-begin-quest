@@ -582,9 +582,9 @@ serve(async (req) => {
             .eq("conversation_id", conversation.id)
             .neq("category", "rastreio")
             .not("status", "in", '("concluido","fechado","cancelado","entregue")');
-        } else if (!conversation.ai_enabled && channel?.ai_enabled && !isWrongPerson) {
-          // Reativar IA apenas se:
-          // 1. Estava desativada
+        } else if ((!conversation.ai_enabled || conversation.status === "closed") && channel?.ai_enabled && !isWrongPerson) {
+          // Reativar IA e reabrir conversa se:
+          // 1. Estava desativada OU fechada
           // 2. A mensagem NÃO é passiva
           // 3. NÃO é wrong person
           // 4. A mensagem tem conteúdo substancial (não é ruído)
@@ -609,6 +609,25 @@ serve(async (req) => {
           
           if (hasSubstantialContent && !adminRespondedRecently) {
             updateData.ai_enabled = true;
+            updateData.status = "open";
+            
+            // Se conversa estava fechada, reabrir ticket ou criar novo
+            if (conversation.status === "closed") {
+              console.log("🔓 Reabrindo conversa fechada — cliente mandou mensagem ativa:", conversation.id);
+              
+              // Criar novo ticket para a nova interação
+              await supabase.from("whatsapp_tickets").insert({
+                conversation_id: conversation.id,
+                contact_phone: conversation.contact_phone,
+                contact_name: conversation.contact_name,
+                status: "open",
+                category: "geral",
+                subject: "Conversa reaberta pelo cliente",
+                opened_at: new Date().toISOString(),
+                first_message_at: new Date().toISOString(),
+              });
+            }
+            
             console.log("🔄 IA reativada para conversa (mensagem substancial recebida):", conversation.id);
           } else {
             console.log("⏭️ IA NÃO reativada —", adminRespondedRecently ? "admin respondeu recentemente" : "mensagem passiva/ruído", ":", conversation.id, "msg:", (messageContent || "").substring(0, 50));
