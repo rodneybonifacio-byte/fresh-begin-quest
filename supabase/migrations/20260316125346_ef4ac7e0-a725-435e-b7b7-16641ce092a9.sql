@@ -1,0 +1,1 @@
+UPDATE ai_agents SET system_prompt = REPLACE(system_prompt, 'https://fresh-begin-quest.lovable.app/rastreio/encomenda?codigo=', 'https://brhubenvios.com.br/rastreio/encomenda?codigo=') WHERE name IN ('felipe', 'veronica') AND is_active = true;
