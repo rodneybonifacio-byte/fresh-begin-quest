@@ -115,14 +115,16 @@ serve(async (req) => {
       console.error("⚠️ Erro ao salvar mensagem enviada:", msgError);
     }
 
-    // Atualizar conversa
+    // Atualizar conversa — desativar IA quando admin envia manualmente
     await supabase
       .from("whatsapp_conversations")
       .update({
         last_message_at: new Date().toISOString(),
         last_message_preview: message.substring(0, 100),
+        ai_enabled: false,
       })
       .eq("id", conversationId);
+    console.log("🔒 IA desativada na conversa (admin enviou manualmente):", conversationId);
 
     return new Response(
       JSON.stringify({ ok: true, message: savedMsg, messagebirdResponse: mbResult }),

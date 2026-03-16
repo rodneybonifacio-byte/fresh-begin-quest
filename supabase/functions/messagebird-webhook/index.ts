@@ -588,13 +588,30 @@ serve(async (req) => {
           // 2. A mensagem NÃO é passiva
           // 3. NÃO é wrong person
           // 4. A mensagem tem conteúdo substancial (não é ruído)
+          // 5. Admin NÃO respondeu recentemente (últimos 30 min) — evitar competir com humano
           const hasSubstantialContent = (messageContent || "").trim().length > 2
             && !intentResult.isPassive;
+          
+          // Verificar se admin respondeu nos últimos 30 minutos
+          let adminRespondedRecently = false;
           if (hasSubstantialContent) {
+            const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+            const { data: recentAdminMsgs } = await supabase
+              .from("whatsapp_messages")
+              .select("id")
+              .eq("conversation_id", conversation.id)
+              .eq("direction", "outbound")
+              .eq("sent_by", "admin")
+              .gte("created_at", thirtyMinAgo)
+              .limit(1);
+            adminRespondedRecently = (recentAdminMsgs && recentAdminMsgs.length > 0);
+          }
+          
+          if (hasSubstantialContent && !adminRespondedRecently) {
             updateData.ai_enabled = true;
             console.log("🔄 IA reativada para conversa (mensagem substancial recebida):", conversation.id);
           } else {
-            console.log("⏭️ IA NÃO reativada — mensagem passiva/ruído:", conversation.id, "msg:", (messageContent || "").substring(0, 50));
+            console.log("⏭️ IA NÃO reativada —", adminRespondedRecently ? "admin respondeu recentemente" : "mensagem passiva/ruído", ":", conversation.id, "msg:", (messageContent || "").substring(0, 50));
           }
         }
         // Se ai_enabled já é true e mensagem não é passiva, manter como está
