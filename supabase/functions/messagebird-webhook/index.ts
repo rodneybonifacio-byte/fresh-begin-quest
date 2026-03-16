@@ -831,17 +831,21 @@ serve(async (req) => {
 
     if (shouldCallAI) {
       try {
-        // === DEBOUNCE: esperar 3s e verificar se chegaram msgs mais novas ===
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        // === DEBOUNCE: esperar 5s e verificar se esta é a mensagem mais recente ===
+        await new Promise(resolve => setTimeout(resolve, 5000));
         
-        const { data: newerMsgs } = await supabase
+        // Verificar se ESTA mensagem é a mais recente inbound da conversa
+        const { data: latestInbound } = await supabase
           .from("whatsapp_messages")
-          .select("id")
+          .select("id, messagebird_id")
           .eq("conversation_id", conversation.id)
           .eq("direction", "inbound")
-          .gt("created_at", new Date(Date.now() - 2500).toISOString())
-          .neq("messagebird_id", messageBirdId || "")
-          .limit(1);
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        const isLatest = !latestInbound || latestInbound.messagebird_id === messageBirdId || latestInbound.id === messageBirdId;
+        const newerMsgs = isLatest ? [] : [latestInbound];
         
         if (newerMsgs && newerMsgs.length > 0) {
           console.log("⏭️ DEBOUNCE: mensagem mais nova detectada, pulando AI para esta:", messageBirdId);
