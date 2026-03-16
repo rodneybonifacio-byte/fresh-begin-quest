@@ -45,6 +45,32 @@ serve(async (req) => {
       );
     }
 
+    // Fast-path: acks e confirmações comuns → passivo instantâneo (sem chamar IA)
+    const normalized = withoutEmojis.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const passiveAcks = [
+      "ok", "oks", "okey", "okay", "okk", "okei",
+      "certo", "certoo", "ta", "taa", "ta bom", "ta bem", "ta certo",
+      "blz", "beleza", "tranquilo", "tranquiloo",
+      "sim", "siim", "sss", "ss",
+      "nao", "nao preciso", "nada nao", "nao obrigado",
+      "obrigado", "obrigada", "obrigadoo", "obrigadaa", "brigado", "brigada", "vlw", "valeu", "valeuu",
+      "perfeito", "perfeitoo", "otimo", "otimoo",
+      "bom dia", "boa tarde", "boa noite",
+      "entendi", "entendido", "compreendi",
+      "recebi", "recebi sim", "recebido", "chegou", "ja recebi", "ja chegou",
+      "maravilha", "show", "showw", "top", "topp", "massa",
+      "amem", "deus abencoe", "gracas a deus",
+      "tchau", "ate mais", "bjs", "ate",
+      "nota 10", "excelente", "parabens", "nota dez",
+      "tudo bem", "tudo certo", "ta otimo", "ta perfeito",
+    ];
+    if (passiveAcks.includes(normalized)) {
+      return new Response(
+        JSON.stringify({ intent: "PASSIVE", confidence: 1.0, reason: "ack_fastpath" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Mensagens de sistema do MessageBird → passivo instantâneo
     if (/received\s+unsupported\s+message/i.test(cleaned)) {
       return new Response(
