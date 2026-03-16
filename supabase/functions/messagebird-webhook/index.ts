@@ -392,17 +392,20 @@ serve(async (req) => {
       .single();
 
     if (convError || !conversation) {
+      // Para mensagens outbound (HSM/templates), criar conversa como 'closed' e ai_enabled=false
+      // Ela só será reaberta quando o cliente responder (inbound)
+      const isOutbound = direction === "outbound";
       const { data: newConv, error: createError } = await supabase
         .from("whatsapp_conversations")
         .insert({
           contact_phone: normalizedPhone,
           contact_name: contactName,
           whatsapp_channel_id: channel?.id || null,
-          status: "open",
+          status: isOutbound ? "closed" : "open",
           last_message_at: new Date().toISOString(),
           last_message_preview: messageContent.substring(0, 100),
           unread_count: direction === "inbound" ? 1 : 0,
-          ai_enabled: channel?.ai_enabled ?? true,
+          ai_enabled: isOutbound ? false : (channel?.ai_enabled ?? true),
         })
         .select()
         .single();
@@ -412,7 +415,7 @@ serve(async (req) => {
         throw createError;
       }
       conversation = newConv;
-      console.log("✅ Nova conversa criada:", conversation.id);
+      console.log(`✅ Nova conversa criada: ${conversation.id} (status: ${isOutbound ? 'closed' : 'open'})`);
     } else {
       const updateData: any = {
         last_message_at: new Date().toISOString(),
