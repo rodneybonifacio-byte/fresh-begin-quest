@@ -483,6 +483,15 @@ serve(async (req) => {
           /atendimento\s+humano/i,
           /falar\s+com\s+algu[eé]m/i,
           /posso\s+falar\s+com\s+(um\s+)?atendente/i,
+          /cad[eê]\s+(o\s+)?atendente/i,
+          /esperando\s+(o\s+)?atendimento/i,
+          /esperando\s+(o\s+)?atendente/i,
+          /t[oô]\s+aguardando/i,
+          /vou\s+ficar\s+esperando/i,
+          /aguardando\s+o?\s*atendente/i,
+          /quero\s+(um\s+)?humano/i,
+          /me\s+passe\s+(um\s+)?(atendente|humano)/i,
+          /chama\s+(um\s+)?(atendente|humano|pessoa)/i,
         ];
         const wantsHuman = !isWrongPerson && humanRequestPatterns.some(p => p.test(messageContent || ""));
         
@@ -579,13 +588,30 @@ serve(async (req) => {
           // 2. A mensagem NÃO é passiva
           // 3. NÃO é wrong person
           // 4. A mensagem tem conteúdo substancial (não é ruído)
+          // 5. Admin NÃO respondeu recentemente (últimos 30 min) — evitar competir com humano
           const hasSubstantialContent = (messageContent || "").trim().length > 2
             && !intentResult.isPassive;
+          
+          // Verificar se admin respondeu nos últimos 30 minutos
+          let adminRespondedRecently = false;
           if (hasSubstantialContent) {
+            const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+            const { data: recentAdminMsgs } = await supabase
+              .from("whatsapp_messages")
+              .select("id")
+              .eq("conversation_id", conversation.id)
+              .eq("direction", "outbound")
+              .eq("sent_by", "admin")
+              .gte("created_at", thirtyMinAgo)
+              .limit(1);
+            adminRespondedRecently = (recentAdminMsgs && recentAdminMsgs.length > 0);
+          }
+          
+          if (hasSubstantialContent && !adminRespondedRecently) {
             updateData.ai_enabled = true;
             console.log("🔄 IA reativada para conversa (mensagem substancial recebida):", conversation.id);
           } else {
-            console.log("⏭️ IA NÃO reativada — mensagem passiva/ruído:", conversation.id, "msg:", (messageContent || "").substring(0, 50));
+            console.log("⏭️ IA NÃO reativada —", adminRespondedRecently ? "admin respondeu recentemente" : "mensagem passiva/ruído", ":", conversation.id, "msg:", (messageContent || "").substring(0, 50));
           }
         }
         // Se ai_enabled já é true e mensagem não é passiva, manter como está

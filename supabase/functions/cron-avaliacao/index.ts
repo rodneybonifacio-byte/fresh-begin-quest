@@ -93,6 +93,19 @@ Deno.serve(async (req: Request) => {
 
     console.log(`🔍 ${codigosJaAvaliados.size} códigos já receberam avaliação`);
 
+    // Buscar telefones bloqueados (blocklist)
+    const { data: blockedPhones } = await supabase
+      .from("whatsapp_phone_blocklist")
+      .select("phone_number")
+      .eq("is_active", true);
+    const telefonesBloqueados = new Set<string>();
+    if (blockedPhones) {
+      for (const b of blockedPhones) {
+        telefonesBloqueados.add(b.phone_number.replace(/\D/g, ""));
+      }
+    }
+    console.log(`🚫 ${telefonesBloqueados.size} telefones na blocklist`);
+
     const emissoesPendentes = emissoesFiltradas.filter((e: any) => {
       if (!e.codigoObjeto) return false;
       if (codigosJaAvaliados.has(e.codigoObjeto)) return false;
@@ -103,6 +116,8 @@ Deno.serve(async (req: Request) => {
       if (!celular.startsWith("55")) celular = "55" + celular;
       // Não enviar se já mandou avaliação para esse telefone recentemente
       if (telefonesJaNotificados.has(celular)) return false;
+      // Não enviar se telefone está na blocklist
+      if (telefonesBloqueados.has(celular)) return false;
       
       return true;
     });
