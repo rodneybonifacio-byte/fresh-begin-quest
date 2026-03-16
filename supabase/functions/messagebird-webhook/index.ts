@@ -473,6 +473,58 @@ serve(async (req) => {
             .eq("conversation_id", conversation.id)
             .not("status", "in", '("concluido","fechado","cancelado","entregue")');
         }
+
+        // === DETECÇÃO DE PEDIDO DE ATENDENTE HUMANO ===
+        const humanRequestPatterns = [
+          /quero\s+falar\s+com\s+(um\s+)?(atendente|pessoa|humano|ser\s+humano|gente)/i,
+          /falar\s+com\s+(um\s+)?(atendente|pessoa|humano|ser\s+humano)/i,
+          /atendente\s+humano/i,
+          /pessoa\s+real/i,
+          /atendimento\s+humano/i,
+          /falar\s+com\s+algu[eé]m/i,
+          /posso\s+falar\s+com\s+(um\s+)?atendente/i,
+        ];
+        const wantsHuman = !isWrongPerson && humanRequestPatterns.some(p => p.test(messageContent || ""));
+        
+        if (wantsHuman) {
+          console.log(`👤 HUMAN HANDOFF: Cliente ${normalizedPhone} pediu atendente humano. Desativando IA.`);
+          updateData.ai_enabled = false;
+          // Enviar mensagem de handoff
+          const accessKey = channel?.access_key || Deno.env.get("MESSAGEBIRD_ACCESS_KEY");
+          const mbChannelId = channel?.channel_id || Deno.env.get("MESSAGEBIRD_CHANNEL_ID");
+          const firstName = (contactName || "").split(" ")[0] || "amigo";
+          
+          try {
+            const handoffMsg = `Entendo, ${firstName}! Vou acionar um atendente humano pra falar com você. Aguarde um momento, por favor. 😊`;
+            const mbResp = await fetch("https://conversations.messagebird.com/v1/send", {
+              method: "POST",
+              headers: {
+                Authorization: `AccessKey ${accessKey}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                to: normalizedPhone,
+                from: mbChannelId,
+                type: "text",
+                content: { text: handoffMsg },
+              }),
+            });
+            const mbResult = await mbResp.json();
+            await supabase.from("whatsapp_messages").insert({
+              conversation_id: conversation.id,
+              messagebird_id: mbResult.id || null,
+              direction: "outbound",
+              content_type: "text",
+              content: `*Veronica:*\n\n${handoffMsg}`,
+              status: "sent",
+              sent_by: "system",
+              ai_generated: false,
+            });
+            console.log("✅ Mensagem de handoff humano enviada");
+          } catch (handoffErr) {
+            console.warn("⚠️ Erro ao enviar handoff:", handoffErr);
+          }
+        }
         
         // === VERIFICAÇÃO DE SUPRESSÃO PÓS-HSM E PÓS-DESPEDIDA ===
         // Buscar últimas 2 mensagens outbound para checar contexto
@@ -831,17 +883,21 @@ serve(async (req) => {
 
     if (shouldCallAI) {
       try {
-        // === DEBOUNCE: esperar 3s e verificar se chegaram msgs mais novas ===
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        // === DEBOUNCE: esperar 5s e verificar se esta é a mensagem mais recente ===
+        await new Promise(resolve => setTimeout(resolve, 5000));
         
-        const { data: newerMsgs } = await supabase
+        // Verificar se ESTA mensagem é a mais recente inbound da conversa
+        const { data: latestInbound } = await supabase
           .from("whatsapp_messages")
-          .select("id")
+          .select("id, messagebird_id")
           .eq("conversation_id", conversation.id)
           .eq("direction", "inbound")
-          .gt("created_at", new Date(Date.now() - 2500).toISOString())
-          .neq("messagebird_id", messageBirdId || "")
-          .limit(1);
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        const isLatest = !latestInbound || latestInbound.messagebird_id === messageBirdId || latestInbound.id === messageBirdId;
+        const newerMsgs = isLatest ? [] : [latestInbound];
         
         if (newerMsgs && newerMsgs.length > 0) {
           console.log("⏭️ DEBOUNCE: mensagem mais nova detectada, pulando AI para esta:", messageBirdId);
