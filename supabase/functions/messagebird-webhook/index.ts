@@ -420,8 +420,12 @@ serve(async (req) => {
       const updateData: any = {
         last_message_at: new Date().toISOString(),
         last_message_preview: messageContent.substring(0, 100),
-        status: "open",
       };
+      // Só forçar status 'open' para mensagens inbound (cliente respondendo)
+      // Para outbound (HSM/templates), manter o status atual da conversa
+      if (direction === "inbound") {
+        updateData.status = "open";
+      }
       if (channel?.id) updateData.whatsapp_channel_id = channel.id;
       // Só atualizar nome se o novo for válido e melhor que o atual
       if (isValidName(contactName) && contactName !== normalizedPhone) {
