@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
     // Buscar conversas open/active sem ticket ativo e inativas há 5+ min
     const { data: staleConvs, error: fetchErr } = await supabase
       .from("whatsapp_conversations")
-      .select("id, contact_name, contact_phone, last_message_at")
+      .select("id, contact_name, contact_phone, last_message_at, ai_enabled, last_message_preview")
       .in("status", ["open", "active"])
       .lt("last_message_at", cutoff);
 
@@ -34,6 +34,18 @@ Deno.serve(async (req) => {
 
     let closed = 0;
     for (const conv of staleConvs) {
+      // Se é uma conversa de HSM sem resposta (ai_enabled=false e preview é template), fechar direto
+      const isHsmOnly = !conv.ai_enabled && (conv.last_message_preview || "").includes("Template:");
+      if (isHsmOnly) {
+        await supabase
+          .from("whatsapp_conversations")
+          .update({ status: "closed", updated_at: new Date().toISOString() })
+          .eq("id", conv.id);
+        console.log(`📩 HSM sem resposta fechado: ${conv.contact_name || conv.contact_phone}`);
+        closed++;
+        continue;
+      }
+
       // Verificar se NÃO tem ticket ativo
       const { data: tickets } = await supabase
         .from("whatsapp_tickets")
