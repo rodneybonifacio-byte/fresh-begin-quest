@@ -2418,10 +2418,11 @@ async function fetchTrackingData(codigo: string): Promise<any> {
 function formatTrackingForAI(rastreioData: any): string {
   const dados = rastreioData?.data || rastreioData;
   const eventos = dados?.eventos || [];
-  let result = "";
+  const hoje = new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+  let result = `📅 DATA DE HOJE: ${hoje}\n`;
   if (dados?.codigoObjeto) result += `Código: ${dados.codigoObjeto}\n`;
   if (dados?.servico) result += `Serviço: ${dados.servico}\n`;
-  if (dados?.dataPrevisaoEntrega) result += `Previsão de entrega: ${dados.dataPrevisaoEntrega}\n`;
+  if (dados?.dataPrevisaoEntrega) result += `Previsão de entrega: ${dados.dataPrevisaoEntrega}\n⚠️ ATENÇÃO: Reproduza esta data EXATAMENTE como está acima. NÃO modifique, NÃO invente outra data. Se a previsão já passou (antes de ${hoje}), informe que está com atraso.\n`;
 
   // Extrair endereço de retirada/entrega do último evento (se aguardando retirada)
   if (dados?.enderecoRetirada) {
