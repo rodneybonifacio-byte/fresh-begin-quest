@@ -883,8 +883,8 @@ serve(async (req) => {
 
     if (shouldCallAI) {
       try {
-        // === DEBOUNCE: esperar 5s e verificar se esta é a mensagem mais recente ===
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        // === DEBOUNCE: esperar 8s e verificar se esta é a mensagem mais recente ===
+        await new Promise(resolve => setTimeout(resolve, 8000));
         
         // Verificar se ESTA mensagem é a mais recente inbound da conversa
         const { data: latestInbound } = await supabase
