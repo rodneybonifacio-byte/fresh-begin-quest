@@ -1235,7 +1235,8 @@ EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de a
     }
     console.log("👤 Contexto de contato:", contactContext ? contactContext.substring(0, 120) : "NENHUM (não identificado)");
 
-    const enrichedSystemPrompt = systemPrompt + "\n\nREGRA TÉCNICA: NÃO inclua prefixo como '*Veronica:*' ou '*Felipe:*' no início da sua resposta. O sistema adiciona automaticamente. Responda apenas com o conteúdo da mensagem." + "\n\n[REGRA DE REDIRECIONAMENTO — PRODUTOS, TROCA E LOJA]\nQuando o cliente perguntar sobre PRODUTOS, COMPRAS, CATÁLOGO, PREÇOS de produtos, ESTOQUE, TROCA DE PRODUTO, DEVOLUÇÃO DE PRODUTO, ou quiser COMPRAR algo na loja:\n1. Use a ferramenta 'buscar_remetentes_api' para buscar os dados cadastrais do remetente vinculado ao cliente\n2. A ferramenta SEMPRE retorna os dados completos (nome, telefone, email, endereço) quando o cliente está identificado. Use esses dados diretamente na resposta.\n3. Responda ao cliente orientando a entrar em contato direto com a loja remetente, fornecendo os dados retornados pela ferramenta.\n4. Exemplo: \"[Nome], para troca/devolução entre em contato direto com a loja [Nome do Remetente]! 📞 [celular/telefone] | 📍 [endereço completo] 😊\"\nIMPORTANTE: Essa regra se aplica APENAS a perguntas sobre produtos/compras/trocas/devoluções. Questões sobre ENVIO, RASTREIO, ETIQUETAS, CRÉDITOS continuam sendo atendidas normalmente por você.\nCRÍTICO: Se a ferramenta retornar dados do remetente, SEMPRE forneça esses dados ao cliente. NUNCA diga que não conseguiu localizar se a ferramenta retornou resultados.\nApenas se a ferramenta retornar 'Nenhum remetente cadastrado' ou 'Não consegui identificar o cliente', aí sim peça o nome ou CNPJ da loja." + contactContext;
+    const hojeFormatado = new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric" });
+    const enrichedSystemPrompt = systemPrompt + `\n\n📅 DATA DE HOJE: ${hojeFormatado}. Use esta data como referência para avaliar se prazos estão vencidos.` + "\n\nREGRA TÉCNICA: NÃO inclua prefixo como '*Veronica:*' ou '*Felipe:*' no início da sua resposta. O sistema adiciona automaticamente. Responda apenas com o conteúdo da mensagem." + "\n\n[REGRA DE REDIRECIONAMENTO — PRODUTOS, TROCA E LOJA]\nQuando o cliente perguntar sobre PRODUTOS, COMPRAS, CATÁLOGO, PREÇOS de produtos, ESTOQUE, TROCA DE PRODUTO, DEVOLUÇÃO DE PRODUTO, ou quiser COMPRAR algo na loja:\n1. Use a ferramenta 'buscar_remetentes_api' para buscar os dados cadastrais do remetente vinculado ao cliente\n2. A ferramenta SEMPRE retorna os dados completos (nome, telefone, email, endereço) quando o cliente está identificado. Use esses dados diretamente na resposta.\n3. Responda ao cliente orientando a entrar em contato direto com a loja remetente, fornecendo os dados retornados pela ferramenta.\n4. Exemplo: \"[Nome], para troca/devolução entre em contato direto com a loja [Nome do Remetente]! 📞 [celular/telefone] | 📍 [endereço completo] 😊\"\nIMPORTANTE: Essa regra se aplica APENAS a perguntas sobre produtos/compras/trocas/devoluções. Questões sobre ENVIO, RASTREIO, ETIQUETAS, CRÉDITOS continuam sendo atendidas normalmente por você.\nCRÍTICO: Se a ferramenta retornar dados do remetente, SEMPRE forneça esses dados ao cliente. NUNCA diga que não conseguiu localizar se a ferramenta retornou resultados.\nApenas se a ferramenta retornar 'Nenhum remetente cadastrado' ou 'Não consegui identificar o cliente', aí sim peça o nome ou CNPJ da loja." + contactContext;
     const messages: any[] = [{ role: "system", content: enrichedSystemPrompt }];
 
     if (history) {
@@ -2220,36 +2221,68 @@ async function analyzeImageWithGemini(imageUrl: string, geminiKey: string): Prom
   const base64Image = base64Encode(imageBuffer);
   const mimeType = (imageResponse.headers.get("content-type") || "image/jpeg").split(";")[0].trim();
 
-  const prompt = `Extraia dados úteis desta imagem de forma CONCISA. Retorne no formato:
+  const prompt = `Analise esta imagem com MÁXIMA ATENÇÃO a códigos de rastreio.
+
+PRIORIDADE 1 — CÓDIGO DE RASTREIO:
+- Procure QUALQUER sequência no formato: 2 letras + 9 a 13 dígitos + 2 letras (ex: AD215383063BR, OQ812345678BR)
+- Verifique TODAS as áreas da imagem: etiquetas, recibos, prints de tela, comprovantes
+- Se houver texto borrado ou parcialmente visível, tente inferir o código completo
+- Códigos de rastreio brasileiros SEMPRE terminam em "BR"
+
+PRIORIDADE 2 — Outros dados:
+- CEPs (formato XXXXX-XXX)
+- Nomes de remetente/destinatário
+- Tipo de serviço (SEDEX, PAC, etc)
+
+Retorne no formato:
 DESCRIÇÃO: [1 frase do que é a imagem]
-CODIGO_RASTREIO: [código dos Correios se houver, formato XX123456789XX, ou NENHUM]
+CODIGO_RASTREIO: [código encontrado ou NENHUM]
 CEP_ORIGEM: [se visível, ou NENHUM]
 CEP_DESTINO: [se visível, ou NENHUM]`;
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [
-          { text: prompt },
-          { inline_data: { mime_type: mimeType, data: base64Image } },
-        ] }],
-      }),
-    }
-  );
-
-  if (!response.ok) throw new Error(`Gemini error: ${response.status}`);
-  const data = await response.json();
-  const fullText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-
+  // Tentar com Gemini, com retry usando modelo mais capaz se falhar
   let trackingCode: string | null = null;
-  const codigoMatch = fullText.match(/CODIGO_RASTREIO:\s*([A-Z]{2}\d{9}[A-Z]{2})/i);
-  if (codigoMatch) trackingCode = codigoMatch[1].toUpperCase();
-  if (!trackingCode) {
-    const genericMatch = fullText.match(/\b([A-Z]{2}\d{9}[A-Z]{2})\b/);
-    if (genericMatch) trackingCode = genericMatch[1].toUpperCase();
+  let fullText = "";
+
+  const models = ["gemini-2.5-flash", "gemini-2.5-pro"];
+  for (const model of models) {
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [
+              { text: prompt },
+              { inline_data: { mime_type: mimeType, data: base64Image } },
+            ] }],
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        console.warn(`⚠️ Gemini ${model} error: ${response.status}`);
+        continue;
+      }
+      const data = await response.json();
+      fullText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+      // Tentar extrair código
+      const codigoMatch = fullText.match(/CODIGO_RASTREIO:\s*([A-Z]{2}\d{9,13}[A-Z]{2})/i);
+      if (codigoMatch) trackingCode = codigoMatch[1].toUpperCase();
+      if (!trackingCode) {
+        const genericMatch = fullText.match(/\b([A-Z]{2}\d{9,13}[A-Z]{2})\b/);
+        if (genericMatch) trackingCode = genericMatch[1].toUpperCase();
+      }
+
+      // Se encontrou código ou é o último modelo, parar
+      if (trackingCode || model === models[models.length - 1]) break;
+      
+      console.log(`🔄 Gemini ${model} não extraiu código, tentando modelo mais capaz...`);
+    } catch (err) {
+      console.warn(`⚠️ Gemini ${model} falhou:`, err);
+    }
   }
 
   const descMatch = fullText.match(/DESCRI[CÇ][AÃ]O:\s*(.+)/i);
@@ -2418,10 +2451,11 @@ async function fetchTrackingData(codigo: string): Promise<any> {
 function formatTrackingForAI(rastreioData: any): string {
   const dados = rastreioData?.data || rastreioData;
   const eventos = dados?.eventos || [];
-  let result = "";
+  const hoje = new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+  let result = `📅 DATA DE HOJE: ${hoje}\n`;
   if (dados?.codigoObjeto) result += `Código: ${dados.codigoObjeto}\n`;
   if (dados?.servico) result += `Serviço: ${dados.servico}\n`;
-  if (dados?.dataPrevisaoEntrega) result += `Previsão de entrega: ${dados.dataPrevisaoEntrega}\n`;
+  if (dados?.dataPrevisaoEntrega) result += `Previsão de entrega: ${dados.dataPrevisaoEntrega}\n⚠️ ATENÇÃO: Reproduza esta data EXATAMENTE como está acima. NÃO modifique, NÃO invente outra data. Se a previsão já passou (antes de ${hoje}), informe que está com atraso.\n`;
 
   // Extrair endereço de retirada/entrega do último evento (se aguardando retirada)
   if (dados?.enderecoRetirada) {
@@ -2511,6 +2545,12 @@ REGRAS OBRIGATÓRIAS:
 - Use 1 emoji no máximo por mensagem.
 - Se não souber, diga "vou verificar com o time" e pronto.
 - Português brasileiro natural. Pode usar "vc", "tá", "pra".
+
+🚨 REGRA CRÍTICA — DATAS E PRAZOS:
+- NUNCA invente, modifique ou arredonde datas. Copie EXATAMENTE a data retornada pela ferramenta.
+- Se a ferramenta retornar "Previsão de entrega: 16/03/2026", diga EXATAMENTE "dia 16 de março" — NUNCA outro dia.
+- Se a previsão de entrega já PASSOU (data anterior a hoje), reconheça o atraso ao invés de dizer "dentro do prazo".
+- NUNCA diga "hoje é dia X" sem certeza absoluta. A data de hoje está informada no contexto do rastreio.
 - Você tem acesso a ferramentas (rastreio, cotação, saldo). USE-AS quando o contexto pedir, não invente dados.
 
 ⚠️ PRIORIDADE DE FERRAMENTAS — REGRA CRÍTICA:
@@ -2564,6 +2604,12 @@ APRENDIZADO CONTÍNUO:
 APRESENTAÇÃO: Na PRIMEIRA mensagem: "Oi! Sou a Veronica do Time de Suporte da BRHUB Envios 😊". Depois não repita.
 
 FERRAMENTAS: Você tem acesso a ferramentas reais (rastrear pacote, cotar frete, consultar saldo). SEMPRE use a ferramenta certa ao invés de inventar dados.
+
+🚨 REGRA CRÍTICA — DATAS E PRAZOS:
+- NUNCA invente, modifique ou arredonde datas. Copie EXATAMENTE a data retornada pela ferramenta.
+- Se a ferramenta retornar "Previsão de entrega: 16/03/2026", diga EXATAMENTE "dia 16 de março" — NUNCA outro dia.
+- Se a previsão de entrega já PASSOU (data anterior a hoje), reconheça o atraso ao invés de dizer "dentro do prazo".
+- NUNCA diga "hoje é dia X" sem certeza. A data de hoje está informada no contexto do rastreio.
 
 ⚠️ PRIORIDADE DE FERRAMENTAS — REGRA MAIS IMPORTANTE:
 - Quando o cliente mencionar um CÓDIGO DE RASTREIO (formato XX123456789XX) ou perguntar sobre status, localização, atraso, entrega de pacote: use SEMPRE "rastrear_objeto" como PRIMEIRA ferramenta. NUNCA outra.
