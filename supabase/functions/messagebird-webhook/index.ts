@@ -483,6 +483,15 @@ serve(async (req) => {
           /atendimento\s+humano/i,
           /falar\s+com\s+algu[eé]m/i,
           /posso\s+falar\s+com\s+(um\s+)?atendente/i,
+          /cad[eê]\s+(o\s+)?atendente/i,
+          /esperando\s+(o\s+)?atendimento/i,
+          /esperando\s+(o\s+)?atendente/i,
+          /t[oô]\s+aguardando/i,
+          /vou\s+ficar\s+esperando/i,
+          /aguardando\s+o?\s*atendente/i,
+          /quero\s+(um\s+)?humano/i,
+          /me\s+passe\s+(um\s+)?(atendente|humano)/i,
+          /chama\s+(um\s+)?(atendente|humano|pessoa)/i,
         ];
         const wantsHuman = !isWrongPerson && humanRequestPatterns.some(p => p.test(messageContent || ""));
         
