@@ -556,8 +556,16 @@ serve(async (req) => {
         const isLastMsgPassiveHSM = lastOutbound?.content_type === "hsm" && lastOutbound?.sent_by === "system";
         
         // === CLASSIFICAÇÃO DE INTENÇÃO VIA IA ===
-        intentResult = await classifyMessageIntent(messageContent, 
-          isLastMsgPassiveHSM ? "Resposta a notificação HSM automática de logística" : "Mensagem após atendimento da IA");
+        // Mídia (documentos, imagens, áudios, vídeos) são SEMPRE consideradas ACTIVE
+        // pois o classificador de texto retornaria PASSIVE para conteúdo vazio
+        const isMediaMessage = ["image", "video", "document", "audio", "location", "sticker"].includes(contentType);
+        if (isMediaMessage) {
+          intentResult = { isPassive: false, confidence: 1.0, reason: "media_always_active" };
+          console.log(`🎯 Mídia (${contentType}) tratada como ACTIVE automaticamente`);
+        } else {
+          intentResult = await classifyMessageIntent(messageContent, 
+            isLastMsgPassiveHSM ? "Resposta a notificação HSM automática de logística" : "Mensagem após atendimento da IA");
+        }
         const shouldSuppress = intentResult.isPassive;
 
         // Detectar se a última mensagem da IA já foi uma despedida
