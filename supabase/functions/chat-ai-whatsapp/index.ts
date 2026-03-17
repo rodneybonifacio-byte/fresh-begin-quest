@@ -2330,7 +2330,76 @@ CEP_DESTINO: [se visível, ou NENHUM]`;
   };
 }
 
-async function transcribeAudio(mediaUrl: string): Promise<string | null> {
+// ═══════════════════════════════════════════════════════════
+// EXTRAÇÃO DE TEXTO DE DOCUMENTOS (PDF) COM GEMINI
+// ═══════════════════════════════════════════════════════════
+
+async function extractDocumentTextWithGemini(docUrl: string, geminiKey: string): Promise<string> {
+  // Baixar o documento
+  const docResponse = await fetch(docUrl);
+  if (!docResponse.ok) throw new Error(`Erro ao baixar documento: ${docResponse.status}`);
+  
+  const docBuffer = await docResponse.arrayBuffer();
+  const base64Doc = btoa(String.fromCharCode(...new Uint8Array(docBuffer)));
+  
+  // Detectar mime type
+  const contentTypeHeader = docResponse.headers.get("content-type") || "application/pdf";
+  const mimeType = contentTypeHeader.split(";")[0].trim();
+  
+  console.log(`📄 Documento baixado: ${(docBuffer.byteLength / 1024).toFixed(1)}KB, tipo: ${mimeType}`);
+  
+  // Verificar tamanho (máximo ~10MB para Gemini)
+  if (docBuffer.byteLength > 10 * 1024 * 1024) {
+    console.warn("⚠️ Documento muito grande para processar");
+    return "";
+  }
+  
+  const prompt = `Extraia TODO o conteúdo textual deste documento de forma precisa e organizada.
+Se for um PDF com tabelas, mantenha a estrutura.
+Se houver códigos de rastreio (formato: 2 letras + 9-13 dígitos + 2 letras, ex: AD215383063BR), destaque-os.
+Retorne APENAS o texto extraído do documento, sem comentários adicionais.`;
+
+  const models = ["gemini-2.5-flash", "gemini-2.5-pro"];
+  
+  for (const model of models) {
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [
+              { text: prompt },
+              { inline_data: { mime_type: mimeType, data: base64Doc } },
+            ] }],
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.warn(`⚠️ Gemini ${model} doc error: ${response.status} - ${errText.substring(0, 200)}`);
+        continue;
+      }
+      
+      const data = await response.json();
+      const extractedText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      
+      if (extractedText.length > 10) {
+        console.log(`✅ Texto extraído com ${model}: ${extractedText.length} chars`);
+        return extractedText;
+      }
+      
+      console.log(`🔄 Gemini ${model} extraiu pouco texto, tentando modelo mais capaz...`);
+    } catch (err) {
+      console.warn(`⚠️ Gemini ${model} doc falhou:`, err);
+    }
+  }
+  
+  return "";
+}
+
   // Tentar ElevenLabs primeiro, depois Gemini
   const elevenLabsKey = Deno.env.get("ELEVENLABS_API_KEY");
   if (elevenLabsKey) {
