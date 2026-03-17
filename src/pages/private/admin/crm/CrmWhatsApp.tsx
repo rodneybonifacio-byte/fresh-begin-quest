@@ -441,6 +441,27 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
     return phone;
   };
 
+  // Check if 24h window is expired (no inbound message in last 24h)
+  const getLastInboundTime = (msgs: Message[]) => {
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i].direction === 'inbound') return new Date(msgs[i].created_at);
+    }
+    return null;
+  };
+
+  const isWindowExpired = (() => {
+    if (!selectedConversation || messages.length === 0) return false;
+    const lastInbound = getLastInboundTime(messages);
+    if (!lastInbound) return true;
+    return differenceInHours(new Date(), lastInbound) >= 24;
+  })();
+
+  // For conversation list: check if last_message_at is > 24h ago (rough proxy)
+  const isConvWindowExpired = (conv: Conversation) => {
+    if (!conv.last_message_at) return true;
+    return differenceInHours(new Date(), new Date(conv.last_message_at)) >= 24;
+  };
+
   const filteredConversations = conversations.filter(c => {
     const term = searchTerm.toLowerCase();
     const matchesSearch =
