@@ -86,7 +86,7 @@ const CrmLayout = () => {
             <span className="text-xs text-muted-foreground animate-pulse">Carregando...</span>
           ) : balance ? (
             <span className={`text-sm font-semibold ${balance.amount <= 10 ? 'text-red-500' : balance.amount <= 50 ? 'text-amber-500' : 'text-green-600'}`}>
-              € {balance.amount?.toFixed(2)}
+              R$ {balance.amount?.toFixed(2)}
             </span>
           ) : (
             <span className="text-xs text-muted-foreground">Indisponível</span>
