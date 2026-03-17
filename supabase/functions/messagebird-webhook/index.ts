@@ -957,7 +957,7 @@ serve(async (req) => {
           console.log("⏭️ DEBOUNCE: mensagem mais nova detectada, pulando AI para esta:", messageBirdId);
         } else {
           const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-          const isMediaMsg = contentType === "audio" || contentType === "voice" || contentType === "ptt" || contentType === "image" || contentType === "video";
+          const isMediaMsg = contentType === "audio" || contentType === "voice" || contentType === "ptt" || contentType === "image" || contentType === "video" || contentType === "document" || contentType === "sticker" || contentType === "location";
           console.log("🤖 Chamando chat-ai:", { contentType, isMediaMsg, hasMediaUrl: !!finalMediaUrl, messageLen: messageContent?.length || 0 });
           
           const response = await fetch(`${supabaseUrl}/functions/v1/chat-ai-whatsapp`, {

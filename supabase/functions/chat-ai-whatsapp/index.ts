@@ -681,7 +681,7 @@ serve(async (req) => {
 
     const { conversationId, message, contactPhone, agent, contentType, mediaUrl } = await req.json();
 
-    const isMediaMessage = (contentType === "audio" || contentType === "voice" || contentType === "ptt" || contentType === "image") && mediaUrl;
+    const isMediaMessage = (contentType === "audio" || contentType === "voice" || contentType === "ptt" || contentType === "image" || contentType === "video" || contentType === "document" || contentType === "sticker" || contentType === "location") && mediaUrl;
     if (!conversationId || (!message && !isMediaMessage)) {
       return new Response(
         JSON.stringify({ error: "Dados insuficientes" }),
