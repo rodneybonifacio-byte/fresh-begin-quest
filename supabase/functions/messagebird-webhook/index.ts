@@ -589,20 +589,14 @@ serve(async (req) => {
             .eq("conversation_id", conversation.id)
             .neq("category", "rastreio")
             .not("status", "in", '("concluido","fechado","cancelado","entregue")');
-        } else if ((!conversation.ai_enabled || conversation.status === "closed") && channel?.ai_enabled && !isWrongPerson) {
-          // Reativar IA e reabrir conversa se:
-          // 1. Estava desativada OU fechada
-          // 2. A mensagem NÃO é passiva
-          // 3. NÃO é wrong person
-          // 4. A mensagem tem conteúdo substancial (não é ruído)
-          // 5. Admin NÃO respondeu recentemente (últimos 30 min) — evitar competir com humano
-          const isMediaMessage = ["image", "video", "document", "audio", "location", "sticker"].includes(contentType);
-          const hasSubstantialContent = (isMediaMessage || (messageContent || "").trim().length > 2)
-            && !intentResult.isPassive;
+        } else if (channel?.ai_enabled && !isWrongPerson) {
+          // Garantir IA sempre ativa para qualquer inbound não-passivo
+          const isMediaMessage = ["image", "video", "document", "audio", "location"].includes(contentType);
+          const hasSubstantialContent = isMediaMessage || (messageContent || "").trim().length > 2;
           
-          // Verificar se admin respondeu nos últimos 30 minutos
-          let adminRespondedRecently = false;
-          if (hasSubstantialContent) {
+          if (hasSubstantialContent && !intentResult.isPassive) {
+            // Verificar cooldown de admin (30 min) — só respeitar se admin respondeu recentemente
+            let adminRespondedRecently = false;
             const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
             const { data: recentAdminMsgs } = await supabase
               .from("whatsapp_messages")
@@ -613,35 +607,34 @@ serve(async (req) => {
               .gte("created_at", thirtyMinAgo)
               .limit(1);
             adminRespondedRecently = (recentAdminMsgs && recentAdminMsgs.length > 0);
-          }
-          
-          if (hasSubstantialContent && !adminRespondedRecently) {
-            updateData.ai_enabled = true;
-            updateData.status = "open";
             
-            // Se conversa estava fechada, reabrir ticket ou criar novo
-            if (conversation.status === "closed") {
-              console.log("🔓 Reabrindo conversa fechada — cliente mandou mensagem ativa:", conversation.id);
+            if (!adminRespondedRecently) {
+              // Sempre ativar IA e abrir conversa
+              updateData.ai_enabled = true;
+              updateData.status = "open";
               
-              // Criar novo ticket para a nova interação
-              await supabase.from("whatsapp_tickets").insert({
-                conversation_id: conversation.id,
-                contact_phone: conversation.contact_phone,
-                contact_name: conversation.contact_name,
-                status: "open",
-                category: "geral",
-                subject: "Conversa reaberta pelo cliente",
-                opened_at: new Date().toISOString(),
-                first_message_at: new Date().toISOString(),
-              });
+              if (conversation.status === "closed") {
+                console.log("🔓 Reabrindo conversa fechada — cliente mandou mensagem ativa:", conversation.id);
+                await supabase.from("whatsapp_tickets").insert({
+                  conversation_id: conversation.id,
+                  contact_phone: conversation.contact_phone,
+                  contact_name: conversation.contact_name,
+                  status: "open",
+                  category: "geral",
+                  subject: "Conversa reaberta pelo cliente",
+                  opened_at: new Date().toISOString(),
+                  first_message_at: new Date().toISOString(),
+                });
+              }
+              
+              console.log("🔄 IA ativada para conversa (inbound substancial):", conversation.id);
+            } else {
+              console.log("⏭️ IA não reativada — admin respondeu recentemente:", conversation.id);
             }
-            
-            console.log("🔄 IA reativada para conversa (mensagem substancial recebida):", conversation.id);
-          } else {
-            console.log("⏭️ IA NÃO reativada —", adminRespondedRecently ? "admin respondeu recentemente" : "mensagem passiva/ruído", ":", conversation.id, "msg:", (messageContent || "").substring(0, 50));
+          } else if (!hasSubstantialContent || intentResult.isPassive) {
+            console.log("⏭️ Mensagem passiva/vazia, mantendo estado atual:", conversation.id, "msg:", (messageContent || "").substring(0, 50));
           }
         }
-        // Se ai_enabled já é true e mensagem não é passiva, manter como está
       }
 
       await supabase
