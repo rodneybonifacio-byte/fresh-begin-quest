@@ -540,16 +540,24 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
               <p className="text-sm">Nenhuma conversa encontrada</p>
             </div>
           ) : (
-            filteredConversations.map((conv) => (
+            filteredConversations.map((conv) => {
+              const windowExpired = isConvWindowExpired(conv);
+              return (
               <button
                 key={conv.id}
                 onClick={() => selectConversation(conv)}
                 className={`w-full flex items-start gap-3 p-3 hover:bg-muted/50 transition-colors border-b border-border/50 text-left ${
                   selectedConversation?.id === conv.id ? 'bg-muted' : ''
-                }`}
+                } ${windowExpired ? 'border-l-2 border-l-amber-500' : ''}`}
               >
-                <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
-                  <User className="w-5 h-5 text-green-600" />
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  windowExpired ? 'bg-amber-500/10' : 'bg-green-500/10'
+                }`}>
+                  {windowExpired ? (
+                    <AlertTriangle className="w-5 h-5 text-amber-500" />
+                  ) : (
+                    <User className="w-5 h-5 text-green-600" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
@@ -557,13 +565,21 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
                       {conv.contact_name || formatPhone(conv.contact_phone)}
                     </span>
                     {conv.last_message_at && (
-                      <span className="text-[10px] text-muted-foreground flex-shrink-0 ml-2">
+                      <span className={`text-[10px] flex-shrink-0 ml-2 ${
+                        windowExpired ? 'text-amber-500 font-medium' : 'text-muted-foreground'
+                      }`}>
+                        {windowExpired && '⏱ '}
                         {format(new Date(conv.last_message_at), 'HH:mm', { locale: ptBR })}
                       </span>
                     )}
                   </div>
                   <div className="flex items-center gap-1 mt-0.5">
                     {conv.ai_enabled && <Bot className="w-3 h-3 text-blue-400 flex-shrink-0" />}
+                    {windowExpired && (
+                      <span className="text-[9px] bg-amber-500/10 text-amber-600 px-1 rounded font-medium flex-shrink-0">
+                        24h
+                      </span>
+                    )}
                     <p className="text-xs text-muted-foreground truncate">
                       {conv.last_message_preview || 'Sem mensagens'}
                     </p>
@@ -575,7 +591,8 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
                   </span>
                 )}
               </button>
-            ))
+              );
+            })
           )}
         </div>
       </div>
