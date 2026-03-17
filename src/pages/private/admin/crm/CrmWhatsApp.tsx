@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../../../integrations/supabase/client';
-import { MessageSquare, Send, Search, Phone, User, Bot, Clock, ChevronLeft, ToggleLeft, ToggleRight, Smile, Check, CheckCheck, Ticket, Mic, Paperclip, X, FileText, UserCircle } from 'lucide-react';
+import { MessageSquare, Send, Search, Phone, User, Bot, Clock, ChevronLeft, ToggleLeft, ToggleRight, Smile, Check, CheckCheck, Ticket, Mic, Paperclip, X, FileText, UserCircle, AlertTriangle } from 'lucide-react';
+import { differenceInHours } from 'date-fns';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import TicketHistory from './TicketHistory';
@@ -440,6 +441,27 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
     return phone;
   };
 
+  // Check if 24h window is expired (no inbound message in last 24h)
+  const getLastInboundTime = (msgs: Message[]) => {
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i].direction === 'inbound') return new Date(msgs[i].created_at);
+    }
+    return null;
+  };
+
+  const isWindowExpired = (() => {
+    if (!selectedConversation || messages.length === 0) return false;
+    const lastInbound = getLastInboundTime(messages);
+    if (!lastInbound) return true;
+    return differenceInHours(new Date(), lastInbound) >= 24;
+  })();
+
+  // For conversation list: check if last_message_at is > 24h ago (rough proxy)
+  const isConvWindowExpired = (conv: Conversation) => {
+    if (!conv.last_message_at) return true;
+    return differenceInHours(new Date(), new Date(conv.last_message_at)) >= 24;
+  };
+
   const filteredConversations = conversations.filter(c => {
     const term = searchTerm.toLowerCase();
     const matchesSearch =
@@ -518,16 +540,24 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
               <p className="text-sm">Nenhuma conversa encontrada</p>
             </div>
           ) : (
-            filteredConversations.map((conv) => (
+            filteredConversations.map((conv) => {
+              const windowExpired = isConvWindowExpired(conv);
+              return (
               <button
                 key={conv.id}
                 onClick={() => selectConversation(conv)}
                 className={`w-full flex items-start gap-3 p-3 hover:bg-muted/50 transition-colors border-b border-border/50 text-left ${
                   selectedConversation?.id === conv.id ? 'bg-muted' : ''
-                }`}
+                } ${windowExpired ? 'border-l-2 border-l-amber-500' : ''}`}
               >
-                <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
-                  <User className="w-5 h-5 text-green-600" />
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  windowExpired ? 'bg-amber-500/10' : 'bg-green-500/10'
+                }`}>
+                  {windowExpired ? (
+                    <AlertTriangle className="w-5 h-5 text-amber-500" />
+                  ) : (
+                    <User className="w-5 h-5 text-green-600" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
@@ -535,13 +565,21 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
                       {conv.contact_name || formatPhone(conv.contact_phone)}
                     </span>
                     {conv.last_message_at && (
-                      <span className="text-[10px] text-muted-foreground flex-shrink-0 ml-2">
+                      <span className={`text-[10px] flex-shrink-0 ml-2 ${
+                        windowExpired ? 'text-amber-500 font-medium' : 'text-muted-foreground'
+                      }`}>
+                        {windowExpired && '⏱ '}
                         {format(new Date(conv.last_message_at), 'HH:mm', { locale: ptBR })}
                       </span>
                     )}
                   </div>
                   <div className="flex items-center gap-1 mt-0.5">
                     {conv.ai_enabled && <Bot className="w-3 h-3 text-blue-400 flex-shrink-0" />}
+                    {windowExpired && (
+                      <span className="text-[9px] bg-amber-500/10 text-amber-600 px-1 rounded font-medium flex-shrink-0">
+                        24h
+                      </span>
+                    )}
                     <p className="text-xs text-muted-foreground truncate">
                       {conv.last_message_preview || 'Sem mensagens'}
                     </p>
@@ -553,7 +591,8 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
                   </span>
                 )}
               </button>
-            ))
+              );
+            })
           )}
         </div>
       </div>
@@ -815,6 +854,16 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
               )}
               <div ref={messagesEndRef} />
             </div>
+
+            {/* 24h Window Warning */}
+            {isWindowExpired && (
+              <div className="px-3 py-2 bg-amber-500/10 border-t border-amber-500/20 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  <span className="font-semibold">Janela de 24h expirada.</span> Para iniciar conversa, envie uma mensagem HSM (template).
+                </p>
+              </div>
+            )}
 
             {/* Input */}
             <div className="p-3 border-t border-border bg-card">
