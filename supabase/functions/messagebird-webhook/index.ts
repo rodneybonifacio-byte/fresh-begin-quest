@@ -596,7 +596,8 @@ serve(async (req) => {
           // 3. NÃO é wrong person
           // 4. A mensagem tem conteúdo substancial (não é ruído)
           // 5. Admin NÃO respondeu recentemente (últimos 30 min) — evitar competir com humano
-          const hasSubstantialContent = (messageContent || "").trim().length > 2
+          const isMediaMessage = ["image", "video", "document", "audio", "location", "sticker"].includes(contentType);
+          const hasSubstantialContent = (isMediaMessage || (messageContent || "").trim().length > 2)
             && !intentResult.isPassive;
           
           // Verificar se admin respondeu nos últimos 30 minutos
