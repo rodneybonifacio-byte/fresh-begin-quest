@@ -2400,6 +2400,7 @@ Retorne APENAS o texto extraído do documento, sem comentários adicionais.`;
   return "";
 }
 
+async function transcribeAudio(mediaUrl: string): Promise<string | null> {
   // Tentar ElevenLabs primeiro, depois Gemini
   const elevenLabsKey = Deno.env.get("ELEVENLABS_API_KEY");
   if (elevenLabsKey) {
