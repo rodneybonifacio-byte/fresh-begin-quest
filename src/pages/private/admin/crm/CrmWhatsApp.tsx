@@ -855,6 +855,16 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
               <div ref={messagesEndRef} />
             </div>
 
+            {/* 24h Window Warning */}
+            {isWindowExpired && (
+              <div className="px-3 py-2 bg-amber-500/10 border-t border-amber-500/20 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  <span className="font-semibold">Janela de 24h expirada.</span> Para iniciar conversa, envie uma mensagem HSM (template).
+                </p>
+              </div>
+            )}
+
             {/* Input */}
             <div className="p-3 border-t border-border bg-card">
               <input
