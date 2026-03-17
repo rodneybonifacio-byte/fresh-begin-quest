@@ -3085,9 +3085,9 @@ function sanitizeAgentReply(reply: string, contentType: string): string {
     reply = reply.replace(/\b[A-Z]{2}\d{9,13}[A-Z]{2}\b/g, "[código de rastreio informado]");
   }
 
-  // URLs sempre removidas
-  reply = reply.replace(/https?:\/\/[^\s)>\]]+/gi, "[link removido]");
-  reply = reply.replace(/www\.[^\s)>\]]+/gi, "[link removido]");
+  // URLs removidas EXCETO links de rastreio do domínio brhubenvios.com.br
+  reply = reply.replace(/https?:\/\/(?!(?:www\.)?brhubenvios\.com\.br)[^\s)>\]]+/gi, "[link removido]");
+  reply = reply.replace(/www\.(?!brhubenvios\.com\.br)[^\s)>\]]+/gi, "[link removido]");
 
   // Remover múltiplos placeholders seguidos
   reply = reply.replace(/(\[código de rastreio informado\]\s*,?\s*){2,}/g, "[código de rastreio informado]");
