@@ -681,7 +681,7 @@ serve(async (req) => {
 
     const { conversationId, message, contactPhone, agent, contentType, mediaUrl } = await req.json();
 
-    const isMediaMessage = (contentType === "audio" || contentType === "voice" || contentType === "ptt" || contentType === "image") && mediaUrl;
+    const isMediaMessage = (contentType === "audio" || contentType === "voice" || contentType === "ptt" || contentType === "image" || contentType === "video" || contentType === "document" || contentType === "sticker" || contentType === "location") && mediaUrl;
     if (!conversationId || (!message && !isMediaMessage)) {
       return new Response(
         JSON.stringify({ error: "Dados insuficientes" }),
@@ -1292,10 +1292,24 @@ EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de a
         }
       }
     }
+    // DOCUMENTO (PDF, etc.) → informar a IA que recebeu um documento
+    else if (contentType === "document" && mediaUrl) {
+      userContent = `[O cliente enviou um documento/arquivo. URL: ${mediaUrl}]${message ? ` Mensagem do cliente: "${message}"` : " O cliente não escreveu nenhum texto junto ao documento."}`;
+      console.log("📄 Documento recebido, informando contexto à IA");
+    }
+    // VÍDEO → informar a IA
+    else if (contentType === "video" && mediaUrl) {
+      userContent = `[O cliente enviou um vídeo. URL: ${mediaUrl}]${message ? ` Mensagem do cliente: "${message}"` : " O cliente não escreveu nenhum texto junto ao vídeo."}`;
+      console.log("🎥 Vídeo recebido, informando contexto à IA");
+    }
     // ÁUDIO → transcrição
     else if ((contentType === "audio" || contentType === "voice" || contentType === "ptt") && mediaUrl) {
       const transcription = await transcribeAudio(mediaUrl);
       userContent = transcription || message || "[áudio não transcrito]";
+    }
+    // STICKER/LOCATION → tratar como passivo
+    else if ((contentType === "sticker" || contentType === "location") && !message) {
+      userContent = contentType === "sticker" ? "[O cliente enviou um sticker/figurinha]" : "[O cliente enviou uma localização]";
     }
 
     // ═══════════════════════════════════════════════════════════
