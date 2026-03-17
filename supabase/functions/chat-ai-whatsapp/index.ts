@@ -1292,10 +1292,27 @@ EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de a
         }
       }
     }
-    // DOCUMENTO (PDF, etc.) → informar a IA que recebeu um documento
+    // DOCUMENTO (PDF, etc.) → extrair texto com Gemini
     else if (contentType === "document" && mediaUrl) {
-      userContent = `[O cliente enviou um documento/arquivo. URL: ${mediaUrl}]${message ? ` Mensagem do cliente: "${message}"` : " O cliente não escreveu nenhum texto junto ao documento."}`;
-      console.log("📄 Documento recebido, informando contexto à IA");
+      const geminiKey = Deno.env.get("GEMINI_API_KEY");
+      if (geminiKey) {
+        try {
+          const docText = await extractDocumentTextWithGemini(mediaUrl, geminiKey);
+          if (docText && docText.length > 10) {
+            console.log(`📄 Documento extraído com sucesso: ${docText.length} chars`);
+            userContent = `[O cliente enviou um documento. Conteúdo extraído do documento:\n${docText.substring(0, 3000)}]${message ? `\nMensagem do cliente: "${message}"` : ""}`;
+          } else {
+            console.log("📄 Documento sem texto extraível, informando IA");
+            userContent = `[O cliente enviou um documento/arquivo mas não foi possível extrair o conteúdo textual. URL: ${mediaUrl}]${message ? ` Mensagem do cliente: "${message}"` : " O cliente não escreveu nenhum texto junto ao documento."}`;
+          }
+        } catch (e) {
+          console.warn("⚠️ Erro ao extrair documento:", e);
+          userContent = `[O cliente enviou um documento/arquivo. URL: ${mediaUrl}]${message ? ` Mensagem do cliente: "${message}"` : " O cliente não escreveu nenhum texto junto ao documento."}`;
+        }
+      } else {
+        userContent = `[O cliente enviou um documento/arquivo. URL: ${mediaUrl}]${message ? ` Mensagem do cliente: "${message}"` : " O cliente não escreveu nenhum texto junto ao documento."}`;
+        console.log("📄 Documento recebido, sem GEMINI_API_KEY para extração");
+      }
     }
     // VÍDEO → informar a IA
     else if (contentType === "video" && mediaUrl) {
