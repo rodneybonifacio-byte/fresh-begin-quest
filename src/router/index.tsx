@@ -37,6 +37,7 @@ const BeneficiosConecta = lazy(() => import('../pages/conecta/BeneficiosConecta'
 const TvPainelColeta = lazy(() => import('../pages/public/TvPainelColeta'));
 const PitchPage = lazy(() => import('../pages/pitch/PitchPage'));
 const PitchPdfExport = lazy(() => import('../pages/pitch/PitchPdfExport'));
+const LookEnviosPage = lazy(() => import('../pages/lookenvios/LookEnviosPage'));
 
 // Loading component
 const LoadingFallback = () => (
@@ -85,6 +86,7 @@ export const RouterBase = () => {
                     <Route path="/tv-coleta" element={<TvPainelColeta />} />
                     <Route path="/pitch" element={<PitchPage />} />
                     <Route path="/pitch/pdf" element={<PitchPdfExport />} />
+                    <Route path="/lookenvios" element={<LookEnviosPage />} />
 
                     {/* Conecta+ Routes */}
                     <Route path="/conecta" element={<LandingConecta />} />
