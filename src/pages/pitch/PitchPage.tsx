@@ -770,25 +770,69 @@ export default function PitchPage() {
                 </div>
               </div>
 
-              {/* Fluxo de pagamento — mantido */}
+              {/* Fluxo de pagamento — dois canais */}
               <div className="p-3 md:p-5 border" style={{ background: C.white, borderColor: C.border }}>
-                <h4 className="font-bold text-[10px] md:text-xs mb-2 md:mb-3 uppercase tracking-wider" style={{ color: C.navy }}>Fluxo de Pagamento</h4>
-                <div className="grid grid-cols-4 gap-1.5 md:gap-3">
-                  {[
-                    { step: "1", title: "Emite", desc: "Cliente gera etiquetas", icon: <Package size={14} /> },
-                    { step: "2", title: "Cobra", desc: "Fechamento mensal", icon: <DollarSign size={14} /> },
-                    { step: "3", title: "Apura", desc: "Margem por operação", icon: <BarChart3 size={14} /> },
-                    { step: "4", title: "Repassa", desc: "Divisão acordada", icon: <Handshake size={14} /> },
-                  ].map((item, i) => (
-                    <div key={i} className="flex flex-col items-center text-center p-2 md:p-3" style={{ background: i === 3 ? C.orangeBg : C.cardBg }}>
-                      <div className="w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center mb-1 md:mb-2 text-white text-[10px] md:text-xs font-bold" style={{ background: i === 3 ? C.orange : C.navy }}>
-                        {item.step}
+                <h4 className="font-bold text-[10px] md:text-xs mb-3 md:mb-4 uppercase tracking-wider" style={{ color: C.navy }}>Fluxo de Pagamento — por canal</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                  {/* Marketplace */}
+                  <div className="border p-3 md:p-4 relative" style={{ borderColor: C.orangeBorder, background: C.orangeBg }}>
+                    <div className="absolute top-0 left-0 w-full h-1" style={{ background: C.orange }} />
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: C.orange }}>
+                        <Globe size={12} className="text-white" />
                       </div>
-                      <div className="mb-0.5 hidden md:block" style={{ color: i === 3 ? C.orange : C.navy }}>{item.icon}</div>
-                      <h5 className="font-bold text-[10px] md:text-xs" style={{ color: C.text }}>{item.title}</h5>
-                      <p className="text-[8px] md:text-[10px] mt-0.5" style={{ color: C.textMuted }}>{item.desc}</p>
+                      <h5 className="font-black text-[11px] md:text-xs" style={{ color: C.orange }}>Marketplace</h5>
                     </div>
-                  ))}
+                    <div className="space-y-2">
+                      {[
+                        { step: "1", title: "Compra no marketplace", desc: "Cliente finaliza pedido" },
+                        { step: "2", title: "Split automático", desc: "Frete separado na transação" },
+                        { step: "3", title: "Repasse imediato", desc: "Valor cai direto na conta" },
+                      ].map((item, i) => (
+                        <div key={i} className="flex items-center gap-2.5">
+                          <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0" style={{ background: C.orange }}>{item.step}</div>
+                          <div>
+                            <span className="text-[10px] md:text-[11px] font-bold" style={{ color: C.text }}>{item.title}</span>
+                            <p className="text-[9px] md:text-[10px]" style={{ color: C.textMuted }}>{item.desc}</p>
+                          </div>
+                          {i < 2 && <ArrowRight size={10} className="shrink-0 ml-auto" style={{ color: C.orangeLight }} />}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-2.5 px-2 py-1.5 text-center" style={{ background: C.orange }}>
+                      <span className="text-[9px] md:text-[10px] font-bold text-white">⚡ Zero inadimplência — sem cobrança manual</span>
+                    </div>
+                  </div>
+
+                  {/* WhatsApp / Digital */}
+                  <div className="border p-3 md:p-4 relative" style={{ borderColor: C.border, background: C.cardBg }}>
+                    <div className="absolute top-0 left-0 w-full h-1" style={{ background: C.navy }} />
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: C.navy }}>
+                        <MessageCircle size={12} className="text-white" />
+                      </div>
+                      <h5 className="font-black text-[11px] md:text-xs" style={{ color: C.navy }}>WhatsApp / Digital</h5>
+                    </div>
+                    <div className="space-y-2">
+                      {[
+                        { step: "1", title: "Emissão de etiquetas", desc: "Cliente posta via plataforma" },
+                        { step: "2", title: "Fatura quinzenal/mensal", desc: "Fechamento automático + boleto" },
+                        { step: "3", title: "Envio via WhatsApp", desc: "PDF fatura+boleto no chat" },
+                      ].map((item, i) => (
+                        <div key={i} className="flex items-center gap-2.5">
+                          <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0" style={{ background: C.navy }}>{item.step}</div>
+                          <div>
+                            <span className="text-[10px] md:text-[11px] font-bold" style={{ color: C.text }}>{item.title}</span>
+                            <p className="text-[9px] md:text-[10px]" style={{ color: C.textMuted }}>{item.desc}</p>
+                          </div>
+                          {i < 2 && <ArrowRight size={10} className="shrink-0 ml-auto" style={{ color: C.border }} />}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-2.5 px-2 py-1.5 text-center" style={{ background: C.navy }}>
+                      <span className="text-[9px] md:text-[10px] font-bold text-white">📄 Cobrança automatizada — IA + boleto bancário</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
