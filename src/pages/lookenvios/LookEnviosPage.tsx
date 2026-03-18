@@ -315,7 +315,7 @@ const LookEnviosPage = () => {
               <div className="space-y-2.5">
                 <h4 className="font-bold text-xs uppercase tracking-wider flex items-center gap-2 mb-3" style={{ color: BRAND.orange }}><Crosshair className="w-3.5 h-3.5" /> Ideal para</h4>
                 {['Volumes acima de 30kg', 'Dimensões superiores a 100cm', 'Rotas Sul/Sudeste com melhor custo-benefício', 'Coleta programada para alto volume', 'Produtos frágeis ou manuseio especial', 'E-commerce com envios diários'].map((item, i) => (
-                  <div key={i} className="flex items-start gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-green-400 mt-0.5 flex-shrink-0" /><span className="text-gray-300 text-xs">{item}</span></div>
+                  <div key={i} className="flex items-start gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-green-400 mt-0.5 flex-shrink-0" /><span className="text-gray-200 text-xs">{item}</span></div>
                 ))}
               </div>
               <div className="space-y-2">
