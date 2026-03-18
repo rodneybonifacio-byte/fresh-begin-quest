@@ -139,12 +139,25 @@ serve(async (req) => {
       'AN677032672BR',
     ]);
 
-    // 4. Filtrar PRE_POSTADO removendo as que já foram postadas
+    // 4. Códigos de serviço de logística reversa dos Correios
+    const codigosServicoReversa = new Set(['04227', '04162', '03131', '03132']);
+
+    // 5. Filtrar PRE_POSTADO removendo as que já foram postadas + reversas
     const filtradas = prePostadasRecentes.filter(em => {
       const code = (em.codigoObjeto || '').toUpperCase().trim();
       // Exclusão manual por código de objeto
       if (codigosExcluidos.has(code)) {
         console.log(`🚫 Exclusão manual: removendo ${em.codigoObjeto}`);
+        return false;
+      }
+      // Filtrar etiquetas de logística reversa
+      const servicoCode = String(em.codigoServicoPostagem || em.codigoServicoVenda || '');
+      const servicoNome = String(em.servico || '').toUpperCase();
+      const isReversa = em.logisticaReversa === 'S' 
+        || codigosServicoReversa.has(servicoCode)
+        || servicoNome.includes('REVERS');
+      if (isReversa) {
+        console.log(`🔁 Reversa: removendo ${em.codigoObjeto} (servico: ${em.servico}, code: ${servicoCode})`);
         return false;
       }
       // Dedup por código de objeto (exato)
