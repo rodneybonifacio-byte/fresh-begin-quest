@@ -741,14 +741,32 @@ export default function PitchPage() {
                 </div>
               </div>
 
-              {/* Zero risco */}
-              <div className="p-3 md:p-4 border-2" style={{ background: C.navy, borderColor: C.navy, color: "white" }}>
-                <div className="flex items-start gap-3">
-                  <ShieldCheck size={18} style={{ color: C.orange }} className="shrink-0 mt-0.5" />
+              {/* Zero risco com split */}
+              <div className="p-3 md:p-5 border-2" style={{ background: C.navy, borderColor: C.navy, color: "white" }}>
+                <div className="flex items-start gap-3 mb-3">
+                  <ShieldCheck size={20} style={{ color: C.orange }} className="shrink-0 mt-0.5" />
                   <div>
-                    <h4 className="font-bold text-[11px] md:text-xs">Zero Risco de <span style={{ color: C.orange }}>Inadimplência</span></h4>
-                    <p className="text-white/70 text-[10px] md:text-[11px] mt-0.5">A BRHUB assume 100% da cobrança e do risco. Repasses mensais garantidos.</p>
+                    <h4 className="font-bold text-xs md:text-sm">Zero Risco de <span style={{ color: C.orange }}>Inadimplência</span></h4>
+                    <p className="text-white/60 text-[10px] md:text-[11px] mt-1 leading-relaxed">
+                      Com <strong className="text-white">split de pagamento automático</strong>, o valor do frete é derivado diretamente para a conta da empresa no momento da transação — 
+                      eliminando qualquer risco de inadimplência ou atraso no repasse.
+                    </p>
                   </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  {[
+                    { icon: <DollarSign size={14} />, title: "Split automático", desc: "Frete separado na origem do pagamento" },
+                    { icon: <ShieldCheck size={14} />, title: "Sem risco de calote", desc: "Valor já cai direto na conta da empresa" },
+                    { icon: <Zap size={14} />, title: "Repasse imediato", desc: "Sem esperar fechamento ou cobrança" },
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-start gap-2 p-2 rounded" style={{ background: "rgba(255,255,255,0.08)" }}>
+                      <span className="mt-0.5" style={{ color: C.orange }}>{item.icon}</span>
+                      <div>
+                        <span className="text-[10px] md:text-[11px] font-bold text-white">{item.title}</span>
+                        <p className="text-[9px] md:text-[10px] text-white/50">{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
