@@ -578,7 +578,7 @@ serve(async (req) => {
           /me\s+passe\s+(um\s+)?(atendente|humano)/i,
           /chama\s+(um\s+)?(atendente|humano|pessoa)/i,
         ];
-        const wantsHuman = !isWrongPerson && humanRequestPatterns.some(p => p.test(messageContent || ""));
+        const wantsHuman = !isWrongPerson && !isAutoReply && humanRequestPatterns.some(p => p.test(messageContent || ""));
         
         if (wantsHuman) {
           console.log(`👤 HUMAN HANDOFF: Cliente ${normalizedPhone} pediu atendente humano. Desativando IA.`);
