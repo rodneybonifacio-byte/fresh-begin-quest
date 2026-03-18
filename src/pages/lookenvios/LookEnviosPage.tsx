@@ -1,7 +1,7 @@
 import { motion, useScroll, useTransform } from 'framer-motion';
 import {
   Package, Truck, Shield, Zap, Globe, Cpu, CheckCircle2, Gem,
-  TrendingUp, Users, Mail, Send, ChevronDown,
+  TrendingUp, Users, Send, ChevronDown,
   Target, Clock, Ruler, Weight, MapPinned, AlertCircle,
   Warehouse, ArrowRight, Star, Rocket, CircleDot, BarChart3,
   FileText, Layers, Award, BadgeCheck, Crosshair, Navigation,
