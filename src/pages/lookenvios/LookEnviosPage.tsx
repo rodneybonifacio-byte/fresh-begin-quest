@@ -141,8 +141,10 @@ const LookEnviosPage = () => {
             <span className="text-[10px] md:text-xs font-bold uppercase tracking-[.2em]" style={{ color: BRAND.orange }}>Proposta Comercial 2026</span>
           </motion.div>
 
-          <motion.div initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="flex items-center gap-2 md:gap-3 mb-3 md:mb-4">
-            <span className="text-xs md:text-sm font-semibold text-white/40 tracking-wider">BRHUB ENVIOS</span>
+          <motion.div initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="flex flex-wrap items-center gap-2 md:gap-3 mb-3 md:mb-4">
+            <span className="text-xs md:text-sm font-semibold text-white/40 tracking-wider">BRHUB</span>
+            <span className="text-[10px] md:text-xs font-medium text-white/20">em parceria com</span>
+            <span className="text-xs md:text-sm font-semibold text-white/60 tracking-wider">FLEX ENVIOS</span>
             <ArrowRight className="w-3 h-3 md:w-4 md:h-4 text-white/20" />
             <span className="text-xs md:text-sm font-semibold tracking-wider" style={{ color: BRAND.orange }}>LOOKCHINA</span>
           </motion.div>
@@ -153,7 +155,7 @@ const LookEnviosPage = () => {
 
           <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="max-w-2xl mb-8 md:mb-10">
             <p className="text-white/70 text-sm md:text-base leading-relaxed">
-              Proposta para estruturação da operação logística da marca sob a identidade LOOK ENVIOS — uma frente própria de expedição, frete e gestão de entregas, com posicionamento profissional, escalável e alinhado ao crescimento da operação.
+              A <strong className="text-white">BRHUB</strong>, em parceria com a <strong className="text-white">FLEX Envios</strong>, apresenta à <strong style={{ color: BRAND.orange }}>LookChina</strong> a proposta para estruturação da operação logística da marca sob a identidade LOOK ENVIOS — uma frente própria de expedição, frete e gestão de entregas, com posicionamento profissional, escalável e alinhado ao crescimento da operação.
             </p>
           </motion.div>
 
@@ -221,7 +223,7 @@ const LookEnviosPage = () => {
           <div className="grid md:grid-cols-2 gap-8 md:gap-14 mt-8 md:mt-10 items-start">
             <div className="space-y-4 md:space-y-5">
               <p className="text-gray-600 leading-relaxed text-sm">
-                A LOOK ENVIOS será apresentada ao mercado como a <strong>operação logística oficial da LookChina</strong>, fortalecendo a percepção de estrutura, profissionalismo e organização da marca.
+                A LOOK ENVIOS será apresentada ao mercado como a <strong>operação logística oficial da LookChina</strong>, desenvolvida pela <strong>BRHUB em parceria com a FLEX Envios</strong>, fortalecendo a percepção de estrutura, profissionalismo e organização da marca.
               </p>
               <p className="text-gray-600 leading-relaxed text-sm">
                 Todas as etiquetas de envio seguirão com a identidade LOOK ENVIOS, utilizando o logo da operação, o que agrega valor à apresentação logística e fortalece o branding na expedição.
@@ -821,7 +823,7 @@ const LookEnviosPage = () => {
           <img src={lookLogoDark} alt="Look Envios" className="h-20 md:h-32 mx-auto mb-5 md:mb-6" />
           <Heading white>Uma proposta sólida para o <span style={{ color: BRAND.orange }}>futuro</span></Heading>
           <p className="text-gray-300 text-xs md:text-sm leading-relaxed mb-3 md:mb-4 max-w-2xl mx-auto">
-            A BRHUB apresenta à LookChina uma proposta para criação da LOOK ENVIOS — transformando a logística em uma operação mais profissional, estratégica e preparada para crescer.
+            A <strong>BRHUB</strong>, em parceria com a <strong>FLEX Envios</strong>, apresenta à LookChina uma proposta para criação da LOOK ENVIOS — transformando a logística em uma operação mais profissional, estratégica e preparada para crescer.
           </p>
           <p className="text-gray-400 text-[10px] md:text-xs leading-relaxed mb-8 md:mb-10 max-w-2xl mx-auto">
             Etiquetas com logo LOOK ENVIOS, operação com Correios, JadLog e Envios Flex, malha logística completa com cobertura nacional, força regional e alta competitividade.
@@ -848,7 +850,7 @@ const LookEnviosPage = () => {
       </section>
 
       <footer className="py-3 md:py-4 text-center" style={{ backgroundColor: BRAND.dark }}>
-        <p className="text-gray-600 text-[9px] md:text-[10px] tracking-wider uppercase">© 2026 Look Envios — Powered by BRHUB Tech & Look China</p>
+        <p className="text-gray-600 text-[9px] md:text-[10px] tracking-wider uppercase">© 2026 Look Envios — Powered by BRHUB & FLEX Envios</p>
       </footer>
     </div>
   );
