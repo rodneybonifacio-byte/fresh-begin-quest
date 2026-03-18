@@ -843,6 +843,13 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
                             <CheckCheck className="w-3.5 h-3.5" />
                           ) : msg.status === 'sent' ? (
                             <Check className="w-3.5 h-3.5" />
+                          ) : msg.status === 'failed' ? (
+                            <span className="group relative inline-flex items-center">
+                              <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
+                              <span className="absolute bottom-full right-0 mb-1 hidden group-hover:block bg-red-900/95 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap max-w-[250px] truncate z-50 shadow-lg">
+                                {(msg.metadata as any)?.failure_reason || 'Falha no envio'}
+                              </span>
+                            </span>
                           ) : (
                             <Clock className="w-3 h-3" />
                           )
