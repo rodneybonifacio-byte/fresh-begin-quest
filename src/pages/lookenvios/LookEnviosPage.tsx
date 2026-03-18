@@ -73,7 +73,7 @@ const LookEnviosPage = () => {
               <a key={item} href={`#${item.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`} className="text-xs font-semibold uppercase tracking-wider text-white/50 hover:text-white transition-colors">{item}</a>
             ))}
           </div>
-          <a href="#contato" className="text-xs font-bold px-4 py-1.5 rounded-full transition-all hover:scale-105 text-white" style={{ backgroundColor: BRAND.orange }}>Fale Conosco</a>
+          <a href="https://wa.me/5511911544095" target="_blank" className="text-xs font-bold px-4 py-1.5 rounded-full transition-all hover:scale-105 text-white" style={{ backgroundColor: BRAND.orange }}>Fale Conosco</a>
         </div>
       </nav>
 
@@ -818,7 +818,7 @@ const LookEnviosPage = () => {
           </div>
 
           <div className="flex flex-wrap justify-center gap-3">
-            <motion.a href="https://wa.me/5511999999999" target="_blank" whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-bold text-sm shadow-lg text-white" style={{ backgroundColor: BRAND.orange }}><Send className="w-4 h-4" /> Falar com Consultor</motion.a>
+            <motion.a href="https://wa.me/5511911544095" target="_blank" whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-bold text-sm shadow-lg text-white" style={{ backgroundColor: BRAND.orange }}><Send className="w-4 h-4" /> Falar com Consultor</motion.a>
             <motion.a href="mailto:contato@lookenvios.com.br" whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} className="inline-flex items-center gap-2 text-white border px-6 py-3 rounded-lg font-bold text-sm" style={{ borderColor: 'rgba(255,255,255,0.12)' }}><Mail className="w-4 h-4" /> Enviar E-mail</motion.a>
           </div>
           <p className="text-gray-600 text-xs mt-8">www.lookchina.com.br</p>
