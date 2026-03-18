@@ -1,6 +1,6 @@
 import { motion, useScroll, useTransform } from 'framer-motion';
 import {
-  Package, Truck, Shield, Zap, Globe, Cpu, CheckCircle2, Gem,
+  Package, Truck, Shield, Zap, Globe, Cpu, CheckCircle2,
   TrendingUp, Users, Send, ChevronDown,
   Target, Clock, Ruler, Weight, MapPinned, AlertCircle,
   Warehouse, ArrowRight, Star, Rocket, CircleDot, BarChart3,
@@ -45,16 +45,6 @@ const Divider = ({ dark = false }: { dark?: boolean }) => (
   <div className="w-full h-px my-1" style={{ backgroundColor: dark ? 'rgba(255,255,255,0.06)' : BRAND.border }} />
 );
 
-const tabelaDiamanteData = [
-  { faixa: 'Até 100g', sp: 'R$ 6,90', sudeste: 'R$ 9,79', sul: 'R$ 9,42', nordeste: 'R$ 13,27', norte: 'R$ 14,86' },
-  { faixa: 'Até 500g', sp: 'R$ 7,55', sudeste: 'R$ 11,39', sul: 'R$ 11,00', nordeste: 'R$ 15,22', norte: 'R$ 17,63' },
-  { faixa: 'Até 1kg', sp: 'R$ 7,98', sudeste: 'R$ 15,00', sul: 'R$ 14,20', nordeste: 'R$ 21,20', norte: 'R$ 21,39' },
-  { faixa: 'Até 2kg', sp: 'R$ 9,31', sudeste: 'R$ 17,55', sul: 'R$ 16,41', nordeste: 'R$ 26,48', norte: 'R$ 27,97' },
-  { faixa: 'Até 5kg', sp: 'R$ 14,28', sudeste: 'R$ 25,39', sul: 'R$ 23,17', nordeste: 'R$ 46,78', norte: 'R$ 49,25' },
-  { faixa: 'Até 10kg', sp: 'R$ 20,35', sudeste: 'R$ 38,15', sul: 'R$ 34,18', nordeste: 'R$ 80,55', norte: 'R$ 90,59' },
-  { faixa: 'Até 20kg', sp: 'R$ 37,78', sudeste: 'R$ 63,52', sul: 'R$ 58,40', nordeste: 'R$ 152,11', norte: 'R$ 170,42' },
-  { faixa: 'Até 30kg', sp: 'R$ 57,04', sudeste: 'R$ 93,16', sul: 'R$ 86,50', nordeste: 'R$ 242,85', norte: 'R$ 297,00' },
-];
 
 const LookEnviosPage = () => {
   const { scrollYProgress } = useScroll();
@@ -733,61 +723,6 @@ const LookEnviosPage = () => {
         </div>
       </section>
 
-      {/* ══════════════════════════════════════════════════════════════ */}
-      {/* 11. TARIFAS DIAMANTE                                         */}
-      {/* ══════════════════════════════════════════════════════════════ */}
-      <section id="tarifas" className="py-20 relative overflow-hidden" style={{ backgroundColor: BRAND.dark }}>
-        <motion.div className="absolute top-10 right-10 opacity-[0.03]" animate={{ rotate: 360 }} transition={{ duration: 40, repeat: Infinity, ease: 'linear' }}><Gem className="w-60 h-60" style={{ color: BRAND.orange }} /></motion.div>
-        <div className="max-w-5xl mx-auto px-6 relative z-10">
-          <SectionNumber n={18} dark />
-          <Heading white>Tabela <span style={{ color: BRAND.orange }}>Diamante</span> — Correios</Heading>
-          <SubText dark>Até 85% mais barato que a tabela balcão. As tabelas comerciais específicas de cada modalidade acompanham a proposta em anexo.</SubText>
-
-          <div className="grid grid-cols-3 gap-4 mt-10 mb-10">
-            {[
-              { label: 'SP Capital', value: 'R$ 6,90', desc: 'PAC até 100g', icon: Target },
-              { label: 'Economia', value: 'Até 85%', desc: 'vs. Tabela Balcão', icon: TrendingUp },
-              { label: 'Cobertura', value: '100%', desc: 'Todos os CEPs', icon: Globe },
-            ].map((card, i) => (
-              <div key={i} className="rounded-xl p-5 border" style={{ background: `linear-gradient(135deg, ${BRAND.orange}10, ${BRAND.orange}05)`, borderColor: `${BRAND.orange}15` }}>
-                <card.icon className="w-5 h-5 mb-2" style={{ color: BRAND.orange }} />
-                <div className="text-2xl font-black text-white mb-0.5">{card.value}</div>
-                <div className="font-semibold text-xs" style={{ color: BRAND.orangeLight }}>{card.label}</div>
-                <div className="text-gray-400 text-[10px] mt-0.5">{card.desc}</div>
-              </div>
-            ))}
-          </div>
-
-          <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.06)' }}>
-            <div className="px-5 py-3 border-b flex items-center gap-2" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-              <Package className="w-4 h-4" style={{ color: BRAND.orange }} />
-              <h3 className="text-white font-bold text-sm">PAC — Capitais (Contrato Diamante)</h3>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead><tr style={{ backgroundColor: BRAND.orange }}>
-                  <th className="px-4 py-2.5 text-left text-white font-bold">Faixa</th>
-                  <th className="px-4 py-2.5 text-center text-white font-bold">SP</th>
-                  <th className="px-4 py-2.5 text-center text-white font-bold">Sudeste</th>
-                  <th className="px-4 py-2.5 text-center text-white font-bold">Sul</th>
-                  <th className="px-4 py-2.5 text-center text-white font-bold">Nordeste</th>
-                  <th className="px-4 py-2.5 text-center text-white font-bold">Norte</th>
-                </tr></thead>
-                <tbody>{tabelaDiamanteData.map((row, i) => (
-                  <tr key={i} className="border-b" style={{ borderColor: 'rgba(255,255,255,0.04)', backgroundColor: i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent' }}>
-                    <td className="px-4 py-2.5 font-semibold" style={{ color: BRAND.orangeLight }}>{row.faixa}</td>
-                    <td className="px-4 py-2.5 text-center font-bold" style={{ color: '#4ADE80' }}>{row.sp}</td>
-                    <td className="px-4 py-2.5 text-center text-gray-300">{row.sudeste}</td>
-                    <td className="px-4 py-2.5 text-center text-gray-300">{row.sul}</td>
-                    <td className="px-4 py-2.5 text-center text-gray-300">{row.nordeste}</td>
-                    <td className="px-4 py-2.5 text-center text-gray-300">{row.norte}</td>
-                  </tr>
-                ))}</tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* ══════════════════════════════════════════════════════════════ */}
       {/* 12. CONCLUSÃO / CTA                                          */}
