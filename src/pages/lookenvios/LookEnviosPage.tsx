@@ -730,7 +730,7 @@ const LookEnviosPage = () => {
       <section id="contato" className="py-24" style={{ backgroundColor: BRAND.charcoal }}>
         <div className="max-w-3xl mx-auto px-6 text-center">
           <SectionNumber n={19} dark />
-          <img src={lookLogo} alt="Look Envios" className="h-16 mx-auto mb-6 opacity-80" />
+          <img src={lookLogo} alt="Look Envios" className="h-32 mx-auto mb-6 opacity-80" />
           <Heading white>Uma proposta sólida para o <span style={{ color: BRAND.orange }}>futuro</span></Heading>
            <p className="text-gray-300 text-sm leading-relaxed mb-4 max-w-2xl mx-auto">
              A BRHUB apresenta à LookChina uma proposta para criação da LOOK ENVIOS — transformando a logística em uma operação mais profissional, estratégica e preparada para crescer.
