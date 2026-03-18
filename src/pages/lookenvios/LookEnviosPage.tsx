@@ -466,12 +466,9 @@ const LookEnviosPage = () => {
       {/* ══════════════════════════════════════════════════════════════ */}
       <section className="py-20" style={{ backgroundColor: BRAND.cream }}>
         <div className="max-w-5xl mx-auto px-6">
-          <div className="text-center mb-2">
-            <span className="inline-block px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider text-white" style={{ backgroundColor: BRAND.orange }}>Seção 10</span>
-          </div>
-          <h2 className="text-3xl md:text-5xl font-black text-center mb-12" style={{ color: BRAND.charcoal }}>
-            Branding: <span className="italic" style={{ color: BRAND.orange }}>Sua Marca em Cada Pacote</span>
-          </h2>
+          <SectionNumber n={10} />
+          <Heading>Branding: <span style={{ color: BRAND.orange }}>Sua Marca em Cada Pacote</span></Heading>
+          <SubText>Etiquetas personalizadas e interface unificada reforçando a identidade LOOK ENVIOS em cada envio.</SubText>
 
           <div className="grid md:grid-cols-2 gap-8 items-start">
             <div className="space-y-5">
