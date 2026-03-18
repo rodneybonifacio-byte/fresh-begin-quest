@@ -129,23 +129,42 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Deduplicar: verificar quais já foram notificados com trigger objeto_postado (sem limite de tempo)
+    // Deduplicar: verificar quais já foram notificados com trigger objeto_postado
+    // Buscar apenas os códigos que estamos verificando para evitar limite de 1000 rows
     const codigosObjetos = allEmissoes.map((e: any) => e.codigoObjeto).filter(Boolean);
 
-    const { data: hsmMessages } = await supabase
-      .from("whatsapp_messages")
-      .select("metadata")
-      .eq("content_type", "hsm")
-      .eq("direction", "outbound");
-
     const codigosJaNotificados = new Set<string>();
-    if (hsmMessages) {
-      for (const msg of hsmMessages) {
-        const meta = msg.metadata as any;
-        if (meta?.trigger_key === "objeto_postado" && meta?.variables?.codigo_rastreio) {
-          codigosJaNotificados.add(meta.variables.codigo_rastreio);
+    
+    // Buscar em lotes para evitar limite de 1000 rows do Supabase
+    const batchSize = 500;
+    let offset = 0;
+    let hasMore = true;
+    
+    while (hasMore) {
+      const { data: hsmBatch, error: hsmError } = await supabase
+        .from("whatsapp_messages")
+        .select("metadata")
+        .eq("content_type", "hsm")
+        .eq("direction", "outbound")
+        .contains("metadata", { trigger_key: "objeto_postado" })
+        .range(offset, offset + batchSize - 1);
+
+      if (hsmError) {
+        console.error("❌ Erro ao buscar HSM para dedup:", hsmError);
+        break;
+      }
+
+      if (hsmBatch) {
+        for (const msg of hsmBatch) {
+          const meta = msg.metadata as any;
+          if (meta?.variables?.codigo_rastreio) {
+            codigosJaNotificados.add(meta.variables.codigo_rastreio);
+          }
         }
       }
+
+      hasMore = (hsmBatch?.length || 0) === batchSize;
+      offset += batchSize;
     }
 
     console.log(`🔍 ${codigosJaNotificados.size} já notificados como objeto_postado`);
