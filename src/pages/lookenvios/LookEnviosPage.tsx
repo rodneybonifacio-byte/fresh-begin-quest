@@ -14,19 +14,6 @@ import lookScreenshot2 from '@/assets/look-screenshot-2.png';
 
 const BRAND = { orange: '#F26522', orangeLight: '#F7941D', orangeDark: '#D4541E', charcoal: '#333333', dark: '#1A1A1A', lightGray: '#F5F5F5', white: '#FFFFFF' };
 
-const Counter = ({ end, suffix = '', prefix = '' }: { end: number; suffix?: string; prefix?: string }) => {
-  const [count, setCount] = useState(0);
-  const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true });
-  useEffect(() => {
-    if (!inView) return;
-    let start = 0;
-    const step = end / 125;
-    const timer = setInterval(() => { start += step; if (start >= end) { setCount(end); clearInterval(timer); } else setCount(Math.floor(start)); }, 16);
-    return () => clearInterval(timer);
-  }, [inView, end]);
-  return <span ref={ref}>{prefix}{count.toLocaleString('pt-BR')}{suffix}</span>;
-};
 
 const PulseDot = ({ color = BRAND.orange }: { color?: string }) => (
   <span className="relative flex h-3 w-3">
