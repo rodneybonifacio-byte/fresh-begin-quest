@@ -37,6 +37,7 @@ const BeneficiosConecta = lazy(() => import('../pages/conecta/BeneficiosConecta'
 const TvPainelColeta = lazy(() => import('../pages/public/TvPainelColeta'));
 const PitchPage = lazy(() => import('../pages/pitch/PitchPage'));
 const PitchPdfExport = lazy(() => import('../pages/pitch/PitchPdfExport'));
+const LookEnviosPage = lazy(() => import('../pages/lookenvios/LookEnviosPage'));
 
 // Loading component
 const LoadingFallback = () => (
