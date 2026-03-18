@@ -215,7 +215,7 @@ const LookEnviosPage = () => {
                 <t.icon className="w-8 h-8 mb-3" style={{ color: BRAND.orange }} />
                 <h3 className="text-lg font-bold text-white mb-1">{t.name}</h3>
                 <p className="text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: BRAND.orangeLight }}>{t.highlight}</p>
-                <p className="text-gray-400 text-xs leading-relaxed">{t.desc}</p>
+                <p className="text-gray-300 text-xs leading-relaxed">{t.desc}</p>
               </motion.div>
             ))}
           </div>
