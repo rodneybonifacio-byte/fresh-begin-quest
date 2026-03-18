@@ -462,11 +462,261 @@ const LookEnviosPage = () => {
       </section>
 
       {/* ══════════════════════════════════════════════════════════════ */}
-      {/* 10. FASE 2 — FULL                                            */}
+      {/* 10. BRANDING                                                 */}
+      {/* ══════════════════════════════════════════════════════════════ */}
+      <section className="py-20" style={{ backgroundColor: BRAND.cream }}>
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="text-center mb-2">
+            <span className="inline-block px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider text-white" style={{ backgroundColor: BRAND.orange }}>Seção 10</span>
+          </div>
+          <h2 className="text-3xl md:text-5xl font-black text-center mb-12" style={{ color: BRAND.charcoal }}>
+            Branding: <span className="italic" style={{ color: BRAND.orange }}>Sua Marca em Cada Pacote</span>
+          </h2>
+
+          <div className="grid md:grid-cols-2 gap-8 items-start">
+            <div className="space-y-5">
+              <div className="rounded-xl p-6 border" style={{ backgroundColor: BRAND.white, borderColor: BRAND.border }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4" style={{ backgroundColor: `${BRAND.orange}10` }}>
+                  <FileText className="w-5 h-5" style={{ color: BRAND.orange }} />
+                </div>
+                <h3 className="text-lg font-bold mb-2" style={{ color: BRAND.charcoal }}>Etiquetas Personalizadas</h3>
+                <p className="text-gray-500 text-sm leading-relaxed">Todas as etiquetas carregam a logomarca LOOK Envios, criando percepção de marca corporativa sólida.</p>
+              </div>
+              <div className="rounded-xl p-6 border" style={{ backgroundColor: BRAND.white, borderColor: BRAND.border }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4" style={{ backgroundColor: `${BRAND.orange}10` }}>
+                  <Layers className="w-5 h-5" style={{ color: BRAND.orange }} />
+                </div>
+                <h3 className="text-lg font-bold mb-2" style={{ color: BRAND.charcoal }}>Interface Unificada</h3>
+                <p className="text-gray-500 text-sm leading-relaxed">Painéis com identidade visual vibrante (Laranja e Branco) reforçando segurança e modernidade.</p>
+              </div>
+            </div>
+            <div className="rounded-2xl border p-6 shadow-lg" style={{ backgroundColor: BRAND.white, borderColor: BRAND.border, borderLeft: `3px solid ${BRAND.orange}` }}>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: BRAND.orange }}>
+                  <Package className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <div className="font-bold text-sm" style={{ color: BRAND.charcoal }}>Etiqueta #LK20260318</div>
+                  <div className="text-xs text-gray-400">PAC • Look Envios</div>
+                </div>
+                <div className="ml-auto w-3 h-3 rounded-full" style={{ backgroundColor: BRAND.orange }} />
+              </div>
+              <div className="space-y-3">
+                {[
+                  { label: 'Objeto Postado', active: false, done: true },
+                  { label: 'Em Trânsito', active: true, done: false },
+                  { label: 'Saiu para Entrega', active: false, done: false },
+                  { label: 'Entregue', active: false, done: false },
+                ].map((step, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <div className={`w-2.5 h-2.5 rounded-full ${step.active ? '' : step.done ? 'bg-gray-300' : 'bg-gray-200'}`} style={step.active ? { backgroundColor: BRAND.orange } : {}} />
+                    <span className={`text-sm ${step.active ? 'font-bold' : 'text-gray-400'}`} style={step.active ? { color: BRAND.orange } : {}}>
+                      {step.label}
+                    </span>
+                    {step.active && <Truck className="w-4 h-4" style={{ color: BRAND.orange }} />}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {/* 11. FUNCIONALIDADES DA PLATAFORMA                            */}
+      {/* ══════════════════════════════════════════════════════════════ */}
+      <section id="plataforma" className="py-20" style={{ backgroundColor: BRAND.white }}>
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="text-center mb-2">
+            <span className="inline-block px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider" style={{ color: BRAND.orange, backgroundColor: `${BRAND.orange}10` }}>Plataforma</span>
+          </div>
+          <h2 className="text-3xl md:text-5xl font-black text-center mb-12" style={{ color: BRAND.charcoal }}>
+            Funcionalidades da <span style={{ color: BRAND.orange }}>Plataforma</span>
+          </h2>
+
+          <div className="grid md:grid-cols-3 gap-5">
+            {[
+              { icon: Printer, title: 'Emissão de Etiquetas', desc: 'Individual com branding personalizado.' },
+              { icon: BarChart3, title: 'Simulador de Frete', desc: 'Compare transportadoras em tempo real.' },
+              { icon: MapPin, title: 'Rastreamento', desc: 'Mapa interativo com alertas.' },
+              { icon: Bot, title: 'CRM com IA', desc: 'Múltiplos canais WhatsApp.' },
+              { icon: Bell, title: 'Notificações', desc: 'HSM em cada etapa.' },
+              { icon: Receipt, title: 'Faturas', desc: 'PDF, boletos, controle.' },
+              { icon: UsersRound, title: 'Multi-Remetentes', desc: 'Sync automática.' },
+              { icon: BarChart, title: 'Relatórios', desc: 'KPIs por UF e serviço.' },
+              { icon: ShieldCheck, title: 'Segurança', desc: 'Criptografia e auditoria.' },
+            ].map((item, i) => (
+              <motion.div key={i} initial={{ y: 20, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={{ once: true }} transition={{ delay: (i % 3) * 0.06 }}
+                className="rounded-2xl p-6 border" style={{ backgroundColor: BRAND.cream, borderColor: BRAND.border }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4" style={{ backgroundColor: `${BRAND.orange}10` }}>
+                  <item.icon className="w-5 h-5" style={{ color: BRAND.orange }} />
+                </div>
+                <h3 className="text-base font-bold mb-1" style={{ color: BRAND.charcoal }}>{item.title}</h3>
+                <p className="text-gray-500 text-sm">{item.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {/* 12. ATENDIMENTO INTELIGENTE                                  */}
       {/* ══════════════════════════════════════════════════════════════ */}
       <section className="py-20" style={{ backgroundColor: BRAND.charcoal }}>
         <div className="max-w-5xl mx-auto px-6">
-          <SectionNumber n={10} dark />
+          <div className="text-center mb-2">
+            <span className="inline-block px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider" style={{ color: BRAND.orangeLight, backgroundColor: 'rgba(255,255,255,0.06)' }}>Seção 12 — Powered by BRHUB Conecta</span>
+          </div>
+          <h2 className="text-3xl md:text-5xl font-black text-center mb-12 text-white">
+            Atendimento Inteligente e <span style={{ color: BRAND.orange }}>Suporte com IA</span>
+          </h2>
+
+          <div className="grid md:grid-cols-3 gap-5">
+            {[
+              { icon: Bot, title: 'Assistentes IA (24/7)', desc: 'IA treinada para dúvidas sobre prazos, status e troca.' },
+              { icon: Activity, title: 'Triagem Inteligente', desc: 'Resolve problemas simples, escala casos complexos.' },
+              { icon: MessageSquare, title: 'Automação', desc: 'Respostas automatizadas sobre rastreamento.' },
+              { icon: Bell, title: 'Rastreamento WhatsApp', desc: 'Alertas: Postado, Em Trânsito, Entregue.' },
+              { icon: Shield, title: 'Alertas de Exceção', desc: 'Identificação proativa de atrasos.' },
+              { icon: Headphones, title: 'Gestão de Protocolos', desc: 'Canais centralizados em interface única.' },
+            ].map((item, i) => (
+              <motion.div key={i} initial={{ y: 20, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={{ once: true }} transition={{ delay: (i % 3) * 0.06 }}
+                className="rounded-2xl p-6 border" style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.08)' }}>
+                <item.icon className="w-7 h-7 mb-4" style={{ color: BRAND.orange }} />
+                <h3 className="text-base font-bold text-white mb-1">{item.title}</h3>
+                <p className="text-gray-400 text-sm leading-relaxed">{item.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {/* 13. INTELIGÊNCIA FINANCEIRA                                   */}
+      {/* ══════════════════════════════════════════════════════════════ */}
+      <section className="py-20" style={{ backgroundColor: BRAND.white }}>
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="text-center mb-2">
+            <span className="inline-block px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider" style={{ color: BRAND.orange, backgroundColor: `${BRAND.orange}10` }}>Seção 13</span>
+          </div>
+          <h2 className="text-3xl md:text-5xl font-black text-center mb-12" style={{ color: BRAND.charcoal }}>
+            Inteligência <span style={{ color: BRAND.orange }}>Financeira</span>
+          </h2>
+
+          <div className="grid md:grid-cols-2 gap-8">
+            <div className="rounded-2xl p-8 border" style={{ backgroundColor: BRAND.cream, borderColor: BRAND.border }}>
+              <CreditCard className="w-7 h-7 mb-4" style={{ color: BRAND.orange }} />
+              <h3 className="text-xl font-bold mb-5" style={{ color: BRAND.charcoal }}>Split de Pagamento</h3>
+              <div className="space-y-3">
+                <Bullet>Repasse Direto: componente do frete segregado automaticamente.</Bullet>
+                <Bullet>Liquidez Operacional: recursos sempre disponíveis.</Bullet>
+              </div>
+            </div>
+            <div className="rounded-2xl p-8 border" style={{ backgroundColor: BRAND.cream, borderColor: BRAND.border }}>
+              <Receipt className="w-7 h-7 mb-4" style={{ color: BRAND.orange }} />
+              <h3 className="text-xl font-bold mb-5" style={{ color: BRAND.charcoal }}>Política de Faturamento</h3>
+              <div className="space-y-3">
+                <Bullet>Vendas Externas: faturas detalhadas para gestão profissional.</Bullet>
+                <Bullet>Marketplace: atua apenas como emissor e rastreador.</Bullet>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {/* 14. ESPECIFICAÇÕES TÉCNICAS                                   */}
+      {/* ══════════════════════════════════════════════════════════════ */}
+      <section className="py-20" style={{ backgroundColor: BRAND.cream }}>
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="text-center mb-2">
+            <span className="inline-block px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider" style={{ color: BRAND.orange, backgroundColor: `${BRAND.orange}10` }}>Seção 14</span>
+          </div>
+          <h2 className="text-3xl md:text-5xl font-black text-center mb-12" style={{ color: BRAND.charcoal }}>
+            Especificações <span style={{ color: BRAND.orange }}>Técnicas</span>
+          </h2>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { icon: Server, title: 'API RESTful', desc: 'JSON + Swagger' },
+              { icon: Webhook, title: 'Webhooks', desc: 'Tempo real' },
+              { icon: FileCode, title: 'Etiquetas', desc: 'PDF e ZPL' },
+              { icon: Lock, title: 'Segurança', desc: 'OAuth2 + criptografia' },
+              { icon: Activity, title: 'SLA 99.9%', desc: 'Alta disponibilidade' },
+              { icon: GitBranch, title: 'Ambientes', desc: 'Staging + Prod' },
+            ].map((item, i) => (
+              <div key={i} className="rounded-xl p-4 border flex items-center gap-3" style={{ backgroundColor: BRAND.white, borderColor: BRAND.border }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${BRAND.orange}10` }}>
+                  <item.icon className="w-5 h-5" style={{ color: BRAND.orange }} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold" style={{ color: BRAND.charcoal }}>{item.title}</h4>
+                  <p className="text-gray-400 text-xs">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {/* 15. ARQUITETURA TÉCNICA                                       */}
+      {/* ══════════════════════════════════════════════════════════════ */}
+      <section className="py-20" style={{ backgroundColor: BRAND.white }}>
+        <div className="max-w-5xl mx-auto px-6 text-center">
+          <h2 className="text-3xl md:text-5xl font-black mb-2" style={{ color: BRAND.charcoal }}>
+            Arquitetura <span className="font-black" style={{ color: BRAND.orange }}>Look China</span>
+          </h2>
+          <p className="text-gray-500 text-sm mb-10 italic">Infraestrutura de alta disponibilidade para emissões em massa e rastreamento.</p>
+          <div className="rounded-2xl border overflow-hidden shadow-lg" style={{ borderColor: BRAND.border }}>
+            <img src={arquiteturaImg} alt="Arquitetura Técnica do Hub de Logística Look Envios" className="w-full" />
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {/* 16. CRONOGRAMA DE ENTREGA                                     */}
+      {/* ══════════════════════════════════════════════════════════════ */}
+      <section className="py-20" style={{ backgroundColor: BRAND.cream }}>
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="text-center mb-2">
+            <span className="inline-block px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider" style={{ color: BRAND.orange, backgroundColor: `${BRAND.orange}10` }}>Seção 16</span>
+          </div>
+          <h2 className="text-3xl md:text-5xl font-black text-center mb-14" style={{ color: BRAND.charcoal }}>
+            Cronograma de <span style={{ color: BRAND.orange }}>Entrega</span>
+          </h2>
+
+          <div className="max-w-lg mx-auto space-y-0">
+            {[
+              { icon: Settings, phase: 'FASE 1', title: 'Ativação e Configuração', desc: 'Conta e Gateway de Pagamento/Split.', color: BRAND.orange },
+              { icon: Building, phase: 'FASE 2', title: 'Treinamento da IA', desc: 'IA baseada no histórico de SAC.', color: BRAND.orange },
+              { icon: ScanLine, phase: 'FASE 3', title: 'Integração e Testes', desc: 'API e notificações multicanal.', color: BRAND.orange },
+              { icon: Flag, phase: 'FASE 4', title: 'Lançamento Oficial', desc: 'Go-Live da plataforma.', color: '#16A34A' },
+            ].map((step, i) => (
+              <div key={i} className="flex items-start gap-5">
+                <div className="flex flex-col items-center">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: step.color }}>
+                    <step.icon className="w-6 h-6 text-white" />
+                  </div>
+                  {i < 3 && <div className="w-0.5 h-16" style={{ backgroundColor: `${BRAND.orange}30` }} />}
+                </div>
+                <div className="pt-1 pb-8">
+                  <span className="text-xs font-bold uppercase tracking-wider" style={{ color: BRAND.orange }}>{step.phase}</span>
+                  <h3 className="text-xl font-bold mt-1" style={{ color: BRAND.charcoal }}>{step.title}</h3>
+                  <p className="text-gray-500 text-sm">{step.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {/* 17. FASE 2 — FULL                                            */}
+      {/* ══════════════════════════════════════════════════════════════ */}
+      <section className="py-20" style={{ backgroundColor: BRAND.charcoal }}>
+        <div className="max-w-5xl mx-auto px-6">
+          <SectionNumber n={17} dark />
           <Heading white>Fase 2 — Operação <span style={{ color: BRAND.orange }}>Full</span></Heading>
           <SubText dark>Uma oportunidade estratégica para a evolução do projeto: fulfillment com armazenagem em galpão, maior controle e velocidade.</SubText>
 
