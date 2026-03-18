@@ -8,7 +8,7 @@ import {
   Star, Award, Target
 } from 'lucide-react';
 import lookChinaLogo from '@/assets/look-china-logo.png';
-import tabelaDiamante from '@/assets/tabela-diamante.png';
+
 
 // ─── Animated counter ────────────────────────────────────────────
 const Counter = ({ end, suffix = '', prefix = '' }: { end: number; suffix?: string; prefix?: string }) => {

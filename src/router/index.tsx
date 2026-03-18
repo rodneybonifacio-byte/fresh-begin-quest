@@ -86,6 +86,7 @@ export const RouterBase = () => {
                     <Route path="/tv-coleta" element={<TvPainelColeta />} />
                     <Route path="/pitch" element={<PitchPage />} />
                     <Route path="/pitch/pdf" element={<PitchPdfExport />} />
+                    <Route path="/lookenvios" element={<LookEnviosPage />} />
 
                     {/* Conecta+ Routes */}
                     <Route path="/conecta" element={<LandingConecta />} />
