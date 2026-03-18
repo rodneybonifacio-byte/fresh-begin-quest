@@ -5,10 +5,10 @@ import {
   Bell, CreditCard, FileText, Cpu, CheckCircle2, Gem,
   MapPin, TrendingUp, Users, Headphones, Smartphone, Mail,
   Send, ChevronDown, Layers, Activity, Server, Database, RefreshCw,
-  Target, Settings, Flag
+  Target, Settings, Flag, Clock, Ruler, Weight, MapPinned, AlertCircle
 } from 'lucide-react';
 import lookLogo from '@/assets/look-china-logo-official.svg';
-import arquiteturaImg from '@/assets/arquitetura-look-envios.jpg';
+import arquiteturaImg from '@/assets/arquitetura-look-envios-v2.png';
 import lookScreenshot1 from '@/assets/look-screenshot-1.png';
 import lookScreenshot2 from '@/assets/look-screenshot-2.png';
 
@@ -90,7 +90,7 @@ const LookEnviosPage = () => {
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-16">
           <img src={lookLogo} alt="Look China" className="h-9 invert brightness-200" />
           <div className="hidden md:flex items-center gap-8">
-            {['Ecossistema', 'Arquitetura', 'Tarifas', 'Funcionalidades'].map((item) => (
+            {['Ecossistema', 'Arquitetura', 'JadLog', 'FLEX', 'Tarifas', 'Funcionalidades'].map((item) => (
               <a key={item} href={`#${item.toLowerCase()}`} className="text-sm font-medium text-white/80 hover:text-white transition-colors">{item}</a>
             ))}
           </div>
@@ -117,8 +117,8 @@ const LookEnviosPage = () => {
             <motion.p initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="text-lg font-semibold mb-3" style={{ color: BRAND.orangeLight }}>Ecossistema Logístico de Nova Geração</motion.p>
             <motion.p initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4 }} className="text-white/60 text-base leading-relaxed mb-8 max-w-xl">Esta proposta consolida o Look Envios como a solução logística mais completa do mercado, integrando transporte, gestão financeira automatizada e suporte inteligente ao cliente.</motion.p>
             <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }} className="flex flex-wrap gap-2 mb-8">
-              {['Correios Diamante', 'JadLog', 'Flex Envios', 'BusLog'].map((t, i) => (
-                <span key={i} className="px-4 py-2 rounded-full text-sm font-semibold text-white/90 border border-white/15" style={{ backgroundColor: `${BRAND.orange}${15 + i * 5}` }}>{t}</span>
+              {['Correios Diamante', 'JadLog', 'FLEX'].map((t, i) => (
+                <span key={i} className="px-4 py-2 rounded-full text-sm font-semibold text-white/90 border border-white/15" style={{ backgroundColor: `${BRAND.orange}${15 + i * 8}` }}>{t}</span>
               ))}
             </motion.div>
             <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.6 }} className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -146,8 +146,8 @@ const LookEnviosPage = () => {
             <h2 className="text-3xl md:text-5xl font-black mb-4" style={{ color: BRAND.charcoal }}>O Ecossistema <span style={{ color: BRAND.orange }}>LOOK Envios</span></h2>
             <p className="text-gray-500 text-lg max-w-2xl mx-auto">Centro de comando para sua operação de e-commerce.</p>
           </motion.div>
-          <div className="grid md:grid-cols-4 gap-6">
-            {[{ icon: Package, name: 'Correios', desc: 'Cobertura nacional com Tabela Diamante exclusiva.', tag: 'Diamante' }, { icon: Truck, name: 'JadLog', desc: 'Malha privada para prazos curtos.', tag: 'Express' }, { icon: Zap, name: 'Flex Envios', desc: 'Entregas Same Day / Next Day.', tag: 'Same Day' }, { icon: Globe, name: 'BusLog', desc: 'Soluções rodoviárias para grandes volumes.', tag: 'Rodoviário' }].map((t, i) => (
+          <div className="grid md:grid-cols-3 gap-6">
+            {[{ icon: Package, name: 'Correios', desc: 'Cobertura nacional com Tabela Diamante exclusiva. Até 30kg por envio em todo o Brasil.', tag: 'Diamante' }, { icon: Truck, name: 'JadLog', desc: 'Malha privada com mais de 500 pontos. Ideal para volumes maiores e pesos acima de 30kg.', tag: 'Package' }, { icon: Zap, name: 'FLEX', desc: 'Entregas Same Day na Grande São Paulo. Tarifa fixa R$ 18,00 com filtragem por CEP.', tag: 'Same Day' }].map((t, i) => (
               <motion.div key={i} initial={{ y: 40, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} whileHover={{ y: -6 }} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 px-3 py-1 text-xs font-bold text-white rounded-bl-xl" style={{ backgroundColor: BRAND.orange }}>{t.tag}</div>
                 <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-4" style={{ backgroundColor: `${BRAND.orange}10` }}><t.icon className="w-7 h-7" style={{ color: BRAND.orange }} /></div>
@@ -202,6 +202,163 @@ const LookEnviosPage = () => {
               <ArchNode icon={Bell} label="Notificações" delay={0.7} color="#7C3AED" /><FlowLine />
               <ArchNode icon={CreditCard} label="Split" delay={0.8} color="#DB2777" />
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════ JADLOG ═══════ */}
+      <section id="jadlog" className="py-20" style={{ backgroundColor: BRAND.charcoal }}>
+        <div className="max-w-6xl mx-auto px-6">
+          <motion.div initial={{ y: 30, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={{ once: true }} className="text-center mb-14">
+            <span className="inline-block px-4 py-1.5 rounded-full text-xs font-bold tracking-widest mb-4" style={{ backgroundColor: `${BRAND.orange}25`, color: BRAND.orange }}>
+              <Truck className="w-3 h-3 inline mr-1" /> TRANSPORTADORA PARCEIRA
+            </span>
+            <h2 className="text-3xl md:text-5xl font-black text-white mb-4">JadLog <span style={{ color: BRAND.orange }}>Package</span></h2>
+            <p className="text-gray-400 text-lg max-w-3xl mx-auto">A JadLog é uma das maiores transportadoras do Brasil, com malha própria de mais de 500 filiais e pontos de coleta. Ideal para volumes maiores, peso acima de 30kg, e entregas que exigem agilidade em todo o território nacional.</p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            {[
+              { icon: Weight, title: 'Peso até 150kg', desc: 'Aceita encomendas de até 150kg (via coleta). Pontos de postagem aceitam até 30kg. Ideal para produtos pesados e volumes grandes.' },
+              { icon: Ruler, title: 'Dimensões até 140cm', desc: 'Máx. 140×140×140cm por dimensão individual. Soma C+L+A até 240cm. Volumes acima de 80cm em uma dimensão podem ter taxa adicional.' },
+              { icon: Truck, title: '.Package (E-commerce)', desc: 'Modalidade exclusiva para e-commerce: postagem em pontos parceiros, coleta programada, e preços diferenciados para lojistas.' },
+              { icon: Clock, title: 'Prazos Reduzidos', desc: 'Entrega em 2 a 8 dias úteis dependendo da região. Prazo competitivo especialmente para rotas Sul/Sudeste.' },
+              { icon: MapPinned, title: '+500 Pontos de Coleta', desc: 'Rede ampla de pontos de postagem em todo o Brasil. Estabelecimentos parceiros para postagem sem precisar de coleta.' },
+              { icon: Globe, title: 'Cobertura Nacional', desc: 'Atende todas as capitais e principais cidades do interior. Complementa os Correios em regiões com melhor custo-benefício.' },
+            ].map((item, i) => (
+              <motion.div key={i} initial={{ y: 30, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={{ once: true }} transition={{ delay: (i % 3) * 0.1 }} whileHover={{ y: -6 }} className="rounded-2xl p-6 border" style={{ backgroundColor: `${BRAND.white}08`, borderColor: `${BRAND.white}10` }}>
+                <item.icon className="w-10 h-10 mb-4" style={{ color: BRAND.orange }} />
+                <h3 className="text-lg font-bold text-white mb-2">{item.title}</h3>
+                <p className="text-gray-400 text-sm leading-relaxed">{item.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Quando usar JadLog vs Correios */}
+          <motion.div initial={{ y: 30, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={{ once: true }} className="rounded-2xl border p-8" style={{ backgroundColor: `${BRAND.orange}08`, borderColor: `${BRAND.orange}20` }}>
+            <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-2"><AlertCircle className="w-6 h-6" style={{ color: BRAND.orange }} /> Quando usar JadLog?</h3>
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <h4 className="font-bold text-white text-sm uppercase tracking-wider" style={{ color: BRAND.orange }}>✅ Ideal para:</h4>
+                {[
+                  'Volumes acima de 30kg (limite dos Correios)',
+                  'Dimensões superiores a 100cm (limite PAC)',
+                  'Rotas Sul/Sudeste com melhor custo-benefício',
+                  'Lojistas que precisam de coleta programada',
+                  'Produtos frágeis ou que requerem manuseio especial',
+                  'E-commerce com alto volume de envios diários',
+                ].map((item, i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
+                    <span className="text-gray-300 text-sm">{item}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-3">
+                <h4 className="font-bold text-sm uppercase tracking-wider" style={{ color: BRAND.orangeLight }}>📊 Especificações Técnicas</h4>
+                <div className="space-y-2">
+                  {[
+                    { label: 'Peso máximo (coleta)', value: '150 kg' },
+                    { label: 'Peso máximo (ponto)', value: '30 kg' },
+                    { label: 'Dimensão máxima', value: '140 cm' },
+                    { label: 'Soma C+L+A', value: '240 cm' },
+                    { label: 'Taxa extra (>80cm)', value: 'Pode incidir' },
+                    { label: 'Peso cubado (>50kg)', value: 'Taxa adicional' },
+                  ].map((spec, i) => (
+                    <div key={i} className="flex justify-between items-center rounded-lg px-3 py-2" style={{ backgroundColor: `${BRAND.white}05` }}>
+                      <span className="text-gray-400 text-sm">{spec.label}</span>
+                      <span className="text-white font-bold text-sm">{spec.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ═══════ FLEX ═══════ */}
+      <section id="flex" className="py-20 bg-white">
+        <div className="max-w-6xl mx-auto px-6">
+          <motion.div initial={{ y: 30, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={{ once: true }} className="text-center mb-14">
+            <span className="inline-block px-4 py-1.5 rounded-full text-xs font-bold tracking-widest mb-4" style={{ backgroundColor: `${BRAND.orange}15`, color: BRAND.orange }}>
+              <Zap className="w-3 h-3 inline mr-1" /> ENTREGA EXPRESSA
+            </span>
+            <h2 className="text-3xl md:text-5xl font-black mb-4" style={{ color: BRAND.charcoal }}>FLEX — <span style={{ color: BRAND.orange }}>Same Day Grande SP</span></h2>
+            <p className="text-gray-500 text-lg max-w-3xl mx-auto">Entregas no mesmo dia ou no dia seguinte na Grande São Paulo. Tarifa fixa de R$ 18,00 com filtragem automática por CEP — o frete só é apresentado ao cliente se o CEP de destino estiver na área de atendimento.</p>
+          </motion.div>
+
+          {/* Destaque tarifa */}
+          <div className="grid md:grid-cols-3 gap-6 mb-12">
+            <motion.div whileHover={{ scale: 1.03 }} className="rounded-2xl p-8 border text-center" style={{ background: `linear-gradient(135deg, ${BRAND.orange}10, ${BRAND.orange}05)`, borderColor: `${BRAND.orange}20` }}>
+              <div className="text-5xl font-black mb-2" style={{ color: BRAND.orange }}>R$ 18</div>
+              <div className="text-lg font-bold" style={{ color: BRAND.charcoal }}>Tarifa Fixa</div>
+              <div className="text-gray-500 text-sm mt-1">Grande São Paulo</div>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.03 }} className="rounded-2xl p-8 border text-center" style={{ background: `linear-gradient(135deg, ${BRAND.orange}10, ${BRAND.orange}05)`, borderColor: `${BRAND.orange}20` }}>
+              <div className="text-5xl font-black mb-2" style={{ color: BRAND.orange }}>D+0</div>
+              <div className="text-lg font-bold" style={{ color: BRAND.charcoal }}>Same Day</div>
+              <div className="text-gray-500 text-sm mt-1">Pedidos até 12h</div>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.03 }} className="rounded-2xl p-8 border text-center" style={{ background: `linear-gradient(135deg, ${BRAND.orange}10, ${BRAND.orange}05)`, borderColor: `${BRAND.orange}20` }}>
+              <div className="text-5xl font-black mb-2" style={{ color: BRAND.orange }}>CEP</div>
+              <div className="text-lg font-bold" style={{ color: BRAND.charcoal }}>Filtragem Inteligente</div>
+              <div className="text-gray-500 text-sm mt-1">Apresenta só se atende</div>
+            </motion.div>
+          </div>
+
+          {/* Como funciona */}
+          <div className="grid md:grid-cols-2 gap-12 items-start">
+            <motion.div initial={{ x: -40, opacity: 0 }} whileInView={{ x: 0, opacity: 1 }} viewport={{ once: true }}>
+              <h3 className="text-2xl font-bold mb-6 flex items-center gap-2" style={{ color: BRAND.charcoal }}><MapPinned className="w-6 h-6" style={{ color: BRAND.orange }} /> Como Funciona a Filtragem por CEP</h3>
+              <div className="space-y-4">
+                {[
+                  { step: '01', title: 'Cliente informa o CEP de destino', desc: 'No simulador ou checkout, o sistema captura o CEP do destinatário.' },
+                  { step: '02', title: 'Validação de cobertura FLEX', desc: 'O motor verifica se o CEP está dentro da área de atendimento (Grande SP).' },
+                  { step: '03', title: 'Frete FLEX apresentado', desc: 'Se o CEP é atendido, a opção FLEX R$ 18,00 aparece ao lado das demais transportadoras.' },
+                  { step: '04', title: 'Fora da área? Não aparece.', desc: 'Se o CEP não está na cobertura, o FLEX simplesmente não é exibido — sem erro, sem confusão.' },
+                ].map((item, i) => (
+                  <motion.div key={i} initial={{ x: -20, opacity: 0 }} whileInView={{ x: 0, opacity: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
+                    className="flex items-start gap-4 rounded-xl p-4 border border-gray-100" style={{ backgroundColor: BRAND.lightGray }}>
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 font-black text-sm text-white" style={{ backgroundColor: BRAND.orange }}>{item.step}</div>
+                    <div>
+                      <h4 className="font-bold text-sm" style={{ color: BRAND.charcoal }}>{item.title}</h4>
+                      <p className="text-gray-500 text-xs mt-1">{item.desc}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+
+            <motion.div initial={{ x: 40, opacity: 0 }} whileInView={{ x: 0, opacity: 1 }} viewport={{ once: true }}>
+              <h3 className="text-2xl font-bold mb-6 flex items-center gap-2" style={{ color: BRAND.charcoal }}><MapPin className="w-6 h-6" style={{ color: BRAND.orange }} /> Regiões Atendidas</h3>
+              <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: BRAND.lightGray }}>
+                <div className="px-5 py-3 font-bold text-sm text-white" style={{ backgroundColor: BRAND.orange }}>Grande São Paulo — Cobertura FLEX</div>
+                <div className="p-5 space-y-3">
+                  {[
+                    { regiao: 'Capital SP', ceps: '01000-000 a 05999-000', status: '✅' },
+                    { regiao: 'Zona Leste', ceps: '08000-000 a 08499-000', status: '✅' },
+                    { regiao: 'Zona Sul', ceps: '04000-000 a 04999-000', status: '✅' },
+                    { regiao: 'ABCDM', ceps: '09000-000 a 09999-000', status: '✅' },
+                    { regiao: 'Guarulhos', ceps: '07000-000 a 07399-000', status: '✅' },
+                    { regiao: 'Osasco', ceps: '06000-000 a 06299-000', status: '✅' },
+                    { regiao: 'Barueri/Carapicuíba', ceps: '06300-000 a 06499-000', status: '✅' },
+                    { regiao: 'Taboão/Embu', ceps: '06700-000 a 06899-000', status: '✅' },
+                  ].map((r, i) => (
+                    <div key={i} className="flex items-center justify-between rounded-lg px-4 py-2 bg-white border border-gray-100">
+                      <div>
+                        <span className="font-bold text-sm" style={{ color: BRAND.charcoal }}>{r.regiao}</span>
+                        <span className="text-gray-400 text-xs ml-2">{r.ceps}</span>
+                      </div>
+                      <span className="text-green-500 font-bold">{r.status}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="px-5 py-3 text-xs text-gray-500 italic border-t border-gray-200">
+                  A cobertura é validada automaticamente por CEP no momento da cotação. Novas regiões são adicionadas conforme expansão.
+                </div>
+              </div>
+            </motion.div>
           </div>
         </div>
       </section>
@@ -329,13 +486,13 @@ const LookEnviosPage = () => {
           </motion.div>
           {/* Documentos */}
           <motion.div initial={{ y: 30, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={{ once: true }} className="mb-8">
-            <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><FileText className="w-5 h-5" style={{ color: BRAND.orange }} /> 6.1 Documentos e Cartões</h3>
+            <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><FileText className="w-5 h-5" style={{ color: BRAND.orange }} /> Documentos e Cartões</h3>
             <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: `${BRAND.white}05`, borderColor: `${BRAND.white}10` }}><div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr style={{ backgroundColor: `${BRAND.orange}80` }}><th className="px-4 py-2.5 text-left text-white font-bold">Peso</th><th className="px-4 py-2.5 text-center text-white font-bold">Local</th><th className="px-4 py-2.5 text-center text-white font-bold">Estadual</th><th className="px-4 py-2.5 text-center text-white font-bold">Sul/Sudeste</th><th className="px-4 py-2.5 text-center text-white font-bold">Nordeste</th><th className="px-4 py-2.5 text-center text-white font-bold">Norte</th></tr></thead>
               <tbody>{tabelaDocumentos.map((row, i) => (<tr key={i} className="border-b" style={{ borderColor: `${BRAND.white}05`, backgroundColor: i % 2 === 0 ? `${BRAND.white}03` : 'transparent' }}><td className="px-4 py-2.5 font-semibold" style={{ color: BRAND.orangeLight }}>{row.peso}</td><td className="px-4 py-2.5 text-center font-bold" style={{ color: '#4ADE80' }}>{row.local}</td><td className="px-4 py-2.5 text-center text-gray-300">{row.estadual}</td><td className="px-4 py-2.5 text-center text-gray-300">{row.r1}</td><td className="px-4 py-2.5 text-center text-gray-300">{row.r3}</td><td className="px-4 py-2.5 text-center text-gray-300">{row.r4}</td></tr>))}</tbody></table></div></div>
           </motion.div>
           {/* E-commerce */}
           <motion.div initial={{ y: 30, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={{ once: true }}>
-            <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><Package className="w-5 h-5" style={{ color: BRAND.orange }} /> 6.2 E-commerce Capitais</h3>
+            <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><Package className="w-5 h-5" style={{ color: BRAND.orange }} /> E-commerce Capitais</h3>
             <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: `${BRAND.white}05`, borderColor: `${BRAND.white}10` }}><div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr style={{ backgroundColor: `${BRAND.orange}80` }}><th className="px-4 py-2.5 text-left text-white font-bold">UF</th><th className="px-4 py-2.5 text-left text-white font-bold">Destino</th><th className="px-4 py-2.5 text-center text-white font-bold">Até 100g</th><th className="px-4 py-2.5 text-center text-white font-bold">Até 500g</th><th className="px-4 py-2.5 text-center text-white font-bold">Até 1kg</th><th className="px-4 py-2.5 text-center text-white font-bold">Até 2kg</th></tr></thead>
               <tbody>{tabelaEcommerce.map((row, i) => (<tr key={i} className="border-b" style={{ borderColor: `${BRAND.white}05`, backgroundColor: i % 2 === 0 ? `${BRAND.white}03` : 'transparent' }}><td className="px-4 py-2.5 font-bold" style={{ color: BRAND.orange }}>{row.uf}</td><td className="px-4 py-2.5 text-gray-300">{row.destino}</td><td className="px-4 py-2.5 text-center text-gray-300">{row.ate100}</td><td className="px-4 py-2.5 text-center text-gray-300">{row.ate500}</td><td className="px-4 py-2.5 text-center text-gray-300">{row.ate1kg}</td><td className="px-4 py-2.5 text-center text-gray-300">{row.ate2kg}</td></tr>))}</tbody></table></div>
               <div className="px-6 py-2 text-xs text-gray-500 italic border-t" style={{ borderColor: `${BRAND.white}05` }}>*Valores médios para regiões metropolitanas.</div></div>
