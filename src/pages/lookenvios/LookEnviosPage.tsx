@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
-import { motion, useScroll, useTransform, useInView } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import {
   Package, Truck, BarChart3, Shield, Zap, Globe, Bot, MessageSquare,
   Bell, CreditCard, FileText, Cpu, CheckCircle2, Gem,
