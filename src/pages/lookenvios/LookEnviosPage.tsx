@@ -31,13 +31,13 @@ const Heading = ({ children, white = false }: { children: React.ReactNode; white
 );
 
 const SubText = ({ children, dark = false }: { children: React.ReactNode; dark?: boolean }) => (
-  <p className={`text-base leading-relaxed max-w-3xl ${dark ? 'text-gray-400' : 'text-gray-500'}`}>{children}</p>
+  <p className={`text-base leading-relaxed max-w-3xl ${dark ? 'text-gray-300' : 'text-gray-500'}`}>{children}</p>
 );
 
 const Bullet = ({ children, dark = false }: { children: React.ReactNode; dark?: boolean }) => (
   <div className="flex items-start gap-3">
     <CheckCircle2 className="w-[18px] h-[18px] mt-0.5 flex-shrink-0 text-green-500" />
-    <span className={`text-sm leading-relaxed ${dark ? 'text-gray-300' : 'text-gray-600'}`}>{children}</span>
+    <span className={`text-sm leading-relaxed ${dark ? 'text-gray-200' : 'text-gray-600'}`}>{children}</span>
   </div>
 );
 
@@ -102,7 +102,7 @@ const LookEnviosPage = () => {
           </motion.h1>
 
           <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="max-w-2xl mb-10">
-            <p className="text-white/50 text-base leading-relaxed">
+            <p className="text-white/70 text-base leading-relaxed">
               Proposta para estruturação da operação logística da marca sob a identidade LOOK ENVIOS — uma frente própria de expedição, frete e gestão de entregas, com posicionamento profissional, escalável e alinhado ao crescimento da operação.
             </p>
           </motion.div>
@@ -215,7 +215,7 @@ const LookEnviosPage = () => {
                 <t.icon className="w-8 h-8 mb-3" style={{ color: BRAND.orange }} />
                 <h3 className="text-lg font-bold text-white mb-1">{t.name}</h3>
                 <p className="text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: BRAND.orangeLight }}>{t.highlight}</p>
-                <p className="text-gray-400 text-xs leading-relaxed">{t.desc}</p>
+                <p className="text-gray-300 text-xs leading-relaxed">{t.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -276,8 +276,8 @@ const LookEnviosPage = () => {
 
           <div className="grid md:grid-cols-2 gap-14 mt-10 items-start">
             <div>
-              <p className="text-gray-400 text-sm leading-relaxed mb-6">
-                A JadLog complementa a malha logística com flexibilidade para mercadorias com maior peso. A <strong className="text-white">Tabela Ouro</strong> posiciona a modalidade com preços agressivos, fortalecendo a proposta da LOOK ENVIOS.
+               <p className="text-gray-300 text-sm leading-relaxed mb-6">
+                 A JadLog complementa a malha logística com flexibilidade para mercadorias com maior peso. A <strong className="text-white">Tabela Ouro</strong> posiciona a modalidade com preços agressivos, fortalecendo a proposta da LOOK ENVIOS.
               </p>
               <div className="space-y-2.5">
                 {[
@@ -302,7 +302,7 @@ const LookEnviosPage = () => {
                 <div key={i} className="rounded-xl p-4 border" style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.08)' }}>
                   <item.icon className="w-5 h-5 mb-2" style={{ color: BRAND.orange }} />
                   <h4 className="text-xs font-bold text-white">{item.title}</h4>
-                  <p className="text-[10px] text-gray-500">{item.desc}</p>
+                  <p className="text-[10px] text-gray-400">{item.desc}</p>
                 </div>
               ))}
             </div>
@@ -315,7 +315,7 @@ const LookEnviosPage = () => {
               <div className="space-y-2.5">
                 <h4 className="font-bold text-xs uppercase tracking-wider flex items-center gap-2 mb-3" style={{ color: BRAND.orange }}><Crosshair className="w-3.5 h-3.5" /> Ideal para</h4>
                 {['Volumes acima de 30kg', 'Dimensões superiores a 100cm', 'Rotas Sul/Sudeste com melhor custo-benefício', 'Coleta programada para alto volume', 'Produtos frágeis ou manuseio especial', 'E-commerce com envios diários'].map((item, i) => (
-                  <div key={i} className="flex items-start gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-green-400 mt-0.5 flex-shrink-0" /><span className="text-gray-300 text-xs">{item}</span></div>
+                  <div key={i} className="flex items-start gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-green-400 mt-0.5 flex-shrink-0" /><span className="text-gray-200 text-xs">{item}</span></div>
                 ))}
               </div>
               <div className="space-y-2">
@@ -327,7 +327,7 @@ const LookEnviosPage = () => {
                   { label: 'Soma C+L+A', value: '240 cm' },
                 ].map((spec, i) => (
                   <div key={i} className="flex justify-between items-center rounded-lg px-3 py-2" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
-                    <span className="text-gray-400 text-xs">{spec.label}</span>
+                    <span className="text-gray-300 text-xs">{spec.label}</span>
                     <span className="text-white font-bold text-xs">{spec.value}</span>
                   </div>
                 ))}
@@ -575,7 +575,7 @@ const LookEnviosPage = () => {
                 className="rounded-2xl p-6 border" style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.08)' }}>
                 <item.icon className="w-7 h-7 mb-4" style={{ color: BRAND.orange }} />
                 <h3 className="text-base font-bold text-white mb-1">{item.title}</h3>
-                <p className="text-gray-400 text-sm leading-relaxed">{item.desc}</p>
+                <p className="text-gray-300 text-sm leading-relaxed">{item.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -708,8 +708,8 @@ const LookEnviosPage = () => {
             <div className="rounded-xl p-6 border" style={{ background: `linear-gradient(135deg, rgba(242,101,34,0.06), rgba(242,101,34,0.02))`, borderColor: `${BRAND.orange}15` }}>
               <Warehouse className="w-12 h-12 mb-5" style={{ color: BRAND.orange }} />
               <h3 className="text-xl font-bold text-white mb-3">Fulfillment Completo</h3>
-              <p className="text-gray-400 text-sm leading-relaxed">
-                Os produtos poderão ser armazenados em galpão, permitindo que a operação ganhe eficiência, organização e velocidade. A LOOK ENVIOS incorpora uma lógica completa de fulfillment.
+               <p className="text-gray-300 text-sm leading-relaxed">
+                 Os produtos poderão ser armazenados em galpão, permitindo que a operação ganhe eficiência, organização e velocidade. A LOOK ENVIOS incorpora uma lógica completa de fulfillment.
               </p>
             </div>
             <div>
@@ -753,7 +753,7 @@ const LookEnviosPage = () => {
                 <card.icon className="w-5 h-5 mb-2" style={{ color: BRAND.orange }} />
                 <div className="text-2xl font-black text-white mb-0.5">{card.value}</div>
                 <div className="font-semibold text-xs" style={{ color: BRAND.orangeLight }}>{card.label}</div>
-                <div className="text-gray-500 text-[10px] mt-0.5">{card.desc}</div>
+                <div className="text-gray-400 text-[10px] mt-0.5">{card.desc}</div>
               </div>
             ))}
           </div>
@@ -797,11 +797,11 @@ const LookEnviosPage = () => {
           <SectionNumber n={19} dark />
           <img src={lookLogo} alt="Look Envios" className="h-10 mx-auto mb-6 opacity-80" />
           <Heading white>Uma proposta sólida para o <span style={{ color: BRAND.orange }}>futuro</span></Heading>
-          <p className="text-gray-400 text-sm leading-relaxed mb-4 max-w-2xl mx-auto">
-            A BRHUB apresenta à LookChina uma proposta para criação da LOOK ENVIOS — transformando a logística em uma operação mais profissional, estratégica e preparada para crescer.
-          </p>
-          <p className="text-gray-500 text-xs leading-relaxed mb-10 max-w-2xl mx-auto">
-            Etiquetas com logo LOOK ENVIOS, operação com Correios, JadLog e Envios Flex, malha logística completa com cobertura nacional, força regional e alta competitividade. Já abrindo caminho para a Fase 2 com modelo Full e armazenagem em galpão.
+           <p className="text-gray-300 text-sm leading-relaxed mb-4 max-w-2xl mx-auto">
+             A BRHUB apresenta à LookChina uma proposta para criação da LOOK ENVIOS — transformando a logística em uma operação mais profissional, estratégica e preparada para crescer.
+           </p>
+           <p className="text-gray-400 text-xs leading-relaxed mb-10 max-w-2xl mx-auto">
+             Etiquetas com logo LOOK ENVIOS, operação com Correios, JadLog e Envios Flex, malha logística completa com cobertura nacional, força regional e alta competitividade. Já abrindo caminho para a Fase 2 com modelo Full e armazenagem em galpão.
           </p>
 
           <div className="flex justify-center gap-3 mb-10">
