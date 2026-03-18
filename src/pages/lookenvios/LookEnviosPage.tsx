@@ -45,16 +45,6 @@ const Divider = ({ dark = false }: { dark?: boolean }) => (
   <div className="w-full h-px my-1" style={{ backgroundColor: dark ? 'rgba(255,255,255,0.06)' : BRAND.border }} />
 );
 
-const tabelaDiamanteData = [
-  { faixa: 'Até 100g', sp: 'R$ 6,90', sudeste: 'R$ 9,79', sul: 'R$ 9,42', nordeste: 'R$ 13,27', norte: 'R$ 14,86' },
-  { faixa: 'Até 500g', sp: 'R$ 7,55', sudeste: 'R$ 11,39', sul: 'R$ 11,00', nordeste: 'R$ 15,22', norte: 'R$ 17,63' },
-  { faixa: 'Até 1kg', sp: 'R$ 7,98', sudeste: 'R$ 15,00', sul: 'R$ 14,20', nordeste: 'R$ 21,20', norte: 'R$ 21,39' },
-  { faixa: 'Até 2kg', sp: 'R$ 9,31', sudeste: 'R$ 17,55', sul: 'R$ 16,41', nordeste: 'R$ 26,48', norte: 'R$ 27,97' },
-  { faixa: 'Até 5kg', sp: 'R$ 14,28', sudeste: 'R$ 25,39', sul: 'R$ 23,17', nordeste: 'R$ 46,78', norte: 'R$ 49,25' },
-  { faixa: 'Até 10kg', sp: 'R$ 20,35', sudeste: 'R$ 38,15', sul: 'R$ 34,18', nordeste: 'R$ 80,55', norte: 'R$ 90,59' },
-  { faixa: 'Até 20kg', sp: 'R$ 37,78', sudeste: 'R$ 63,52', sul: 'R$ 58,40', nordeste: 'R$ 152,11', norte: 'R$ 170,42' },
-  { faixa: 'Até 30kg', sp: 'R$ 57,04', sudeste: 'R$ 93,16', sul: 'R$ 86,50', nordeste: 'R$ 242,85', norte: 'R$ 297,00' },
-];
 
 const LookEnviosPage = () => {
   const { scrollYProgress } = useScroll();
