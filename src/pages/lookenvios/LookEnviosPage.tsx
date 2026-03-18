@@ -466,12 +466,9 @@ const LookEnviosPage = () => {
       {/* ══════════════════════════════════════════════════════════════ */}
       <section className="py-20" style={{ backgroundColor: BRAND.cream }}>
         <div className="max-w-5xl mx-auto px-6">
-          <div className="text-center mb-2">
-            <span className="inline-block px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider text-white" style={{ backgroundColor: BRAND.orange }}>Seção 10</span>
-          </div>
-          <h2 className="text-3xl md:text-5xl font-black text-center mb-12" style={{ color: BRAND.charcoal }}>
-            Branding: <span className="italic" style={{ color: BRAND.orange }}>Sua Marca em Cada Pacote</span>
-          </h2>
+          <SectionNumber n={10} />
+          <Heading>Branding: <span style={{ color: BRAND.orange }}>Sua Marca em Cada Pacote</span></Heading>
+          <SubText>Etiquetas personalizadas e interface unificada reforçando a identidade LOOK ENVIOS em cada envio.</SubText>
 
           <div className="grid md:grid-cols-2 gap-8 items-start">
             <div className="space-y-5">
@@ -527,12 +524,9 @@ const LookEnviosPage = () => {
       {/* ══════════════════════════════════════════════════════════════ */}
       <section id="plataforma" className="py-20" style={{ backgroundColor: BRAND.white }}>
         <div className="max-w-5xl mx-auto px-6">
-          <div className="text-center mb-2">
-            <span className="inline-block px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider" style={{ color: BRAND.orange, backgroundColor: `${BRAND.orange}10` }}>Plataforma</span>
-          </div>
-          <h2 className="text-3xl md:text-5xl font-black text-center mb-12" style={{ color: BRAND.charcoal }}>
-            Funcionalidades da <span style={{ color: BRAND.orange }}>Plataforma</span>
-          </h2>
+          <SectionNumber n={11} />
+          <Heading>Funcionalidades da <span style={{ color: BRAND.orange }}>Plataforma</span></Heading>
+          <SubText>Todos os recursos necessários para uma operação logística completa e profissional.</SubText>
 
           <div className="grid md:grid-cols-3 gap-5">
             {[
@@ -564,12 +558,9 @@ const LookEnviosPage = () => {
       {/* ══════════════════════════════════════════════════════════════ */}
       <section className="py-20" style={{ backgroundColor: BRAND.charcoal }}>
         <div className="max-w-5xl mx-auto px-6">
-          <div className="text-center mb-2">
-            <span className="inline-block px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider" style={{ color: BRAND.orangeLight, backgroundColor: 'rgba(255,255,255,0.06)' }}>Seção 12 — Powered by BRHUB Conecta</span>
-          </div>
-          <h2 className="text-3xl md:text-5xl font-black text-center mb-12 text-white">
-            Atendimento Inteligente e <span style={{ color: BRAND.orange }}>Suporte com IA</span>
-          </h2>
+          <SectionNumber n={12} dark />
+          <Heading white>Atendimento Inteligente e <span style={{ color: BRAND.orange }}>Suporte com IA</span></Heading>
+          <SubText dark>Powered by BRHUB Conecta — IA treinada, triagem inteligente e automação multicanal.</SubText>
 
           <div className="grid md:grid-cols-3 gap-5">
             {[
@@ -596,12 +587,9 @@ const LookEnviosPage = () => {
       {/* ══════════════════════════════════════════════════════════════ */}
       <section className="py-20" style={{ backgroundColor: BRAND.white }}>
         <div className="max-w-5xl mx-auto px-6">
-          <div className="text-center mb-2">
-            <span className="inline-block px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider" style={{ color: BRAND.orange, backgroundColor: `${BRAND.orange}10` }}>Seção 13</span>
-          </div>
-          <h2 className="text-3xl md:text-5xl font-black text-center mb-12" style={{ color: BRAND.charcoal }}>
-            Inteligência <span style={{ color: BRAND.orange }}>Financeira</span>
-          </h2>
+          <SectionNumber n={13} />
+          <Heading>Inteligência <span style={{ color: BRAND.orange }}>Financeira</span></Heading>
+          <SubText>Split de pagamento e política de faturamento para gestão profissional.</SubText>
 
           <div className="grid md:grid-cols-2 gap-8">
             <div className="rounded-2xl p-8 border" style={{ backgroundColor: BRAND.cream, borderColor: BRAND.border }}>
@@ -629,12 +617,9 @@ const LookEnviosPage = () => {
       {/* ══════════════════════════════════════════════════════════════ */}
       <section className="py-20" style={{ backgroundColor: BRAND.cream }}>
         <div className="max-w-5xl mx-auto px-6">
-          <div className="text-center mb-2">
-            <span className="inline-block px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider" style={{ color: BRAND.orange, backgroundColor: `${BRAND.orange}10` }}>Seção 14</span>
-          </div>
-          <h2 className="text-3xl md:text-5xl font-black text-center mb-12" style={{ color: BRAND.charcoal }}>
-            Especificações <span style={{ color: BRAND.orange }}>Técnicas</span>
-          </h2>
+          <SectionNumber n={14} />
+          <Heading>Especificações <span style={{ color: BRAND.orange }}>Técnicas</span></Heading>
+          <SubText>Infraestrutura robusta com API RESTful, webhooks em tempo real e alta disponibilidade.</SubText>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
@@ -663,12 +648,11 @@ const LookEnviosPage = () => {
       {/* 15. ARQUITETURA TÉCNICA                                       */}
       {/* ══════════════════════════════════════════════════════════════ */}
       <section className="py-20" style={{ backgroundColor: BRAND.white }}>
-        <div className="max-w-5xl mx-auto px-6 text-center">
-          <h2 className="text-3xl md:text-5xl font-black mb-2" style={{ color: BRAND.charcoal }}>
-            Arquitetura <span className="font-black" style={{ color: BRAND.orange }}>Look China</span>
-          </h2>
-          <p className="text-gray-500 text-sm mb-10 italic">Infraestrutura de alta disponibilidade para emissões em massa e rastreamento.</p>
-          <div className="rounded-2xl border overflow-hidden shadow-lg" style={{ borderColor: BRAND.border }}>
+        <div className="max-w-5xl mx-auto px-6">
+          <SectionNumber n={15} />
+          <Heading>Arquitetura <span style={{ color: BRAND.orange }}>Look China</span></Heading>
+          <SubText>Infraestrutura de alta disponibilidade para emissões em massa e rastreamento.</SubText>
+          <div className="rounded-2xl border overflow-hidden shadow-lg mt-10" style={{ borderColor: BRAND.border }}>
             <img src={arquiteturaImg} alt="Arquitetura Técnica do Hub de Logística Look Envios" className="w-full" />
           </div>
         </div>
@@ -679,12 +663,9 @@ const LookEnviosPage = () => {
       {/* ══════════════════════════════════════════════════════════════ */}
       <section className="py-20" style={{ backgroundColor: BRAND.cream }}>
         <div className="max-w-5xl mx-auto px-6">
-          <div className="text-center mb-2">
-            <span className="inline-block px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider" style={{ color: BRAND.orange, backgroundColor: `${BRAND.orange}10` }}>Seção 16</span>
-          </div>
-          <h2 className="text-3xl md:text-5xl font-black text-center mb-14" style={{ color: BRAND.charcoal }}>
-            Cronograma de <span style={{ color: BRAND.orange }}>Entrega</span>
-          </h2>
+          <SectionNumber n={16} />
+          <Heading>Cronograma de <span style={{ color: BRAND.orange }}>Entrega</span></Heading>
+          <SubText>Fases de implementação da operação LOOK ENVIOS.</SubText>
 
           <div className="max-w-lg mx-auto space-y-0">
             {[
