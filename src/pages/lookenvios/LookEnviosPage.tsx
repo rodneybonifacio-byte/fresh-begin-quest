@@ -155,7 +155,7 @@ const LookEnviosPage = () => {
 
           <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="max-w-2xl mb-8 md:mb-10">
             <p className="text-white/70 text-sm md:text-base leading-relaxed">
-              Proposta para estruturação da operação logística da marca sob a identidade LOOK ENVIOS — uma frente própria de expedição, frete e gestão de entregas, com posicionamento profissional, escalável e alinhado ao crescimento da operação.
+              A <strong className="text-white">BRHUB</strong>, em parceria com a <strong className="text-white">FLEX Envios</strong>, apresenta à <strong style={{ color: BRAND.orange }}>LookChina</strong> a proposta para estruturação da operação logística da marca sob a identidade LOOK ENVIOS — uma frente própria de expedição, frete e gestão de entregas, com posicionamento profissional, escalável e alinhado ao crescimento da operação.
             </p>
           </motion.div>
 
