@@ -663,12 +663,9 @@ const LookEnviosPage = () => {
       {/* ══════════════════════════════════════════════════════════════ */}
       <section className="py-20" style={{ backgroundColor: BRAND.cream }}>
         <div className="max-w-5xl mx-auto px-6">
-          <div className="text-center mb-2">
-            <span className="inline-block px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider" style={{ color: BRAND.orange, backgroundColor: `${BRAND.orange}10` }}>Seção 16</span>
-          </div>
-          <h2 className="text-3xl md:text-5xl font-black text-center mb-14" style={{ color: BRAND.charcoal }}>
-            Cronograma de <span style={{ color: BRAND.orange }}>Entrega</span>
-          </h2>
+          <SectionNumber n={16} />
+          <Heading>Cronograma de <span style={{ color: BRAND.orange }}>Entrega</span></Heading>
+          <SubText>Fases de implementação da operação LOOK ENVIOS.</SubText>
 
           <div className="max-w-lg mx-auto space-y-0">
             {[
