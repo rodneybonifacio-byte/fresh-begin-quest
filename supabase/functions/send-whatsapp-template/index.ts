@@ -65,71 +65,63 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Blindagem anti-duplicidade para avaliação: bloqueia reenvio pelo mesmo código/telefone
-    if (trigger_key === "avaliacao") {
-      const codigoRastreio = variables?.codigo_rastreio || variables?.tracking_code || "";
-      const dedupPhones = phoneVariants(normalizedPhone);
+    // Blindagem anti-duplicidade para todos os HSMs
+    // Regra principal: mesmo trigger + mesmo código de rastreio não pode sair 2x
+    // Fallback: mesmo trigger + mesmo telefone também é bloqueado quando não há código
+    const codigoRastreio = variables?.codigo_rastreio || variables?.tracking_code || variables?.codigo_objeto || "";
+    variables.phone_used = normalizedPhone;
 
-      let duplicateQuery = supabase
-        .from("whatsapp_messages")
-        .select("id, created_at, metadata")
-        .eq("content_type", "hsm")
-        .eq("direction", "outbound")
-        .contains("metadata", { trigger_key: "avaliacao" })
-        .order("created_at", { ascending: false })
-        .limit(1);
+    let existingHsm = null;
 
-      if (codigoRastreio) {
-        duplicateQuery = duplicateQuery.contains("metadata", {
-          trigger_key: "avaliacao",
-          variables: { codigo_rastreio: codigoRastreio },
-        });
-      }
-
-      const { data: existingEvaluation } = await duplicateQuery.maybeSingle();
-
-      if (existingEvaluation) {
-        console.log(`🚫 DUPLICATE AVALIACAO bloqueada por código ${codigoRastreio || "(sem código)"} para ${normalizedPhone}. Já enviada em ${existingEvaluation.created_at}`);
-        return new Response(
-          JSON.stringify({
-            success: true,
-            duplicate_blocked: true,
-            trigger_key,
-            phone: normalizedPhone,
-            codigo_rastreio: codigoRastreio || null,
-            existing_sent_at: existingEvaluation.created_at,
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      const { data: existingEvaluationByPhone } = await supabase
+    if (codigoRastreio) {
+      const { data } = await supabase
         .from("whatsapp_messages")
         .select("id, created_at")
         .eq("content_type", "hsm")
         .eq("direction", "outbound")
-        .contains("metadata", { trigger_key: "avaliacao" })
-        .in("metadata->variables->>phone_used", dedupPhones)
-        .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+        .contains("metadata", {
+          trigger_key,
+          variables: { codigo_rastreio: codigoRastreio },
+        })
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      if (existingEvaluationByPhone) {
-        console.log(`🚫 DUPLICATE AVALIACAO bloqueada por telefone ${normalizedPhone}. Já enviada em ${existingEvaluationByPhone.created_at}`);
-        return new Response(
-          JSON.stringify({
-            success: true,
-            duplicate_blocked: true,
-            trigger_key,
-            phone: normalizedPhone,
-            existing_sent_at: existingEvaluationByPhone.created_at,
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+      existingHsm = data;
+    }
 
-      variables.phone_used = normalizedPhone;
+    if (!existingHsm) {
+      const { data } = await supabase
+        .from("whatsapp_messages")
+        .select("id, created_at")
+        .eq("content_type", "hsm")
+        .eq("direction", "outbound")
+        .contains("metadata", {
+          trigger_key,
+          variables: { phone_used: normalizedPhone },
+        })
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      existingHsm = data;
+    }
+
+    if (existingHsm) {
+      console.log(
+        `🚫 DUPLICATE HSM bloqueado: trigger=${trigger_key} phone=${normalizedPhone} codigo=${codigoRastreio || "(sem código)"}. Já enviado em ${existingHsm.created_at}`
+      );
+      return new Response(
+        JSON.stringify({
+          success: true,
+          duplicate_blocked: true,
+          trigger_key,
+          phone: normalizedPhone,
+          codigo_rastreio: codigoRastreio || null,
+          existing_sent_at: existingHsm.created_at,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Resolve channel
