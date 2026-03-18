@@ -520,6 +520,45 @@ serve(async (req) => {
             .not("status", "in", '("concluido","fechado","cancelado","entregue")');
         }
 
+        // === DETECÇÃO DE AUTO-RESPOSTA DE NEGÓCIOS (WhatsApp Business) ===
+        // Respostas automáticas de empresas como "Kumon agradece seu contato. Como podemos ajudar?"
+        const autoReplyPatterns = [
+          /agradece\s+(seu|o\s+seu)\s+contato/i,
+          /obrigad[oa]\s+p(or|elo)\s+(seu\s+)?contato/i,
+          /como\s+podemos\s+(te\s+)?ajudar\s*\?/i,
+          /em\s+que\s+podemos\s+(te\s+)?ajudar/i,
+          /bem[- ]?vind[oa]\s+(ao?|à)/i,
+          /nosso\s+hor[aá]rio\s+de\s+(atendimento|funcionamento)/i,
+          /atendimento\s+(das?\s+\d|de\s+segunda)/i,
+          /mensagem\s+autom[aá]tica/i,
+          /resposta\s+autom[aá]tica/i,
+          /retornaremos\s+(em\s+breve|o\s+mais)/i,
+          /entraremos\s+em\s+contato/i,
+          /aguarde.*atendimento/i,
+          /fora\s+do\s+hor[aá]rio/i,
+          /no\s+momento\s+n[aã]o\s+estamos/i,
+          /deixe\s+sua\s+mensagem/i,
+        ];
+        const isAutoReply = !isWrongPerson && autoReplyPatterns.some(p => p.test(messageContent || ""));
+        
+        if (isAutoReply) {
+          console.log(`🤖 AUTO-REPLY detectado: ${normalizedPhone} — "${(messageContent || "").substring(0, 80)}". Suprimindo IA.`);
+          updateData.ai_enabled = false;
+          updateData.status = "closed";
+          // Fechar tickets
+          await supabase
+            .from("whatsapp_tickets")
+            .update({ status: "closed", closed_at: new Date().toISOString(), resolution: "Auto-resposta de negócio detectada" })
+            .eq("conversation_id", conversation.id)
+            .in("status", ["open", "pending", "pending_close"]);
+          // Concluir pipeline
+          await supabase
+            .from("ai_support_pipeline")
+            .update({ status: "concluido", resolution: "Auto-resposta de WhatsApp Business" })
+            .eq("conversation_id", conversation.id)
+            .not("status", "in", '("concluido","fechado","cancelado","entregue")');
+        }
+
         // === DETECÇÃO DE PEDIDO DE ATENDENTE HUMANO ===
         const humanRequestPatterns = [
           /quero\s+falar\s+com\s+(um\s+)?(atendente|pessoa|humano|ser\s+humano|gente)/i,
@@ -539,7 +578,7 @@ serve(async (req) => {
           /me\s+passe\s+(um\s+)?(atendente|humano)/i,
           /chama\s+(um\s+)?(atendente|humano|pessoa)/i,
         ];
-        const wantsHuman = !isWrongPerson && humanRequestPatterns.some(p => p.test(messageContent || ""));
+        const wantsHuman = !isWrongPerson && !isAutoReply && humanRequestPatterns.some(p => p.test(messageContent || ""));
         
         if (wantsHuman) {
           console.log(`👤 HUMAN HANDOFF: Cliente ${normalizedPhone} pediu atendente humano. Desativando IA.`);
@@ -636,7 +675,7 @@ serve(async (req) => {
             .eq("conversation_id", conversation.id)
             .neq("category", "rastreio")
             .not("status", "in", '("concluido","fechado","cancelado","entregue")');
-        } else if (channel?.ai_enabled && !isWrongPerson) {
+        } else if (channel?.ai_enabled && !isWrongPerson && !isAutoReply) {
           // Garantir IA sempre ativa para qualquer inbound não-passivo
           const isMediaMessage = ["image", "video", "document", "audio", "location"].includes(contentType);
           const hasSubstantialContent = isMediaMessage || (messageContent || "").trim().length > 2;
