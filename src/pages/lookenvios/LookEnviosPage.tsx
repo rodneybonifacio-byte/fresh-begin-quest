@@ -102,7 +102,7 @@ const LookEnviosPage = () => {
           </motion.h1>
 
           <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }} className="max-w-2xl mb-10">
-            <p className="text-white/50 text-base leading-relaxed">
+            <p className="text-white/70 text-base leading-relaxed">
               Proposta para estruturação da operação logística da marca sob a identidade LOOK ENVIOS — uma frente própria de expedição, frete e gestão de entregas, com posicionamento profissional, escalável e alinhado ao crescimento da operação.
             </p>
           </motion.div>
