@@ -652,7 +652,7 @@ const LookEnviosPage = () => {
           <SectionNumber n={15} />
           <Heading>Arquitetura <span style={{ color: BRAND.orange }}>Look China</span></Heading>
           <SubText>Infraestrutura de alta disponibilidade para emissões em massa e rastreamento.</SubText>
-          <div className="rounded-2xl border overflow-hidden shadow-lg" style={{ borderColor: BRAND.border }}>
+          <div className="rounded-2xl border overflow-hidden shadow-lg mt-10" style={{ borderColor: BRAND.border }}>
             <img src={arquiteturaImg} alt="Arquitetura Técnica do Hub de Logística Look Envios" className="w-full" />
           </div>
         </div>
