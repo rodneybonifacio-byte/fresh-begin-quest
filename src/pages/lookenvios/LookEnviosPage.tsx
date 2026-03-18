@@ -58,7 +58,7 @@ const LookEnviosPage = () => {
       {/* ── NAVBAR ── */}
       <nav className="sticky top-0 z-40 backdrop-blur-xl border-b" style={{ backgroundColor: `${BRAND.charcoal}F2`, borderColor: 'rgba(255,255,255,0.06)' }}>
         <div className="max-w-6xl mx-auto px-6 flex items-center justify-between h-14">
-          <img src={lookLogo} alt="Look Envios" className="h-16 brightness-0 invert" />
+          <img src={lookLogoDark} alt="Look Envios" className="h-16" />
           <div className="hidden md:flex items-center gap-6">
             {['Apresentação', 'Estrutura', 'Correios', 'JadLog', 'FLEX', 'Benefícios', 'Plataforma', 'Tarifas'].map((item) => (
               <a key={item} href={`#${item.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`} className="text-xs font-semibold uppercase tracking-wider text-white/50 hover:text-white transition-colors">{item}</a>
