@@ -970,25 +970,8 @@ serve(async (req) => {
             }
 
             // DISPARAR TEMPLATE DE AVALIAÇÃO
-            const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-            const nomeRemetente = hsmVars.nome_remetente || "";
-            fetch(`${supabaseUrl}/functions/v1/send-whatsapp-template`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-              },
-              body: JSON.stringify({
-                trigger_key: "avaliacao",
-                phone: normalizedPhone,
-                variables: {
-                  nome_destinatario: contactName,
-                  codigo_rastreio: trackingCode,
-                  nome_remetente: nomeRemetente,
-                },
-              }),
-            }).then(r => r.text()).catch(e => console.warn("⚠️ Erro ao disparar avaliação:", e));
-            console.log(`📊 Avaliação agendada para ${normalizedPhone} (${trackingCode})`);
+            // A avaliação oficial deve sair apenas pelo cron; não disparar inline aqui
+            console.log(`⏭️ Avaliação será enviada apenas pelo cron para ${normalizedPhone} (${trackingCode})`);
           }
         }
 
