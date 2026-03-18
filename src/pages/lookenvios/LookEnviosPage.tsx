@@ -667,19 +667,22 @@ const LookEnviosPage = () => {
           <Heading>Cronograma de <span style={{ color: BRAND.orange }}>Entrega</span></Heading>
           <SubText>Fases de implementação da operação LOOK ENVIOS.</SubText>
 
-          <div className="max-w-lg mx-auto space-y-0">
+          <div className="max-w-lg mx-auto space-y-0 mt-10">
             {[
-              { icon: Settings, phase: 'FASE 1', title: 'Ativação e Configuração', desc: 'Conta e Gateway de Pagamento/Split.', color: BRAND.orange },
-              { icon: Building, phase: 'FASE 2', title: 'Treinamento da IA', desc: 'IA baseada no histórico de SAC.', color: BRAND.orange },
-              { icon: ScanLine, phase: 'FASE 3', title: 'Integração e Testes', desc: 'API e notificações multicanal.', color: BRAND.orange },
-              { icon: Flag, phase: 'FASE 4', title: 'Lançamento Oficial', desc: 'Go-Live da plataforma.', color: '#16A34A' },
+              { icon: FileText, phase: 'FASE 1', title: 'Assinatura de Contrato', desc: 'Vigência mínima de 24 meses.', color: BRAND.orange },
+              { icon: Cpu, phase: 'FASE 2', title: 'Desenvolvimento da Plataforma', desc: 'Construção e personalização do ambiente LOOK ENVIOS.', color: BRAND.orange },
+              { icon: GitBranch, phase: 'FASE 3', title: 'Integrações com Gateways', desc: 'Conexão com gateways das transportadoras (Correios, JadLog, Flex).', color: BRAND.orange },
+              { icon: UsersRound, phase: 'FASE 4', title: 'Treinamento', desc: 'Capacitação da equipe para uso da plataforma.', color: BRAND.orange },
+              { icon: Bot, phase: 'FASE 5', title: 'Criação de IA e BackOffice', desc: 'Preparação da IA e backoffice de atendimento.', color: BRAND.orange },
+              { icon: ScanLine, phase: 'FASE 6', title: 'Integração e Testes', desc: 'API, notificações multicanal e validação completa.', color: BRAND.orange },
+              { icon: Flag, phase: 'FASE 7', title: 'Lançamento Oficial', desc: 'Go-Live da plataforma LOOK ENVIOS.', color: '#16A34A' },
             ].map((step, i) => (
               <div key={i} className="flex items-start gap-5">
                 <div className="flex flex-col items-center">
                   <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: step.color }}>
                     <step.icon className="w-6 h-6 text-white" />
                   </div>
-                  {i < 3 && <div className="w-0.5 h-16" style={{ backgroundColor: `${BRAND.orange}30` }} />}
+                  {i < 6 && <div className="w-0.5 h-16" style={{ backgroundColor: `${BRAND.orange}30` }} />}
                 </div>
                 <div className="pt-1 pb-8">
                   <span className="text-xs font-bold uppercase tracking-wider" style={{ color: BRAND.orange }}>{step.phase}</span>
