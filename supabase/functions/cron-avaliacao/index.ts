@@ -60,35 +60,42 @@ Deno.serve(async (req: Request) => {
 
     console.log(`📋 ${emissoesFiltradas.length} emissões para verificar (dedup abaixo)`);
 
-    // Deduplicar: verificar quais já receberam avaliação (últimos 30 dias)
-    const { data: hsmMessages } = await supabase
-      .from("whatsapp_messages")
-      .select("metadata")
-      .eq("content_type", "hsm")
-      .eq("direction", "outbound")
-      .gte("created_at", new Date(agora - 30 * 24 * 60 * 60 * 1000).toISOString());
-
+    // Deduplicar: verificar quais já receberam avaliação
+    // IMPORTANTE: Filtrar por trigger_key no banco para evitar limite de 1000 rows
+    const codigosJaAvaliados = new Set<string>();
     const telefonesJaNotificados = new Set<string>();
-    if (hsmMessages) {
-      for (const msg of hsmMessages) {
-        const meta = msg.metadata as any;
-        if (meta?.trigger_key === "avaliacao") {
-          // Evitar enviar avaliação pro mesmo telefone em 7 dias
+    
+    let offset = 0;
+    const batchSize = 500;
+    let hasMore = true;
+    
+    while (hasMore) {
+      const { data: hsmBatch, error: hsmError } = await supabase
+        .from("whatsapp_messages")
+        .select("metadata")
+        .eq("content_type", "hsm")
+        .eq("direction", "outbound")
+        .contains("metadata", { trigger_key: "avaliacao" })
+        .range(offset, offset + batchSize - 1);
+
+      if (hsmError) {
+        console.error("❌ Erro ao buscar HSM para dedup:", hsmError);
+        break;
+      }
+
+      if (hsmBatch) {
+        for (const msg of hsmBatch) {
+          const meta = msg.metadata as any;
+          if (meta?.variables?.codigo_rastreio) {
+            codigosJaAvaliados.add(meta.variables.codigo_rastreio);
+          }
           const phone = meta?.variables?.phone_used || "";
           if (phone) telefonesJaNotificados.add(phone);
         }
       }
-    }
 
-    // Também checar pelo código de rastreio
-    const codigosJaAvaliados = new Set<string>();
-    if (hsmMessages) {
-      for (const msg of hsmMessages) {
-        const meta = msg.metadata as any;
-        if (meta?.trigger_key === "avaliacao" && meta?.variables?.codigo_rastreio) {
-          codigosJaAvaliados.add(meta.variables.codigo_rastreio);
-        }
-      }
+      hasMore = (hsmBatch?.length || 0) === batchSize;
+      offset += batchSize;
     }
 
     console.log(`🔍 ${codigosJaAvaliados.size} códigos já receberam avaliação`);
