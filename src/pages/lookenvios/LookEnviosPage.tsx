@@ -1,11 +1,9 @@
 import { motion, useScroll, useTransform } from 'framer-motion';
 import {
-  Package, Truck, BarChart3, Shield, Zap, Globe, Bot, MessageSquare,
-  Bell, CreditCard, FileText, Cpu, CheckCircle2, Gem,
-  MapPin, TrendingUp, Users, Headphones, Smartphone, Mail,
-  Send, ChevronDown, Layers, Activity, Server, RefreshCw,
-  Target, Settings, Flag, Clock, Ruler, Weight, MapPinned, AlertCircle,
-  Warehouse, ArrowRight, Star, Building2, Box, Rocket
+  Package, Truck, Shield, Zap, Globe, Cpu, CheckCircle2, Gem,
+  TrendingUp, Users, Mail, Send, ChevronDown,
+  Target, Clock, Ruler, Weight, MapPinned, AlertCircle,
+  Warehouse, ArrowRight, Star, Rocket
 } from 'lucide-react';
 import lookLogo from '@/assets/look-china-logo-official.svg';
 
