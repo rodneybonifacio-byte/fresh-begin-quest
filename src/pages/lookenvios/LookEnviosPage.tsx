@@ -73,7 +73,7 @@ const LookEnviosPage = () => {
               <a key={item} href={`#${item.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`} className="text-xs font-semibold uppercase tracking-wider text-white/50 hover:text-white transition-colors">{item}</a>
             ))}
           </div>
-          <a href="#contato" className="text-xs font-bold px-4 py-1.5 rounded-full transition-all hover:scale-105 text-white" style={{ backgroundColor: BRAND.orange }}>Fale Conosco</a>
+          <a href="https://wa.me/5511911544095" target="_blank" className="text-xs font-bold px-4 py-1.5 rounded-full transition-all hover:scale-105 text-white" style={{ backgroundColor: BRAND.orange }}>Fale Conosco</a>
         </div>
       </nav>
 
