@@ -5,7 +5,7 @@ import {
   Bell, CreditCard, FileText, Cpu, CheckCircle2, Gem,
   MapPin, TrendingUp, Users, Headphones, Smartphone, Mail,
   Send, ChevronDown, Layers, Activity, Server, Database, RefreshCw,
-  Star, Award, Target, Rocket, Settings, Play, Flag
+  Star, Award, Target, Rocket, Settings, Flag
 } from 'lucide-react';
 import lookChinaLogo from '@/assets/look-china-logo.png';
 import arquiteturaImg from '@/assets/arquitetura-look-envios.jpg';
