@@ -7,7 +7,7 @@ import {
   FileText, Layers, Award, BadgeCheck, Crosshair, Navigation,
   Bot, Activity, MessageSquare, Bell, ShieldCheck, Headphones,
   CreditCard, Receipt, Server, Webhook, FileCode, Lock,
-  BarChart, UsersRound, Settings, Building, GitBranch, Flag,
+  BarChart, UsersRound, GitBranch, Flag,
   Printer, MapPin, ScanLine
 } from 'lucide-react';
 import arquiteturaImg from '@/assets/arquitetura-camada-integracao.png';
