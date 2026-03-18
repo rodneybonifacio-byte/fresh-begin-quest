@@ -11,7 +11,7 @@ import {
   Printer, MapPin, ScanLine
 } from 'lucide-react';
 import arquiteturaImg from '@/assets/arquitetura-camada-integracao.png';
-import lookLogo from '@/assets/look-envios-logo.png';
+import lookLogoDark from '@/assets/look-envios-logo-dark.png';
 
 const BRAND = { orange: '#F26522', orangeLight: '#F7941D', orangeDark: '#D4541E', charcoal: '#2B2B2B', dark: '#1A1A1A', cream: '#FAF9F7', white: '#FFFFFF', border: '#E8E5E0' };
 
@@ -57,7 +57,7 @@ const LookEnviosPage = () => {
       {/* ── NAVBAR ── */}
       <nav className="sticky top-0 z-40 backdrop-blur-xl border-b" style={{ backgroundColor: `${BRAND.charcoal}F2`, borderColor: 'rgba(255,255,255,0.06)' }}>
         <div className="max-w-6xl mx-auto px-6 flex items-center justify-between h-14">
-          <img src={lookLogo} alt="Look Envios" className="h-16" />
+          <img src={lookLogoDark} alt="Look Envios" className="h-16" />
           <div className="hidden md:flex items-center gap-6">
             {['Apresentação', 'Estrutura', 'Correios', 'JadLog', 'FLEX', 'Benefícios', 'Plataforma', 'Tarifas'].map((item) => (
               <a key={item} href={`#${item.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`} className="text-xs font-semibold uppercase tracking-wider text-white/50 hover:text-white transition-colors">{item}</a>
@@ -730,7 +730,7 @@ const LookEnviosPage = () => {
       <section id="contato" className="py-24" style={{ backgroundColor: BRAND.charcoal }}>
         <div className="max-w-3xl mx-auto px-6 text-center">
           <SectionNumber n={19} dark />
-          <img src={lookLogo} alt="Look Envios" className="h-32 mx-auto mb-6 opacity-80" />
+          <img src={lookLogoDark} alt="Look Envios" className="h-32 mx-auto mb-6" />
           <Heading white>Uma proposta sólida para o <span style={{ color: BRAND.orange }}>futuro</span></Heading>
            <p className="text-gray-300 text-sm leading-relaxed mb-4 max-w-2xl mx-auto">
              A BRHUB apresenta à LookChina uma proposta para criação da LOOK ENVIOS — transformando a logística em uma operação mais profissional, estratégica e preparada para crescer.
