@@ -617,12 +617,9 @@ const LookEnviosPage = () => {
       {/* ══════════════════════════════════════════════════════════════ */}
       <section className="py-20" style={{ backgroundColor: BRAND.cream }}>
         <div className="max-w-5xl mx-auto px-6">
-          <div className="text-center mb-2">
-            <span className="inline-block px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider" style={{ color: BRAND.orange, backgroundColor: `${BRAND.orange}10` }}>Seção 14</span>
-          </div>
-          <h2 className="text-3xl md:text-5xl font-black text-center mb-12" style={{ color: BRAND.charcoal }}>
-            Especificações <span style={{ color: BRAND.orange }}>Técnicas</span>
-          </h2>
+          <SectionNumber n={14} />
+          <Heading>Especificações <span style={{ color: BRAND.orange }}>Técnicas</span></Heading>
+          <SubText>Infraestrutura robusta com API RESTful, webhooks em tempo real e alta disponibilidade.</SubText>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
