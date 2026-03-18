@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
-import { motion, useScroll, useTransform, useInView } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import {
   Package, Truck, BarChart3, Shield, Zap, Globe, Bot, MessageSquare,
   Bell, CreditCard, FileText, Cpu, CheckCircle2, Gem,
@@ -14,19 +13,6 @@ import lookScreenshot2 from '@/assets/look-screenshot-2.png';
 
 const BRAND = { orange: '#F26522', orangeLight: '#F7941D', orangeDark: '#D4541E', charcoal: '#333333', dark: '#1A1A1A', lightGray: '#F5F5F5', white: '#FFFFFF' };
 
-const Counter = ({ end, suffix = '', prefix = '' }: { end: number; suffix?: string; prefix?: string }) => {
-  const [count, setCount] = useState(0);
-  const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true });
-  useEffect(() => {
-    if (!inView) return;
-    let start = 0;
-    const step = end / 125;
-    const timer = setInterval(() => { start += step; if (start >= end) { setCount(end); clearInterval(timer); } else setCount(Math.floor(start)); }, 16);
-    return () => clearInterval(timer);
-  }, [inView, end]);
-  return <span ref={ref}>{prefix}{count.toLocaleString('pt-BR')}{suffix}</span>;
-};
 
 const PulseDot = ({ color = BRAND.orange }: { color?: string }) => (
   <span className="relative flex h-3 w-3">
@@ -119,14 +105,6 @@ const LookEnviosPage = () => {
             <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }} className="flex flex-wrap gap-2 mb-8">
               {['Correios Diamante', 'JadLog', 'FLEX'].map((t, i) => (
                 <span key={i} className="px-4 py-2 rounded-full text-sm font-semibold text-white/90 border border-white/15" style={{ backgroundColor: `${BRAND.orange}${15 + i * 8}` }}>{t}</span>
-              ))}
-            </motion.div>
-            <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.6 }} className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[{ value: 320, suffix: 'k', label: 'Envios/Mês' }, { value: 8, prefix: 'R$ ', suffix: 'M', label: 'Volume' }, { value: 5570, label: 'Cidades' }, { value: 99, suffix: '%', label: 'Uptime' }].map((kpi, i) => (
-                <div key={i} className="rounded-xl p-3 border border-white/10" style={{ backgroundColor: `${BRAND.white}08` }}>
-                  <div className="text-xl font-black text-white"><Counter end={kpi.value} suffix={kpi.suffix} prefix={kpi.prefix} /></div>
-                  <div className="text-xs font-medium" style={{ color: `${BRAND.orange}CC` }}>{kpi.label}</div>
-                </div>
               ))}
             </motion.div>
           </div>
