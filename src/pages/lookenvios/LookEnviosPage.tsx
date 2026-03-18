@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, useInView, useScroll, useTransform } from 'framer-motion';
 import {
   Package, Truck, BarChart3, Shield, Zap, Globe, Bot, MessageSquare,
-  Bell, CreditCard, FileText, Cpu, ArrowRight, CheckCircle2, Gem,
-  MapPin, Clock, TrendingUp, Users, Headphones, Smartphone, Mail,
+  Bell, CreditCard, FileText, Cpu, CheckCircle2, Gem,
+  MapPin, TrendingUp, Users, Headphones, Smartphone, Mail,
   Send, ChevronDown, Layers, Activity, Server, Database, RefreshCw,
   Star, Award, Target
 } from 'lucide-react';
