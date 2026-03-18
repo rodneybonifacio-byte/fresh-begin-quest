@@ -149,9 +149,48 @@ serve(async (req) => {
         });
       }
 
+      // Capturar motivo de falha quando status é failed
+      const updatePayload: Record<string, any> = { status: normalizedStatus };
+      
+      if (normalizedStatus === "failed") {
+        const failureReason = message.error?.description 
+          || message.error?.message 
+          || message.failureReason 
+          || message.reason 
+          || body.error?.description 
+          || body.error?.message 
+          || body.reason
+          || message.message?.error?.description
+          || rawStatus;
+        
+        const failureCode = message.error?.code 
+          || body.error?.code 
+          || message.errorCode 
+          || null;
+
+        // Buscar metadata existente e adicionar info de falha
+        const { data: existingMsg } = await supabase
+          .from("whatsapp_messages")
+          .select("metadata")
+          .eq("messagebird_id", messageBirdId)
+          .limit(1)
+          .maybeSingle();
+
+        const existingMetadata = (existingMsg?.metadata as Record<string, any>) || {};
+        updatePayload.metadata = {
+          ...existingMetadata,
+          failure_reason: failureReason || "Motivo não informado pela API",
+          failure_code: failureCode,
+          failed_at: new Date().toISOString(),
+          raw_error: message.error || body.error || null,
+        };
+
+        console.log(`❌ Mensagem falhou: ${messageBirdId} | Motivo: ${failureReason} | Code: ${failureCode}`);
+      }
+
       const { data: updatedRows, error: updateError } = await supabase
         .from("whatsapp_messages")
-        .update({ status: normalizedStatus })
+        .update(updatePayload)
         .eq("messagebird_id", messageBirdId)
         .select("id");
 
