@@ -469,7 +469,7 @@ const LookEnviosPage = () => {
             <p className="text-gray-500 text-lg">Até 85% mais barato que a tabela balcão</p>
           </motion.div>
           <div className="grid md:grid-cols-3 gap-6 mb-10">
-            {[{ label: 'SP Capital', value: 'R$ 6,90', desc: 'PAC até 100g', icon: Target }, { label: 'Economia', value: 'Até 70%', desc: 'vs. Tabela Balcão', icon: TrendingUp }, { label: 'Cobertura', value: '100%', desc: 'Todos os CEPs', icon: Globe }].map((card, i) => (
+            {[{ label: 'SP Capital', value: 'R$ 6,90', desc: 'PAC até 100g', icon: Target }, { label: 'Economia', value: 'Até 85%', desc: 'vs. Tabela Balcão', icon: TrendingUp }, { label: 'Cobertura', value: '100%', desc: 'Todos os CEPs', icon: Globe }].map((card, i) => (
               <motion.div key={i} whileHover={{ scale: 1.03 }} className="rounded-2xl p-6 border" style={{ background: `linear-gradient(135deg, ${BRAND.orange}18, ${BRAND.orange}08)`, borderColor: `${BRAND.orange}25` }}>
                 <card.icon className="w-8 h-8 mb-3" style={{ color: BRAND.orange }} />
                 <div className="text-3xl font-black text-white mb-1">{card.value}</div>
