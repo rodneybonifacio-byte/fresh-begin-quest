@@ -276,8 +276,8 @@ const LookEnviosPage = () => {
 
           <div className="grid md:grid-cols-2 gap-14 mt-10 items-start">
             <div>
-              <p className="text-gray-400 text-sm leading-relaxed mb-6">
-                A JadLog complementa a malha logística com flexibilidade para mercadorias com maior peso. A <strong className="text-white">Tabela Ouro</strong> posiciona a modalidade com preços agressivos, fortalecendo a proposta da LOOK ENVIOS.
+               <p className="text-gray-300 text-sm leading-relaxed mb-6">
+                 A JadLog complementa a malha logística com flexibilidade para mercadorias com maior peso. A <strong className="text-white">Tabela Ouro</strong> posiciona a modalidade com preços agressivos, fortalecendo a proposta da LOOK ENVIOS.
               </p>
               <div className="space-y-2.5">
                 {[
