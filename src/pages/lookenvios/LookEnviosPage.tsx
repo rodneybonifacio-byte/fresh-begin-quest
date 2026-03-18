@@ -524,12 +524,9 @@ const LookEnviosPage = () => {
       {/* ══════════════════════════════════════════════════════════════ */}
       <section id="plataforma" className="py-20" style={{ backgroundColor: BRAND.white }}>
         <div className="max-w-5xl mx-auto px-6">
-          <div className="text-center mb-2">
-            <span className="inline-block px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider" style={{ color: BRAND.orange, backgroundColor: `${BRAND.orange}10` }}>Plataforma</span>
-          </div>
-          <h2 className="text-3xl md:text-5xl font-black text-center mb-12" style={{ color: BRAND.charcoal }}>
-            Funcionalidades da <span style={{ color: BRAND.orange }}>Plataforma</span>
-          </h2>
+          <SectionNumber n={11} />
+          <Heading>Funcionalidades da <span style={{ color: BRAND.orange }}>Plataforma</span></Heading>
+          <SubText>Todos os recursos necessários para uma operação logística completa e profissional.</SubText>
 
           <div className="grid md:grid-cols-3 gap-5">
             {[
