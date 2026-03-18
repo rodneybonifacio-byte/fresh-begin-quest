@@ -57,7 +57,7 @@ const LookEnviosPage = () => {
       {/* ── NAVBAR ── */}
       <nav className="sticky top-0 z-40 backdrop-blur-xl border-b" style={{ backgroundColor: `${BRAND.charcoal}F2`, borderColor: 'rgba(255,255,255,0.06)' }}>
         <div className="max-w-6xl mx-auto px-6 flex items-center justify-between h-14">
-          <img src={lookLogo} alt="Look Envios" className="h-12" />
+          <img src={lookLogo} alt="Look Envios" className="h-16" />
           <div className="hidden md:flex items-center gap-6">
             {['Apresentação', 'Estrutura', 'Correios', 'JadLog', 'FLEX', 'Benefícios', 'Plataforma', 'Tarifas'].map((item) => (
               <a key={item} href={`#${item.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`} className="text-xs font-semibold uppercase tracking-wider text-white/50 hover:text-white transition-colors">{item}</a>
@@ -730,7 +730,7 @@ const LookEnviosPage = () => {
       <section id="contato" className="py-24" style={{ backgroundColor: BRAND.charcoal }}>
         <div className="max-w-3xl mx-auto px-6 text-center">
           <SectionNumber n={19} dark />
-          <img src={lookLogo} alt="Look Envios" className="h-16 mx-auto mb-6 opacity-80" />
+          <img src={lookLogo} alt="Look Envios" className="h-32 mx-auto mb-6 opacity-80" />
           <Heading white>Uma proposta sólida para o <span style={{ color: BRAND.orange }}>futuro</span></Heading>
            <p className="text-gray-300 text-sm leading-relaxed mb-4 max-w-2xl mx-auto">
              A BRHUB apresenta à LookChina uma proposta para criação da LOOK ENVIOS — transformando a logística em uma operação mais profissional, estratégica e preparada para crescer.
