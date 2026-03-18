@@ -753,7 +753,7 @@ const LookEnviosPage = () => {
                 <card.icon className="w-5 h-5 mb-2" style={{ color: BRAND.orange }} />
                 <div className="text-2xl font-black text-white mb-0.5">{card.value}</div>
                 <div className="font-semibold text-xs" style={{ color: BRAND.orangeLight }}>{card.label}</div>
-                <div className="text-gray-500 text-[10px] mt-0.5">{card.desc}</div>
+                <div className="text-gray-400 text-[10px] mt-0.5">{card.desc}</div>
               </div>
             ))}
           </div>
