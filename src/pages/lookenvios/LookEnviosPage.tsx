@@ -850,7 +850,7 @@ const LookEnviosPage = () => {
       </section>
 
       <footer className="py-3 md:py-4 text-center" style={{ backgroundColor: BRAND.dark }}>
-        <p className="text-gray-600 text-[9px] md:text-[10px] tracking-wider uppercase">© 2026 Look Envios — Powered by BRHUB Tech & Look China</p>
+        <p className="text-gray-600 text-[9px] md:text-[10px] tracking-wider uppercase">© 2026 Look Envios — Powered by BRHUB & FLEX Envios</p>
       </footer>
     </div>
   );
