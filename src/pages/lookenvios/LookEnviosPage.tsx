@@ -4,7 +4,7 @@ import {
   Package, Truck, BarChart3, Shield, Zap, Globe, Bot, MessageSquare,
   Bell, CreditCard, FileText, Cpu, CheckCircle2, Gem,
   MapPin, TrendingUp, Users, Headphones, Smartphone, Mail,
-  Send, ChevronDown, Layers, Activity, Server, Database, RefreshCw,
+  Send, ChevronDown, Layers, Activity, Server, RefreshCw,
   Target, Settings, Flag, Clock, Ruler, Weight, MapPinned, AlertCircle
 } from 'lucide-react';
 import lookLogo from '@/assets/look-china-logo-official.svg';
@@ -449,7 +449,7 @@ const LookEnviosPage = () => {
             <h2 className="text-3xl md:text-5xl font-black mb-4" style={{ color: BRAND.charcoal }}>Especificações <span style={{ color: BRAND.orange }}>Técnicas</span></h2>
           </motion.div>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[{ icon: Server, label: 'API RESTful', desc: 'JSON + Swagger' }, { icon: Zap, label: 'Webhooks', desc: 'Tempo real' }, { icon: FileText, label: 'Etiquetas', desc: 'PDF e ZPL' }, { icon: Shield, label: 'Segurança', desc: 'OAuth2 + criptografia' }, { icon: Database, label: 'Integrações', desc: 'Shopify, Nuvemshop, Tiny' }, { icon: Activity, label: 'SLA 99.9%', desc: 'Alta disponibilidade' }, { icon: Cpu, label: 'Massa', desc: 'CSV/XLSX' }, { icon: RefreshCw, label: 'Ambientes', desc: 'Staging + Prod' }].map((spec, i) => (
+            {[{ icon: Server, label: 'API RESTful', desc: 'JSON + Swagger' }, { icon: Zap, label: 'Webhooks', desc: 'Tempo real' }, { icon: FileText, label: 'Etiquetas', desc: 'PDF e ZPL' }, { icon: Shield, label: 'Segurança', desc: 'OAuth2 + criptografia' }, { icon: Activity, label: 'SLA 99.9%', desc: 'Alta disponibilidade' }, { icon: RefreshCw, label: 'Ambientes', desc: 'Staging + Prod' }].map((spec, i) => (
               <motion.div key={i} initial={{ scale: 0.9, opacity: 0 }} whileInView={{ scale: 1, opacity: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.05 }} className="bg-white rounded-xl p-4 border border-gray-100 flex items-center gap-3 hover:shadow-md transition-shadow">
                 <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${BRAND.orange}10` }}><spec.icon className="w-5 h-5" style={{ color: BRAND.orange }} /></div>
                 <div><div className="font-bold text-sm" style={{ color: BRAND.charcoal }}>{spec.label}</div><div className="text-gray-500 text-xs">{spec.desc}</div></div>
@@ -466,10 +466,10 @@ const LookEnviosPage = () => {
           <motion.div initial={{ y: 30, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={{ once: true }} className="text-center mb-12">
             <span className="inline-block px-4 py-1.5 rounded-full text-xs font-bold tracking-widest mb-4" style={{ backgroundColor: `${BRAND.orange}25`, color: BRAND.orange }}><Gem className="w-3 h-3 inline mr-1" /> EXCLUSIVO LOOK ENVIOS</span>
             <h2 className="text-3xl md:text-5xl font-black text-white mb-4">Tabela <span style={{ color: BRAND.orange }}>Diamante</span> Correios</h2>
-            <p className="text-gray-500 text-lg">Até 70% mais barato que a tabela balcão</p>
+            <p className="text-gray-500 text-lg">Até 85% mais barato que a tabela balcão</p>
           </motion.div>
           <div className="grid md:grid-cols-3 gap-6 mb-10">
-            {[{ label: 'SP Capital', value: 'R$ 6,90', desc: 'PAC até 100g', icon: Target }, { label: 'Economia', value: 'Até 70%', desc: 'vs. Tabela Balcão', icon: TrendingUp }, { label: 'Cobertura', value: '100%', desc: 'Todos os CEPs', icon: Globe }].map((card, i) => (
+            {[{ label: 'SP Capital', value: 'R$ 6,90', desc: 'PAC até 100g', icon: Target }, { label: 'Economia', value: 'Até 85%', desc: 'vs. Tabela Balcão', icon: TrendingUp }, { label: 'Cobertura', value: '100%', desc: 'Todos os CEPs', icon: Globe }].map((card, i) => (
               <motion.div key={i} whileHover={{ scale: 1.03 }} className="rounded-2xl p-6 border" style={{ background: `linear-gradient(135deg, ${BRAND.orange}18, ${BRAND.orange}08)`, borderColor: `${BRAND.orange}25` }}>
                 <card.icon className="w-8 h-8 mb-3" style={{ color: BRAND.orange }} />
                 <div className="text-3xl font-black text-white mb-1">{card.value}</div>
@@ -508,7 +508,7 @@ const LookEnviosPage = () => {
             <h2 className="text-3xl md:text-5xl font-black mb-4" style={{ color: BRAND.charcoal }}>Funcionalidades da <span style={{ color: BRAND.orange }}>Plataforma</span></h2>
           </motion.div>
           <div className="grid md:grid-cols-3 gap-6">
-            {[{ icon: Package, title: 'Emissão de Etiquetas', desc: 'Individual ou em massa com branding.' }, { icon: BarChart3, title: 'Simulador de Frete', desc: 'Compare transportadoras em tempo real.' }, { icon: MapPin, title: 'Rastreamento', desc: 'Mapa interativo com alertas.' }, { icon: Bot, title: 'CRM com IA', desc: 'Múltiplos canais WhatsApp.' }, { icon: Bell, title: 'Notificações', desc: 'HSM em cada etapa.' }, { icon: CreditCard, title: 'Recarga PIX', desc: 'QR Code instantâneo.' }, { icon: FileText, title: 'Faturas', desc: 'PDF, boletos, controle.' }, { icon: Users, title: 'Multi-Remetentes', desc: 'Sync automática.' }, { icon: BarChart3, title: 'Relatórios', desc: 'KPIs por UF e serviço.' }, { icon: Globe, title: 'Integrações', desc: 'Shopify, Nuvemshop, Tiny.' }, { icon: Shield, title: 'Segurança', desc: 'Criptografia e auditoria.' }, { icon: Headphones, title: 'Conecta+', desc: '20% comissão s/ lucro.' }].map((f, i) => (
+            {[{ icon: Package, title: 'Emissão de Etiquetas', desc: 'Individual com branding personalizado.' }, { icon: BarChart3, title: 'Simulador de Frete', desc: 'Compare transportadoras em tempo real.' }, { icon: MapPin, title: 'Rastreamento', desc: 'Mapa interativo com alertas.' }, { icon: Bot, title: 'CRM com IA', desc: 'Múltiplos canais WhatsApp.' }, { icon: Bell, title: 'Notificações', desc: 'HSM em cada etapa.' }, { icon: FileText, title: 'Faturas', desc: 'PDF, boletos, controle.' }, { icon: Users, title: 'Multi-Remetentes', desc: 'Sync automática.' }, { icon: BarChart3, title: 'Relatórios', desc: 'KPIs por UF e serviço.' }, { icon: Shield, title: 'Segurança', desc: 'Criptografia e auditoria.' }].map((f, i) => (
               <motion.div key={i} initial={{ y: 30, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={{ once: true }} transition={{ delay: (i % 3) * 0.08 }} whileHover={{ y: -4 }} className="rounded-2xl p-6 border border-gray-100 hover:shadow-lg transition-all" style={{ backgroundColor: BRAND.lightGray }}>
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4" style={{ backgroundColor: `${BRAND.orange}10` }}><f.icon className="w-6 h-6" style={{ color: BRAND.orange }} /></div>
                 <h3 className="text-lg font-bold mb-2" style={{ color: BRAND.charcoal }}>{f.title}</h3>
