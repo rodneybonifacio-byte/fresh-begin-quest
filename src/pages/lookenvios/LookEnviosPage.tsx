@@ -69,7 +69,7 @@ const LookEnviosPage = () => {
         <div className="max-w-6xl mx-auto px-6 flex items-center justify-between h-14">
           <img src={lookLogo} alt="Look China" className="h-8 invert brightness-200" />
           <div className="hidden md:flex items-center gap-6">
-            {['Apresentação', 'Estrutura', 'Correios', 'JadLog', 'FLEX', 'Benefícios', 'Tarifas'].map((item) => (
+            {['Apresentação', 'Estrutura', 'Correios', 'JadLog', 'FLEX', 'Benefícios', 'Plataforma', 'Tarifas'].map((item) => (
               <a key={item} href={`#${item.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')}`} className="text-xs font-semibold uppercase tracking-wider text-white/50 hover:text-white transition-colors">{item}</a>
             ))}
           </div>
