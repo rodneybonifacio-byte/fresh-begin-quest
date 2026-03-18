@@ -810,7 +810,7 @@ const LookEnviosPage = () => {
       {/* ══════════════════════════════════════════════════════════════ */}
       <section id="contato" className="py-24" style={{ backgroundColor: BRAND.charcoal }}>
         <div className="max-w-3xl mx-auto px-6 text-center">
-          <SectionNumber n={12} dark />
+          <SectionNumber n={19} dark />
           <img src={lookLogo} alt="Look China" className="h-10 mx-auto mb-6 invert brightness-200 opacity-60" />
           <Heading white>Uma proposta sólida para o <span style={{ color: BRAND.orange }}>futuro</span></Heading>
           <p className="text-gray-400 text-sm leading-relaxed mb-4 max-w-2xl mx-auto">
