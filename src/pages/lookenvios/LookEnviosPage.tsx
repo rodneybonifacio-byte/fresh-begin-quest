@@ -11,7 +11,7 @@ import {
   Printer, MapPin, ScanLine
 } from 'lucide-react';
 import arquiteturaImg from '@/assets/arquitetura-camada-integracao.png';
-import lookLogo from '@/assets/look-china-logo-official.svg';
+import lookLogo from '@/assets/look-envios-logo.png';
 
 const BRAND = { orange: '#F26522', orangeLight: '#F7941D', orangeDark: '#D4541E', charcoal: '#2B2B2B', dark: '#1A1A1A', cream: '#FAF9F7', white: '#FFFFFF', border: '#E8E5E0' };
 
