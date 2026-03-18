@@ -121,14 +121,6 @@ const LookEnviosPage = () => {
                 <span key={i} className="px-4 py-2 rounded-full text-sm font-semibold text-white/90 border border-white/15" style={{ backgroundColor: `${BRAND.orange}${15 + i * 8}` }}>{t}</span>
               ))}
             </motion.div>
-            <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.6 }} className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[{ value: 320, suffix: 'k', label: 'Envios/Mês' }, { value: 8, prefix: 'R$ ', suffix: 'M', label: 'Volume' }, { value: 5570, label: 'Cidades' }, { value: 99, suffix: '%', label: 'Uptime' }].map((kpi, i) => (
-                <div key={i} className="rounded-xl p-3 border border-white/10" style={{ backgroundColor: `${BRAND.white}08` }}>
-                  <div className="text-xl font-black text-white"><Counter end={kpi.value} suffix={kpi.suffix} prefix={kpi.prefix} /></div>
-                  <div className="text-xs font-medium" style={{ color: `${BRAND.orange}CC` }}>{kpi.label}</div>
-                </div>
-              ))}
-            </motion.div>
           </div>
           <motion.div initial={{ x: 60, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.4, duration: 0.8 }} className="relative hidden lg:block">
             <motion.img src={lookScreenshot1} alt="Look China App" className="w-full rounded-2xl shadow-2xl border-2" style={{ borderColor: `${BRAND.orange}30` }} animate={{ y: [0, -8, 0] }} transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }} />
