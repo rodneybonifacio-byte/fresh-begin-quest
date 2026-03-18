@@ -37,7 +37,7 @@ const SubText = ({ children, dark = false }: { children: React.ReactNode; dark?:
 const Bullet = ({ children, dark = false }: { children: React.ReactNode; dark?: boolean }) => (
   <div className="flex items-start gap-3">
     <CheckCircle2 className="w-[18px] h-[18px] mt-0.5 flex-shrink-0 text-green-500" />
-    <span className={`text-sm leading-relaxed ${dark ? 'text-gray-300' : 'text-gray-600'}`}>{children}</span>
+    <span className={`text-sm leading-relaxed ${dark ? 'text-gray-200' : 'text-gray-600'}`}>{children}</span>
   </div>
 );
 
