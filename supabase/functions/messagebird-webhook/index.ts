@@ -675,7 +675,7 @@ serve(async (req) => {
             .eq("conversation_id", conversation.id)
             .neq("category", "rastreio")
             .not("status", "in", '("concluido","fechado","cancelado","entregue")');
-        } else if (channel?.ai_enabled && !isWrongPerson) {
+        } else if (channel?.ai_enabled && !isWrongPerson && !isAutoReply) {
           // Garantir IA sempre ativa para qualquer inbound não-passivo
           const isMediaMessage = ["image", "video", "document", "audio", "location"].includes(contentType);
           const hasSubstantialContent = isMediaMessage || (messageContent || "").trim().length > 2;
