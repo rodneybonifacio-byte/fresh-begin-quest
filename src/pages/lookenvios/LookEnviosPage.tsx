@@ -302,7 +302,7 @@ const LookEnviosPage = () => {
                 <div key={i} className="rounded-xl p-4 border" style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.08)' }}>
                   <item.icon className="w-5 h-5 mb-2" style={{ color: BRAND.orange }} />
                   <h4 className="text-xs font-bold text-white">{item.title}</h4>
-                  <p className="text-[10px] text-gray-500">{item.desc}</p>
+                  <p className="text-[10px] text-gray-400">{item.desc}</p>
                 </div>
               ))}
             </div>
