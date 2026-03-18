@@ -558,12 +558,9 @@ const LookEnviosPage = () => {
       {/* ══════════════════════════════════════════════════════════════ */}
       <section className="py-20" style={{ backgroundColor: BRAND.charcoal }}>
         <div className="max-w-5xl mx-auto px-6">
-          <div className="text-center mb-2">
-            <span className="inline-block px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider" style={{ color: BRAND.orangeLight, backgroundColor: 'rgba(255,255,255,0.06)' }}>Seção 12 — Powered by BRHUB Conecta</span>
-          </div>
-          <h2 className="text-3xl md:text-5xl font-black text-center mb-12 text-white">
-            Atendimento Inteligente e <span style={{ color: BRAND.orange }}>Suporte com IA</span>
-          </h2>
+          <SectionNumber n={12} dark />
+          <Heading white>Atendimento Inteligente e <span style={{ color: BRAND.orange }}>Suporte com IA</span></Heading>
+          <SubText dark>Powered by BRHUB Conecta — IA treinada, triagem inteligente e automação multicanal.</SubText>
 
           <div className="grid md:grid-cols-3 gap-5">
             {[
