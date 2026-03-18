@@ -141,8 +141,10 @@ const LookEnviosPage = () => {
             <span className="text-[10px] md:text-xs font-bold uppercase tracking-[.2em]" style={{ color: BRAND.orange }}>Proposta Comercial 2026</span>
           </motion.div>
 
-          <motion.div initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="flex items-center gap-2 md:gap-3 mb-3 md:mb-4">
-            <span className="text-xs md:text-sm font-semibold text-white/40 tracking-wider">BRHUB ENVIOS</span>
+          <motion.div initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="flex flex-wrap items-center gap-2 md:gap-3 mb-3 md:mb-4">
+            <span className="text-xs md:text-sm font-semibold text-white/40 tracking-wider">BRHUB</span>
+            <span className="text-[10px] md:text-xs font-medium text-white/20">em parceria com</span>
+            <span className="text-xs md:text-sm font-semibold text-white/60 tracking-wider">FLEX ENVIOS</span>
             <ArrowRight className="w-3 h-3 md:w-4 md:h-4 text-white/20" />
             <span className="text-xs md:text-sm font-semibold tracking-wider" style={{ color: BRAND.orange }}>LOOKCHINA</span>
           </motion.div>
