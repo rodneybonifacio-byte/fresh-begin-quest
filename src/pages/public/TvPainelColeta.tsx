@@ -882,8 +882,8 @@ const TvBoard = () => {
   const allGroupsCol2: GrupoHorario[] = [...regularesCol2];
   allGroupsCol2.sort((a, b) => a.sortKey - b.sortKey);
 
-  const totalObjetos = data.length;
-  const totalClientes = new Set(data.map(e => (e.remetenteNome || e.remetente?.nome || '').toUpperCase().trim())).size;
+  const totalObjetos = dataFiltrada.length;
+  const totalClientes = new Set(dataFiltrada.map(e => (e.remetenteNome || e.remetente?.nome || '').toUpperCase().trim())).size;
   const totalCol1 = etiquetasCol1.length;
   const totalCol2 = etiquetasCol2.length;
   const clientesCol1 = allGroupsCol1.reduce((acc, g) => acc + g.clientes.length, 0);
