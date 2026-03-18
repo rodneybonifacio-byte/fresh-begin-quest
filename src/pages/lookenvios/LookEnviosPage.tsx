@@ -648,11 +648,10 @@ const LookEnviosPage = () => {
       {/* 15. ARQUITETURA TÉCNICA                                       */}
       {/* ══════════════════════════════════════════════════════════════ */}
       <section className="py-20" style={{ backgroundColor: BRAND.white }}>
-        <div className="max-w-5xl mx-auto px-6 text-center">
-          <h2 className="text-3xl md:text-5xl font-black mb-2" style={{ color: BRAND.charcoal }}>
-            Arquitetura <span className="font-black" style={{ color: BRAND.orange }}>Look China</span>
-          </h2>
-          <p className="text-gray-500 text-sm mb-10 italic">Infraestrutura de alta disponibilidade para emissões em massa e rastreamento.</p>
+        <div className="max-w-5xl mx-auto px-6">
+          <SectionNumber n={15} />
+          <Heading>Arquitetura <span style={{ color: BRAND.orange }}>Look China</span></Heading>
+          <SubText>Infraestrutura de alta disponibilidade para emissões em massa e rastreamento.</SubText>
           <div className="rounded-2xl border overflow-hidden shadow-lg" style={{ borderColor: BRAND.border }}>
             <img src={arquiteturaImg} alt="Arquitetura Técnica do Hub de Logística Look Envios" className="w-full" />
           </div>
