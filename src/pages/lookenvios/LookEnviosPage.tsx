@@ -466,7 +466,7 @@ const LookEnviosPage = () => {
           <motion.div initial={{ y: 30, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={{ once: true }} className="text-center mb-12">
             <span className="inline-block px-4 py-1.5 rounded-full text-xs font-bold tracking-widest mb-4" style={{ backgroundColor: `${BRAND.orange}25`, color: BRAND.orange }}><Gem className="w-3 h-3 inline mr-1" /> EXCLUSIVO LOOK ENVIOS</span>
             <h2 className="text-3xl md:text-5xl font-black text-white mb-4">Tabela <span style={{ color: BRAND.orange }}>Diamante</span> Correios</h2>
-            <p className="text-gray-500 text-lg">Até 70% mais barato que a tabela balcão</p>
+            <p className="text-gray-500 text-lg">Até 85% mais barato que a tabela balcão</p>
           </motion.div>
           <div className="grid md:grid-cols-3 gap-6 mb-10">
             {[{ label: 'SP Capital', value: 'R$ 6,90', desc: 'PAC até 100g', icon: Target }, { label: 'Economia', value: 'Até 70%', desc: 'vs. Tabela Balcão', icon: TrendingUp }, { label: 'Cobertura', value: '100%', desc: 'Todos os CEPs', icon: Globe }].map((card, i) => (
