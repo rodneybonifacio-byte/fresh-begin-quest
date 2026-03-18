@@ -327,7 +327,7 @@ const LookEnviosPage = () => {
                   { label: 'Soma C+L+A', value: '240 cm' },
                 ].map((spec, i) => (
                   <div key={i} className="flex justify-between items-center rounded-lg px-3 py-2" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
-                    <span className="text-gray-400 text-xs">{spec.label}</span>
+                    <span className="text-gray-300 text-xs">{spec.label}</span>
                     <span className="text-white font-bold text-xs">{spec.value}</span>
                   </div>
                 ))}
