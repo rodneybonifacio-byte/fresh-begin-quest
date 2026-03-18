@@ -646,21 +646,21 @@ export default function PitchPage() {
 
           {/* ─── REVENUE ─────────────────────────────────────── */}
           {slide === "revenue" && (
-            <div className="space-y-4 md:space-y-6">
+            <div className="space-y-2 md:space-y-3">
               <SlideHeader title="Modelo de" accent="receita" tag="Negócio" />
 
               {/* Fontes de receita existentes */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
                 {/* BRHUB */}
-                <div className="p-4 md:p-5 border relative" style={{ background: C.white, borderColor: C.border }}>
+                <div className="p-3 md:p-4 border relative" style={{ background: C.white, borderColor: C.border }}>
                   <div className="absolute top-0 left-0 w-full h-1" style={{ background: C.navy }} />
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-7 h-7 rounded-full flex items-center justify-center border" style={{ borderColor: C.navy }}>
-                      <Zap size={14} style={{ color: C.navy }} />
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center border" style={{ borderColor: C.navy }}>
+                      <Zap size={12} style={{ color: C.navy }} />
                     </div>
-                    <h4 className="font-bold text-xs md:text-sm" style={{ color: C.navy }}>BRHUB Tech — Entregas</h4>
+                    <h4 className="font-bold text-[11px] md:text-xs" style={{ color: C.navy }}>BRHUB Tech — Entregas</h4>
                   </div>
-                  <ul className="space-y-2">
+                  <ul className="space-y-1">
                     {[
                       { label: "Plataforma tecnológica", desc: "Sistema de emissão, rastreio e gestão" },
                       { label: "Inteligência Artificial", desc: "Suporte 24/7 automatizado + agentes" },
@@ -668,11 +668,11 @@ export default function PitchPage() {
                       { label: "Integrações marketplace", desc: "APIs, webhooks, automações" },
                       { label: "Marca própria (Whitelabel)", desc: "Plataforma com identidade do parceiro" },
                     ].map((item, j) => (
-                      <li key={j} className="flex items-start gap-2">
-                        <span className="mt-1 w-1.5 h-1.5 rounded-full shrink-0" style={{ background: C.navy }} />
+                      <li key={j} className="flex items-start gap-1.5">
+                        <span className="mt-1 w-1 h-1 rounded-full shrink-0" style={{ background: C.navy }} />
                         <div>
-                          <span className="text-[11px] md:text-xs font-semibold" style={{ color: C.text }}>{item.label}</span>
-                          <p className="text-[10px] md:text-[11px]" style={{ color: C.textMuted }}>{item.desc}</p>
+                          <span className="text-[10px] md:text-[11px] font-semibold" style={{ color: C.text }}>{item.label}</span>
+                          <span className="text-[9px] md:text-[10px] ml-1" style={{ color: C.textMuted }}>— {item.desc}</span>
                         </div>
                       </li>
                     ))}
@@ -680,15 +680,15 @@ export default function PitchPage() {
                 </div>
 
                 {/* Flex Envios */}
-                <div className="p-4 md:p-5 border relative" style={{ background: C.white, borderColor: C.border }}>
+                <div className="p-3 md:p-4 border relative" style={{ background: C.white, borderColor: C.border }}>
                   <div className="absolute top-0 left-0 w-full h-1" style={{ background: C.orange }} />
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-7 h-7 rounded-full flex items-center justify-center border" style={{ borderColor: C.orange }}>
-                      <Truck size={14} style={{ color: C.orange }} />
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center border" style={{ borderColor: C.orange }}>
+                      <Truck size={12} style={{ color: C.orange }} />
                     </div>
-                    <h4 className="font-bold text-xs md:text-sm" style={{ color: C.orange }}>Flex Envios — Entregas</h4>
+                    <h4 className="font-bold text-[11px] md:text-xs" style={{ color: C.orange }}>Flex Envios — Entregas</h4>
                   </div>
-                  <ul className="space-y-2">
+                  <ul className="space-y-1">
                     {[
                       { label: "Contratos com transportadoras", desc: "Preços negociados e rede logística" },
                       { label: "Operação física", desc: "Coleta, triagem e distribuição" },
@@ -696,11 +696,11 @@ export default function PitchPage() {
                       { label: "Rede de pontos de coleta", desc: "Capilaridade e conveniência" },
                       { label: "Suporte operacional", desc: "Atendimento e resolução logística" },
                     ].map((item, j) => (
-                      <li key={j} className="flex items-start gap-2">
-                        <span className="mt-1 w-1.5 h-1.5 rounded-full shrink-0" style={{ background: C.orange }} />
+                      <li key={j} className="flex items-start gap-1.5">
+                        <span className="mt-1 w-1 h-1 rounded-full shrink-0" style={{ background: C.orange }} />
                         <div>
-                          <span className="text-[11px] md:text-xs font-semibold" style={{ color: C.text }}>{item.label}</span>
-                          <p className="text-[10px] md:text-[11px]" style={{ color: C.textMuted }}>{item.desc}</p>
+                          <span className="text-[10px] md:text-[11px] font-semibold" style={{ color: C.text }}>{item.label}</span>
+                          <span className="text-[9px] md:text-[10px] ml-1" style={{ color: C.textMuted }}>— {item.desc}</span>
                         </div>
                       </li>
                     ))}
@@ -708,130 +708,104 @@ export default function PitchPage() {
                 </div>
               </div>
 
-              {/* Proposta de divisão — aberto a discussão */}
-              <div className="p-4 md:p-5 border-2 border-dashed" style={{ borderColor: C.orangeBorder, background: C.orangeBg }}>
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: C.orange }}>
-                    <Handshake size={18} className="text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-bold text-xs md:text-sm" style={{ color: C.navy }}>
-                      Divisão de rendimentos — <span style={{ color: C.orange }}>a definir em conjunto</span>
+              {/* Proposta de divisão + Zero risco lado a lado */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
+                {/* Proposta de divisão */}
+                <div className="p-3 md:p-4 border-2 border-dashed" style={{ borderColor: C.orangeBorder, background: C.orangeBg }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ background: C.orange }}>
+                      <Handshake size={14} className="text-white" />
+                    </div>
+                    <h4 className="font-bold text-[10px] md:text-[11px]" style={{ color: C.navy }}>
+                      Divisão de rendimentos — <span style={{ color: C.orange }}>a definir</span>
                     </h4>
-                    <p className="text-[11px] md:text-xs mt-1 leading-relaxed" style={{ color: C.textMuted }}>
-                      A proposta é mapear todas as fontes de receita acima e chegar em um <strong style={{ color: C.text }}>denominador comum</strong> que reflita 
-                      a contribuição de cada parte. Modelo flexível, construído a quatro mãos.
-                    </p>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-3">
-                      {[
-                        { icon: <BarChart3 size={14} />, title: "Margem líquida por etiqueta", desc: "Quanto cada parte entrega de valor" },
-                        { icon: <ShieldCheck size={14} />, title: "Risco e responsabilidade", desc: "Quem assume cobrança e inadimplência" },
-                        { icon: <TrendingUp size={14} />, title: "Volume e escala", desc: "Crescimento compartilhado" },
-                      ].map((item, i) => (
-                        <div key={i} className="flex items-start gap-2 p-2 md:p-2.5" style={{ background: C.white }}>
-                          <span className="mt-0.5" style={{ color: C.orange }}>{item.icon}</span>
-                          <div>
-                            <span className="text-[10px] md:text-[11px] font-bold" style={{ color: C.text }}>{item.title}</span>
-                            <p className="text-[9px] md:text-[10px]" style={{ color: C.textMuted }}>{item.desc}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
                   </div>
-                </div>
-              </div>
-
-              {/* Zero risco com split */}
-              <div className="p-3 md:p-5 border-2" style={{ background: C.navy, borderColor: C.navy, color: "white" }}>
-                <div className="flex items-start gap-3 mb-3">
-                  <ShieldCheck size={20} style={{ color: C.orange }} className="shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="font-bold text-xs md:text-sm">Zero Risco de <span style={{ color: C.orange }}>Inadimplência</span></h4>
-                    <p className="text-white/60 text-[10px] md:text-[11px] mt-1 leading-relaxed">
-                      Com <strong className="text-white">split de pagamento automático</strong>, o valor do frete é derivado diretamente para a conta da empresa no momento da transação — 
-                      eliminando qualquer risco de inadimplência ou atraso no repasse.
-                    </p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                  {[
-                    { icon: <DollarSign size={14} />, title: "Split automático", desc: "Frete separado na origem do pagamento" },
-                    { icon: <ShieldCheck size={14} />, title: "Sem risco de calote", desc: "Valor já cai direto na conta da empresa" },
-                    { icon: <Zap size={14} />, title: "Repasse imediato", desc: "Sem esperar fechamento ou cobrança" },
-                  ].map((item, i) => (
-                    <div key={i} className="flex items-start gap-2 p-2 rounded" style={{ background: "rgba(255,255,255,0.08)" }}>
-                      <span className="mt-0.5" style={{ color: C.orange }}>{item.icon}</span>
-                      <div>
-                        <span className="text-[10px] md:text-[11px] font-bold text-white">{item.title}</span>
-                        <p className="text-[9px] md:text-[10px] text-white/50">{item.desc}</p>
+                  <p className="text-[9px] md:text-[10px] leading-relaxed mb-2" style={{ color: C.textMuted }}>
+                    Modelo flexível, construído a quatro mãos para um <strong style={{ color: C.text }}>denominador comum</strong>.
+                  </p>
+                  <div className="space-y-1.5">
+                    {[
+                      { icon: <BarChart3 size={11} />, title: "Margem líquida por etiqueta" },
+                      { icon: <ShieldCheck size={11} />, title: "Risco e responsabilidade" },
+                      { icon: <TrendingUp size={11} />, title: "Volume e escala" },
+                    ].map((item, i) => (
+                      <div key={i} className="flex items-center gap-1.5 p-1.5" style={{ background: C.white }}>
+                        <span style={{ color: C.orange }}>{item.icon}</span>
+                        <span className="text-[9px] md:text-[10px] font-bold" style={{ color: C.text }}>{item.title}</span>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+                </div>
+
+                {/* Zero risco */}
+                <div className="p-3 md:p-4 border-2" style={{ background: C.navy, borderColor: C.navy, color: "white" }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <ShieldCheck size={16} style={{ color: C.orange }} className="shrink-0" />
+                    <h4 className="font-bold text-[10px] md:text-[11px]">Zero Risco de <span style={{ color: C.orange }}>Inadimplência</span></h4>
+                  </div>
+                  <p className="text-white/60 text-[9px] md:text-[10px] mb-2 leading-relaxed">
+                    <strong className="text-white">Split de pagamento automático</strong> — valor do frete derivado direto para a conta da empresa.
+                  </p>
+                  <div className="space-y-1.5">
+                    {[
+                      { icon: <DollarSign size={11} />, title: "Split automático" },
+                      { icon: <ShieldCheck size={11} />, title: "Sem risco de calote" },
+                      { icon: <Zap size={11} />, title: "Repasse imediato" },
+                    ].map((item, i) => (
+                      <div key={i} className="flex items-center gap-1.5 p-1.5 rounded" style={{ background: "rgba(255,255,255,0.08)" }}>
+                        <span style={{ color: C.orange }}>{item.icon}</span>
+                        <span className="text-[9px] md:text-[10px] font-bold text-white">{item.title}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 
               {/* Fluxo de pagamento — dois canais */}
-              <div className="p-3 md:p-5 border" style={{ background: C.white, borderColor: C.border }}>
-                <h4 className="font-bold text-[10px] md:text-xs mb-3 md:mb-4 uppercase tracking-wider" style={{ color: C.navy }}>Fluxo de Pagamento — por canal</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                  {/* Marketplace */}
-                  <div className="border p-3 md:p-4 relative" style={{ borderColor: C.orangeBorder, background: C.orangeBg }}>
-                    <div className="absolute top-0 left-0 w-full h-1" style={{ background: C.orange }} />
-                    <div className="flex items-center gap-2 mb-2.5">
-                      <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: C.orange }}>
-                        <Globe size={12} className="text-white" />
-                      </div>
-                      <h5 className="font-black text-[11px] md:text-xs" style={{ color: C.orange }}>Marketplace</h5>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
+                {/* Marketplace */}
+                <div className="border p-2.5 md:p-3 relative" style={{ borderColor: C.orangeBorder, background: C.orangeBg }}>
+                  <div className="absolute top-0 left-0 w-full h-0.5" style={{ background: C.orange }} />
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: C.orange }}>
+                      <Globe size={10} className="text-white" />
                     </div>
-                    <div className="space-y-2">
-                      {[
-                        { step: "1", title: "Compra no marketplace", desc: "Cliente finaliza pedido" },
-                        { step: "2", title: "Split automático", desc: "Frete separado na transação" },
-                        { step: "3", title: "Repasse imediato", desc: "Valor cai direto na conta" },
-                      ].map((item, i) => (
-                        <div key={i} className="flex items-center gap-2.5">
-                          <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0" style={{ background: C.orange }}>{item.step}</div>
-                          <div>
-                            <span className="text-[10px] md:text-[11px] font-bold" style={{ color: C.text }}>{item.title}</span>
-                            <p className="text-[9px] md:text-[10px]" style={{ color: C.textMuted }}>{item.desc}</p>
-                          </div>
-                          {i < 2 && <ArrowRight size={10} className="shrink-0 ml-auto" style={{ color: C.orangeLight }} />}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-2.5 px-2 py-1.5 text-center" style={{ background: C.orange }}>
-                      <span className="text-[9px] md:text-[10px] font-bold text-white">⚡ Zero inadimplência — sem cobrança manual</span>
-                    </div>
+                    <h5 className="font-black text-[10px] md:text-[11px]" style={{ color: C.orange }}>Marketplace — Split</h5>
                   </div>
-
-                  {/* WhatsApp / Digital */}
-                  <div className="border p-3 md:p-4 relative" style={{ borderColor: C.border, background: C.cardBg }}>
-                    <div className="absolute top-0 left-0 w-full h-1" style={{ background: C.navy }} />
-                    <div className="flex items-center gap-2 mb-2.5">
-                      <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: C.navy }}>
-                        <MessageCircle size={12} className="text-white" />
+                  <div className="flex items-center gap-1 justify-between">
+                    {["Compra", "Split auto", "Repasse"].map((s, i) => (
+                      <div key={i} className="flex items-center gap-1">
+                        <div className="w-4 h-4 rounded-full flex items-center justify-center text-white text-[7px] font-bold" style={{ background: C.orange }}>{i + 1}</div>
+                        <span className="text-[8px] md:text-[9px] font-semibold" style={{ color: C.text }}>{s}</span>
+                        {i < 2 && <ArrowRight size={8} style={{ color: C.orangeLight }} />}
                       </div>
-                      <h5 className="font-black text-[11px] md:text-xs" style={{ color: C.navy }}>WhatsApp / Digital</h5>
+                    ))}
+                  </div>
+                  <div className="mt-1.5 px-2 py-1 text-center" style={{ background: C.orange }}>
+                    <span className="text-[8px] md:text-[9px] font-bold text-white">⚡ Zero inadimplência</span>
+                  </div>
+                </div>
+
+                {/* WhatsApp / Digital */}
+                <div className="border p-2.5 md:p-3 relative" style={{ borderColor: C.border, background: C.cardBg }}>
+                  <div className="absolute top-0 left-0 w-full h-0.5" style={{ background: C.navy }} />
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: C.navy }}>
+                      <MessageCircle size={10} className="text-white" />
                     </div>
-                    <div className="space-y-2">
-                      {[
-                        { step: "1", title: "Emissão de etiquetas", desc: "Cliente posta via plataforma" },
-                        { step: "2", title: "Fatura quinzenal/mensal", desc: "Fechamento automático + boleto" },
-                        { step: "3", title: "Envio via WhatsApp", desc: "PDF fatura+boleto no chat" },
-                      ].map((item, i) => (
-                        <div key={i} className="flex items-center gap-2.5">
-                          <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0" style={{ background: C.navy }}>{item.step}</div>
-                          <div>
-                            <span className="text-[10px] md:text-[11px] font-bold" style={{ color: C.text }}>{item.title}</span>
-                            <p className="text-[9px] md:text-[10px]" style={{ color: C.textMuted }}>{item.desc}</p>
-                          </div>
-                          {i < 2 && <ArrowRight size={10} className="shrink-0 ml-auto" style={{ color: C.border }} />}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-2.5 px-2 py-1.5 text-center" style={{ background: C.navy }}>
-                      <span className="text-[9px] md:text-[10px] font-bold text-white">📄 Cobrança automatizada — IA + boleto bancário</span>
-                    </div>
+                    <h5 className="font-black text-[10px] md:text-[11px]" style={{ color: C.navy }}>WhatsApp — Fatura</h5>
+                  </div>
+                  <div className="flex items-center gap-1 justify-between">
+                    {["Emissão", "Fatura 15/30d", "WhatsApp"].map((s, i) => (
+                      <div key={i} className="flex items-center gap-1">
+                        <div className="w-4 h-4 rounded-full flex items-center justify-center text-white text-[7px] font-bold" style={{ background: C.navy }}>{i + 1}</div>
+                        <span className="text-[8px] md:text-[9px] font-semibold" style={{ color: C.text }}>{s}</span>
+                        {i < 2 && <ArrowRight size={8} style={{ color: C.border }} />}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-1.5 px-2 py-1 text-center" style={{ background: C.navy }}>
+                    <span className="text-[8px] md:text-[9px] font-bold text-white">📄 Cobrança automatizada</span>
                   </div>
                 </div>
               </div>
