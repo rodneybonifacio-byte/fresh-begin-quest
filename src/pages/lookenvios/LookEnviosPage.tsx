@@ -708,8 +708,8 @@ const LookEnviosPage = () => {
             <div className="rounded-xl p-6 border" style={{ background: `linear-gradient(135deg, rgba(242,101,34,0.06), rgba(242,101,34,0.02))`, borderColor: `${BRAND.orange}15` }}>
               <Warehouse className="w-12 h-12 mb-5" style={{ color: BRAND.orange }} />
               <h3 className="text-xl font-bold text-white mb-3">Fulfillment Completo</h3>
-              <p className="text-gray-400 text-sm leading-relaxed">
-                Os produtos poderão ser armazenados em galpão, permitindo que a operação ganhe eficiência, organização e velocidade. A LOOK ENVIOS incorpora uma lógica completa de fulfillment.
+               <p className="text-gray-300 text-sm leading-relaxed">
+                 Os produtos poderão ser armazenados em galpão, permitindo que a operação ganhe eficiência, organização e velocidade. A LOOK ENVIOS incorpora uma lógica completa de fulfillment.
               </p>
             </div>
             <div>
