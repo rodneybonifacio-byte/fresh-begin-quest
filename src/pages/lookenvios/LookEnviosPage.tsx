@@ -797,11 +797,11 @@ const LookEnviosPage = () => {
           <SectionNumber n={19} dark />
           <img src={lookLogo} alt="Look Envios" className="h-10 mx-auto mb-6 opacity-80" />
           <Heading white>Uma proposta sólida para o <span style={{ color: BRAND.orange }}>futuro</span></Heading>
-          <p className="text-gray-400 text-sm leading-relaxed mb-4 max-w-2xl mx-auto">
-            A BRHUB apresenta à LookChina uma proposta para criação da LOOK ENVIOS — transformando a logística em uma operação mais profissional, estratégica e preparada para crescer.
-          </p>
-          <p className="text-gray-500 text-xs leading-relaxed mb-10 max-w-2xl mx-auto">
-            Etiquetas com logo LOOK ENVIOS, operação com Correios, JadLog e Envios Flex, malha logística completa com cobertura nacional, força regional e alta competitividade. Já abrindo caminho para a Fase 2 com modelo Full e armazenagem em galpão.
+           <p className="text-gray-300 text-sm leading-relaxed mb-4 max-w-2xl mx-auto">
+             A BRHUB apresenta à LookChina uma proposta para criação da LOOK ENVIOS — transformando a logística em uma operação mais profissional, estratégica e preparada para crescer.
+           </p>
+           <p className="text-gray-400 text-xs leading-relaxed mb-10 max-w-2xl mx-auto">
+             Etiquetas com logo LOOK ENVIOS, operação com Correios, JadLog e Envios Flex, malha logística completa com cobertura nacional, força regional e alta competitividade. Já abrindo caminho para a Fase 2 com modelo Full e armazenagem em galpão.
           </p>
 
           <div className="flex justify-center gap-3 mb-10">
