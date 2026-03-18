@@ -575,7 +575,7 @@ const LookEnviosPage = () => {
                 className="rounded-2xl p-6 border" style={{ backgroundColor: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.08)' }}>
                 <item.icon className="w-7 h-7 mb-4" style={{ color: BRAND.orange }} />
                 <h3 className="text-base font-bold text-white mb-1">{item.title}</h3>
-                <p className="text-gray-400 text-sm leading-relaxed">{item.desc}</p>
+                <p className="text-gray-300 text-sm leading-relaxed">{item.desc}</p>
               </motion.div>
             ))}
           </div>
