@@ -223,7 +223,7 @@ const LookEnviosPage = () => {
           <div className="grid md:grid-cols-2 gap-8 md:gap-14 mt-8 md:mt-10 items-start">
             <div className="space-y-4 md:space-y-5">
               <p className="text-gray-600 leading-relaxed text-sm">
-                A LOOK ENVIOS será apresentada ao mercado como a <strong>operação logística oficial da LookChina</strong>, fortalecendo a percepção de estrutura, profissionalismo e organização da marca.
+                A LOOK ENVIOS será apresentada ao mercado como a <strong>operação logística oficial da LookChina</strong>, desenvolvida pela <strong>BRHUB em parceria com a FLEX Envios</strong>, fortalecendo a percepção de estrutura, profissionalismo e organização da marca.
               </p>
               <p className="text-gray-600 leading-relaxed text-sm">
                 Todas as etiquetas de envio seguirão com a identidade LOOK ENVIOS, utilizando o logo da operação, o que agrega valor à apresentação logística e fortalece o branding na expedição.
