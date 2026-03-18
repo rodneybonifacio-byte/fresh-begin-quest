@@ -755,7 +755,7 @@ const LookEnviosPage = () => {
       <section id="tarifas" className="py-20 relative overflow-hidden" style={{ backgroundColor: BRAND.dark }}>
         <motion.div className="absolute top-10 right-10 opacity-[0.03]" animate={{ rotate: 360 }} transition={{ duration: 40, repeat: Infinity, ease: 'linear' }}><Gem className="w-60 h-60" style={{ color: BRAND.orange }} /></motion.div>
         <div className="max-w-5xl mx-auto px-6 relative z-10">
-          <SectionNumber n={11} dark />
+          <SectionNumber n={18} dark />
           <Heading white>Tabela <span style={{ color: BRAND.orange }}>Diamante</span> — Correios</Heading>
           <SubText dark>Até 85% mais barato que a tabela balcão. As tabelas comerciais específicas de cada modalidade acompanham a proposta em anexo.</SubText>
 
