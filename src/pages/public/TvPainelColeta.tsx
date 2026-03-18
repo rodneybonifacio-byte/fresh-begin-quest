@@ -1073,7 +1073,7 @@ const TvBoard = () => {
           <span className="hidden sm:inline">Sistema operacional · Auto-refresh 2min</span>
           <span className="sm:hidden">Auto-refresh 2min</span>
           <span className="text-gray-200 hidden lg:inline">|</span>
-          <span className="text-cyan-500 hidden lg:inline">BRHUB: {BRHUB_HORARIO}</span>
+          <span className="text-gray-400 hidden lg:inline">BRHUB: coleta suspensa temporariamente</span>
         </div>
         <div className="flex items-center gap-2 lg:gap-3 flex-shrink-0">
           <span className="hidden sm:inline">
