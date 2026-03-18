@@ -31,7 +31,7 @@ const Heading = ({ children, white = false }: { children: React.ReactNode; white
 );
 
 const SubText = ({ children, dark = false }: { children: React.ReactNode; dark?: boolean }) => (
-  <p className={`text-base leading-relaxed max-w-3xl ${dark ? 'text-gray-400' : 'text-gray-500'}`}>{children}</p>
+  <p className={`text-base leading-relaxed max-w-3xl ${dark ? 'text-gray-300' : 'text-gray-500'}`}>{children}</p>
 );
 
 const Bullet = ({ children, dark = false }: { children: React.ReactNode; dark?: boolean }) => (
