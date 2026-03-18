@@ -832,7 +832,13 @@ const TvBoard = () => {
   const etiquetasCol1: Etiqueta[] = [];
   const etiquetasCol2: Etiqueta[] = [];
 
-  for (const et of data) {
+  // Filtrar clientes BRHUB (temporariamente sem coleta)
+  const dataFiltrada = data.filter(et => {
+    const nome = et.remetenteNome || et.remetente?.nome || '';
+    return !isBrhubClient(nome);
+  });
+
+  for (const et of dataFiltrada) {
     if (!et.criadoEm) { etiquetasCol1.push(et); continue; }
     const criadoDate = new Date(et.criadoEm);
     const criadoDia = criadoDate.getDay();
