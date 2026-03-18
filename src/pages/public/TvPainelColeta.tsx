@@ -832,7 +832,13 @@ const TvBoard = () => {
   const etiquetasCol1: Etiqueta[] = [];
   const etiquetasCol2: Etiqueta[] = [];
 
-  for (const et of data) {
+  // Filtrar clientes BRHUB (temporariamente sem coleta)
+  const dataFiltrada = data.filter(et => {
+    const nome = et.remetenteNome || et.remetente?.nome || '';
+    return !isBrhubClient(nome);
+  });
+
+  for (const et of dataFiltrada) {
     if (!et.criadoEm) { etiquetasCol1.push(et); continue; }
     const criadoDate = new Date(et.criadoEm);
     const criadoDia = criadoDate.getDay();
@@ -867,19 +873,17 @@ const TvBoard = () => {
     }
   }
 
-  const { regulares: regularesCol1, brhub: brhubCol1 } = agruparPorRemetente(etiquetasCol1, horariosDb);
-  const { regulares: regularesCol2, brhub: brhubCol2 } = agruparPorRemetente(etiquetasCol2, horariosDb);
+  const { regulares: regularesCol1 } = agruparPorRemetente(etiquetasCol1, horariosDb);
+  const { regulares: regularesCol2 } = agruparPorRemetente(etiquetasCol2, horariosDb);
 
   const allGroupsCol1: GrupoHorario[] = [...regularesCol1];
-  if (brhubCol1) allGroupsCol1.push(brhubCol1);
   allGroupsCol1.sort((a, b) => a.sortKey - b.sortKey);
 
   const allGroupsCol2: GrupoHorario[] = [...regularesCol2];
-  if (brhubCol2) allGroupsCol2.push(brhubCol2);
   allGroupsCol2.sort((a, b) => a.sortKey - b.sortKey);
 
-  const totalObjetos = data.length;
-  const totalClientes = new Set(data.map(e => (e.remetenteNome || e.remetente?.nome || '').toUpperCase().trim())).size;
+  const totalObjetos = dataFiltrada.length;
+  const totalClientes = new Set(dataFiltrada.map(e => (e.remetenteNome || e.remetente?.nome || '').toUpperCase().trim())).size;
   const totalCol1 = etiquetasCol1.length;
   const totalCol2 = etiquetasCol2.length;
   const clientesCol1 = allGroupsCol1.reduce((acc, g) => acc + g.clientes.length, 0);
@@ -1069,7 +1073,7 @@ const TvBoard = () => {
           <span className="hidden sm:inline">Sistema operacional · Auto-refresh 2min</span>
           <span className="sm:hidden">Auto-refresh 2min</span>
           <span className="text-gray-200 hidden lg:inline">|</span>
-          <span className="text-cyan-500 hidden lg:inline">BRHUB: {BRHUB_HORARIO}</span>
+          <span className="text-gray-400 hidden lg:inline">BRHUB: coleta suspensa temporariamente</span>
         </div>
         <div className="flex items-center gap-2 lg:gap-3 flex-shrink-0">
           <span className="hidden sm:inline">
