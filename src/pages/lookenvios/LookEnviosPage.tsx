@@ -4,7 +4,7 @@ import {
   Package, Truck, BarChart3, Shield, Zap, Globe, Bot, MessageSquare,
   Bell, CreditCard, FileText, Cpu, CheckCircle2, Gem,
   MapPin, TrendingUp, Users, Headphones, Smartphone, Mail,
-  Send, ChevronDown, Layers, Activity, Server, Database, RefreshCw,
+  Send, ChevronDown, Layers, Activity, Server, RefreshCw,
   Target, Settings, Flag, Clock, Ruler, Weight, MapPinned, AlertCircle
 } from 'lucide-react';
 import lookLogo from '@/assets/look-china-logo-official.svg';
