@@ -129,9 +129,9 @@ const TicketHistory = ({ conversationId, currentTicketId }: Props) => {
       )}
 
       {closedTickets.length > 0 && (
-        <div className="relative">
+        <div className="flex flex-col sm:flex-row">
           {/* Ticket list */}
-          <div className={`${selectedTicket ? 'hidden sm:block sm:w-1/2' : 'w-full'}`}>
+          <div className={`${selectedTicket ? 'hidden sm:block sm:w-1/2' : 'w-full'} flex-shrink-0`}>
             <div className="px-4 py-2.5 flex items-center gap-2">
               <Clock className="w-4 h-4 text-muted-foreground" />
               <span className="text-xs font-semibold text-muted-foreground tracking-wide uppercase">
@@ -204,7 +204,7 @@ const TicketHistory = ({ conversationId, currentTicketId }: Props) => {
 
           {/* Preview panel */}
           {selectedTicket && (
-            <div className={`${selectedTicket ? 'w-full sm:absolute sm:right-0 sm:top-0 sm:w-1/2 sm:h-full' : ''} border-l border-border bg-card`}>
+            <div className="w-full sm:w-1/2 border-l border-border bg-card flex-shrink-0">
               {/* Preview header */}
               <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
                 <div className="flex-1 min-w-0">
