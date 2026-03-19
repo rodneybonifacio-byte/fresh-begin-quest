@@ -73,14 +73,37 @@ export default function CriarEtiquetasEmMassa() {
 
   const validarCpf = (cpf: string): boolean => {
     const cleaned = stripCpf(cpf || "");
-    if (!cleaned) return false;
+    if (cleaned.length !== 11) return false;
+    if (cleaned.startsWith("0")) return false;
     return isValidCpf(cleaned);
   };
 
   const gerarCpfValido = (): string => {
-    // Usa a lib @fnando/cpf (mesma lógica do 4devs) e garante apenas dígitos
-    const novoCpf = generateCpf();
-    return stripCpf(novoCpf);
+    for (let tentativa = 0; tentativa < 50; tentativa++) {
+      const novoCpf = stripCpf(generateCpf());
+      if (validarCpf(novoCpf)) {
+        return novoCpf;
+      }
+    }
+
+    throw new Error("Não foi possível gerar um CPF válido compatível com a API");
+  };
+
+  const extrairIndicesComErroCpf = (errorDetails: any): number[] => {
+    if (!Array.isArray(errorDetails)) return [];
+
+    const indices = new Set<number>();
+
+    errorDetails.forEach((e: any) => {
+      const msg = typeof e === "string" ? e : e?.message || JSON.stringify(e);
+      const match = msg.match(/data\.(\d+)\.cpfCnpj/i) || msg.match(/data\[(\d+)\].*cpf/i);
+
+      if (match?.[1]) {
+        indices.add(Number(match[1]));
+      }
+    });
+
+    return Array.from(indices).sort((a, b) => a - b);
   };
 
   // Função para formatar erros da API em string legível
@@ -118,12 +141,14 @@ export default function CriarEtiquetasEmMassa() {
   };
 
   const enviarParaApi = async (cpfCnpjRemetente: string, envios: EnvioData[], tentativa = 1): Promise<any> => {
+    const MAX_TENTATIVAS_CPF = 5;
+
     try {
       const payload = {
         cpfCnpj: cpfCnpjRemetente,
         data: envios.map((e) => ({
           ...e,
-          cpfCnpj: (e.cpfCnpj || '').replace(/\D/g, '').padStart(11, '0'),
+          cpfCnpj: (e.cpfCnpj || '').replace(/\D/g, ''),
         })),
       };
 
@@ -146,59 +171,33 @@ export default function CriarEtiquetasEmMassa() {
         addLog(`Resposta bruta da API: ${respStr}`, "error");
       } catch { /* ignora */ }
 
-      // Detecta qualquer menção a CPF/CNPJ no erro (case-insensitive)
       const erroCpf = /cpf|cnpj|documento.*inv/i.test(respStr);
+      const indicesComErroCpf = extrairIndicesComErroCpf(respData?.error);
 
-      if (tentativa === 1 && erroCpf) {
-        // Tenta identificar índices específicos primeiro
-        const errorDetails = respData?.error;
-        const indicesComErroCpf = new Set<number>();
-
-        if (Array.isArray(errorDetails)) {
-          errorDetails.forEach((e: any) => {
-            const msg = typeof e === "string" ? e : e?.message || JSON.stringify(e);
-            const match = msg.match(/data\.(\d+)\.cpfCnpj/i) || msg.match(/data\[(\d+)\].*cpf/i);
-            if (match?.[1]) {
-              indicesComErroCpf.add(Number(match[1]));
-            }
-          });
-        }
-
-        // Se não conseguiu identificar índices específicos, substitui TODOS
-        const substituirTodos = indicesComErroCpf.size === 0;
-        const qtd = substituirTodos ? envios.length : indicesComErroCpf.size;
+      if (erroCpf && tentativa < MAX_TENTATIVAS_CPF) {
+        const substituirTodos = indicesComErroCpf.length === 0;
+        const qtd = substituirTodos ? envios.length : indicesComErroCpf.length;
+        const ultimaTentativa = tentativa + 1 === MAX_TENTATIVAS_CPF;
 
         addLog(
           substituirTodos
-            ? `⚠️ Erro de CPF detectado. Gerando CPFs válidos para TODOS os ${qtd} registros e reenviando...`
-            : `⚠️ API retornou CPF inválido para ${qtd} registro(s). Gerando novos CPFs e reenviando...`,
+            ? `⚠️ Tentativa ${tentativa}/${MAX_TENTATIVAS_CPF}: erro de CPF sem índice detalhado. Gerando novos CPFs para TODOS os ${qtd} registros${ultimaTentativa ? " na última tentativa" : ""}...`
+            : `⚠️ Tentativa ${tentativa}/${MAX_TENTATIVAS_CPF}: API retornou CPF inválido para ${qtd} registro(s). Gerando novos CPFs e reenviando${ultimaTentativa ? " pela última vez" : ""}...`,
           "warning"
         );
 
         const enviosCorrigidos = envios.map((envio, index) => {
-          if (substituirTodos || indicesComErroCpf.has(index)) {
+          if (substituirTodos || indicesComErroCpf.includes(index)) {
             const cpfOriginal = envio.cpfCnpj;
             const novoCpf = gerarCpfValido();
             addLog(`Índice ${index} – CPF (${cpfOriginal}) → Novo: ${novoCpf}`, "warning");
             return { ...envio, cpfCnpj: novoCpf };
           }
+
           return envio;
         });
 
-        return enviarParaApi(cpfCnpjRemetente, enviosCorrigidos, 2);
-      }
-
-      // Tentativa 2 ainda com erro de CPF – gera CPFs novos para todos e tenta última vez
-      if (tentativa === 2 && erroCpf) {
-        addLog(`⚠️ Segunda tentativa ainda com erro de CPF. Gerando CPFs novos para TODOS e tentando pela última vez...`, "warning");
-
-        const enviosCorrigidos = envios.map((envio, index) => {
-          const novoCpf = gerarCpfValido();
-          addLog(`Índice ${index} – Novo CPF gerado: ${novoCpf}`, "warning");
-          return { ...envio, cpfCnpj: novoCpf };
-        });
-
-        return enviarParaApi(cpfCnpjRemetente, enviosCorrigidos, 3);
+        return enviarParaApi(cpfCnpjRemetente, enviosCorrigidos, tentativa + 1);
       }
 
       if (Array.isArray(respData?.error)) {
