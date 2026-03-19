@@ -123,7 +123,7 @@ export default function CriarEtiquetasEmMassa() {
         cpfCnpj: cpfCnpjRemetente,
         data: envios.map((e) => ({
           ...e,
-          cpfCnpj: Number(e.cpfCnpj),
+          cpfCnpj: (e.cpfCnpj || '').replace(/\D/g, '').padStart(11, '0'),
         })),
       };
 
