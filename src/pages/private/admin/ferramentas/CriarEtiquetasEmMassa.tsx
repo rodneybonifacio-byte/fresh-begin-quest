@@ -141,7 +141,7 @@ export default function CriarEtiquetasEmMassa() {
   };
 
   const enviarParaApi = async (cpfCnpjRemetente: string, envios: EnvioData[], tentativa = 1): Promise<any> => {
-    const MAX_TENTATIVAS_CPF = 5;
+    const MAX_TENTATIVAS = 7;
 
     try {
       const payload = {
@@ -160,12 +160,22 @@ export default function CriarEtiquetasEmMassa() {
             "API-Version": "3.0.0",
             "Content-Type": "application/json",
           },
+          timeout: 60000, // 60 segundos
         }
       );
       return response.data;
     } catch (error: any) {
+      const isNetworkError = error.code === 'ERR_NETWORK' || error.message === 'Network Error';
       const respData = error.response?.data;
       const respStr = JSON.stringify(respData || error.message || "");
+
+      // Network Error → retry com delay crescente
+      if (isNetworkError && tentativa < MAX_TENTATIVAS) {
+        const delayMs = tentativa * 2000; // 2s, 4s, 6s...
+        addLog(`🔄 Network Error na tentativa ${tentativa}. Aguardando ${delayMs / 1000}s e reenviando...`, "warning");
+        await delay(delayMs);
+        return enviarParaApi(cpfCnpjRemetente, envios, tentativa + 1);
+      }
 
       try {
         addLog(`Resposta bruta da API: ${respStr}`, "error");
@@ -174,15 +184,12 @@ export default function CriarEtiquetasEmMassa() {
       const erroCpf = /cpf|cnpj|documento.*inv/i.test(respStr);
       const indicesComErroCpf = extrairIndicesComErroCpf(respData?.error);
 
-      if (erroCpf && tentativa < MAX_TENTATIVAS_CPF) {
-        const substituirTodos = indicesComErroCpf.length === 0;
+      if (erroCpf && tentativa < MAX_TENTATIVAS) {
+        const substituirTodos = indicesComErroCpf.length === 0 || tentativa >= 3;
         const qtd = substituirTodos ? envios.length : indicesComErroCpf.length;
-        const ultimaTentativa = tentativa + 1 === MAX_TENTATIVAS_CPF;
 
         addLog(
-          substituirTodos
-            ? `⚠️ Tentativa ${tentativa}/${MAX_TENTATIVAS_CPF}: erro de CPF sem índice detalhado. Gerando novos CPFs para TODOS os ${qtd} registros${ultimaTentativa ? " na última tentativa" : ""}...`
-            : `⚠️ Tentativa ${tentativa}/${MAX_TENTATIVAS_CPF}: API retornou CPF inválido para ${qtd} registro(s). Gerando novos CPFs e reenviando${ultimaTentativa ? " pela última vez" : ""}...`,
+          `⚠️ Tentativa ${tentativa}/${MAX_TENTATIVAS}: CPF inválido para ${qtd} registro(s). Gerando novos CPFs...`,
           "warning"
         );
 
@@ -193,10 +200,11 @@ export default function CriarEtiquetasEmMassa() {
             addLog(`Índice ${index} – CPF (${cpfOriginal}) → Novo: ${novoCpf}`, "warning");
             return { ...envio, cpfCnpj: novoCpf };
           }
-
           return envio;
         });
 
+        // Delay entre retries de CPF para evitar rate limiting
+        await delay(1500);
         return enviarParaApi(cpfCnpjRemetente, enviosCorrigidos, tentativa + 1);
       }
 
@@ -209,6 +217,37 @@ export default function CriarEtiquetasEmMassa() {
 
       throw error;
     }
+  };
+
+  const enviarEmLotes = async (cpfCnpjRemetente: string, envios: EnvioData[]): Promise<any> => {
+    const TAMANHO_LOTE = 25;
+    const lotes: EnvioData[][] = [];
+    
+    for (let i = 0; i < envios.length; i += TAMANHO_LOTE) {
+      lotes.push(envios.slice(i, i + TAMANHO_LOTE));
+    }
+
+    addLog(`📦 Dividindo ${envios.length} etiquetas em ${lotes.length} lote(s) de até ${TAMANHO_LOTE}`, "info");
+
+    const resultados: any[] = [];
+    
+    for (let i = 0; i < lotes.length; i++) {
+      addLog(`🚀 Enviando lote ${i + 1}/${lotes.length} (${lotes[i].length} etiquetas)...`, "info");
+      
+      const resultado = await enviarParaApi(cpfCnpjRemetente, lotes[i]);
+      resultados.push(resultado);
+      
+      addLog(`✅ Lote ${i + 1}/${lotes.length} processado com sucesso`, "success");
+
+      // Delay entre lotes
+      if (i < lotes.length - 1) {
+        await delay(1000);
+      }
+    }
+
+    // Merge results
+    const mergedData = resultados.flatMap(r => r.data || []);
+    return { ...resultados[0], data: mergedData };
   };
 
   const concatenarPdfs = async (pdfBase64Array: string[]): Promise<string> => {
