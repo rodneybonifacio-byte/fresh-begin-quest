@@ -74,20 +74,20 @@ export default function CriarEtiquetasEmMassa() {
   const validarCpf = (cpf: string): boolean => {
     const cleaned = stripCpf(cpf || "");
     if (cleaned.length !== 11) return false;
-    if (cleaned.startsWith("0")) return false;
     return isValidCpf(cleaned);
   };
 
   const gerarCpfValido = (): string => {
     for (let tentativa = 0; tentativa < 50; tentativa++) {
       const novoCpf = stripCpf(generateCpf());
-      if (validarCpf(novoCpf)) {
+      if (novoCpf.length === 11 && isValidCpf(novoCpf)) {
         return novoCpf;
       }
     }
-
     throw new Error("Não foi possível gerar um CPF válido compatível com a API");
   };
+
+  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
   const extrairIndicesComErroCpf = (errorDetails: any): number[] => {
     if (!Array.isArray(errorDetails)) return [];
