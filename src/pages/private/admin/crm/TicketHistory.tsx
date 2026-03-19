@@ -204,7 +204,7 @@ const TicketHistory = ({ conversationId, currentTicketId }: Props) => {
 
           {/* Preview panel */}
           {selectedTicket && (
-            <div className={`${selectedTicket ? 'w-full sm:absolute sm:right-0 sm:top-0 sm:w-1/2 sm:h-full' : ''} border-l border-border bg-card`}>
+            <div className="w-full sm:w-1/2 border-l border-border bg-card flex-shrink-0">
               {/* Preview header */}
               <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
                 <div className="flex-1 min-w-0">
