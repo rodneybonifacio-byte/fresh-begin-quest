@@ -495,7 +495,7 @@ export default function CriarEtiquetasEmMassa() {
       addLog(`Enviando ${enviosProcessados.length} etiquetas para a API...`, "info");
       addLog(`Payload: ${JSON.stringify({ cpfCnpj: cpfCnpjRemetenteClean, totalEnvios: enviosProcessados.length })}`, "info");
 
-      const resultado = await enviarParaApi(cpfCnpjRemetenteClean, enviosProcessados);
+      const resultado = await enviarEmLotes(cpfCnpjRemetenteClean, enviosProcessados);
       
       addLog(`API respondeu com sucesso!`, "success");
       
