@@ -632,12 +632,30 @@ serve(async (req) => {
 
         const lastOutbound = lastOutbounds?.[0] || null;
         const isLastMsgPassiveHSM = lastOutbound?.content_type === "hsm" && lastOutbound?.sent_by === "system";
+        const normalizedInbound = (messageContent || "")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase()
+          .replace(/[!.,;:?]/g, "")
+          .trim();
+        const isSimpleGreeting = /^(oi+|ola+|oie+|opa+|bom dia|boa tarde|boa noite|e ai|ei)$/.test(normalizedInbound);
+        const conversationTags = Array.isArray(conversation.tags)
+          ? conversation.tags.map((tag: any) => String(tag).toLowerCase())
+          : [];
+        const hasTrackingContext = conversationTags.some((tag: string) =>
+          ["rastreio", "atraso", "em_transito", "saiu_para_entrega", "aguardando_retirada"].includes(tag)
+        );
+        const lastHsmTriggerKey = String((lastOutbound?.metadata as any)?.trigger_key || "").toLowerCase();
+        const hasCriticalTrackingTrigger = ["atraso", "objeto_postado", "saiu_para_entrega", "aguardando_retirada"].includes(lastHsmTriggerKey);
         
         // === CLASSIFICAÇÃO DE INTENÇÃO VIA IA ===
         // Mídia (documentos, imagens, áudios, vídeos) são SEMPRE consideradas ACTIVE
         // pois o classificador de texto retornaria PASSIVE para conteúdo vazio
         const isMediaMessage = ["image", "video", "document", "audio", "location", "sticker"].includes(contentType);
-        if (isMediaMessage) {
+        if (isSimpleGreeting && (hasTrackingContext || hasCriticalTrackingTrigger)) {
+          intentResult = { isPassive: false, confidence: 0.95, reason: "greeting_with_tracking_context" };
+          console.log("🎯 Saudação com contexto logístico tratada como ACTIVE:", conversation.id, messageContent);
+        } else if (isMediaMessage) {
           intentResult = { isPassive: false, confidence: 1.0, reason: "media_always_active" };
           console.log(`🎯 Mídia (${contentType}) tratada como ACTIVE automaticamente`);
         } else {
@@ -657,9 +675,10 @@ serve(async (req) => {
         ];
         const isLastMsgFarewell = lastOutbound?.ai_generated && lastOutbound?.content
           && farewellPatterns.some(p => p.test(lastOutbound.content));
+        const isPassiveFollowUpAfterAI = !!lastOutbound?.ai_generated && shouldSuppress;
 
-        if ((isLastMsgPassiveHSM || isLastMsgFarewell) && shouldSuppress) {
-          console.log("⏭️ Inbound passivo após", isLastMsgPassiveHSM ? "HSM" : "despedida IA", "— suprimindo:", conversation.id, "msg:", messageContent);
+        if ((isLastMsgPassiveHSM || isLastMsgFarewell || isPassiveFollowUpAfterAI) && shouldSuppress) {
+          console.log("⏭️ Inbound passivo após", isLastMsgPassiveHSM ? "HSM" : isLastMsgFarewell ? "despedida IA" : "resposta IA", "— suprimindo:", conversation.id, "msg:", messageContent);
           updateData.ai_enabled = false;
           updateData.status = "closed";
           // Fechar tickets abertos dessa conversa
