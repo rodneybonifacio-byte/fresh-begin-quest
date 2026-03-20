@@ -27,6 +27,7 @@ export default function GerenciarEtiquetas() {
   const [showModalAtualizarPrecos, setShowModalAtualizarPrecos] = useState(false);
   const [filters, setFilters] = useState({
     remetente: "",
+    destinatario: "",
     status: [] as string[],
     dataInicio: "",
     dataFim: ""
@@ -82,6 +83,7 @@ export default function GerenciarEtiquetas() {
       };
 
       if (appliedFilters.remetente) params.remetenteNome = appliedFilters.remetente;
+      if (appliedFilters.destinatario) params.destinatarioNome = appliedFilters.destinatario;
       if (appliedFilters.dataInicio) params.dataIni = appliedFilters.dataInicio;
       if (appliedFilters.dataFim) params.dataFim = appliedFilters.dataFim;
       if (appliedFilters.status.length > 0) params.status = appliedFilters.status.join(',');
@@ -298,7 +300,7 @@ export default function GerenciarEtiquetas() {
   };
 
   const handleClearFilters = () => {
-    const emptyFilters = { remetente: "", status: [] as string[], dataInicio: "", dataFim: "" };
+    const emptyFilters = { remetente: "", destinatario: "", status: [] as string[], dataInicio: "", dataFim: "" };
     setFilters(emptyFilters);
     setAppliedFilters(emptyFilters);
     setPage(1);
@@ -523,7 +525,7 @@ export default function GerenciarEtiquetas() {
               <Search className="h-5 w-5" />
               Filtros de Busca
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               <div>
                 <label className="text-sm font-medium mb-2 block">Remetente</label>
                 <input
@@ -532,6 +534,16 @@ export default function GerenciarEtiquetas() {
                   placeholder="Nome do remetente"
                   value={filters.remetente}
                   onChange={(e) => setFilters({ ...filters, remetente: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Destinatário</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border rounded-lg bg-background"
+                  placeholder="Nome do destinatário"
+                  value={filters.destinatario}
+                  onChange={(e) => setFilters({ ...filters, destinatario: e.target.value })}
                 />
               </div>
               <div>
