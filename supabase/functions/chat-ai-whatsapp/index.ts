@@ -1418,9 +1418,9 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
         }
         
         if (allCodes.length > 1 && currentCodes.length > 0) {
-          trackingContext += `\n\n⚠️ ATENÇÃO: O cliente ACABOU DE INFORMAR o código ${currentCodes[currentCodes.length - 1]}. USE ESTE CÓDIGO como referência principal, independente de códigos anteriores no histórico.`;
+          trackingContext += `\n\n⚠️ ATENÇÃO: O cliente ACABOU DE INFORMAR o código ${currentCodes[currentCodes.length - 1]}. USE ESTE CÓDIGO como referência principal, independente de códigos anteriores no histórico. Se o cliente falar no singular ('meu pedido', 'meu pacote', 'meu envio'), responda SOMENTE sobre ${currentCodes[currentCodes.length - 1]}.`;
         } else if (allCodes.length > 1) {
-          trackingContext += `\n\n⚠️ Múltiplos códigos no histórico: ${allCodes.join(", ")}. Referência atual: ${lastCode}. Se o cliente falar de forma genérica, pergunte qual código.`;
+          trackingContext += `\n\n⚠️ Múltiplos códigos no histórico: ${allCodes.join(", ")}. Referência atual: ${lastCode}. Se o cliente falar no singular ('meu pedido', 'meu pacote', 'meu envio'), responda SOMENTE sobre ${lastCode}. Só mencione outro código se o cliente pedir explicitamente ou informar outro código.`;
         } else {
           trackingContext += `\nEste é o código de referência para este atendimento.`;
         }
