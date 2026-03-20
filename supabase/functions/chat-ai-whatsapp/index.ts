@@ -1188,34 +1188,15 @@ serve(async (req) => {
 
           // 7a. HSM CONTEXT — Montar bloco SEPARADO para injetar APÓS o histórico (peso máximo)
           if (lastHsmContext) {
-            // Extrair código de rastreio do HSM para instrução direta
-            const hsmMeta = (() => {
-              try {
-                const { data: lastHsmMsg } = await supabase
-                  .from("whatsapp_messages")
-                  .select("metadata")
-                  .eq("conversation_id", conversationId)
-                  .eq("direction", "outbound")
-                  .eq("content_type", "hsm")
-                  .order("created_at", { ascending: false })
-                  .limit(1)
-                  .maybeSingle();
-                return lastHsmMsg?.metadata || {};
-              } catch { return {}; }
-            })();
-            const hsmVars = (await hsmMeta)?.variables || {};
-            const hsmTrackingCode = hsmVars.codigo_rastreio || hsmVars.tracking_code || hsmVars.codigo_objeto || "";
-            const hsmRemetente = hsmVars.nome_remetente || "";
-
             let trackingInstruction = "";
-            if (hsmTrackingCode) {
-              trackingInstruction = `\n\nCÓDIGO DE RASTREIO DISPONÍVEL: ${hsmTrackingCode}${hsmRemetente ? ` (Remetente: ${hsmRemetente})` : ""}
+            if (lastHsmTrackingCode) {
+              trackingInstruction = `\n\nCÓDIGO DE RASTREIO DISPONÍVEL: ${lastHsmTrackingCode}${lastHsmRemetente ? ` (Remetente: ${lastHsmRemetente})` : ""}
 REGRA ABSOLUTA: Você JÁ TEM o código de rastreio. NUNCA peça o código ao cliente.
-- Se o cliente perguntar sobre status/encomenda/pacote: use "rastrear_objeto" com código "${hsmTrackingCode}" IMEDIATAMENTE.
-- Se o cliente enviar saudação: cumprimente e mencione o pacote ${hsmTrackingCode} proativamente.
+- Se o cliente perguntar sobre status/encomenda/pacote: use "rastrear_objeto" com código "${lastHsmTrackingCode}" IMEDIATAMENTE.
+- Se o cliente enviar saudação: cumprimente e mencione o pacote ${lastHsmTrackingCode} proativamente.
 - NÃO use "listar_objetos_cliente" quando já tem o código do HSM. Use "rastrear_objeto" direto.
-- NÃO diga "pode me passar o código" — isso é uma VIOLAÇÃO GRAVE. O código é ${hsmTrackingCode}.`;
-              console.log(`📋 Código HSM extraído para instrução direta: ${hsmTrackingCode}`);
+- NÃO diga "pode me passar o código" — isso é uma VIOLAÇÃO GRAVE. O código é ${lastHsmTrackingCode}.`;
+              console.log(`📋 Código HSM extraído para instrução direta: ${lastHsmTrackingCode}`);
             }
 
             hsmInjectionBlock = `INSTRUÇÃO PRIORITÁRIA — RESPOSTA A NOTIFICAÇÃO:
