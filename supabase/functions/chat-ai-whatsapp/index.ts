@@ -2179,6 +2179,18 @@ async function fetchRecipientPackagesByPhone(supabase: any, normalizedPhone: str
           }
         }
       }
+
+      const getPackagePriority = (status: string) => {
+        const normalizedStatus = String(status || "").toUpperCase();
+        if (normalizedStatus.includes("ATRAS")) return 0;
+        if (normalizedStatus.includes("AGUARDANDO_RETIRADA") || normalizedStatus.includes("RETIRADA")) return 1;
+        if (normalizedStatus.includes("SAIU_PARA_ENTREGA") || normalizedStatus.includes("SAIU PARA ENTREGA")) return 2;
+        if (normalizedStatus.includes("EM_TRANSITO") || normalizedStatus.includes("EM TRÂNSITO") || normalizedStatus.includes("EM TRANSITO")) return 3;
+        if (normalizedStatus.includes("POSTADO") || normalizedStatus.includes("CRIADO") || normalizedStatus.includes("PRE_POSTADO")) return 4;
+        return 5;
+      };
+
+      packages.sort((a, b) => getPackagePriority(a.status) - getPackagePriority(b.status));
     }
 
     if (packages.length === 0) return null;
@@ -2186,6 +2198,9 @@ async function fetchRecipientPackagesByPhone(supabase: any, normalizedPhone: str
     let result = `Pacotes encontrados (${packages.length}):\n`;
     for (const pkg of packages.slice(0, 5)) {
       result += `- ${pkg.codigo} → ${pkg.destNome} | Status: ${pkg.status}${pkg.previsao ? ` | Previsão: ${pkg.previsao}` : ""}${pkg.servico ? ` | ${pkg.servico}` : ""} [fonte: ${pkg.source}]\n`;
+    }
+    if (packages.length > 1) {
+      result += `\nREGRA: Se o cliente falar no singular ('meu pedido', 'meu pacote', 'meu envio'), trate ${packages[0].codigo} como pacote prioritário e responda apenas sobre ele. Só mencione outros códigos se o cliente pedir explicitamente.\n`;
     }
 
     // Rastrear os primeiros 2 pacotes (que não vieram de HSM, já rastreados) para dados atualizados

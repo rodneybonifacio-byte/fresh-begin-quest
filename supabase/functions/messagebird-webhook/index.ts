@@ -1036,27 +1036,50 @@ serve(async (req) => {
         if (newerMsgs && newerMsgs.length > 0) {
           console.log("⏭️ DEBOUNCE: mensagem mais nova detectada, pulando AI para esta:", messageBirdId);
         } else {
-          const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-          const isMediaMsg = contentType === "audio" || contentType === "voice" || contentType === "ptt" || contentType === "image" || contentType === "video" || contentType === "document" || contentType === "sticker" || contentType === "location";
-          console.log("🤖 Chamando chat-ai:", { contentType, isMediaMsg, hasMediaUrl: !!finalMediaUrl, messageLen: messageContent?.length || 0 });
-          
-          const response = await fetch(`${supabaseUrl}/functions/v1/chat-ai-whatsapp`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-            },
-            body: JSON.stringify({
-              conversationId: conversation.id,
-              message: messageContent,
-              contactPhone: normalizedPhone,
-              channelId: channel?.id,
-              agent: conversation.active_agent || channel?.ai_agent || "veronica",
-              contentType,
-              mediaUrl: finalMediaUrl,
-            }),
-          });
-          console.log("🤖 Chat AI response status:", response.status);
+          const { data: currentInboundMsg } = await supabase
+            .from("whatsapp_messages")
+            .select("created_at")
+            .eq("messagebird_id", messageBirdId)
+            .limit(1)
+            .maybeSingle();
+
+          const inboundCreatedAt = currentInboundMsg?.created_at || new Date(Date.now() - 1000).toISOString();
+          const { data: recentAiReply } = await supabase
+            .from("whatsapp_messages")
+            .select("id, created_at")
+            .eq("conversation_id", conversation.id)
+            .eq("direction", "outbound")
+            .eq("ai_generated", true)
+            .gte("created_at", inboundCreatedAt)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (recentAiReply) {
+            console.log("⏭️ Guard rail: já existe resposta da IA para este inbound, pulando chamada duplicada:", conversation.id, recentAiReply.id);
+          } else {
+            const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+            const isMediaMsg = contentType === "audio" || contentType === "voice" || contentType === "ptt" || contentType === "image" || contentType === "video" || contentType === "document" || contentType === "sticker" || contentType === "location";
+            console.log("🤖 Chamando chat-ai:", { contentType, isMediaMsg, hasMediaUrl: !!finalMediaUrl, messageLen: messageContent?.length || 0 });
+            
+            const response = await fetch(`${supabaseUrl}/functions/v1/chat-ai-whatsapp`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+              },
+              body: JSON.stringify({
+                conversationId: conversation.id,
+                message: messageContent,
+                contactPhone: normalizedPhone,
+                channelId: channel?.id,
+                agent: conversation.active_agent || channel?.ai_agent || "veronica",
+                contentType,
+                mediaUrl: finalMediaUrl,
+              }),
+            });
+            console.log("🤖 Chat AI response status:", response.status);
+          }
         }
       } catch (aiError) {
         console.error("⚠️ Erro ao chamar chat-ai (não crítico):", aiError);
