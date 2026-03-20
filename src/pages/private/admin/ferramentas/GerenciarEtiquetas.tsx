@@ -83,6 +83,7 @@ export default function GerenciarEtiquetas() {
       };
 
       if (appliedFilters.remetente) params.remetenteNome = appliedFilters.remetente;
+      if (appliedFilters.destinatario) params.destinatarioNome = appliedFilters.destinatario;
       if (appliedFilters.dataInicio) params.dataIni = appliedFilters.dataInicio;
       if (appliedFilters.dataFim) params.dataFim = appliedFilters.dataFim;
       if (appliedFilters.status.length > 0) params.status = appliedFilters.status.join(',');
