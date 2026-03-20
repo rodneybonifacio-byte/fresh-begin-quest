@@ -299,7 +299,7 @@ export default function GerenciarEtiquetas() {
   };
 
   const handleClearFilters = () => {
-    const emptyFilters = { remetente: "", status: [] as string[], dataInicio: "", dataFim: "" };
+    const emptyFilters = { remetente: "", destinatario: "", status: [] as string[], dataInicio: "", dataFim: "" };
     setFilters(emptyFilters);
     setAppliedFilters(emptyFilters);
     setPage(1);
