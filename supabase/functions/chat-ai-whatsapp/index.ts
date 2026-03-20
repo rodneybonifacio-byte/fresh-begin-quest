@@ -1236,7 +1236,7 @@ EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de a
     console.log("👤 Contexto de contato:", contactContext ? contactContext.substring(0, 120) : "NENHUM (não identificado)");
 
     const hojeFormatado = new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric" });
-    const enrichedSystemPrompt = systemPrompt + `\n\n📅 DATA DE HOJE: ${hojeFormatado}. Use esta data como referência para avaliar se prazos estão vencidos.` + "\n\nREGRA TÉCNICA: NÃO inclua prefixo como '*Veronica:*' ou '*Felipe:*' no início da sua resposta. O sistema adiciona automaticamente. Responda apenas com o conteúdo da mensagem." + "\n\n[REGRA DE REDIRECIONAMENTO — PRODUTOS, TROCA E LOJA]\nQuando o cliente perguntar sobre PRODUTOS, COMPRAS, CATÁLOGO, PREÇOS de produtos, ESTOQUE, TROCA DE PRODUTO, DEVOLUÇÃO DE PRODUTO, ou quiser COMPRAR algo na loja:\n1. Use a ferramenta 'buscar_remetentes_api' para buscar os dados cadastrais do remetente vinculado ao cliente\n2. A ferramenta SEMPRE retorna os dados completos (nome, telefone, email, endereço) quando o cliente está identificado. Use esses dados diretamente na resposta.\n3. Responda ao cliente orientando a entrar em contato direto com a loja remetente, fornecendo os dados retornados pela ferramenta.\n4. Exemplo: \"[Nome], para troca/devolução entre em contato direto com a loja [Nome do Remetente]! 📞 [celular/telefone] | 📍 [endereço completo] 😊\"\nIMPORTANTE: Essa regra se aplica APENAS a perguntas sobre produtos/compras/trocas/devoluções. Questões sobre ENVIO, RASTREIO, ETIQUETAS, CRÉDITOS continuam sendo atendidas normalmente por você.\nCRÍTICO: Se a ferramenta retornar dados do remetente, SEMPRE forneça esses dados ao cliente. NUNCA diga que não conseguiu localizar se a ferramenta retornou resultados.\nApenas se a ferramenta retornar 'Nenhum remetente cadastrado' ou 'Não consegui identificar o cliente', aí sim peça o nome ou CNPJ da loja." + contactContext;
+    const enrichedSystemPrompt = systemPrompt + `\n\n📅 DATA DE HOJE: ${hojeFormatado}. Use esta data como referência para avaliar se prazos estão vencidos.` + "\n\nREGRA TÉCNICA: NÃO inclua prefixo como '*Veronica:*' ou '*Felipe:*' no início da sua resposta. O sistema adiciona automaticamente. Responda apenas com o conteúdo da mensagem." + "\n\n[REGRA DE REDIRECIONAMENTO — PRODUTOS, TROCA E LOJA]\nQuando o cliente perguntar sobre PRODUTOS, COMPRAS, CATÁLOGO, PREÇOS de produtos, ESTOQUE, TROCA DE PRODUTO, DEVOLUÇÃO DE PRODUTO, ou quiser COMPRAR algo na loja:\n1. Use a ferramenta 'buscar_remetentes_api' para buscar os dados cadastrais do remetente vinculado ao cliente\n2. A ferramenta SEMPRE retorna os dados completos (nome, telefone, email, endereço) quando o cliente está identificado. Use esses dados diretamente na resposta.\n3. Responda ao cliente orientando a entrar em contato direto com a loja remetente, fornecendo os dados retornados pela ferramenta.\n4. Exemplo: \"[Nome], para troca/devolução entre em contato direto com a loja [Nome do Remetente]! 📞 [celular/telefone] | 📍 [endereço completo] 😊\"\nIMPORTANTE: Essa regra se aplica APENAS a perguntas sobre produtos/compras/trocas/devoluções. Questões sobre ENVIO, RASTREIO, ETIQUETAS, CRÉDITOS continuam sendo atendidas normalmente por você.\nCRÍTICO: Se a ferramenta retornar dados do remetente, SEMPRE forneça esses dados ao cliente. NUNCA diga que não conseguiu localizar se a ferramenta retornou resultados.\nApenas se a ferramenta retornar 'Nenhum remetente cadastrado' ou 'Não consegui identificar o cliente', aí sim peça o nome ou CNPJ da loja." + "\n\n[REGRA DE RASTREIO E LINK OFICIAL]\nSe o cliente perguntar como rastrear, pedir o link de rastreio, ou disser que quer acompanhar o pedido, informe o link oficial https://brhubenvios.com.br/rastreio/encomenda?objeto=[CODIGO]. Se houver um código de referência ativo no contexto, substitua [CODIGO] pelo código correto. Se existirem vários códigos e o cliente falar no singular ('meu pedido', 'meu pacote', 'meu envio'), escolha apenas UM código prioritário e não misture respostas de códigos diferentes na mesma mensagem. Só mencione outro código se o cliente pedir explicitamente." + contactContext;
     const messages: any[] = [{ role: "system", content: enrichedSystemPrompt }];
 
     if (history) {
@@ -1418,9 +1418,9 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
         }
         
         if (allCodes.length > 1 && currentCodes.length > 0) {
-          trackingContext += `\n\n⚠️ ATENÇÃO: O cliente ACABOU DE INFORMAR o código ${currentCodes[currentCodes.length - 1]}. USE ESTE CÓDIGO como referência principal, independente de códigos anteriores no histórico.`;
+          trackingContext += `\n\n⚠️ ATENÇÃO: O cliente ACABOU DE INFORMAR o código ${currentCodes[currentCodes.length - 1]}. USE ESTE CÓDIGO como referência principal, independente de códigos anteriores no histórico. Se o cliente falar no singular ('meu pedido', 'meu pacote', 'meu envio'), responda SOMENTE sobre ${currentCodes[currentCodes.length - 1]}.`;
         } else if (allCodes.length > 1) {
-          trackingContext += `\n\n⚠️ Múltiplos códigos no histórico: ${allCodes.join(", ")}. Referência atual: ${lastCode}. Se o cliente falar de forma genérica, pergunte qual código.`;
+          trackingContext += `\n\n⚠️ Múltiplos códigos no histórico: ${allCodes.join(", ")}. Referência atual: ${lastCode}. Se o cliente falar no singular ('meu pedido', 'meu pacote', 'meu envio'), responda SOMENTE sobre ${lastCode}. Só mencione outro código se o cliente pedir explicitamente ou informar outro código.`;
         } else {
           trackingContext += `\nEste é o código de referência para este atendimento.`;
         }
@@ -2179,6 +2179,18 @@ async function fetchRecipientPackagesByPhone(supabase: any, normalizedPhone: str
           }
         }
       }
+
+      const getPackagePriority = (status: string) => {
+        const normalizedStatus = String(status || "").toUpperCase();
+        if (normalizedStatus.includes("ATRAS")) return 0;
+        if (normalizedStatus.includes("AGUARDANDO_RETIRADA") || normalizedStatus.includes("RETIRADA")) return 1;
+        if (normalizedStatus.includes("SAIU_PARA_ENTREGA") || normalizedStatus.includes("SAIU PARA ENTREGA")) return 2;
+        if (normalizedStatus.includes("EM_TRANSITO") || normalizedStatus.includes("EM TRÂNSITO") || normalizedStatus.includes("EM TRANSITO")) return 3;
+        if (normalizedStatus.includes("POSTADO") || normalizedStatus.includes("CRIADO") || normalizedStatus.includes("PRE_POSTADO")) return 4;
+        return 5;
+      };
+
+      packages.sort((a, b) => getPackagePriority(a.status) - getPackagePriority(b.status));
     }
 
     if (packages.length === 0) return null;
@@ -2186,6 +2198,9 @@ async function fetchRecipientPackagesByPhone(supabase: any, normalizedPhone: str
     let result = `Pacotes encontrados (${packages.length}):\n`;
     for (const pkg of packages.slice(0, 5)) {
       result += `- ${pkg.codigo} → ${pkg.destNome} | Status: ${pkg.status}${pkg.previsao ? ` | Previsão: ${pkg.previsao}` : ""}${pkg.servico ? ` | ${pkg.servico}` : ""} [fonte: ${pkg.source}]\n`;
+    }
+    if (packages.length > 1) {
+      result += `\nREGRA: Se o cliente falar no singular ('meu pedido', 'meu pacote', 'meu envio'), trate ${packages[0].codigo} como pacote prioritário e responda apenas sobre ele. Só mencione outros códigos se o cliente pedir explicitamente.\n`;
     }
 
     // Rastrear os primeiros 2 pacotes (que não vieram de HSM, já rastreados) para dados atualizados
