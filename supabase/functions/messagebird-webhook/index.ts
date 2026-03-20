@@ -483,12 +483,14 @@ serve(async (req) => {
           /n[aã]o\s+conhe[çc]o\s+ess[ae]/i,
           /n[uú]mero\s+errado/i,
           /meu\s+n[uú]mero\s+n[aã]o\s+[eé]/i,
-          /esse?\s+n[uú]mero\s+n[aã]o\s+[eé]\s+meu/i,
+          /esse?\s+n[uú]mero\s+n[aã]o\s+[eé]\s+(meu|d[aoe]\s+\w+)/i, // "esse número não é da Rita"
           /n[aã]o\s+[eé]\s+pra\s+mim/i,
           /n[aã]o\s+fiz\s+nenhuma?\s+(compra|pedido|envio)/i,
           /quem\s+[eé]\s+ess[ae]\s+pessoa/i,
           /parem\s+de\s+(enviar|mandar)\s+mensag/i,
           /n[aã]o\s+quero\s+(receber|mais)\s+mensag/i,
+          /aqui\s+n[aã]o\s+(compra|vende|mora|conhec)/i, // "aqui não compra e nem vende roupa"
+          /n[aã]o\s+[eé]\s+d[aoe]\s+\w+/i, // "não é da Rita", "não é do João"
         ];
         const isWrongPerson = wrongPersonPatterns.some(p => p.test(messageContent || ""));
         
