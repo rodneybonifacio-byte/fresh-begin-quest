@@ -1110,6 +1110,8 @@ serve(async (req) => {
           
           // 7.0 Detectar se há HSM recente no histórico (notificação ativa)
           let lastHsmContext = "";
+          let lastHsmTrackingCode = "";
+          let lastHsmRemetente = "";
           // hsmInjectionBlock é definido no escopo externo
 
           // Fonte principal: buscar o ÚLTIMO HSM real na conversa
@@ -1134,7 +1136,9 @@ serve(async (req) => {
                 const vars = meta.variables || {};
                 const varSummary = Object.entries(vars).map(([k, v]) => `${k}: ${v}`).join(", ");
                 lastHsmContext = `Notificação "${triggerLabel || templateName}" enviada há ${hoursAgo.toFixed(0)}h. Dados: ${varSummary || lastHsm.content || ""}`;
-                console.log(`📋 HSM recente (query direta, ${hoursAgo.toFixed(1)}h):`, lastHsmContext.substring(0, 150));
+                lastHsmTrackingCode = vars.codigo_rastreio || vars.tracking_code || vars.codigo_objeto || "";
+                lastHsmRemetente = vars.nome_remetente || "";
+                console.log(`📋 HSM recente (query direta, ${hoursAgo.toFixed(1)}h):`, lastHsmContext.substring(0, 150), `código: ${lastHsmTrackingCode}`);
               }
             }
           } catch (hsmQueryErr) {
@@ -1155,7 +1159,11 @@ serve(async (req) => {
                 const vars = meta.variables || {};
                 const varSummary = Object.entries(vars).map(([k, v]) => `${k}: ${v}`).join(", ");
                 lastHsmContext = `Notificação "${triggerLabel || templateName}" enviada há ${hoursAgo.toFixed(0)}h. Dados: ${varSummary || lastHsm.content || ""}`;
-                console.log(`📋 HSM recente (fallback histórico, ${hoursAgo.toFixed(1)}h):`, lastHsmContext.substring(0, 150));
+                if (!lastHsmTrackingCode) {
+                  lastHsmTrackingCode = vars.codigo_rastreio || vars.tracking_code || vars.codigo_objeto || "";
+                  lastHsmRemetente = vars.nome_remetente || "";
+                }
+                console.log(`📋 HSM recente (fallback histórico, ${hoursAgo.toFixed(1)}h):`, lastHsmContext.substring(0, 150), `código: ${lastHsmTrackingCode}`);
               }
             }
           }
@@ -1180,6 +1188,17 @@ serve(async (req) => {
 
           // 7a. HSM CONTEXT — Montar bloco SEPARADO para injetar APÓS o histórico (peso máximo)
           if (lastHsmContext) {
+            let trackingInstruction = "";
+            if (lastHsmTrackingCode) {
+              trackingInstruction = `\n\nCÓDIGO DE RASTREIO DISPONÍVEL: ${lastHsmTrackingCode}${lastHsmRemetente ? ` (Remetente: ${lastHsmRemetente})` : ""}
+REGRA ABSOLUTA: Você JÁ TEM o código de rastreio. NUNCA peça o código ao cliente.
+- Se o cliente perguntar sobre status/encomenda/pacote: use "rastrear_objeto" com código "${lastHsmTrackingCode}" IMEDIATAMENTE.
+- Se o cliente enviar saudação: cumprimente e mencione o pacote ${lastHsmTrackingCode} proativamente.
+- NÃO use "listar_objetos_cliente" quando já tem o código do HSM. Use "rastrear_objeto" direto.
+- NÃO diga "pode me passar o código" — isso é uma VIOLAÇÃO GRAVE. O código é ${lastHsmTrackingCode}.`;
+              console.log(`📋 Código HSM extraído para instrução direta: ${lastHsmTrackingCode}`);
+            }
+
             hsmInjectionBlock = `INSTRUÇÃO PRIORITÁRIA — RESPOSTA A NOTIFICAÇÃO:
 O cliente ACABOU de receber esta notificação nossa: "${lastHsmContext}"
 Quando ele diz "oi" ou qualquer saudação, ele está RESPONDENDO a essa notificação.
@@ -1187,11 +1206,13 @@ Quando ele diz "oi" ou qualquer saudação, ele está RESPONDENDO a essa notific
 SUA RESPOSTA DEVE:
 - Cumprimentar pelo primeiro nome
 - Mencionar o pacote da notificação (código de rastreio e status)
+- Se o cliente perguntar sobre status, usar "rastrear_objeto" com o código disponível
 - Perguntar se precisa de algo sobre esse envio
 
 PROIBIDO: saudação genérica como "Como posso te ajudar hoje?" ou ignorar a notificação. Isso é uma regra INVIOLÁVEL.
+PROIBIDO: pedir código de rastreio ao cliente quando já existe no contexto da notificação.
 
-EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de algo sobre essa entrega? 😊"`;
+EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de algo sobre essa entrega? 😊"${trackingInstruction}`;
             console.log("📋 HSM context preparado para injeção pós-histórico");
           }
 
