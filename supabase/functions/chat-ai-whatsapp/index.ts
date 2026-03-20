@@ -1180,6 +1180,36 @@ serve(async (req) => {
 
           // 7a. HSM CONTEXT — Montar bloco SEPARADO para injetar APÓS o histórico (peso máximo)
           if (lastHsmContext) {
+            // Extrair código de rastreio do HSM para instrução direta
+            const hsmMeta = (() => {
+              try {
+                const { data: lastHsmMsg } = await supabase
+                  .from("whatsapp_messages")
+                  .select("metadata")
+                  .eq("conversation_id", conversationId)
+                  .eq("direction", "outbound")
+                  .eq("content_type", "hsm")
+                  .order("created_at", { ascending: false })
+                  .limit(1)
+                  .maybeSingle();
+                return lastHsmMsg?.metadata || {};
+              } catch { return {}; }
+            })();
+            const hsmVars = (await hsmMeta)?.variables || {};
+            const hsmTrackingCode = hsmVars.codigo_rastreio || hsmVars.tracking_code || hsmVars.codigo_objeto || "";
+            const hsmRemetente = hsmVars.nome_remetente || "";
+
+            let trackingInstruction = "";
+            if (hsmTrackingCode) {
+              trackingInstruction = `\n\nCÓDIGO DE RASTREIO DISPONÍVEL: ${hsmTrackingCode}${hsmRemetente ? ` (Remetente: ${hsmRemetente})` : ""}
+REGRA ABSOLUTA: Você JÁ TEM o código de rastreio. NUNCA peça o código ao cliente.
+- Se o cliente perguntar sobre status/encomenda/pacote: use "rastrear_objeto" com código "${hsmTrackingCode}" IMEDIATAMENTE.
+- Se o cliente enviar saudação: cumprimente e mencione o pacote ${hsmTrackingCode} proativamente.
+- NÃO use "listar_objetos_cliente" quando já tem o código do HSM. Use "rastrear_objeto" direto.
+- NÃO diga "pode me passar o código" — isso é uma VIOLAÇÃO GRAVE. O código é ${hsmTrackingCode}.`;
+              console.log(`📋 Código HSM extraído para instrução direta: ${hsmTrackingCode}`);
+            }
+
             hsmInjectionBlock = `INSTRUÇÃO PRIORITÁRIA — RESPOSTA A NOTIFICAÇÃO:
 O cliente ACABOU de receber esta notificação nossa: "${lastHsmContext}"
 Quando ele diz "oi" ou qualquer saudação, ele está RESPONDENDO a essa notificação.
@@ -1187,11 +1217,13 @@ Quando ele diz "oi" ou qualquer saudação, ele está RESPONDENDO a essa notific
 SUA RESPOSTA DEVE:
 - Cumprimentar pelo primeiro nome
 - Mencionar o pacote da notificação (código de rastreio e status)
+- Se o cliente perguntar sobre status, usar "rastrear_objeto" com o código disponível
 - Perguntar se precisa de algo sobre esse envio
 
 PROIBIDO: saudação genérica como "Como posso te ajudar hoje?" ou ignorar a notificação. Isso é uma regra INVIOLÁVEL.
+PROIBIDO: pedir código de rastreio ao cliente quando já existe no contexto da notificação.
 
-EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de algo sobre essa entrega? 😊"`;
+EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de algo sobre essa entrega? 😊"${trackingInstruction}`;
             console.log("📋 HSM context preparado para injeção pós-histórico");
           }
 
