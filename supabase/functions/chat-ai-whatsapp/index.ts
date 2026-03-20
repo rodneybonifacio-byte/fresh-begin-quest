@@ -1110,6 +1110,8 @@ serve(async (req) => {
           
           // 7.0 Detectar se há HSM recente no histórico (notificação ativa)
           let lastHsmContext = "";
+          let lastHsmTrackingCode = "";
+          let lastHsmRemetente = "";
           // hsmInjectionBlock é definido no escopo externo
 
           // Fonte principal: buscar o ÚLTIMO HSM real na conversa
