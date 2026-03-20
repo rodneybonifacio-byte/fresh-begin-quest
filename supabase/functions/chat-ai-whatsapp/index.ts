@@ -1136,7 +1136,9 @@ serve(async (req) => {
                 const vars = meta.variables || {};
                 const varSummary = Object.entries(vars).map(([k, v]) => `${k}: ${v}`).join(", ");
                 lastHsmContext = `Notificação "${triggerLabel || templateName}" enviada há ${hoursAgo.toFixed(0)}h. Dados: ${varSummary || lastHsm.content || ""}`;
-                console.log(`📋 HSM recente (query direta, ${hoursAgo.toFixed(1)}h):`, lastHsmContext.substring(0, 150));
+                lastHsmTrackingCode = vars.codigo_rastreio || vars.tracking_code || vars.codigo_objeto || "";
+                lastHsmRemetente = vars.nome_remetente || "";
+                console.log(`📋 HSM recente (query direta, ${hoursAgo.toFixed(1)}h):`, lastHsmContext.substring(0, 150), `código: ${lastHsmTrackingCode}`);
               }
             }
           } catch (hsmQueryErr) {
