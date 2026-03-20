@@ -27,6 +27,7 @@ export default function GerenciarEtiquetas() {
   const [showModalAtualizarPrecos, setShowModalAtualizarPrecos] = useState(false);
   const [filters, setFilters] = useState({
     remetente: "",
+    destinatario: "",
     status: [] as string[],
     dataInicio: "",
     dataFim: ""
