@@ -624,7 +624,7 @@ serve(async (req) => {
         // Buscar últimas 2 mensagens outbound para checar contexto
         const { data: lastOutbounds } = await supabase
           .from("whatsapp_messages")
-          .select("content_type, sent_by, ai_generated, content")
+          .select("content_type, sent_by, ai_generated, content, metadata")
           .eq("conversation_id", conversation.id)
           .eq("direction", "outbound")
           .order("created_at", { ascending: false })
