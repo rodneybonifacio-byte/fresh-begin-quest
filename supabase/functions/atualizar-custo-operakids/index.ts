@@ -105,15 +105,11 @@ serve(async (req) => {
     const loginData = await loginResponse.json();
     const adminToken = loginData.token;
 
-    // Buscar etiquetas do OPERA KIDS na data especificada (ou hoje) criadas após 12h00
+    // Buscar etiquetas do OPERA KIDS na data especificada (ou hoje)
     const dataFiltro = data || new Date().toISOString().split('T')[0];
     const remetente = remetenteNome || 'OPERA KIDS';
     
-    // Criar timestamp de 12:00 da data filtrada para comparação
-    const filtro12h = new Date(dataFiltro + 'T12:00:00');
-    
-    console.log(`📦 Buscando etiquetas de "${remetente}" do dia ${dataFiltro} criadas após 12:00...`);
-    console.log(`⏰ Filtro de horário: >= ${filtro12h.toISOString()}`);
+    console.log(`📦 Buscando etiquetas de "${remetente}" do dia ${dataFiltro}...`);
 
     // Buscar emissões usando endpoint admin com filtros corretos
     // Formato: /emissoes/admin?remetenteNome=X&dataInicio=Y&dataFim=Z
@@ -143,44 +139,23 @@ serve(async (req) => {
     
     console.log(`📊 Encontradas ${emissoesBrutas.length} etiquetas brutas da API`);
 
-    // IMPORTANTE: Filtrar no servidor:
-    // 1. Por remetenteNome contendo "OPERA KIDS" (normalizado)
-    // 2. Por horário de criação >= 12:00
+    // Filtrar por remetenteNome contendo o texto buscado (normalizado, sem acentos)
     const normalizar = (str: string) => str?.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim() || '';
     const remetenteNormalizado = normalizar(remetente);
     
     const emissoes = emissoesBrutas.filter((e: any) => {
-      // Filtro 1: Nome do remetente
       const nomeRemetente = normalizar(e.remetenteNome || '');
-      const matchNome = nomeRemetente.includes(remetenteNormalizado) || remetenteNormalizado.includes(nomeRemetente);
-      
-      if (!matchNome) return false;
-      
-      // Filtro 2: Horário de criação >= 12:00
-      const criadoEm = e.criadoEm || e.createdAt || e.created_at;
-      if (!criadoEm) {
-        console.log(`⚠️ Etiqueta ${e.codigoObjeto} sem data de criação, ignorando`);
-        return false;
-      }
-      
-      const dataCriacao = new Date(criadoEm);
-      const apos12h = dataCriacao >= filtro12h;
-      
-      if (!apos12h) {
-        console.log(`⏰ Etiqueta ${e.codigoObjeto} criada às ${dataCriacao.toLocaleTimeString('pt-BR')} (antes das 12h), ignorando`);
-      }
-      
-      return apos12h;
+      return nomeRemetente.includes(remetenteNormalizado) || remetenteNormalizado.includes(nomeRemetente);
     });
     
-    console.log(`📊 Após filtro por "${remetente}" + horário >= 12:00: ${emissoes.length} etiquetas`);
+    console.log(`📊 Após filtro por "${remetente}": ${emissoes.length} etiquetas`);
 
     if (emissoes.length === 0) {
       return new Response(
         JSON.stringify({ 
           success: true, 
           message: 'Nenhuma etiqueta encontrada com os filtros especificados',
-          filtros: { remetente, data: dataFiltro, horaMinima: '12:00' },
+          filtros: { remetente, data: dataFiltro },
           debug: { totalBruto: emissoesBrutas.length }
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
