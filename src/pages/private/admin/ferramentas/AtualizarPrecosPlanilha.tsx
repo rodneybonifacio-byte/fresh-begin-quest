@@ -250,7 +250,7 @@ export default function AtualizarPrecosPlanilha() {
     setFiltroAtivo('TODOS');
     setFiltroDataIni('');
     setFiltroDataFim('');
-
+  };
   // Apply date + scenario filters
   const resultadosFiltrados = useMemo(() => {
     let filtered = resultados;
