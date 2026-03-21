@@ -164,10 +164,13 @@ serve(async (req) => {
     
     const emissoes = emissoesBrutas.filter((e: any) => {
       const nomeRemetente = normalizar(e.remetenteNome || e.remetente?.nome || '');
-      return nomeRemetente === remetenteNormalizado;
+      const dataEmissaoRaw = e.criadoEm || e.createdAt || e.created_at || e.dataEmissao || e.data;
+      const dataEmissao = dataEmissaoRaw ? new Date(dataEmissaoRaw).toISOString().split('T')[0] : null;
+
+      return nomeRemetente === remetenteNormalizado && dataEmissao === dataFiltro;
     });
     
-    console.log(`📊 Após filtro por "${remetente}": ${emissoes.length} etiquetas`);
+    console.log(`📊 Após filtro por "${remetente}" na data ${dataFiltro}: ${emissoes.length} etiquetas`);
 
     if (emissoes.length === 0) {
       return new Response(
