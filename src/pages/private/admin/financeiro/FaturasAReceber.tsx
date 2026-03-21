@@ -738,6 +738,48 @@ const FinanceiroFaturasAReceber = () => {
             </div>
             {!isLoading && !isError && faturas && faturas.data.length > 0 && (
                 <>
+                    {tab === 'faturamentos' && (() => {
+                        const totalFaturado = data.reduce((acc, f) => acc + Number(f.totalFaturado || 0), 0);
+                        const totalCusto = data.reduce((acc, f) => acc + Number(f.totalCusto || 0), 0);
+                        const totalLucro = totalFaturado - totalCusto;
+                        return (
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                                <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-100 dark:border-gray-600 shadow-sm">
+                                    <div className="flex items-center">
+                                        <div className="p-3 rounded-lg mr-4 bg-blue-100 dark:bg-blue-900">
+                                            <DollarSign className="text-blue-600 dark:text-blue-300" size={20} />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-slate-400 dark:text-slate-300">Total Faturado</p>
+                                            <p className="text-md font-bold text-slate-800 dark:text-slate-100">{formatCurrencyWithCents(totalFaturado.toString())}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-100 dark:border-gray-600 shadow-sm">
+                                    <div className="flex items-center">
+                                        <div className="p-3 rounded-lg mr-4 bg-red-100 dark:bg-red-900">
+                                            <TrendingDown className="text-red-600 dark:text-red-300" size={20} />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-slate-400 dark:text-slate-300">Total Custo</p>
+                                            <p className="text-md font-bold text-red-600 dark:text-red-400">{formatCurrencyWithCents(totalCusto.toString())}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-100 dark:border-gray-600 shadow-sm">
+                                    <div className="flex items-center">
+                                        <div className="p-3 rounded-lg mr-4 bg-green-100 dark:bg-green-900">
+                                            <TrendingUp className="text-green-600 dark:text-green-300" size={20} />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-slate-400 dark:text-slate-300">Total Lucro</p>
+                                            <p className="text-md font-bold text-green-600 dark:text-green-400">{formatCurrencyWithCents(totalLucro.toString())}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()}
                     <ListaFaturas
                         key={forceUpdate}
                         data={data}
