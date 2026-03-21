@@ -155,7 +155,7 @@ serve(async (req) => {
         JSON.stringify({ 
           success: true, 
           message: 'Nenhuma etiqueta encontrada com os filtros especificados',
-          filtros: { remetente, data: dataFiltro, horaMinima: '12:00' },
+          filtros: { remetente, data: dataFiltro },
           debug: { totalBruto: emissoesBrutas.length }
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
