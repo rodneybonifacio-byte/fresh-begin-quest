@@ -45,6 +45,7 @@ export const FiltroEmissao = ({ onFiltrar, isDestinatario, isCodigoObjeto, onCan
         clienteId: searchParams.get('clienteId') || '',
         remetenteId: searchParams.get('remetenteId') || '',
         transportadora: searchParams.get('transportadora') || '',
+        custoZero: searchParams.get('custoZero') || '',
     });
 
     const handleChange = (key: string, value: string | string[]) => {
@@ -178,18 +179,30 @@ export const FiltroEmissao = ({ onFiltrar, isDestinatario, isCodigoObjeto, onCan
                         />
                     </div>
                 </div>
-                {!isDestinatario && (
-                    <div className="grid grid-cols-1 gap-4">
-                        {!isDestinatario && (
+                <div className="flex flex-col sm:flex-row gap-3 items-end">
+                    {!isDestinatario && (
+                        <div className="flex-1">
                             <InputLabel
                                 labelTitulo="Destinatário:"
                                 type="text"
                                 value={form.destinatario}
                                 onChange={(e) => handleChange('destinatario', e.target.value)}
                             />
-                        )}
+                        </div>
+                    )}
+                    <div className="flex-1">
+                        <SelectCustom
+                            label="Valor Custo"
+                            data={[
+                                { label: 'Todos', value: '' },
+                                { label: 'Custo = R$ 0', value: 'zero' },
+                                { label: 'Custo > R$ 0', value: 'positivo' },
+                            ]}
+                            valueSelected={form.custoZero}
+                            onChange={(v: any) => setForm((prev) => ({ ...prev, custoZero: v.toString() }))}
+                        />
                     </div>
-                )}
+                </div>
             </div>
 
             <div className="flex justify-start">
