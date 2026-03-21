@@ -119,8 +119,8 @@ serve(async (req) => {
     // Formato: /emissoes/admin?remetenteNome=X&dataInicio=Y&dataFim=Z
     const searchParams = new URLSearchParams({
       remetenteNome: remetente,
-      dataInicio: dataHoje,
-      dataFim: dataHoje,
+      dataInicio: dataFiltro,
+      dataFim: dataFiltro,
       limit: '1000',
       offset: '0',
     });
@@ -164,7 +164,7 @@ serve(async (req) => {
       }
       
       const dataCriacao = new Date(criadoEm);
-      const apos12h = dataCriacao >= hoje12h;
+      const apos12h = dataCriacao >= filtro12h;
       
       if (!apos12h) {
         console.log(`⏰ Etiqueta ${e.codigoObjeto} criada às ${dataCriacao.toLocaleTimeString('pt-BR')} (antes das 12h), ignorando`);
@@ -180,7 +180,7 @@ serve(async (req) => {
         JSON.stringify({ 
           success: true, 
           message: 'Nenhuma etiqueta encontrada com os filtros especificados',
-          filtros: { remetente, data: dataHoje, horaMinima: '12:00' },
+          filtros: { remetente, data: dataFiltro, horaMinima: '12:00' },
           debug: { totalBruto: emissoesBrutas.length }
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
