@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
+import { DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
 import { useGlobalConfig } from '../../../../providers/GlobalConfigContext';
 import { useFetchQuery } from '../../../../hooks/useFetchQuery';
 import { Content } from '../../Content';
