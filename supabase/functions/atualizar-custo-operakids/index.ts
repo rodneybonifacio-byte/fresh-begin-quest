@@ -111,33 +111,48 @@ serve(async (req) => {
     
     console.log(`📦 Buscando etiquetas de "${remetente}" do dia ${dataFiltro}...`);
 
-    // Buscar emissões usando endpoint admin com filtros corretos
-    // Formato: /emissoes/admin?remetenteNome=X&dataInicio=Y&dataFim=Z
-    const searchParams = new URLSearchParams({
-      remetenteNome: remetente,
-      dataInicio: dataFiltro,
-      dataFim: dataFiltro,
-      limit: '1000',
-      offset: '0',
-    });
+    // Buscar emissões com paginação para garantir que trazemos TODAS
+    let emissoesBrutas: any[] = [];
+    let offset = 0;
+    const pageSize = 500;
+    let hasMore = true;
 
-    const emissaoResponse = await fetch(`${BASE_API_URL}/emissoes/admin?${searchParams.toString()}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${adminToken}`,
-      },
-    });
+    while (hasMore) {
+      const searchParams = new URLSearchParams({
+        remetenteNome: remetente,
+        dataInicio: dataFiltro,
+        dataFim: dataFiltro,
+        limit: String(pageSize),
+        offset: String(offset),
+      });
 
-    if (!emissaoResponse.ok) {
-      const errorText = await emissaoResponse.text();
-      throw new Error(`Erro ao buscar emissões: ${errorText}`);
+      const emissaoResponse = await fetch(`${BASE_API_URL}/emissoes/admin?${searchParams.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminToken}`,
+        },
+      });
+
+      if (!emissaoResponse.ok) {
+        const errorText = await emissaoResponse.text();
+        throw new Error(`Erro ao buscar emissões: ${errorText}`);
+      }
+
+      const emissaoData = await emissaoResponse.json();
+      const pageData = emissaoData?.data || emissaoData || [];
+      emissoesBrutas = emissoesBrutas.concat(pageData);
+      
+      console.log(`📄 Página offset=${offset}: ${pageData.length} registros`);
+
+      if (pageData.length < pageSize) {
+        hasMore = false;
+      } else {
+        offset += pageSize;
+      }
     }
-
-    const emissaoData = await emissaoResponse.json();
-    const emissoesBrutas = emissaoData?.data || emissaoData || [];
     
-    console.log(`📊 Encontradas ${emissoesBrutas.length} etiquetas brutas da API`);
+    console.log(`📊 Total de etiquetas brutas da API: ${emissoesBrutas.length}`);
 
     // Filtrar por remetenteNome contendo o texto buscado (normalizado, sem acentos)
     const normalizar = (str: string) => str?.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim() || '';
