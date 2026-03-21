@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import * as XLSX from 'xlsx';
-import { Upload, FileSpreadsheet, Search, CheckCircle2, AlertTriangle, Info, ArrowRight, Download, Loader2, Calendar, DollarSign, TrendingUp, Wallet } from 'lucide-react';
+import { Upload, FileSpreadsheet, Search, CheckCircle2, AlertTriangle, Info, ArrowRight, Download, Loader2, DollarSign, TrendingUp, Wallet } from 'lucide-react';
 import { supabase } from '../../../../integrations/supabase/client';
 import { toast } from 'sonner';
 
