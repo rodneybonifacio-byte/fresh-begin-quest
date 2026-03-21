@@ -423,6 +423,69 @@ export default function AtualizarPrecosPlanilha() {
       {/* STEP 3: Análise */}
       {etapa === 'analise' && resumo && (
         <div className="space-y-4">
+          {/* Date filter */}
+          <div className="bg-card border border-border rounded-xl p-4 flex flex-wrap items-end gap-4">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">Data Início</label>
+              <input
+                type="date"
+                value={filtroDataIni}
+                onChange={(e) => setFiltroDataIni(e.target.value)}
+                className="px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">Data Fim</label>
+              <input
+                type="date"
+                value={filtroDataFim}
+                onChange={(e) => setFiltroDataFim(e.target.value)}
+                className="px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground"
+              />
+            </div>
+            {(filtroDataIni || filtroDataFim) && (
+              <button
+                onClick={() => { setFiltroDataIni(''); setFiltroDataFim(''); }}
+                className="px-3 py-2 text-xs border border-border rounded-lg hover:bg-muted transition-colors"
+              >
+                Limpar datas
+              </button>
+            )}
+          </div>
+
+          {/* Financial totals */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
+              <div className="p-2.5 rounded-lg bg-emerald-500/10">
+                <DollarSign className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Total Faturado (Venda)</p>
+                <p className="text-lg font-bold text-foreground">{formatBRL(totaisFinanceiros.totalFaturado)}</p>
+              </div>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
+              <div className="p-2.5 rounded-lg bg-rose-500/10">
+                <Wallet className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Total Custo (A Pagar)</p>
+                <p className="text-lg font-bold text-foreground">{formatBRL(totaisFinanceiros.totalCusto)}</p>
+              </div>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
+              <div className="p-2.5 rounded-lg bg-violet-500/10">
+                <TrendingUp className="w-5 h-5 text-violet-600" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Lucro Estimado</p>
+                <p className={`text-lg font-bold ${totaisFinanceiros.totalLucro >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  {formatBRL(totaisFinanceiros.totalLucro)}
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Summary cards */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <SummaryCard label="Total" value={resumo.total} color="bg-muted" onClick={() => setFiltroAtivo('TODOS')} active={filtroAtivo === 'TODOS'} />
