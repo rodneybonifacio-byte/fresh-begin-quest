@@ -1,5 +1,5 @@
 import { DollarSign, Filter, PackageCheck, Printer, ReceiptText, ShoppingCart, Users, Wallet, Download, Bell, RefreshCw, Map as MapIcon, RotateCw, Bug, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { LoadSpinner } from '../../../../components/loading';
 import { PaginacaoCustom } from '../../../../components/PaginacaoCustom';
@@ -173,6 +173,29 @@ const RltEnvios = () => {
 
         return await service.getAll(params, 'admin');
     });
+
+    // Filtro client-side para custo zero/positivo
+    const custoZeroFilter = searchParams.get('custoZero') || '';
+    const emissoesFiltradas = useMemo(() => {
+        if (!emissoes?.data || !custoZeroFilter) return emissoes;
+        
+        const filtered = emissoes.data.filter((e: IEmissao) => {
+            const custo = Number(e.valorPostagem) || 0;
+            if (custoZeroFilter === 'zero') return custo === 0;
+            if (custoZeroFilter === 'positivo') return custo > 0;
+            return true;
+        });
+
+        return {
+            ...emissoes,
+            data: filtered,
+            meta: emissoes.meta ? {
+                ...emissoes.meta,
+                totalRecords: filtered.length,
+                recordsOnPage: filtered.length,
+            } : emissoes.meta,
+        };
+    }, [emissoes, custoZeroFilter]);
 
     const handleOnViewErroPostagem = async (jsonContent?: string) => {
         setErroPostagem(jsonContent);
@@ -539,10 +562,10 @@ const RltEnvios = () => {
     };
 
     useEffect(() => {
-        if (emissoes?.data) {
-            setData(emissoes.data);
+        if (emissoesFiltradas?.data) {
+            setData(emissoesFiltradas.data);
         }
-    }, [emissoes]);
+    }, [emissoesFiltradas]);
 
     const handlePageChange = async (pageNumber: number) => {
         setPage(pageNumber);
@@ -611,7 +634,7 @@ const RltEnvios = () => {
                     icon: <Filter size={22} />,
                 },
             ]}
-            data={emissoes?.data && emissoes.data.length > 0 ? emissoes.data : []}
+            data={emissoesFiltradas?.data && emissoesFiltradas.data.length > 0 ? emissoesFiltradas.data : []}
         >
             {isLoading ? <LoadSpinner mensagem="Carregando..." /> : null}
             
@@ -968,7 +991,7 @@ const RltEnvios = () => {
                             />
                         </div>
                         <div className="py-3">
-                            <PaginacaoCustom meta={emissoes?.meta} onPageChange={handlePageChange} />
+                            <PaginacaoCustom meta={emissoesFiltradas?.meta} onPageChange={handlePageChange} />
                         </div>
                     </>
                 )}
