@@ -111,15 +111,14 @@ serve(async (req) => {
     
     console.log(`📦 Buscando etiquetas de "${remetente}" do dia ${dataFiltro}...`);
 
-    // Buscar emissões com paginação para garantir que trazemos TODAS
+    // Buscar emissões com paginação real da API (ela limita a 100 por página)
     let emissoesBrutas: any[] = [];
     let offset = 0;
-    const pageSize = 500;
+    const pageSize = 100;
     let hasMore = true;
 
     while (hasMore) {
       const searchParams = new URLSearchParams({
-        remetenteNome: remetente,
         dataInicio: dataFiltro,
         dataFim: dataFiltro,
         limit: String(pageSize),
@@ -142,7 +141,7 @@ serve(async (req) => {
       const emissaoData = await emissaoResponse.json();
       const pageData = emissaoData?.data || emissaoData || [];
       emissoesBrutas = emissoesBrutas.concat(pageData);
-      
+
       console.log(`📄 Página offset=${offset}: ${pageData.length} registros`);
 
       if (pageData.length < pageSize) {
