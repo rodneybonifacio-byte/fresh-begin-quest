@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import * as XLSX from 'xlsx';
-import { Upload, FileSpreadsheet, Search, CheckCircle2, AlertTriangle, Info, ArrowRight, Download, Loader2 } from 'lucide-react';
+import { Upload, FileSpreadsheet, Search, CheckCircle2, AlertTriangle, Info, ArrowRight, Download, Loader2, DollarSign, TrendingUp, Wallet } from 'lucide-react';
 import { supabase } from '../../../../integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -71,6 +71,8 @@ export default function AtualizarPrecosPlanilha() {
   const [resultadoExecucao, setResultadoExecucao] = useState<{ atualizados: string[]; erros: { codigoObjeto: string; erro: string }[] } | null>(null);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [valoresEditados, setValoresEditados] = useState<Record<string, number>>({});
+  const [filtroDataIni, setFiltroDataIni] = useState('');
+  const [filtroDataFim, setFiltroDataFim] = useState('');
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -246,11 +248,42 @@ export default function AtualizarPrecosPlanilha() {
     setSelecionados(new Set());
     setValoresEditados({});
     setFiltroAtivo('TODOS');
+    setFiltroDataIni('');
+    setFiltroDataFim('');
   };
+  // Apply date + scenario filters
+  const resultadosFiltrados = useMemo(() => {
+    let filtered = resultados;
+    
+    if (filtroDataIni) {
+      const dataIni = new Date(filtroDataIni + 'T00:00:00');
+      filtered = filtered.filter(r => {
+        if (!r.dataPostagem) return false;
+        return new Date(r.dataPostagem) >= dataIni;
+      });
+    }
+    if (filtroDataFim) {
+      const dataFim = new Date(filtroDataFim + 'T23:59:59');
+      filtered = filtered.filter(r => {
+        if (!r.dataPostagem) return false;
+        return new Date(r.dataPostagem) <= dataFim;
+      });
+    }
+    
+    if (filtroAtivo !== 'TODOS') {
+      filtered = filtered.filter(r => r.cenario === filtroAtivo);
+    }
+    
+    return filtered;
+  }, [resultados, filtroAtivo, filtroDataIni, filtroDataFim]);
 
-  const resultadosFiltrados = filtroAtivo === 'TODOS'
-    ? resultados
-    : resultados.filter(r => r.cenario === filtroAtivo);
+  // Financial totals from filtered results
+  const totaisFinanceiros = useMemo(() => {
+    const totalFaturado = resultadosFiltrados.reduce((sum, r) => sum + r.valorVendaAtual, 0);
+    const totalCusto = resultadosFiltrados.reduce((sum, r) => sum + r.valorCustoPlanilha, 0);
+    const totalLucro = totalFaturado - totalCusto;
+    return { totalFaturado, totalCusto, totalLucro };
+  }, [resultadosFiltrados]);
 
   const exportarResultados = () => {
     const wsData = resultados.map(r => ({
@@ -391,6 +424,69 @@ export default function AtualizarPrecosPlanilha() {
       {/* STEP 3: Análise */}
       {etapa === 'analise' && resumo && (
         <div className="space-y-4">
+          {/* Date filter */}
+          <div className="bg-card border border-border rounded-xl p-4 flex flex-wrap items-end gap-4">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">Data Início</label>
+              <input
+                type="date"
+                value={filtroDataIni}
+                onChange={(e) => setFiltroDataIni(e.target.value)}
+                className="px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">Data Fim</label>
+              <input
+                type="date"
+                value={filtroDataFim}
+                onChange={(e) => setFiltroDataFim(e.target.value)}
+                className="px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground"
+              />
+            </div>
+            {(filtroDataIni || filtroDataFim) && (
+              <button
+                onClick={() => { setFiltroDataIni(''); setFiltroDataFim(''); }}
+                className="px-3 py-2 text-xs border border-border rounded-lg hover:bg-muted transition-colors"
+              >
+                Limpar datas
+              </button>
+            )}
+          </div>
+
+          {/* Financial totals */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
+              <div className="p-2.5 rounded-lg bg-emerald-500/10">
+                <DollarSign className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Total Faturado (Venda)</p>
+                <p className="text-lg font-bold text-foreground">{formatBRL(totaisFinanceiros.totalFaturado)}</p>
+              </div>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
+              <div className="p-2.5 rounded-lg bg-rose-500/10">
+                <Wallet className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Total Custo (A Pagar)</p>
+                <p className="text-lg font-bold text-foreground">{formatBRL(totaisFinanceiros.totalCusto)}</p>
+              </div>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
+              <div className="p-2.5 rounded-lg bg-violet-500/10">
+                <TrendingUp className="w-5 h-5 text-violet-600" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Lucro Estimado</p>
+                <p className={`text-lg font-bold ${totaisFinanceiros.totalLucro >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  {formatBRL(totaisFinanceiros.totalLucro)}
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Summary cards */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <SummaryCard label="Total" value={resumo.total} color="bg-muted" onClick={() => setFiltroAtivo('TODOS')} active={filtroAtivo === 'TODOS'} />
