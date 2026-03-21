@@ -248,7 +248,8 @@ export default function AtualizarPrecosPlanilha() {
     setSelecionados(new Set());
     setValoresEditados({});
     setFiltroAtivo('TODOS');
-  };
+    setFiltroDataIni('');
+    setFiltroDataFim('');
 
   // Apply date + scenario filters
   const resultadosFiltrados = useMemo(() => {
