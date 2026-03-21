@@ -71,6 +71,8 @@ export default function AtualizarPrecosPlanilha() {
   const [resultadoExecucao, setResultadoExecucao] = useState<{ atualizados: string[]; erros: { codigoObjeto: string; erro: string }[] } | null>(null);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [valoresEditados, setValoresEditados] = useState<Record<string, number>>({});
+  const [filtroDataIni, setFiltroDataIni] = useState('');
+  const [filtroDataFim, setFiltroDataFim] = useState('');
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -248,9 +250,39 @@ export default function AtualizarPrecosPlanilha() {
     setFiltroAtivo('TODOS');
   };
 
-  const resultadosFiltrados = filtroAtivo === 'TODOS'
-    ? resultados
-    : resultados.filter(r => r.cenario === filtroAtivo);
+  // Apply date + scenario filters
+  const resultadosFiltrados = useMemo(() => {
+    let filtered = resultados;
+    
+    if (filtroDataIni) {
+      const dataIni = new Date(filtroDataIni + 'T00:00:00');
+      filtered = filtered.filter(r => {
+        if (!r.dataPostagem) return false;
+        return new Date(r.dataPostagem) >= dataIni;
+      });
+    }
+    if (filtroDataFim) {
+      const dataFim = new Date(filtroDataFim + 'T23:59:59');
+      filtered = filtered.filter(r => {
+        if (!r.dataPostagem) return false;
+        return new Date(r.dataPostagem) <= dataFim;
+      });
+    }
+    
+    if (filtroAtivo !== 'TODOS') {
+      filtered = filtered.filter(r => r.cenario === filtroAtivo);
+    }
+    
+    return filtered;
+  }, [resultados, filtroAtivo, filtroDataIni, filtroDataFim]);
+
+  // Financial totals from filtered results
+  const totaisFinanceiros = useMemo(() => {
+    const totalFaturado = resultadosFiltrados.reduce((sum, r) => sum + r.valorVendaAtual, 0);
+    const totalCusto = resultadosFiltrados.reduce((sum, r) => sum + r.valorCustoPlanilha, 0);
+    const totalLucro = totalFaturado - totalCusto;
+    return { totalFaturado, totalCusto, totalLucro };
+  }, [resultadosFiltrados]);
 
   const exportarResultados = () => {
     const wsData = resultados.map(r => ({
