@@ -562,10 +562,10 @@ const RltEnvios = () => {
     };
 
     useEffect(() => {
-        if (emissoes?.data) {
-            setData(emissoes.data);
+        if (emissoesFiltradas?.data) {
+            setData(emissoesFiltradas.data);
         }
-    }, [emissoes]);
+    }, [emissoesFiltradas]);
 
     const handlePageChange = async (pageNumber: number) => {
         setPage(pageNumber);
@@ -634,7 +634,7 @@ const RltEnvios = () => {
                     icon: <Filter size={22} />,
                 },
             ]}
-            data={emissoes?.data && emissoes.data.length > 0 ? emissoes.data : []}
+            data={emissoesFiltradas?.data && emissoesFiltradas.data.length > 0 ? emissoesFiltradas.data : []}
         >
             {isLoading ? <LoadSpinner mensagem="Carregando..." /> : null}
             
@@ -991,7 +991,7 @@ const RltEnvios = () => {
                             />
                         </div>
                         <div className="py-3">
-                            <PaginacaoCustom meta={emissoes?.meta} onPageChange={handlePageChange} />
+                            <PaginacaoCustom meta={emissoesFiltradas?.meta} onPageChange={handlePageChange} />
                         </div>
                     </>
                 )}
