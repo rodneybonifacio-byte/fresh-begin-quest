@@ -153,13 +153,18 @@ serve(async (req) => {
     
     console.log(`📊 Total de etiquetas brutas da API: ${emissoesBrutas.length}`);
 
-    // Filtrar por remetenteNome contendo o texto buscado (normalizado, sem acentos)
-    const normalizar = (str: string) => str?.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim() || '';
+    // Filtrar por remetenteNome com correspondência exata normalizada
+    const normalizar = (str: string) => str
+      ?.normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ')
+      .toUpperCase()
+      .trim() || '';
     const remetenteNormalizado = normalizar(remetente);
     
     const emissoes = emissoesBrutas.filter((e: any) => {
-      const nomeRemetente = normalizar(e.remetenteNome || '');
-      return nomeRemetente.includes(remetenteNormalizado) || remetenteNormalizado.includes(nomeRemetente);
+      const nomeRemetente = normalizar(e.remetenteNome || e.remetente?.nome || '');
+      return nomeRemetente === remetenteNormalizado;
     });
     
     console.log(`📊 Após filtro por "${remetente}": ${emissoes.length} etiquetas`);
