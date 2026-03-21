@@ -105,24 +105,22 @@ serve(async (req) => {
     const loginData = await loginResponse.json();
     const adminToken = loginData.token;
 
-    // Buscar etiquetas do OPERA KIDS de HOJE criadas após 12h00
-    // IMPORTANTE: Sempre usa a data de hoje e filtra por horário >= 12:00
-    const dataHoje = new Date().toISOString().split('T')[0];
+    // Buscar etiquetas do OPERA KIDS na data especificada (ou hoje) criadas após 12h00
+    const dataFiltro = data || new Date().toISOString().split('T')[0];
     const remetente = remetenteNome || 'OPERA KIDS';
     
-    // Criar timestamp de 12:00 de hoje para comparação
-    const hoje12h = new Date();
-    hoje12h.setHours(12, 0, 0, 0);
+    // Criar timestamp de 12:00 da data filtrada para comparação
+    const filtro12h = new Date(dataFiltro + 'T12:00:00');
     
-    console.log(`📦 Buscando etiquetas de "${remetente}" do dia ${dataHoje} criadas após 12:00...`);
-    console.log(`⏰ Filtro de horário: >= ${hoje12h.toISOString()}`);
+    console.log(`📦 Buscando etiquetas de "${remetente}" do dia ${dataFiltro} criadas após 12:00...`);
+    console.log(`⏰ Filtro de horário: >= ${filtro12h.toISOString()}`);
 
     // Buscar emissões usando endpoint admin com filtros corretos
     // Formato: /emissoes/admin?remetenteNome=X&dataInicio=Y&dataFim=Z
     const searchParams = new URLSearchParams({
       remetenteNome: remetente,
-      dataInicio: dataHoje,
-      dataFim: dataHoje,
+      dataInicio: dataFiltro,
+      dataFim: dataFiltro,
       limit: '1000',
       offset: '0',
     });
@@ -166,7 +164,7 @@ serve(async (req) => {
       }
       
       const dataCriacao = new Date(criadoEm);
-      const apos12h = dataCriacao >= hoje12h;
+      const apos12h = dataCriacao >= filtro12h;
       
       if (!apos12h) {
         console.log(`⏰ Etiqueta ${e.codigoObjeto} criada às ${dataCriacao.toLocaleTimeString('pt-BR')} (antes das 12h), ignorando`);
@@ -182,7 +180,7 @@ serve(async (req) => {
         JSON.stringify({ 
           success: true, 
           message: 'Nenhuma etiqueta encontrada com os filtros especificados',
-          filtros: { remetente, data: dataHoje, horaMinima: '12:00' },
+          filtros: { remetente, data: dataFiltro, horaMinima: '12:00' },
           debug: { totalBruto: emissoesBrutas.length }
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
