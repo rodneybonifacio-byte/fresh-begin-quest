@@ -402,9 +402,20 @@ Deno.serve(async (req: Request) => {
     // Deduplicação: buscar códigos já notificados nos últimos 30 dias
     const jaNotificados = await buscarJaNotificados();
 
-    // Filtrar emissões com código de rastreio e que não foram notificadas
-    const emissoesComCodigo = emissoesEmTransito.filter(e => e.codigoObjeto && !jaNotificados.has(e.codigoObjeto));
-    console.log(`[CRON-ATRASO] ${emissoesComCodigo.length} emissões para verificar (${jaNotificados.size} já notificadas)`);
+    // Buscar códigos que já receberam "saiu para entrega" nas últimas 24h
+    const saiuParaEntrega = await buscarSaiuParaEntregaHoje();
+
+    // Filtrar emissões: excluir já notificadas E que já estão "saiu para entrega"
+    const emissoesComCodigo = emissoesEmTransito.filter(e => {
+      if (!e.codigoObjeto) return false;
+      if (jaNotificados.has(e.codigoObjeto)) return false;
+      if (saiuParaEntrega.has(e.codigoObjeto)) {
+        console.log(`🚛 Ignorando ${e.codigoObjeto}: já saiu para entrega`);
+        return false;
+      }
+      return true;
+    });
+    console.log(`[CRON-ATRASO] ${emissoesComCodigo.length} emissões para verificar (${jaNotificados.size} já notificadas, ${saiuParaEntrega.size} saiu p/ entrega)`);
 
     let enviados = 0;
     let pipelineAtualizados = 0;
