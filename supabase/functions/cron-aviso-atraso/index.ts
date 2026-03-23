@@ -222,6 +222,38 @@ async function buscarJaNotificados(): Promise<Set<string>> {
 }
 
 /**
+ * Busca códigos que receberam notificação de "saiu_para_entrega" nas últimas 24h
+ * para evitar enviar atraso para quem já está na rota de entrega
+ */
+async function buscarSaiuParaEntregaHoje(): Promise<Set<string>> {
+  const desde = new Date();
+  desde.setDate(desde.getDate() - 1); // últimas 24h
+
+  const { data: msgs } = await supabase
+    .from('whatsapp_messages')
+    .select('metadata')
+    .eq('direction', 'outbound')
+    .eq('content_type', 'hsm')
+    .gte('created_at', desde.toISOString())
+    .limit(1000);
+
+  const codigos = new Set<string>();
+
+  if (msgs) {
+    for (const msg of msgs) {
+      const meta = msg.metadata as any;
+      if (meta?.trigger_key === 'saiu_para_entrega') {
+        const code = meta?.variables?.codigo_rastreio || meta?.tracking_code;
+        if (code) codigos.add(code);
+      }
+    }
+  }
+
+  console.log(`🚛 ${codigos.size} códigos com "saiu para entrega" nas últimas 24h (serão ignorados)`);
+  return codigos;
+}
+
+/**
  * Busca dados de rastreio para obter previsão de entrega
  */
 async function fetchRastreio(token: string, codigoObjeto: string): Promise<any | null> {
@@ -370,9 +402,20 @@ Deno.serve(async (req: Request) => {
     // Deduplicação: buscar códigos já notificados nos últimos 30 dias
     const jaNotificados = await buscarJaNotificados();
 
-    // Filtrar emissões com código de rastreio e que não foram notificadas
-    const emissoesComCodigo = emissoesEmTransito.filter(e => e.codigoObjeto && !jaNotificados.has(e.codigoObjeto));
-    console.log(`[CRON-ATRASO] ${emissoesComCodigo.length} emissões para verificar (${jaNotificados.size} já notificadas)`);
+    // Buscar códigos que já receberam "saiu para entrega" nas últimas 24h
+    const saiuParaEntrega = await buscarSaiuParaEntregaHoje();
+
+    // Filtrar emissões: excluir já notificadas E que já estão "saiu para entrega"
+    const emissoesComCodigo = emissoesEmTransito.filter(e => {
+      if (!e.codigoObjeto) return false;
+      if (jaNotificados.has(e.codigoObjeto)) return false;
+      if (saiuParaEntrega.has(e.codigoObjeto)) {
+        console.log(`🚛 Ignorando ${e.codigoObjeto}: já saiu para entrega`);
+        return false;
+      }
+      return true;
+    });
+    console.log(`[CRON-ATRASO] ${emissoesComCodigo.length} emissões para verificar (${jaNotificados.size} já notificadas, ${saiuParaEntrega.size} saiu p/ entrega)`);
 
     let enviados = 0;
     let pipelineAtualizados = 0;
@@ -385,9 +428,21 @@ Deno.serve(async (req: Request) => {
 
       const results = await Promise.allSettled(
         batch.map(async (emissao) => {
-          // Consultar rastreio para obter previsão real
+          // Consultar rastreio para obter previsão real e status atual
           const rastreio = await fetchRastreio(token, emissao.codigoObjeto);
           const dataPrevisao = rastreio?.data?.dataPrevisaoEntrega || emissao.dataPrevisaoEntrega;
+
+          // Verificar se o último evento indica "saiu para entrega"
+          const eventos = rastreio?.data?.eventos || [];
+          if (eventos.length > 0) {
+            const ultimoEvento = eventos[0];
+            const codigoEvento = ultimoEvento?.codigo || '';
+            // BDE-OEC-01 = Saiu para entrega ao destinatário
+            if (codigoEvento === 'BDE-OEC-01' || (ultimoEvento?.descricao || '').toLowerCase().includes('saiu para entrega')) {
+              console.log(`🚛 Ignorando ${emissao.codigoObjeto}: rastreio indica saiu para entrega`);
+              return { sent: false, pipeline: false };
+            }
+          }
 
           if (!dataPrevisao || !isAtrasado(dataPrevisao)) {
             return { sent: false, pipeline: false };
