@@ -428,9 +428,21 @@ Deno.serve(async (req: Request) => {
 
       const results = await Promise.allSettled(
         batch.map(async (emissao) => {
-          // Consultar rastreio para obter previsão real
+          // Consultar rastreio para obter previsão real e status atual
           const rastreio = await fetchRastreio(token, emissao.codigoObjeto);
           const dataPrevisao = rastreio?.data?.dataPrevisaoEntrega || emissao.dataPrevisaoEntrega;
+
+          // Verificar se o último evento indica "saiu para entrega"
+          const eventos = rastreio?.data?.eventos || [];
+          if (eventos.length > 0) {
+            const ultimoEvento = eventos[0];
+            const codigoEvento = ultimoEvento?.codigo || '';
+            // BDE-OEC-01 = Saiu para entrega ao destinatário
+            if (codigoEvento === 'BDE-OEC-01' || (ultimoEvento?.descricao || '').toLowerCase().includes('saiu para entrega')) {
+              console.log(`🚛 Ignorando ${emissao.codigoObjeto}: rastreio indica saiu para entrega`);
+              return { sent: false, pipeline: false };
+            }
+          }
 
           if (!dataPrevisao || !isAtrasado(dataPrevisao)) {
             return { sent: false, pipeline: false };
