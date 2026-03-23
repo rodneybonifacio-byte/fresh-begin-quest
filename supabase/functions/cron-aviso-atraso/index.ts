@@ -222,6 +222,38 @@ async function buscarJaNotificados(): Promise<Set<string>> {
 }
 
 /**
+ * Busca códigos que receberam notificação de "saiu_para_entrega" nas últimas 24h
+ * para evitar enviar atraso para quem já está na rota de entrega
+ */
+async function buscarSaiuParaEntregaHoje(): Promise<Set<string>> {
+  const desde = new Date();
+  desde.setDate(desde.getDate() - 1); // últimas 24h
+
+  const { data: msgs } = await supabase
+    .from('whatsapp_messages')
+    .select('metadata')
+    .eq('direction', 'outbound')
+    .eq('content_type', 'hsm')
+    .gte('created_at', desde.toISOString())
+    .limit(1000);
+
+  const codigos = new Set<string>();
+
+  if (msgs) {
+    for (const msg of msgs) {
+      const meta = msg.metadata as any;
+      if (meta?.trigger_key === 'saiu_para_entrega') {
+        const code = meta?.variables?.codigo_rastreio || meta?.tracking_code;
+        if (code) codigos.add(code);
+      }
+    }
+  }
+
+  console.log(`🚛 ${codigos.size} códigos com "saiu para entrega" nas últimas 24h (serão ignorados)`);
+  return codigos;
+}
+
+/**
  * Busca dados de rastreio para obter previsão de entrega
  */
 async function fetchRastreio(token: string, codigoObjeto: string): Promise<any | null> {
