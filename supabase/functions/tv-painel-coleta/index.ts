@@ -100,10 +100,11 @@ serve(async (req) => {
     quatroDiasAtras.setHours(0, 0, 0, 0);
 
     // Clientes que ignoram o filtro de 4 dias
-    const BYPASS_4DIAS = ['OPERA KIDS', 'OPERAKIDS'];
+    const BYPASS_4DIAS = ['OPERA KIDS', 'OPERAKIDS', 'ÓPERA KIDS', 'ÓPERA'];
     const isBypass4Dias = (em: any): boolean => {
-      const nome = (em.remetenteNome || em.remetente?.nome || '').toUpperCase().trim();
-      return BYPASS_4DIAS.some(c => nome.includes(c));
+      const nome = (em.remetenteNome || em.remetente?.nome || '').toUpperCase().trim()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return BYPASS_4DIAS.some(c => nome.includes(c.normalize('NFD').replace(/[\u0300-\u036f]/g, '')));
     };
 
     const prePostadasRecentes = prePostadas.filter(em => {
