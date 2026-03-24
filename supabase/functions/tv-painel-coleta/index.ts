@@ -96,11 +96,20 @@ serve(async (req) => {
     quatroDiasAtras.setDate(now.getDate() - 4);
     quatroDiasAtras.setHours(0, 0, 0, 0);
 
+    // Clientes que ignoram o filtro de 4 dias
+    const BYPASS_4DIAS = ['OPERA KIDS', 'OPERAKIDS'];
+    const isBypass4Dias = (em: any): boolean => {
+      const nome = (em.remetenteNome || em.remetente?.nome || '').toUpperCase().trim();
+      return BYPASS_4DIAS.some(c => nome.includes(c));
+    };
+
     const prePostadasRecentes = prePostadas.filter(em => {
+      // Bypass do filtro de 4 dias para clientes específicos
+      if (isBypass4Dias(em)) return true;
       const dataEmissao = em.criadoEm || em.dataCriacao || em.dataEmissao || em.createdAt || em.created_at;
-      if (!dataEmissao) return true; // Se não tem data, mantém por segurança
+      if (!dataEmissao) return true;
       const dataObj = new Date(dataEmissao);
-      if (isNaN(dataObj.getTime())) return true; // Data inválida, mantém
+      if (isNaN(dataObj.getTime())) return true;
       if (dataObj < quatroDiasAtras) {
         console.log(`📅 Filtro 4 dias: removendo ${em.codigoObjeto} (data: ${dataEmissao})`);
         return false;
