@@ -865,8 +865,7 @@ serve(async (req) => {
       const shouldSuppressForAI = intentForAI.isPassive;
 
       if (isPassiveHSM && shouldSuppressForAI) {
-        shouldCallAI = false;
-        console.log("⏭️ Inbound passivo após HSM — verificando se é confirmação de entrega:", conversation.id);
+        console.log("⏭️ Inbound passivo após HSM — verificando tipo:", conversation.id);
 
         // Buscar último HSM para saber o trigger_key
         const { data: lastHsmMsg } = await supabase
@@ -883,66 +882,40 @@ serve(async (req) => {
         const hsmVars = (lastHsmMsg?.metadata as any)?.variables || {};
         const isDeliveryRelated = ["saiu_para_entrega", "entregue", "aguardando_retirada"].includes(hsmTriggerKey);
         const isNPSRelated = hsmTriggerKey === "avaliacao";
+        const isDelayRelated = hsmTriggerKey === "atraso";
 
-        if (isDeliveryRelated || isNPSRelated) {
-          const accessKey = channel?.access_key || Deno.env.get("MESSAGEBIRD_ACCESS_KEY");
-          const mbChannelId = channel?.channel_id || Deno.env.get("MESSAGEBIRD_CHANNEL_ID");
-          const firstName = (contactName || "").split(" ")[0] || "amigo";
+        // REGRA CRÍTICA: Respostas após HSM de ATRASO devem SEMPRE ir para a IA
+        // O cliente provavelmente quer saber mais sobre o problema
+        if (isDelayRelated) {
+          shouldCallAI = true;
+          console.log(`🚨 Resposta após HSM de ATRASO — encaminhando para IA: ${conversation.id}`);
+          // Reabrir conversa e ativar IA
+          await supabase
+            .from("whatsapp_conversations")
+            .update({ ai_enabled: true, status: "open" })
+            .eq("id", conversation.id);
+          conversation.ai_enabled = true;
+        } else {
+          // Verificar se é CONFIRMAÇÃO EXPLÍCITA de entrega vs SAUDAÇÃO
+          const normalizedMsg = (messageContent || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+          const deliveryConfirmationPatterns = [
+            "recebi", "recebido", "recebi sim", "ja recebi", "chegou", "ja chegou",
+            "chegou sim", "recebemos", "ja recebemos", "tudo certo", "tudo ok",
+            "recebi tudo", "chegou tudo", "perfeito", "recebido com sucesso",
+          ];
+          const isExplicitDeliveryConfirmation = deliveryConfirmationPatterns.some(p => normalizedMsg.includes(p));
+          const isGreeting = /^(boa?\s*(tarde|noite|dia)|oi|ola|hey|eai)$/i.test(normalizedMsg.replace(/[!.,]/g, ""));
 
-          if (isNPSRelated) {
-            // === RESPOSTA AO TEMPLATE DE AVALIAÇÃO ===
-            console.log(`⭐ Feedback de avaliação recebido de ${contactName}: "${messageContent}"`);
-            const thankYouMsg = `Muito obrigada pelo seu feedback, ${firstName}! 💛 Sua opinião é muito importante pra gente. Conte sempre com a gente!`;
-
-            try {
-              const mbResp = await fetch("https://conversations.messagebird.com/v1/send", {
-                method: "POST",
-                headers: {
-                  Authorization: `AccessKey ${accessKey}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  to: normalizedPhone,
-                  from: mbChannelId,
-                  type: "text",
-                  content: { text: thankYouMsg },
-                }),
-              });
-              const mbResult = await mbResp.json();
-              console.log("✅ Agradecimento NPS enviado:", mbResult.id || "ok");
-
-              await supabase.from("whatsapp_messages").insert({
-                conversation_id: conversation.id,
-                messagebird_id: mbResult.id || null,
-                direction: "outbound",
-                content_type: "text",
-                content: thankYouMsg,
-                status: "sent",
-                sent_by: "system",
-                ai_generated: false,
-              });
-            } catch (npsErr) {
-              console.warn("⚠️ Erro ao enviar agradecimento NPS:", npsErr);
-            }
-
-            // Atualizar pipeline card com sentimento positivo se elogio
-            await supabase
-              .from("ai_support_pipeline")
-              .update({
-                sentiment: "positivo",
-                status: "agradecido",
-                resolution: `Feedback positivo do cliente: "${(messageContent || "").substring(0, 200)}"`,
-                updated_at: new Date().toISOString(),
-              })
-              .eq("conversation_id", conversation.id)
-              .eq("category", "elogio");
-
-          } else {
-            // === CONFIRMAÇÃO DE ENTREGA (saiu_para_entrega, entregue, aguardando_retirada) ===
-            console.log(`🎉 Confirmação de entrega detectada! Trigger: ${hsmTriggerKey}, Contato: ${contactName}`);
+          if (isDeliveryRelated && isExplicitDeliveryConfirmation && !isGreeting) {
+            // === CONFIRMAÇÃO EXPLÍCITA DE ENTREGA ===
+            shouldCallAI = false;
+            console.log(`🎉 Confirmação de entrega EXPLÍCITA detectada! Trigger: ${hsmTriggerKey}, Contato: ${contactName}`);
+            const firstName = (contactName || "").split(" ")[0] || "amigo";
             const positiveMsg = `Que bom que chegou, ${firstName}! 😊 Ficamos felizes! Se precisar de algo, é só chamar.`;
 
             try {
+              const accessKey = channel?.access_key || Deno.env.get("MESSAGEBIRD_ACCESS_KEY");
+              const mbChannelId = channel?.channel_id || Deno.env.get("MESSAGEBIRD_CHANNEL_ID");
               const mbResp = await fetch("https://conversations.messagebird.com/v1/send", {
                 method: "POST",
                 headers: {
@@ -1001,30 +974,121 @@ serve(async (req) => {
               }
             }
 
-            // DISPARAR TEMPLATE DE AVALIAÇÃO
-            // A avaliação oficial deve sair apenas pelo cron; não disparar inline aqui
             console.log(`⏭️ Avaliação será enviada apenas pelo cron para ${normalizedPhone} (${trackingCode})`);
+
+            // Fechar conversa após confirmação de entrega
+            await supabase
+              .from("whatsapp_conversations")
+              .update({ ai_enabled: false, status: "closed" })
+              .eq("id", conversation.id);
+            conversation.ai_enabled = false;
+            await supabase
+              .from("whatsapp_tickets")
+              .update({ status: "closed", closed_at: new Date().toISOString() })
+              .eq("conversation_id", conversation.id)
+              .in("status", ["open", "pending", "pending_close"]);
+            await supabase
+              .from("ai_support_pipeline")
+              .update({ status: "concluido" })
+              .eq("conversation_id", conversation.id)
+              .neq("category", "rastreio")
+              .not("status", "in", '("concluido","fechado","cancelado","entregue")');
+
+          } else if (isDeliveryRelated && isGreeting) {
+            // === SAUDAÇÃO após HSM de entrega — NÃO assumir que chegou, ativar IA ===
+            shouldCallAI = true;
+            console.log(`👋 Saudação após HSM de entrega — ativando IA (NÃO assumir confirmação): ${conversation.id}`);
+            await supabase
+              .from("whatsapp_conversations")
+              .update({ ai_enabled: true, status: "open" })
+              .eq("id", conversation.id);
+            conversation.ai_enabled = true;
+
+          } else if (isNPSRelated) {
+            // === RESPOSTA AO TEMPLATE DE AVALIAÇÃO ===
+            shouldCallAI = false;
+            console.log(`⭐ Feedback de avaliação recebido de ${contactName}: "${messageContent}"`);
+            const firstName = (contactName || "").split(" ")[0] || "amigo";
+            const accessKey = channel?.access_key || Deno.env.get("MESSAGEBIRD_ACCESS_KEY");
+            const mbChannelId = channel?.channel_id || Deno.env.get("MESSAGEBIRD_CHANNEL_ID");
+            const thankYouMsg = `Muito obrigada pelo seu feedback, ${firstName}! 💛 Sua opinião é muito importante pra gente. Conte sempre com a gente!`;
+
+            try {
+              const mbResp = await fetch("https://conversations.messagebird.com/v1/send", {
+                method: "POST",
+                headers: {
+                  Authorization: `AccessKey ${accessKey}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  to: normalizedPhone,
+                  from: mbChannelId,
+                  type: "text",
+                  content: { text: thankYouMsg },
+                }),
+              });
+              const mbResult = await mbResp.json();
+              console.log("✅ Agradecimento NPS enviado:", mbResult.id || "ok");
+
+              await supabase.from("whatsapp_messages").insert({
+                conversation_id: conversation.id,
+                messagebird_id: mbResult.id || null,
+                direction: "outbound",
+                content_type: "text",
+                content: thankYouMsg,
+                status: "sent",
+                sent_by: "system",
+                ai_generated: false,
+              });
+            } catch (npsErr) {
+              console.warn("⚠️ Erro ao enviar agradecimento NPS:", npsErr);
+            }
+
+            await supabase
+              .from("ai_support_pipeline")
+              .update({
+                sentiment: "positivo",
+                status: "agradecido",
+                resolution: `Feedback positivo do cliente: "${(messageContent || "").substring(0, 200)}"`,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("conversation_id", conversation.id)
+              .eq("category", "elogio");
+
+            // Fechar conversa
+            await supabase
+              .from("whatsapp_conversations")
+              .update({ ai_enabled: false, status: "closed" })
+              .eq("id", conversation.id);
+            conversation.ai_enabled = false;
+            await supabase
+              .from("whatsapp_tickets")
+              .update({ status: "closed", closed_at: new Date().toISOString() })
+              .eq("conversation_id", conversation.id)
+              .in("status", ["open", "pending", "pending_close"]);
+
+          } else {
+            // Passivo genérico após HSM não-delivery — suprimir silenciosamente
+            shouldCallAI = false;
+            console.log(`⏭️ Inbound passivo após resposta IA — suprimindo: ${conversation.id} msg: ${messageContent}`);
+            await supabase
+              .from("whatsapp_conversations")
+              .update({ ai_enabled: false, status: "closed" })
+              .eq("id", conversation.id);
+            conversation.ai_enabled = false;
+            await supabase
+              .from("whatsapp_tickets")
+              .update({ status: "closed", closed_at: new Date().toISOString() })
+              .eq("conversation_id", conversation.id)
+              .in("status", ["open", "pending", "pending_close"]);
+            await supabase
+              .from("ai_support_pipeline")
+              .update({ status: "concluido" })
+              .eq("conversation_id", conversation.id)
+              .neq("category", "rastreio")
+              .not("status", "in", '("concluido","fechado","cancelado","entregue")');
           }
         }
-
-        // Fechar conversa
-        await supabase
-          .from("whatsapp_conversations")
-          .update({ ai_enabled: false, status: "closed" })
-          .eq("id", conversation.id);
-        conversation.ai_enabled = false;
-        // Fechar tickets e pipeline (non-rastreio)
-        await supabase
-          .from("whatsapp_tickets")
-          .update({ status: "closed", closed_at: new Date().toISOString() })
-          .eq("conversation_id", conversation.id)
-          .in("status", ["open", "pending", "pending_close"]);
-        await supabase
-          .from("ai_support_pipeline")
-          .update({ status: "concluido" })
-          .eq("conversation_id", conversation.id)
-          .neq("category", "rastreio")
-          .not("status", "in", '("concluido","fechado","cancelado","entregue")');
       }
     }
 
