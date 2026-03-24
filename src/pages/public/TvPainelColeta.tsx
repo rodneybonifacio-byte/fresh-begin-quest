@@ -753,10 +753,11 @@ const TvBoard = () => {
 
       const now = Date.now();
       const FOUR_DAYS_MS = 4 * 24 * 60 * 60 * 1000;
-      const BYPASS_4DIAS_FE = ['OPERA KIDS', 'OPERAKIDS'];
+      const BYPASS_4DIAS_FE = ['OPERA KIDS', 'OPERAKIDS', 'ÓPERA KIDS'];
       const filtrada = lista.filter(et => {
-        const nomeRem = (et.remetenteNome || et.remetente?.nome || '').toUpperCase().trim();
-        if (BYPASS_4DIAS_FE.some(c => nomeRem.includes(c))) return true;
+        const nomeRem = (et.remetenteNome || et.remetente?.nome || '').toUpperCase().trim()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        if (BYPASS_4DIAS_FE.some(c => nomeRem.includes(c.normalize('NFD').replace(/[\u0300-\u036f]/g, '')))) return true;
         if (!et.criadoEm) return true;
         const criado = new Date(et.criadoEm).getTime();
         return (now - criado) <= FOUR_DAYS_MS;
@@ -842,10 +843,10 @@ const TvBoard = () => {
   });
 
   // Clientes forçados para coluna "Hoje"
-  const FORCE_TODAY_CLIENTS = ['OPERA KIDS', 'OPERAKIDS'];
+  const FORCE_TODAY_CLIENTS = ['OPERA KIDS', 'OPERAKIDS', 'ÓPERA KIDS'];
   const isForceToday = (nome: string): boolean => {
-    const upper = nome.toUpperCase().trim();
-    return FORCE_TODAY_CLIENTS.some(c => upper.includes(c));
+    const upper = nome.toUpperCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return FORCE_TODAY_CLIENTS.some(c => upper.includes(c.normalize('NFD').replace(/[\u0300-\u036f]/g, '')));
   };
 
   for (const et of dataFiltrada) {
