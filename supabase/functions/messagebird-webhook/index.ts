@@ -654,9 +654,20 @@ serve(async (req) => {
         // Mídia (documentos, imagens, áudios, vídeos) são SEMPRE consideradas ACTIVE
         // pois o classificador de texto retornaria PASSIVE para conteúdo vazio
         const isMediaMessage = ["image", "video", "document", "audio", "location", "sticker"].includes(contentType);
+        
+        // Detectar sinais de urgência/cobrança: "?", "??", "responde", "alo", "cadê"
+        // Quando a conversa está aberta ou teve IA recente, essas mensagens são ACTIVE
+        const urgencySignals = /^(\?+|responde|alo+|cade|helo+|oi\?+|e ai\?*)$/i;
+        const isUrgencyFollowUp = urgencySignals.test(normalizedInbound);
+        const hadRecentAIResponse = !!lastOutbound?.ai_generated && lastOutbound?.created_at &&
+          (Date.now() - new Date(lastOutbound.created_at).getTime()) < 10 * 60 * 1000; // 10 min
+        
         if (isSimpleGreeting && (hasTrackingContext || hasCriticalTrackingTrigger)) {
           intentResult = { isPassive: false, confidence: 0.95, reason: "greeting_with_tracking_context" };
           console.log("🎯 Saudação com contexto logístico tratada como ACTIVE:", conversation.id, messageContent);
+        } else if (isUrgencyFollowUp && hadRecentAIResponse) {
+          intentResult = { isPassive: false, confidence: 0.95, reason: "urgency_followup_after_ai" };
+          console.log("🎯 Cobrança/urgência após IA recente tratada como ACTIVE:", conversation.id, messageContent);
         } else if (isMediaMessage) {
           intentResult = { isPassive: false, confidence: 1.0, reason: "media_always_active" };
           console.log(`🎯 Mídia (${contentType}) tratada como ACTIVE automaticamente`);
