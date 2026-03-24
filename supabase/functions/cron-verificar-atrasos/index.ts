@@ -231,7 +231,7 @@ async function limparEmissoesEntregues(supabase: any, token: string): Promise<nu
   console.log(`[CRON-ATRASOS] Verificando ${registrosAtraso.length} registros de atraso...`)
   
   let removidos = 0
-  const statusFinais = ['ENTREGUE', 'DEVOLVIDO', 'CANCELADO', 'EXTRAVIADO']
+  const statusFinais = ['ENTREGUE', 'DEVOLVIDO', 'CANCELADO', 'EXTRAVIADO', 'SAIU_PARA_ENTREGA']
   
   for (const registro of registrosAtraso) {
     try {
@@ -344,6 +344,27 @@ serve(async (req: Request) => {
           const rastreio = await fetchRastreio(token, emissao.codigoObjeto)
           
           if (!rastreio?.data?.dataPrevisaoEntrega) {
+            return false
+          }
+
+          // Verificar se o objeto já saiu para entrega (evento BDE/OEC ou descrição)
+          const eventos = rastreio?.data?.eventos || []
+          const saiuParaEntrega = eventos.some((ev: any) => {
+            const desc = (ev.descricao || '').toLowerCase()
+            const codigo = (ev.codigo || '').toUpperCase()
+            return desc.includes('saiu para entrega') || 
+                   desc.includes('objeto saiu para entrega') ||
+                   codigo === 'BDE-OEC-01' ||
+                   (codigo.startsWith('BDE') && desc.includes('entrega'))
+          })
+
+          if (saiuParaEntrega) {
+            console.log(`[CRON-ATRASOS] Ignorando ${emissao.codigoObjeto} - já saiu para entrega`)
+            // Se já estava na tabela de atrasos, remover
+            await supabase
+              .from('emissoes_em_atraso')
+              .delete()
+              .eq('emissao_id', emissao.id)
             return false
           }
 
