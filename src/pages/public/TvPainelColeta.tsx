@@ -843,10 +843,10 @@ const TvBoard = () => {
   });
 
   // Clientes forçados para coluna "Hoje"
-  const FORCE_TODAY_CLIENTS = ['OPERA KIDS', 'OPERAKIDS'];
+  const FORCE_TODAY_CLIENTS = ['OPERA KIDS', 'OPERAKIDS', 'ÓPERA KIDS'];
   const isForceToday = (nome: string): boolean => {
-    const upper = nome.toUpperCase().trim();
-    return FORCE_TODAY_CLIENTS.some(c => upper.includes(c));
+    const upper = nome.toUpperCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return FORCE_TODAY_CLIENTS.some(c => upper.includes(c.normalize('NFD').replace(/[\u0300-\u036f]/g, '')));
   };
 
   for (const et of dataFiltrada) {
