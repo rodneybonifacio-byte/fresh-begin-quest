@@ -89,6 +89,9 @@ serve(async (req) => {
     // 1. Buscar etiquetas PRE_POSTADO
     const prePostadas = await fetchAllByStatus(status);
     console.log(`✅ ${prePostadas.length} etiquetas ${status} (antes do filtro de 4 dias)`);
+    // Log remetentes únicos para debug
+    const remetentesUnicos = new Set(prePostadas.map((em: any) => (em.remetenteNome || em.remetente?.nome || 'SEM_NOME').toUpperCase().trim()));
+    console.log(`📋 Remetentes PRE_POSTADO: ${[...remetentesUnicos].join(', ')}`);
 
     // 1b. Filtrar por limite de 4 dias — remover etiquetas muito antigas
     const now = new Date();
