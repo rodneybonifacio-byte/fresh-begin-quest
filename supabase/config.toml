@@ -200,3 +200,6 @@ verify_jwt = false
 
 [functions.realizar-fechamento]
 verify_jwt = false
+
+[functions.tv-painel-coleta]
+verify_jwt = false
