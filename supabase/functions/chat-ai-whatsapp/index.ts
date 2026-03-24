@@ -653,6 +653,171 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
         }
       }
 
+      // ── Emitir Etiqueta (gerar etiqueta completa via IA) ──
+      case "emitir_etiqueta": {
+        // 1. Identificar cliente
+        let clienteId = args.cliente_id;
+        if (!clienteId) clienteId = await resolveClienteId(supabase, contactPhone);
+        if (!clienteId) return "Não consegui identificar o cliente. Peça o CPF/CNPJ ou e-mail primeiro.";
+
+        // 2. Validar campos obrigatórios
+        if (!args.destinatario_nome) return "Preciso do nome do destinatário.";
+        if (!args.destinatario_cpf_cnpj) return "Preciso do CPF/CNPJ do destinatário.";
+        if (!args.destinatario_celular) return "Preciso do celular do destinatário.";
+        if (!args.destinatario_cep) return "Preciso do CEP do destinatário.";
+        if (!args.destinatario_logradouro) return "Preciso do logradouro (rua/avenida) do destinatário.";
+        if (!args.destinatario_numero) return "Preciso do número do endereço.";
+        if (!args.destinatario_bairro) return "Preciso do bairro do destinatário.";
+        if (!args.destinatario_cidade) return "Preciso da cidade do destinatário.";
+        if (!args.destinatario_uf) return "Preciso do estado (UF) do destinatário.";
+        if (!args.servico) return "Preciso do serviço de frete (ex: SEDEX, PAC).";
+        if (!args.peso || args.peso <= 0) return "Preciso do peso em kg.";
+
+        // 3. Obter remetente
+        let remetenteId = args.remetente_id;
+        if (!remetenteId) {
+          const { data: remetentes } = await supabase
+            .from("remetentes")
+            .select("id, nome, cep")
+            .eq("cliente_id", clienteId)
+            .limit(1);
+          if (!remetentes || remetentes.length === 0) return "Nenhum remetente cadastrado para esse cliente.";
+          remetenteId = remetentes[0].id;
+        }
+
+        // 4. Obter CEP do remetente
+        const { data: remetenteData } = await supabase
+          .from("remetentes")
+          .select("cep, nome")
+          .eq("id", remetenteId)
+          .single();
+        if (!remetenteData?.cep) return "O remetente não tem CEP cadastrado. Não é possível gerar a etiqueta.";
+
+        const token = await getAdminToken();
+        if (!token) return "Erro interno ao gerar etiqueta.";
+        const BASE_API_URL = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br";
+
+        // 5. Fazer cotação para obter código do serviço e preço
+        const cepOrigem = remetenteData.cep.replace(/\D/g, "");
+        const cepDestino = (args.destinatario_cep || "").replace(/\D/g, "");
+        const peso = Number(args.peso) || 0.3;
+        const altura = Number(args.altura) || 2;
+        const largura = Number(args.largura) || 11;
+        const comprimento = Number(args.comprimento) || 16;
+
+        const cotResp = await fetch(`${BASE_API_URL}/frete/cotacao`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            cepOrigem, cepDestino,
+            embalagem: { peso, altura, largura, comprimento },
+            valorDeclarado: 0, clienteId,
+          }),
+        });
+        if (!cotResp.ok) return `Erro na cotação: ${cotResp.status}. Verifique os CEPs.`;
+        const cotResult = await cotResp.json();
+        const opcoes = cotResult.data || [];
+        if (opcoes.length === 0) return "Nenhuma opção de frete encontrada para esses CEPs.";
+
+        // Encontrar o serviço solicitado (SEDEX/PAC/etc)
+        const servicoNorm = (args.servico || "").toLowerCase().trim();
+        let cotacaoEscolhida = opcoes.find((op: any) => 
+          (op.nomeServico || "").toLowerCase().includes(servicoNorm)
+        );
+        if (!cotacaoEscolhida) {
+          // Fallback: pegar o primeiro
+          cotacaoEscolhida = opcoes[0];
+        }
+
+        // 6. Verificar saldo
+        const valorEtiqueta = Number(cotacaoEscolhida.valorTotal || cotacaoEscolhida.valor || 0);
+        const saldo = await supabase.rpc("calcular_saldo_disponivel", { p_cliente_id: clienteId });
+        const saldoDisponivel = Number(saldo.data ?? 0);
+        if (saldoDisponivel < valorEtiqueta) {
+          return `Saldo insuficiente! Saldo: R$ ${saldoDisponivel.toFixed(2)}, Valor da etiqueta: R$ ${valorEtiqueta.toFixed(2)} (${cotacaoEscolhida.nomeServico}). O cliente precisa fazer uma recarga.`;
+        }
+
+        // 7. Criar a emissão via API
+        const emissaoPayload = {
+          remetenteId,
+          cienteObjetoNaoProibido: true,
+          embalagem: { peso, altura, largura, comprimento, diametro: 0, quantidadeVolumes: 1 },
+          cotacao: {
+            ...cotacaoEscolhida,
+            transportadora: cotacaoEscolhida.transportadora || cotacaoEscolhida.codigoServico || (cotacaoEscolhida.nomeServico || "").toUpperCase(),
+            embalagem: { peso, comprimento, altura, largura, diametro: 0 },
+          },
+          logisticaReversa: "N",
+          valorDeclarado: 0,
+          valorNotaFiscal: 0,
+          itensDeclaracaoConteudo: [],
+          destinatario: {
+            nome: args.destinatario_nome,
+            cpfCnpj: (args.destinatario_cpf_cnpj || "").replace(/\D/g, ""),
+            celular: (args.destinatario_celular || "").replace(/\D/g, ""),
+            endereco: {
+              cep: cepDestino,
+              logradouro: args.destinatario_logradouro,
+              numero: args.destinatario_numero,
+              complemento: args.destinatario_complemento || "",
+              bairro: args.destinatario_bairro,
+              localidade: args.destinatario_cidade,
+              uf: (args.destinatario_uf || "").toUpperCase(),
+            },
+          },
+          quantidadeVolumes: 1,
+        };
+
+        console.log(`📦 Emitindo etiqueta via IA para ${args.destinatario_nome}...`);
+        const emissaoResp = await fetch(`${BASE_API_URL}/frete`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify(emissaoPayload),
+        });
+
+        if (!emissaoResp.ok) {
+          const errBody = await emissaoResp.text().catch(() => "");
+          console.error(`❌ Erro ao criar emissão: ${emissaoResp.status} - ${errBody}`);
+          return `Erro ao gerar etiqueta: ${emissaoResp.status}. ${errBody.substring(0, 200)}`;
+        }
+
+        const emissaoData = await emissaoResp.json();
+        const emissaoId = emissaoData?.data?.id || emissaoData?.id;
+        const codigoObjeto = emissaoData?.data?.codigoObjeto || emissaoData?.codigoObjeto || "";
+
+        if (!emissaoId) {
+          console.error("❌ Resposta sem ID:", JSON.stringify(emissaoData).substring(0, 500));
+          return "A emissão foi processada mas não retornou um ID. Verifique manualmente.";
+        }
+
+        console.log(`✅ Etiqueta criada! ID: ${emissaoId}, Código: ${codigoObjeto}`);
+
+        // 8. Gerar PDF da etiqueta
+        let linkEtiqueta = "";
+        try {
+          const pdfResp = await fetch(`${BASE_API_URL}/emissoes/${emissaoId}/imprimir/etiqueta`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (pdfResp.ok) {
+            const pdfData = await pdfResp.json();
+            linkEtiqueta = pdfData?.data?.linkEtiqueta || pdfData?.linkEtiqueta || "";
+          }
+        } catch (pdfErr: any) {
+          console.warn("⚠️ Erro ao gerar PDF:", pdfErr.message);
+        }
+
+        let result = `✅ Etiqueta gerada com sucesso!\n\n`;
+        result += `📦 Código: ${codigoObjeto || "Aguardando processamento"}\n`;
+        result += `👤 Destinatário: ${args.destinatario_nome}\n`;
+        result += `📍 ${args.destinatario_cidade}-${(args.destinatario_uf || "").toUpperCase()}\n`;
+        result += `🚚 Serviço: ${cotacaoEscolhida.nomeServico || args.servico}\n`;
+        result += `💰 Valor: R$ ${valorEtiqueta.toFixed(2)}\n`;
+        result += `⏱️ Prazo: ${cotacaoEscolhida.prazo || "?"} dias úteis\n`;
+        if (linkEtiqueta) result += `\n🔗 Link da etiqueta: ${linkEtiqueta}`;
+
+        return result;
+      }
+
       default:
         return `Ferramenta "${toolName}" não tem executor implementado.`;
     }
