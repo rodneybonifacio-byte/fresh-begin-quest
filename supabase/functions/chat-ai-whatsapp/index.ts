@@ -46,6 +46,18 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
   );
 
   try {
+    // ── Restrição de ferramentas sensíveis por telefone ──
+    const RESTRICTED_TOOLS: Record<string, string[]> = {
+      "emitir_etiqueta": ["5511911544095"],
+    };
+    if (RESTRICTED_TOOLS[toolName]) {
+      const allowedPhones = RESTRICTED_TOOLS[toolName];
+      const normalizedPhone = contactPhone.replace(/\D/g, "");
+      if (!allowedPhones.some(p => normalizedPhone.includes(p) || p.includes(normalizedPhone))) {
+        return `Desculpe, essa funcionalidade está disponível apenas para números autorizados. Entre em contato com o suporte.`;
+      }
+    }
+
     switch (toolName) {
       // ── Rastreio ──
       case "rastrear_objeto": {
