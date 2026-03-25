@@ -2900,8 +2900,93 @@ function formatTrackingForAI(rastreioData: any): string {
 }
 
 // ═══════════════════════════════════════════════════════════
-// HELPERS: Prompts padrão
+// HELPERS: Fuzzy Matching de Código de Rastreio
 // ═══════════════════════════════════════════════════════════
+
+function levenshteinDistance(a: string, b: string): number {
+  const matrix: number[][] = [];
+  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  return matrix[b.length][a.length];
+}
+
+async function findSimilarTrackingCode(supabase: any, inputCode: string, contactPhone: string, conversationId: string): Promise<string | null> {
+  const codesFound: string[] = [];
+  
+  // 1. Buscar códigos no histórico de mensagens da conversa
+  try {
+    const { data: msgs } = await supabase
+      .from("whatsapp_messages")
+      .select("content, metadata")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: false })
+      .limit(30);
+    
+    if (msgs) {
+      const trackingRegex = /\b[A-Z]{2}\d{9,13}[A-Z]{2}\b/g;
+      for (const msg of msgs) {
+        const matches = (msg.content || "").match(trackingRegex) || [];
+        codesFound.push(...matches);
+        // Check HSM metadata
+        const vars = (msg.metadata as any)?.variables || {};
+        if (vars.codigo_rastreio) codesFound.push(vars.codigo_rastreio);
+        if (vars.tracking_code) codesFound.push(vars.tracking_code);
+        if (vars.codigo_objeto) codesFound.push(vars.codigo_objeto);
+      }
+    }
+  } catch {}
+  
+  // 2. Buscar em pedidos_importados pelo telefone
+  try {
+    const normalized = (contactPhone || "").replace(/\D/g, "");
+    const { data: pedidos } = await supabase
+      .from("pedidos_importados")
+      .select("codigo_rastreio")
+      .or(`destinatario_telefone.ilike.%${normalized}%`)
+      .not("codigo_rastreio", "is", null)
+      .limit(10);
+    if (pedidos) {
+      codesFound.push(...pedidos.map((p: any) => p.codigo_rastreio));
+    }
+  } catch {}
+  
+  // Deduplicate and filter out the input code
+  const uniqueCodes = [...new Set(codesFound.filter(c => c && c !== inputCode))];
+  
+  if (uniqueCodes.length === 0) return null;
+  
+  // Find the most similar code (Levenshtein distance <= 2)
+  let bestMatch: string | null = null;
+  let bestDistance = Infinity;
+  
+  for (const code of uniqueCodes) {
+    const dist = levenshteinDistance(inputCode, code);
+    if (dist <= 2 && dist < bestDistance) {
+      bestDistance = dist;
+      bestMatch = code;
+    }
+  }
+  
+  if (bestMatch) {
+    console.log(`🔍 Fuzzy match: ${inputCode} → ${bestMatch} (distância: ${bestDistance})`);
+  }
+  
+  return bestMatch;
+}
+
 
 function getDefaultPrompt(agent: string): string {
   if (agent === "felipe") {
