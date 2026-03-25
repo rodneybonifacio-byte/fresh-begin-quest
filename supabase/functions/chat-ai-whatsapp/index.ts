@@ -62,7 +62,15 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
       // ── Rastreio ──
       case "rastrear_objeto": {
         const data = await fetchTrackingData(args.codigo_rastreio);
-        if (!data) return `Código ${args.codigo_rastreio} não retornou dados. Pode estar incorreto ou ainda não foi postado.`;
+        if (!data) {
+          // === FUZZY MATCHING: Se código não retorna dados, buscar similares ===
+          const inputCode = (args.codigo_rastreio || "").toUpperCase();
+          const suggestion = await findSimilarTrackingCode(supabase, inputCode, contactPhone, conversationId);
+          if (suggestion) {
+            return `Código ${inputCode} não retornou dados. Encontrei um código similar: ${suggestion}. Você quis dizer ${suggestion}?`;
+          }
+          return `Código ${inputCode} não retornou dados. Pode estar incorreto ou ainda não foi postado.`;
+        }
         return formatTrackingForAI(data);
       }
 
