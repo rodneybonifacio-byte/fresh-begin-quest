@@ -46,6 +46,24 @@ Deno.serve(async (req) => {
         continue;
       }
 
+      // === GUARD: Estender timeout para conversas com reclamação/disputa ativa ===
+      const { data: activePipeline } = await supabase
+        .from("ai_support_pipeline")
+        .select("id, category, status")
+        .eq("conversation_id", conv.id)
+        .in("category", ["reclamacao", "rastreio"])
+        .not("status", "in", '("concluido","fechado","cancelado","entregue")')
+        .limit(1);
+
+      if (activePipeline && activePipeline.length > 0) {
+        // Conversa com disputa ativa: estender para 30 min em vez de 5 min
+        const extendedCutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+        if (conv.last_message_at > extendedCutoff) {
+          console.log(`⏳ Conversa com disputa ativa, timeout estendido: ${conv.contact_name || conv.contact_phone}`);
+          continue;
+        }
+      }
+
       // Verificar se NÃO tem ticket ativo
       const { data: tickets } = await supabase
         .from("whatsapp_tickets")
