@@ -62,7 +62,15 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
       // ── Rastreio ──
       case "rastrear_objeto": {
         const data = await fetchTrackingData(args.codigo_rastreio);
-        if (!data) return `Código ${args.codigo_rastreio} não retornou dados. Pode estar incorreto ou ainda não foi postado.`;
+        if (!data) {
+          // === FUZZY MATCHING: Se código não retorna dados, buscar similares ===
+          const inputCode = (args.codigo_rastreio || "").toUpperCase();
+          const suggestion = await findSimilarTrackingCode(supabase, inputCode, contactPhone, conversationId);
+          if (suggestion) {
+            return `Código ${inputCode} não retornou dados. Encontrei um código similar: ${suggestion}. Você quis dizer ${suggestion}?`;
+          }
+          return `Código ${inputCode} não retornou dados. Pode estar incorreto ou ainda não foi postado.`;
+        }
         return formatTrackingForAI(data);
       }
 
@@ -899,28 +907,57 @@ serve(async (req) => {
       const isRealProblem = preHandoffKeywords.some(k => lowerMsg.includes(k));
       const isExplicitFelipeRequest = felipeExplicitKeywords.some(k => lowerMsg.includes(k));
 
-      if (isRealProblem && !isExplicitFelipeRequest) {
-        // Problema real detectado → transferência direta
-        console.log(`🔄 PRÉ-HANDOFF: Problema detectado em "${message.substring(0, 50)}..." → Felipe assume`);
+      // === GUARD: Verificar se já existe código de rastreio no contexto ===
+      // Se NÃO tem código de rastreio e é um problema genérico, Veronica deve coletar primeiro
+      const hasTrackingCodeInMsg = /\b[A-Z]{2}\d{9,13}[A-Z]{2}\b/.test(message || "");
+      
+      // Buscar se há código de rastreio no contexto da conversa (HSM ou histórico)
+      let hasTrackingCodeInContext = hasTrackingCodeInMsg;
+      if (!hasTrackingCodeInContext) {
+        const { data: recentHsm } = await supabase
+          .from("whatsapp_messages")
+          .select("metadata")
+          .eq("conversation_id", conversationId)
+          .eq("direction", "outbound")
+          .eq("content_type", "hsm")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (recentHsm?.metadata) {
+          const vars = (recentHsm.metadata as any)?.variables || {};
+          hasTrackingCodeInContext = !!(vars.codigo_rastreio || vars.tracking_code || vars.codigo_objeto);
+        }
+      }
 
-        const preHandoffChannel = await resolveChannelForConversation(conversationId);
-        if (preHandoffChannel) {
+      if (isRealProblem && !isExplicitFelipeRequest) {
+        // Só faz handoff direto se tem código de rastreio no contexto
+        // Caso contrário, Veronica coleta o código primeiro e depois o sistema fará o handoff
+        if (hasTrackingCodeInContext) {
+          console.log(`🔄 PRÉ-HANDOFF: Problema detectado + código disponível → Felipe assume`);
+
+          const preHandoffChannel = await resolveChannelForConversation(conversationId);
+          if (preHandoffChannel) {
+            await supabase.from("whatsapp_conversations")
+              .update({ active_agent: "felipe" })
+              .eq("id", conversationId);
+
+            await performHandoffToFelipe(supabase, conversationId, contactPhone, message, preHandoffChannel);
+
+            return new Response(
+              JSON.stringify({ ok: true, reply: "Handoff Veronica → Felipe realizado (áudio + análise)", tools_used: [] }),
+              { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+
+          agentName = "felipe";
           await supabase.from("whatsapp_conversations")
             .update({ active_agent: "felipe" })
             .eq("id", conversationId);
-
-          await performHandoffToFelipe(supabase, conversationId, contactPhone, message, preHandoffChannel);
-
-          return new Response(
-            JSON.stringify({ ok: true, reply: "Handoff Veronica → Felipe realizado (áudio + análise)", tools_used: [] }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+        } else {
+          console.log(`🔄 PRÉ-HANDOFF ADIADO: Problema detectado mas SEM código de rastreio → Veronica coleta primeiro`);
+          // Veronica vai responder normalmente e coletar o código antes do handoff
         }
-
-        agentName = "felipe";
-        await supabase.from("whatsapp_conversations")
-          .update({ active_agent: "felipe" })
-          .eq("id", conversationId);
 
       } else if (isExplicitFelipeRequest && !isRealProblem) {
         // Pedido explícito SEM problema claro → Veronica questiona antes de transferir
@@ -1434,7 +1471,7 @@ EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de a
     console.log("👤 Contexto de contato:", contactContext ? contactContext.substring(0, 120) : "NENHUM (não identificado)");
 
     const hojeFormatado = new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric" });
-    const enrichedSystemPrompt = systemPrompt + `\n\n📅 DATA DE HOJE: ${hojeFormatado}. Use esta data como referência para avaliar se prazos estão vencidos.` + "\n\nREGRA TÉCNICA: NÃO inclua prefixo como '*Veronica:*' ou '*Felipe:*' no início da sua resposta. O sistema adiciona automaticamente. Responda apenas com o conteúdo da mensagem." + "\n\n[REGRA DE NÚMERO ERRADO]\nSe a pessoa disser que o número não é dela, que não conhece o destinatário, que não fez nenhuma compra, ou qualquer variação de 'número errado':\n1. Peça desculpas de forma breve e educada\n2. Informe que o número será removido da base e que não receberá mais mensagens\n3. NÃO tente explicar o que é a BRHUB ou oferecer serviços\n4. NÃO envie mensagem longa. Máximo 2 frases.\n5. Exemplo: 'Peço desculpas pelo incômodo! Já estou removendo seu número da nossa base, você não receberá mais mensagens. Tenha um bom dia! 😊'" + "\n\n[REGRA DE REDIRECIONAMENTO — PRODUTOS, TROCA E LOJA]\nQuando o cliente perguntar sobre PRODUTOS, COMPRAS, CATÁLOGO, PREÇOS de produtos, ESTOQUE, TROCA DE PRODUTO, DEVOLUÇÃO DE PRODUTO, ou quiser COMPRAR algo na loja:\n1. Use a ferramenta 'buscar_remetentes_api' para buscar os dados cadastrais do remetente vinculado ao cliente\n2. A ferramenta SEMPRE retorna os dados completos (nome, telefone, email, endereço) quando o cliente está identificado. Use esses dados diretamente na resposta.\n3. Responda ao cliente orientando a entrar em contato direto com a loja remetente, fornecendo os dados retornados pela ferramenta.\n4. Exemplo: \"[Nome], para troca/devolução entre em contato direto com a loja [Nome do Remetente]! 📞 [celular/telefone] | 📍 [endereço completo] 😊\"\nIMPORTANTE: Essa regra se aplica APENAS a perguntas sobre produtos/compras/trocas/devoluções. Questões sobre ENVIO, RASTREIO, ETIQUETAS, CRÉDITOS continuam sendo atendidas normalmente por você.\nCRÍTICO: Se a ferramenta retornar dados do remetente, SEMPRE forneça esses dados ao cliente. NUNCA diga que não conseguiu localizar se a ferramenta retornou resultados.\nApenas se a ferramenta retornar 'Nenhum remetente cadastrado' ou 'Não consegui identificar o cliente', aí sim peça o nome ou CNPJ da loja." + "\n\n[REGRA DE RASTREIO E LINK OFICIAL]\nSe o cliente perguntar como rastrear, pedir o link de rastreio, ou disser que quer acompanhar o pedido, informe o link oficial https://brhubenvios.com.br/rastreio/encomenda?objeto=[CODIGO]. Se houver um código de referência ativo no contexto, substitua [CODIGO] pelo código correto. Se existirem vários códigos e o cliente falar no singular ('meu pedido', 'meu pacote', 'meu envio'), escolha apenas UM código prioritário e não misture respostas de códigos diferentes na mesma mensagem. Só mencione outro código se o cliente pedir explicitamente." + contactContext;
+    const enrichedSystemPrompt = systemPrompt + `\n\n📅 DATA DE HOJE: ${hojeFormatado}. Use esta data como referência para avaliar se prazos estão vencidos.` + "\n\nREGRA TÉCNICA: NÃO inclua prefixo como '*Veronica:*' ou '*Felipe:*' no início da sua resposta. O sistema adiciona automaticamente. Responda apenas com o conteúdo da mensagem." + "\n\n[REGRA DE NÚMERO ERRADO]\nSe a pessoa disser que o número não é dela, que não conhece o destinatário, que não fez nenhuma compra, ou qualquer variação de 'número errado':\n1. Peça desculpas de forma breve e educada\n2. Informe que o número será removido da base e que não receberá mais mensagens\n3. NÃO tente explicar o que é a BRHUB ou oferecer serviços\n4. NÃO envie mensagem longa. Máximo 2 frases.\n5. Exemplo: 'Peço desculpas pelo incômodo! Já estou removendo seu número da nossa base, você não receberá mais mensagens. Tenha um bom dia! 😊'" + "\n\n[REGRA DE REDIRECIONAMENTO — PRODUTOS, TROCA E LOJA]\nQuando o cliente perguntar sobre PRODUTOS, COMPRAS, CATÁLOGO, PREÇOS de produtos, ESTOQUE, TROCA DE PRODUTO, DEVOLUÇÃO DE PRODUTO, ou quiser COMPRAR algo na loja:\n1. Use a ferramenta 'buscar_remetentes_api' para buscar os dados cadastrais do remetente vinculado ao cliente\n2. A ferramenta SEMPRE retorna os dados completos (nome, telefone, email, endereço) quando o cliente está identificado. Use esses dados diretamente na resposta.\n3. Responda ao cliente orientando a entrar em contato direto com a loja remetente, fornecendo os dados retornados pela ferramenta.\n4. Exemplo: \"[Nome], para troca/devolução entre em contato direto com a loja [Nome do Remetente]! 📞 [celular/telefone] | 📍 [endereço completo] 😊\"\nIMPORTANTE: Essa regra se aplica APENAS a perguntas sobre produtos/compras/trocas/devoluções. Questões sobre ENVIO, RASTREIO, ETIQUETAS, CRÉDITOS continuam sendo atendidas normalmente por você.\nCRÍTICO: Se a ferramenta retornar dados do remetente, SEMPRE forneça esses dados ao cliente. NUNCA diga que não conseguiu localizar se a ferramenta retornou resultados.\nApenas se a ferramenta retornar 'Nenhum remetente cadastrado' ou 'Não consegui identificar o cliente', aí sim peça o nome ou CNPJ da loja." + "\n\n[REGRA DE RASTREIO E LINK OFICIAL]\nSe o cliente perguntar como rastrear, pedir o link de rastreio, ou disser que quer acompanhar o pedido, informe o link oficial https://brhubenvios.com.br/rastreio/encomenda?objeto=[CODIGO]. Se houver um código de referência ativo no contexto, substitua [CODIGO] pelo código correto. Se existirem vários códigos e o cliente falar no singular ('meu pedido', 'meu pacote', 'meu envio'), escolha apenas UM código prioritário e não misture respostas de códigos diferentes na mesma mensagem. Só mencione outro código se o cliente pedir explicitamente." + "\n\n[REGRA DE HONESTIDADE — LIMITAÇÕES]\nQuando NÃO tiver uma ferramenta ou capacidade real para resolver algo:\n- NUNCA diga 'vou acionar a operação', 'vou verificar com o time', 'vou escalar' se você NÃO tem uma ferramenta que faça isso de verdade.\n- Se o endereço está errado e o pacote já saiu para entrega, seja HONESTO: 'Infelizmente não consigo alterar o endereço de entrega depois que o pacote já saiu. Se não for entregue, ele vai voltar pro remetente e a loja pode reenviar com o endereço correto.'\n- Se não consegue fazer algo concreto, diga claramente o que o cliente deve fazer em vez de prometer ações que você não vai executar.\n- MÁXIMO 1 vez por conversa dizer que vai 'verificar'. Após isso, dê uma resposta concreta ou admita a limitação.\n\n[REGRA DE CONTESTAÇÃO DE ENDEREÇO]\nQuando o cliente disser que o endereço está ERRADO, que não é o endereço dele, ou contestar o endereço informado:\n- NÃO repita o mesmo endereço que o cliente acabou de contestar.\n- Reconheça que houve um problema com o endereço cadastrado.\n- Explique claramente: se o pacote já saiu para entrega, não é possível alterar o endereço pelo sistema.\n- Oriente o cliente a entrar em contato com a loja remetente para correção do endereço em caso de reenvio.\n- Se o cliente está pedindo para corrigir um endereço antes da postagem, use a ferramenta adequada.\n- Exemplo: '[Nome], entendi que o endereço cadastrado não está correto. Como o pacote já está em rota, não dá pra alterar agora. Se ele voltar, a loja pode reenviar com o endereço certo 😊'" + contactContext;
     const messages: any[] = [{ role: "system", content: enrichedSystemPrompt }];
 
     if (history) {
@@ -1789,6 +1826,26 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
       // Resposta final (sem tool calls)
       aiReply = choice?.message?.content || "Desculpe, não consegui processar sua mensagem.";
       break;
+    }
+
+    // === GUARD: Verificar se já existe resposta da IA recente para esta conversa (anti-duplicata) ===
+    const fiveSecsAgo = new Date(Date.now() - 5000).toISOString();
+    const { data: recentAiResponse } = await supabase
+      .from("whatsapp_messages")
+      .select("id, created_at")
+      .eq("conversation_id", conversationId)
+      .eq("direction", "outbound")
+      .eq("ai_generated", true)
+      .gte("created_at", fiveSecsAgo)
+      .limit(1)
+      .maybeSingle();
+
+    if (recentAiResponse) {
+      console.log("⏭️ ANTI-DUPLICATA: Já existe resposta da IA nos últimos 5s, pulando envio:", recentAiResponse.id);
+      return new Response(
+        JSON.stringify({ ok: true, reply: aiReply, tools_used: toolsUsed, skipped: "duplicate_guard" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // === SANITIZAR: Remover códigos de objeto e URLs da resposta ===
@@ -2843,8 +2900,93 @@ function formatTrackingForAI(rastreioData: any): string {
 }
 
 // ═══════════════════════════════════════════════════════════
-// HELPERS: Prompts padrão
+// HELPERS: Fuzzy Matching de Código de Rastreio
 // ═══════════════════════════════════════════════════════════
+
+function levenshteinDistance(a: string, b: string): number {
+  const matrix: number[][] = [];
+  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  return matrix[b.length][a.length];
+}
+
+async function findSimilarTrackingCode(supabase: any, inputCode: string, contactPhone: string, conversationId: string): Promise<string | null> {
+  const codesFound: string[] = [];
+  
+  // 1. Buscar códigos no histórico de mensagens da conversa
+  try {
+    const { data: msgs } = await supabase
+      .from("whatsapp_messages")
+      .select("content, metadata")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: false })
+      .limit(30);
+    
+    if (msgs) {
+      const trackingRegex = /\b[A-Z]{2}\d{9,13}[A-Z]{2}\b/g;
+      for (const msg of msgs) {
+        const matches = (msg.content || "").match(trackingRegex) || [];
+        codesFound.push(...matches);
+        // Check HSM metadata
+        const vars = (msg.metadata as any)?.variables || {};
+        if (vars.codigo_rastreio) codesFound.push(vars.codigo_rastreio);
+        if (vars.tracking_code) codesFound.push(vars.tracking_code);
+        if (vars.codigo_objeto) codesFound.push(vars.codigo_objeto);
+      }
+    }
+  } catch {}
+  
+  // 2. Buscar em pedidos_importados pelo telefone
+  try {
+    const normalized = (contactPhone || "").replace(/\D/g, "");
+    const { data: pedidos } = await supabase
+      .from("pedidos_importados")
+      .select("codigo_rastreio")
+      .or(`destinatario_telefone.ilike.%${normalized}%`)
+      .not("codigo_rastreio", "is", null)
+      .limit(10);
+    if (pedidos) {
+      codesFound.push(...pedidos.map((p: any) => p.codigo_rastreio));
+    }
+  } catch {}
+  
+  // Deduplicate and filter out the input code
+  const uniqueCodes = [...new Set(codesFound.filter(c => c && c !== inputCode))];
+  
+  if (uniqueCodes.length === 0) return null;
+  
+  // Find the most similar code (Levenshtein distance <= 2)
+  let bestMatch: string | null = null;
+  let bestDistance = Infinity;
+  
+  for (const code of uniqueCodes) {
+    const dist = levenshteinDistance(inputCode, code);
+    if (dist <= 2 && dist < bestDistance) {
+      bestDistance = dist;
+      bestMatch = code;
+    }
+  }
+  
+  if (bestMatch) {
+    console.log(`🔍 Fuzzy match: ${inputCode} → ${bestMatch} (distância: ${bestDistance})`);
+  }
+  
+  return bestMatch;
+}
+
 
 function getDefaultPrompt(agent: string): string {
   if (agent === "felipe") {
