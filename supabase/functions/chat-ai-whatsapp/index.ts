@@ -907,28 +907,57 @@ serve(async (req) => {
       const isRealProblem = preHandoffKeywords.some(k => lowerMsg.includes(k));
       const isExplicitFelipeRequest = felipeExplicitKeywords.some(k => lowerMsg.includes(k));
 
-      if (isRealProblem && !isExplicitFelipeRequest) {
-        // Problema real detectado → transferência direta
-        console.log(`🔄 PRÉ-HANDOFF: Problema detectado em "${message.substring(0, 50)}..." → Felipe assume`);
+      // === GUARD: Verificar se já existe código de rastreio no contexto ===
+      // Se NÃO tem código de rastreio e é um problema genérico, Veronica deve coletar primeiro
+      const hasTrackingCodeInMsg = /\b[A-Z]{2}\d{9,13}[A-Z]{2}\b/.test(message || "");
+      
+      // Buscar se há código de rastreio no contexto da conversa (HSM ou histórico)
+      let hasTrackingCodeInContext = hasTrackingCodeInMsg;
+      if (!hasTrackingCodeInContext) {
+        const { data: recentHsm } = await supabase
+          .from("whatsapp_messages")
+          .select("metadata")
+          .eq("conversation_id", conversationId)
+          .eq("direction", "outbound")
+          .eq("content_type", "hsm")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (recentHsm?.metadata) {
+          const vars = (recentHsm.metadata as any)?.variables || {};
+          hasTrackingCodeInContext = !!(vars.codigo_rastreio || vars.tracking_code || vars.codigo_objeto);
+        }
+      }
 
-        const preHandoffChannel = await resolveChannelForConversation(conversationId);
-        if (preHandoffChannel) {
+      if (isRealProblem && !isExplicitFelipeRequest) {
+        // Só faz handoff direto se tem código de rastreio no contexto
+        // Caso contrário, Veronica coleta o código primeiro e depois o sistema fará o handoff
+        if (hasTrackingCodeInContext) {
+          console.log(`🔄 PRÉ-HANDOFF: Problema detectado + código disponível → Felipe assume`);
+
+          const preHandoffChannel = await resolveChannelForConversation(conversationId);
+          if (preHandoffChannel) {
+            await supabase.from("whatsapp_conversations")
+              .update({ active_agent: "felipe" })
+              .eq("id", conversationId);
+
+            await performHandoffToFelipe(supabase, conversationId, contactPhone, message, preHandoffChannel);
+
+            return new Response(
+              JSON.stringify({ ok: true, reply: "Handoff Veronica → Felipe realizado (áudio + análise)", tools_used: [] }),
+              { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+
+          agentName = "felipe";
           await supabase.from("whatsapp_conversations")
             .update({ active_agent: "felipe" })
             .eq("id", conversationId);
-
-          await performHandoffToFelipe(supabase, conversationId, contactPhone, message, preHandoffChannel);
-
-          return new Response(
-            JSON.stringify({ ok: true, reply: "Handoff Veronica → Felipe realizado (áudio + análise)", tools_used: [] }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+        } else {
+          console.log(`🔄 PRÉ-HANDOFF ADIADO: Problema detectado mas SEM código de rastreio → Veronica coleta primeiro`);
+          // Veronica vai responder normalmente e coletar o código antes do handoff
         }
-
-        agentName = "felipe";
-        await supabase.from("whatsapp_conversations")
-          .update({ active_agent: "felipe" })
-          .eq("id", conversationId);
 
       } else if (isExplicitFelipeRequest && !isRealProblem) {
         // Pedido explícito SEM problema claro → Veronica questiona antes de transferir
@@ -1797,6 +1826,26 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
       // Resposta final (sem tool calls)
       aiReply = choice?.message?.content || "Desculpe, não consegui processar sua mensagem.";
       break;
+    }
+
+    // === GUARD: Verificar se já existe resposta da IA recente para esta conversa (anti-duplicata) ===
+    const fiveSecsAgo = new Date(Date.now() - 5000).toISOString();
+    const { data: recentAiResponse } = await supabase
+      .from("whatsapp_messages")
+      .select("id, created_at")
+      .eq("conversation_id", conversationId)
+      .eq("direction", "outbound")
+      .eq("ai_generated", true)
+      .gte("created_at", fiveSecsAgo)
+      .limit(1)
+      .maybeSingle();
+
+    if (recentAiResponse) {
+      console.log("⏭️ ANTI-DUPLICATA: Já existe resposta da IA nos últimos 5s, pulando envio:", recentAiResponse.id);
+      return new Response(
+        JSON.stringify({ ok: true, reply: aiReply, tools_used: toolsUsed, skipped: "duplicate_guard" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // === SANITIZAR: Remover códigos de objeto e URLs da resposta ===
