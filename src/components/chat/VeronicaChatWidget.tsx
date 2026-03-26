@@ -118,7 +118,7 @@ export function VeronicaChatWidget() {
 
   // Full chat window
   return (
-    <div className="fixed bottom-6 right-6 z-50 w-[380px] h-[560px] flex flex-col rounded-2xl shadow-2xl border border-border overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300">
+    <div className="fixed bottom-6 right-6 z-50 w-[380px] h-[560px] flex flex-col rounded-2xl shadow-2xl border border-border overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300 bg-background">
       {/* Header */}
       <div className="bg-foreground text-background px-5 py-4 flex items-center gap-3 shrink-0">
         <div className="relative">
