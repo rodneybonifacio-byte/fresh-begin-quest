@@ -1,15 +1,16 @@
 import { useState, useCallback, useEffect } from 'react';
-import { MessageSquare, Columns3, Bell, Wallet } from 'lucide-react';
+import { MessageSquare, Columns3, Bell, Wallet, MessageCircle } from 'lucide-react';
 import CrmWhatsApp from './CrmWhatsApp';
 import CrmPipelineKanban from './CrmPipelineKanban';
 import CrmNotificationTemplates from './CrmNotificationTemplates';
+import CrmChat from './CrmChat';
 import MobileCrmLayout from './MobileCrmLayout';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { supabase } from '@/integrations/supabase/client';
 
 const CrmLayout = () => {
   const isDesktop = useBreakpoint('lg');
-  const [activeTab, setActiveTab] = useState<'conversas' | 'pipeline' | 'notificacoes'>('conversas');
+  const [activeTab, setActiveTab] = useState<'conversas' | 'pipeline' | 'notificacoes' | 'chat'>('conversas');
   const [initialConversationId, setInitialConversationId] = useState<string | null>(null);
   const [balance, setBalance] = useState<{ amount: number; type: string; payment: string } | null>(null);
   const [balanceLoading, setBalanceLoading] = useState(true);
@@ -78,6 +79,17 @@ const CrmLayout = () => {
           <Bell className="w-4 h-4" />
           Mensagens Ativas
         </button>
+        <button
+          onClick={() => setActiveTab('chat')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-xl border-b-2 transition-all ${
+            activeTab === 'chat'
+              ? 'border-violet-500 text-violet-600 bg-violet-500/5'
+              : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
+          }`}
+        >
+          <MessageCircle className="w-4 h-4" />
+          Chat Web
+        </button>
 
         {/* MessageBird Balance */}
         <div className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 border border-border/50">
@@ -105,6 +117,7 @@ const CrmLayout = () => {
         )}
         {activeTab === 'pipeline' && <CrmPipelineKanban onOpenConversation={handleOpenConversation} />}
         {activeTab === 'notificacoes' && <CrmNotificationTemplates />}
+        {activeTab === 'chat' && <CrmChat />}
       </div>
     </div>
   );
