@@ -263,11 +263,8 @@ async function executeTool(
           return `Erro ao buscar emissões: ${resp.status}`;
         }
         const emData = await resp.json();
-        const dataField = emData?.data;
-        const isDataArray = Array.isArray(dataField);
-        console.log(`📋 listar_emissoes: keys=${Object.keys(emData)}, data_is_array=${isDataArray}, data_type=${typeof dataField}, content_len=${(emData?.content || []).length}, data_content_len=${(dataField?.content || []).length}, data_len=${isDataArray ? dataField.length : 'N/A'}`);
-        const emissoes = emData?.content || (isDataArray ? dataField : dataField?.content) || [];
-        const emList = Array.isArray(emissoes) ? emissoes : [];
+        const emList = extractEmissoesFromResponse(emData);
+        console.log(`📋 listar_emissoes: keys=${Object.keys(emData || {})}, count=${emList.length}`);
         if (emList.length === 0) return "Nenhuma emissão encontrada.";
 
         let filtered = emList;
@@ -275,11 +272,13 @@ async function executeTool(
           filtered = emList.filter((e: any) => (e.status || "").toUpperCase().includes(args.status.toUpperCase()));
         }
 
+        if (filtered.length === 0) return `Não encontrei emissões com status ${args.status}.`;
+
         let result = `📦 ${filtered.length} emissões encontradas:\n\n`;
-        for (const e of filtered) {
+        for (const e of filtered.slice(0, qty)) {
           result += `- **${e.codigoObjeto || "sem código"}** | ${e.servico || "?"} | Status: ${e.status || "?"}\n`;
-          result += `  Dest: ${e.destinatario?.nome || "?"} | CEP: ${e.destinatario?.cep || "?"}\n`;
-          result += `  Valor: R$ ${e.valorPostagem || "?"} | Data: ${e.criadoEm ? new Date(e.criadoEm).toLocaleDateString("pt-BR") : "?"}\n\n`;
+          result += `  Dest: ${getEmissaoDestinatarioNome(e)} | CEP: ${getEmissaoDestinatarioCep(e)}\n`;
+          result += `  Valor: R$ ${getEmissaoValor(e)} | Data: ${e.criadoEm ? new Date(e.criadoEm).toLocaleDateString("pt-BR") : "?"}\n\n`;
         }
         return result;
       }
@@ -659,15 +658,12 @@ Deno.serve(async (req) => {
       console.log(`📋 quickContext emissoes: status=${emResp.status}`);
       if (emResp.ok) {
         const emData = await emResp.json();
-        const dataField = emData?.data;
-        const isDataArray = Array.isArray(dataField);
-        const rawEmissoes = emData?.content || (isDataArray ? dataField : dataField?.content) || [];
-        const emissoes = Array.isArray(rawEmissoes) ? rawEmissoes : [];
-        console.log(`📋 quickContext emissoes: keys=${Object.keys(emData)}, data_is_array=${isDataArray}, count=${emissoes.length}`);
+        const emissoes = extractEmissoesFromResponse(emData);
+        console.log(`📋 quickContext emissoes: keys=${Object.keys(emData || {})}, count=${emissoes.length}`);
         if (emissoes.length > 0) {
           quickContext += `Últimas etiquetas:\n`;
-          for (const e of emissoes) {
-            quickContext += `- ${e.codigoObjeto || "?"} | ${e.servico || "?"} | ${e.status || "?"} | ${e.destinatario?.nome || "?"}\n`;
+          for (const e of emissoes.slice(0, 5)) {
+            quickContext += `- ${e.codigoObjeto || "?"} | ${e.servico || "?"} | ${e.status || "?"} | ${getEmissaoDestinatarioNome(e)}\n`;
           }
         }
       } else {
