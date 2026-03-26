@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Minimize2 } from 'lucide-react';
+import { X, Send, Minimize2 } from 'lucide-react';
 import veronicaAvatar from '@/assets/veronica-avatar.png';
 
 interface ChatMessage {
