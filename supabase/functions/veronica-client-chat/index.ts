@@ -222,17 +222,26 @@ async function executeTool(
 
       case "listar_emissoes": {
         const qty = Math.min(args.quantidade || 20, 50);
-        const resp = await fetch(`${BASE_API_URL}/emissoes?page=0&size=${qty}&sort=criadoEm,desc`, {
+        const url = `${BASE_API_URL}/emissoes?page=0&size=${qty}&sort=criadoEm,desc`;
+        console.log(`📋 listar_emissoes: GET ${url}`);
+        const resp = await fetch(url, {
           headers: { Authorization: `Bearer ${brhubToken}`, "Content-Type": "application/json" },
         });
-        if (!resp.ok) return `Erro ao buscar emissões: ${resp.status}`;
+        console.log(`📋 listar_emissoes: status=${resp.status}`);
+        if (!resp.ok) {
+          const errBody = await resp.text().catch(() => "");
+          console.log(`📋 listar_emissoes: erro body=${errBody.substring(0, 500)}`);
+          return `Erro ao buscar emissões: ${resp.status}`;
+        }
         const emData = await resp.json();
-        const emissoes = emData?.content || emData?.data?.content || [];
-        if (emissoes.length === 0) return "Nenhuma emissão encontrada.";
+        console.log(`📋 listar_emissoes: keys=${Object.keys(emData)}, content_len=${(emData?.content || []).length}, data_content_len=${(emData?.data?.content || []).length}`);
+        const emissoes = emData?.content || emData?.data?.content || emData || [];
+        const emList = Array.isArray(emissoes) ? emissoes : [];
+        if (emList.length === 0) return "Nenhuma emissão encontrada.";
 
-        let filtered = emissoes;
+        let filtered = emList;
         if (args.status) {
-          filtered = emissoes.filter((e: any) => (e.status || "").toUpperCase().includes(args.status.toUpperCase()));
+          filtered = emList.filter((e: any) => (e.status || "").toUpperCase().includes(args.status.toUpperCase()));
         }
 
         let result = `📦 ${filtered.length} emissões encontradas:\n\n`;
@@ -611,18 +620,26 @@ Deno.serve(async (req) => {
       }
 
       // Últimas emissões rápidas
-      const emResp = await fetch(`${Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br/api"}/emissoes?page=0&size=5&sort=criadoEm,desc`, {
+      const emUrl = `${Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br/api"}/emissoes?page=0&size=5&sort=criadoEm,desc`;
+      console.log(`📋 quickContext emissoes: GET ${emUrl}`);
+      const emResp = await fetch(emUrl, {
         headers: { Authorization: `Bearer ${brhubToken}`, "Content-Type": "application/json" },
       });
+      console.log(`📋 quickContext emissoes: status=${emResp.status}`);
       if (emResp.ok) {
         const emData = await emResp.json();
-        const emissoes = emData?.content || emData?.data?.content || [];
+        const rawEmissoes = emData?.content || emData?.data?.content || emData || [];
+        const emissoes = Array.isArray(rawEmissoes) ? rawEmissoes : [];
+        console.log(`📋 quickContext emissoes: keys=${Object.keys(emData)}, count=${emissoes.length}`);
         if (emissoes.length > 0) {
           quickContext += `Últimas etiquetas:\n`;
           for (const e of emissoes) {
             quickContext += `- ${e.codigoObjeto || "?"} | ${e.servico || "?"} | ${e.status || "?"} | ${e.destinatario?.nome || "?"}\n`;
           }
         }
+      } else {
+        const errBody = await emResp.text().catch(() => "");
+        console.log(`📋 quickContext emissoes: erro=${errBody.substring(0, 300)}`);
       }
     } catch (e) {
       console.warn("⚠️ Quick context error:", e);
