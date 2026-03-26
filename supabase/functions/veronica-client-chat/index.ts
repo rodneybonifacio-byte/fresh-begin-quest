@@ -239,9 +239,9 @@ async function executeTool(
         const emList = Array.isArray(emissoes) ? emissoes : [];
         if (emList.length === 0) return "Nenhuma emissão encontrada.";
 
-        let filtered = emissoes;
+        let filtered = emList;
         if (args.status) {
-          filtered = emissoes.filter((e: any) => (e.status || "").toUpperCase().includes(args.status.toUpperCase()));
+          filtered = emList.filter((e: any) => (e.status || "").toUpperCase().includes(args.status.toUpperCase()));
         }
 
         let result = `📦 ${filtered.length} emissões encontradas:\n\n`;
