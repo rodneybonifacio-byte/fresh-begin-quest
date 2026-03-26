@@ -1,4 +1,5 @@
 import { LayoutBase } from '../layout';
+import { VeronicaChatWidget } from '../components/chat/VeronicaChatWidget';
 import { LayoutProvider } from '../providers/LayoutContext';
 import { AuthProvider } from '../providers/AuthContext';
 import { IdleProvider } from '../providers/IdleProvider';
@@ -85,6 +86,7 @@ const AppLayoutContent = () => {
                 onCancel={() => setIsRemetenteModalOpen(false)}
                 showWelcomeMessage
             />
+            <VeronicaChatWidget />
         </>
     );
 };
