@@ -86,6 +86,7 @@ const AppLayoutContent = () => {
                 onCancel={() => setIsRemetenteModalOpen(false)}
                 showWelcomeMessage
             />
+            <VeronicaChatWidget />
         </>
     );
 };
