@@ -69,6 +69,35 @@ function formatTrackingForAI(rastreioData: any): string {
   return result;
 }
 
+function extractEmissoesFromResponse(emData: any): any[] {
+  const candidates = [
+    emData?.content,
+    emData?.data?.content,
+    emData?.data,
+    emData?.items,
+    emData?.results,
+    emData,
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) return candidate;
+  }
+
+  return [];
+}
+
+function getEmissaoDestinatarioNome(emissao: any): string {
+  return emissao?.destinatario?.nome || emissao?.destinatarioNome || emissao?.nomeDestinatario || "?";
+}
+
+function getEmissaoDestinatarioCep(emissao: any): string {
+  return emissao?.destinatario?.cep || emissao?.destinatarioCep || emissao?.cepDestinatario || "?";
+}
+
+function getEmissaoValor(emissao: any): string | number {
+  return emissao?.valorPostagem ?? emissao?.valor ?? emissao?.valorGasto ?? "?";
+}
+
 // ═══════════════════════════════════════════════════════════
 // TOOL DEFINITIONS (OpenAI Function Calling)
 // ═══════════════════════════════════════════════════════════
