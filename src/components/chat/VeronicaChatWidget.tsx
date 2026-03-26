@@ -1,5 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
-import { X, Send, Minimize2 } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { X, Send, Minimize2, User } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { jwtDecode } from 'jwt-decode';
 import veronicaAvatar from '@/assets/veronica-avatar.png';
 
 interface ChatMessage {
@@ -7,6 +9,27 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+}
+
+interface UserInfo {
+  name: string;
+  email: string;
+  clienteId: string;
+}
+
+function getLoggedUser(): UserInfo | null {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) return null;
+    const decoded: any = jwtDecode(token);
+    return {
+      name: decoded.name || decoded.email || 'Cliente',
+      email: decoded.email || '',
+      clienteId: decoded.clienteId || decoded.sub || decoded.id || '',
+    };
+  } catch {
+    return null;
+  }
 }
 
 const WELCOME_MESSAGE: ChatMessage = {
@@ -22,8 +45,14 @@ export function VeronicaChatWidget() {
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [user, setUser] = useState<UserInfo | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setUser(getLoggedUser());
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -35,9 +64,29 @@ export function VeronicaChatWidget() {
     }
   }, [isOpen, isMinimized]);
 
-  const handleSend = () => {
+  const sendToBackend = useCallback(async (text: string) => {
+    const token = localStorage.getItem('token');
+    if (!token) return null;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('veronica-client-chat', {
+        body: { message: text, conversationId },
+        headers: {
+          'x-brhub-authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.error('❌ Erro no chat:', err);
+      return null;
+    }
+  }, [conversationId]);
+
+  const handleSend = useCallback(async () => {
     const text = input.trim();
-    if (!text) return;
+    if (!text || isTyping) return;
 
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
@@ -50,18 +99,32 @@ export function VeronicaChatWidget() {
     setInput('');
     setIsTyping(true);
 
-    // Simulated response for design preview
-    setTimeout(() => {
+    const data = await sendToBackend(text);
+
+    if (data?.reply) {
+      if (data.conversationId && !conversationId) {
+        setConversationId(data.conversationId);
+      }
+
       const botMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: 'Estou processando sua solicitação. Em breve esta funcionalidade estará totalmente integrada! 🚀',
+        content: data.reply,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, botMsg]);
-      setIsTyping(false);
-    }, 1500);
-  };
+    } else {
+      const errorMsg: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: 'Desculpe, tive um problema ao processar sua mensagem. Tente novamente em instantes. 🔄',
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMsg]);
+    }
+
+    setIsTyping(false);
+  }, [input, isTyping, sendToBackend, conversationId]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -79,15 +142,11 @@ export function VeronicaChatWidget() {
         aria-label="Abrir chat com Veronica"
       >
         <div className="relative">
-          {/* Pulse ring */}
           <div className="absolute inset-0 rounded-full bg-primary/30 animate-ping" />
-          {/* Avatar button */}
           <div className="relative w-16 h-16 rounded-full border-[3px] border-primary shadow-xl overflow-hidden transition-transform group-hover:scale-110 group-active:scale-95">
             <img src={veronicaAvatar} alt="Veronica" className="w-full h-full object-cover" />
           </div>
-          {/* Online indicator */}
-          <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-background" />
-          {/* Badge */}
+          <div className="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 rounded-full border-2 border-background" />
           <div className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-md">
             IA
           </div>
@@ -105,7 +164,7 @@ export function VeronicaChatWidget() {
       >
         <img src={veronicaAvatar} alt="Veronica" className="w-8 h-8 rounded-full object-cover border-2 border-primary" />
         <span className="text-sm font-medium">Veronica</span>
-        <div className="w-2 h-2 bg-green-500 rounded-full" />
+        <div className="w-2 h-2 bg-emerald-500 rounded-full" />
         <button
           onClick={(e) => { e.stopPropagation(); setIsOpen(false); setIsMinimized(false); }}
           className="ml-1 hover:text-destructive transition-colors"
@@ -123,7 +182,7 @@ export function VeronicaChatWidget() {
       <div className="bg-foreground text-background px-5 py-4 flex items-center gap-3 shrink-0">
         <div className="relative">
           <img src={veronicaAvatar} alt="Veronica" className="w-11 h-11 rounded-full object-cover border-2 border-primary" />
-          <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-foreground" />
+          <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-foreground" />
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-sm">Veronica</h3>
@@ -146,6 +205,15 @@ export function VeronicaChatWidget() {
           </button>
         </div>
       </div>
+
+      {/* User info bar */}
+      {user && (
+        <div className="bg-accent/50 px-4 py-2 flex items-center gap-2 text-xs border-b border-border shrink-0">
+          <User className="w-3.5 h-3.5 text-muted-foreground" />
+          <span className="text-foreground font-medium truncate">{user.name}</span>
+          <span className="text-muted-foreground truncate">• {user.email}</span>
+        </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto bg-muted/30 px-4 py-3 space-y-3">
@@ -206,10 +274,11 @@ export function VeronicaChatWidget() {
             onKeyDown={handleKeyDown}
             placeholder="Digite sua mensagem..."
             className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none py-1.5"
+            disabled={isTyping}
           />
           <button
             onClick={handleSend}
-            disabled={!input.trim()}
+            disabled={!input.trim() || isTyping}
             className="p-2 rounded-lg bg-primary text-primary-foreground disabled:opacity-40 hover:opacity-90 transition-opacity"
             aria-label="Enviar"
           >
