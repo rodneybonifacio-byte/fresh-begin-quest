@@ -117,7 +117,9 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
       .order('last_message_at', { ascending: false });
 
     if (!error && data) {
-      setConversations(data as Conversation[]);
+      // Excluir conversas do chat web (aparecem na aba CRM Chat)
+      const filtered = (data as Conversation[]).filter(c => !c.contact_phone.startsWith('web-panel-'));
+      setConversations(filtered);
     }
     setLoadingConversations(false);
   }, []);

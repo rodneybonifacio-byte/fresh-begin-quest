@@ -1,16 +1,18 @@
 import { useState, useCallback } from 'react';
-import { MessageSquare, Columns3, Bell } from 'lucide-react';
+import { MessageSquare, Columns3, Bell, MessageCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import CrmWhatsApp from './CrmWhatsApp';
 import MobileCrmPipeline from './MobileCrmPipeline';
 import CrmNotificationTemplates from './CrmNotificationTemplates';
+import CrmChat from './CrmChat';
 
-type Tab = 'conversas' | 'pipeline' | 'notificacoes';
+type Tab = 'conversas' | 'pipeline' | 'notificacoes' | 'chat';
 
 const tabs: { id: Tab; label: string; icon: React.ElementType; color: string; activeColor: string }[] = [
   { id: 'conversas', label: 'Conversas', icon: MessageSquare, color: 'text-muted-foreground', activeColor: 'text-green-500' },
   { id: 'pipeline', label: 'Pipeline', icon: Columns3, color: 'text-muted-foreground', activeColor: 'text-primary' },
   { id: 'notificacoes', label: 'Ativas', icon: Bell, color: 'text-muted-foreground', activeColor: 'text-amber-500' },
+  { id: 'chat', label: 'Chat', icon: MessageCircle, color: 'text-muted-foreground', activeColor: 'text-violet-500' },
 ];
 
 const MobileCrmLayout = () => {
@@ -40,6 +42,7 @@ const MobileCrmLayout = () => {
             <CrmNotificationTemplates />
           </div>
         )}
+        {activeTab === 'chat' && <CrmChat />}
       </div>
 
       {/* Bottom Tab Bar */}
