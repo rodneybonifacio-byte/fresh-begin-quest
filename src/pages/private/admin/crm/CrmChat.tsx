@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { MessageCircle, Search, User, Bot, Clock, ChevronLeft } from 'lucide-react';
+import { MessageCircle, Search, User, Bot, Clock, ChevronLeft, Send } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import veronicaAvatar from '@/assets/veronica-avatar.png';
@@ -39,6 +39,8 @@ const CrmChat = () => {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [mobileShowChat, setMobileShowChat] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [replyText, setReplyText] = useState('');
+  const [sending, setSending] = useState(false);
 
   const loadConversations = useCallback(async () => {
     const { data, error } = await supabase
@@ -276,11 +278,51 @@ const CrmChat = () => {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Footer read-only */}
-            <div className="px-4 py-3 border-t border-border bg-card">
-              <p className="text-xs text-muted-foreground text-center">
-                💬 Conversa do painel web • Somente leitura no CRM
-              </p>
+            {/* Admin reply input */}
+            <div className="px-3 py-2 border-t border-border bg-card">
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!replyText.trim() || !selected || sending) return;
+                  setSending(true);
+                  try {
+                    await supabase.from('whatsapp_messages').insert({
+                      conversation_id: selected.id,
+                      direction: 'outbound',
+                      content: replyText.trim(),
+                      content_type: 'text',
+                      status: 'sent',
+                      sent_by: 'admin-crm',
+                      ai_generated: false,
+                      metadata: { source: 'crm-chat-admin' },
+                    });
+                    await supabase.from('whatsapp_conversations').update({
+                      last_message_preview: replyText.trim().slice(0, 100),
+                      last_message_at: new Date().toISOString(),
+                    }).eq('id', selected.id);
+                    setReplyText('');
+                  } catch (err) {
+                    console.error('Erro ao enviar:', err);
+                  }
+                  setSending(false);
+                }}
+                className="flex items-center gap-2"
+              >
+                <input
+                  type="text"
+                  placeholder="Responder como admin..."
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  className="flex-1 px-3 py-2 text-sm bg-muted rounded-lg border-none outline-none text-foreground placeholder:text-muted-foreground"
+                />
+                <button
+                  type="submit"
+                  disabled={!replyText.trim() || sending}
+                  className="p-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </form>
             </div>
           </>
         ) : (
