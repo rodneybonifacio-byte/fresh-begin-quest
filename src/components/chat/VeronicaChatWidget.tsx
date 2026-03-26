@@ -228,7 +228,7 @@ export function VeronicaChatWidget() {
             <div
               className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
                 msg.role === 'user'
-                  ? 'bg-primary text-primary-foreground rounded-br-md'
+                  ? 'bg-primary text-white rounded-br-md'
                   : 'bg-card text-card-foreground border border-border rounded-bl-md shadow-sm'
               }`}
             >
