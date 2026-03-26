@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { MessageCircle, Search, User, Bot, Clock, ChevronLeft } from 'lucide-react';
+import { MessageCircle, Search, User, Bot, Clock, ChevronLeft, Send } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import veronicaAvatar from '@/assets/veronica-avatar.png';
