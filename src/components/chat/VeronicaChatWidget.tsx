@@ -83,9 +83,52 @@ export function VeronicaChatWidget() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const [proactiveShown, setProactiveShown] = useState(false);
+
   useEffect(() => {
     setUser(getLoggedUser());
   }, []);
+
+  // Auto-open with proactive greeting
+  useEffect(() => {
+    if (!user || proactiveShown || isOpen) return;
+    const alreadyGreeted = sessionStorage.getItem('veronica_proactive_shown');
+    if (alreadyGreeted) return;
+
+    const firstName = user.name.split(' ')[0];
+    const greetingText = getProactiveGreeting(firstName);
+
+    const timer1 = setTimeout(() => {
+      setIsOpen(true);
+      const greetingMsg: ChatMessage = {
+        id: 'proactive-1',
+        role: 'assistant',
+        content: greetingText,
+        timestamp: new Date(),
+      };
+      setMessages(prev => {
+        const withoutProactive = prev.filter(m => !m.id.startsWith('proactive-'));
+        return [...withoutProactive, greetingMsg];
+      });
+      setProactiveShown(true);
+      sessionStorage.setItem('veronica_proactive_shown', 'true');
+    }, 5000);
+
+    const timer2 = setTimeout(() => {
+      const followupMsg: ChatMessage = {
+        id: 'proactive-2',
+        role: 'assistant',
+        content: FOLLOWUP_MESSAGE,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, followupMsg]);
+    }, 8000);
+
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
+  }, [user, proactiveShown, isOpen]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
