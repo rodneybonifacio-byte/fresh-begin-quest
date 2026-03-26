@@ -35,7 +35,7 @@ function getLoggedUser(): UserInfo | null {
 const WELCOME_MESSAGE: ChatMessage = {
   id: 'welcome',
   role: 'assistant',
-  content: 'Olá! 👋 Sou a Veronica, sua assistente virtual da BRHUB. Posso te ajudar com:\n\n• **Rastreio** de encomendas\n• **Gerar etiquetas** de envio\n• **Status** dos seus objetos\n• Dúvidas sobre **envios e serviços**\n\nComo posso te ajudar hoje?',
+  content: 'Olá! 👋 Sou a Veronica, do time de suporte da BRHUB. Posso te ajudar com:\n\n• **Rastreio** de encomendas\n• **Gerar etiquetas** de envio\n• **Status** dos seus objetos\n• Dúvidas sobre **envios e serviços**\n\nComo posso te ajudar hoje?',
   timestamp: new Date(),
 };
 
@@ -184,9 +184,7 @@ export function VeronicaChatWidget() {
             <img src={veronicaAvatar} alt="Veronica" className="w-full h-full object-cover" />
           </div>
           <div className="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 rounded-full border-2 border-background" />
-          <div className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-md">
-            IA
-          </div>
+        
         </div>
       </button>
     );
@@ -223,7 +221,7 @@ export function VeronicaChatWidget() {
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-sm">Veronica</h3>
-          <p className="text-xs opacity-70">Assistente BRHUB • Online</p>
+          <p className="text-xs opacity-70">Suporte BRHUB • Online</p>
         </div>
         <div className="flex items-center gap-1">
           <button
@@ -323,7 +321,7 @@ export function VeronicaChatWidget() {
           </button>
         </div>
         <p className="text-[10px] text-muted-foreground text-center mt-2">
-          Assistente IA • Suas informações são seguras 🔒
+          Suporte BRHUB • Suas informações são seguras 🔒
         </p>
       </div>
     </div>
