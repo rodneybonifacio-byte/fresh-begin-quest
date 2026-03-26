@@ -222,13 +222,22 @@ async function executeTool(
 
       case "listar_emissoes": {
         const qty = Math.min(args.quantidade || 20, 50);
-        const resp = await fetch(`${BASE_API_URL}/emissoes?page=0&size=${qty}&sort=criadoEm,desc`, {
+        const url = `${BASE_API_URL}/emissoes?page=0&size=${qty}&sort=criadoEm,desc`;
+        console.log(`📋 listar_emissoes: GET ${url}`);
+        const resp = await fetch(url, {
           headers: { Authorization: `Bearer ${brhubToken}`, "Content-Type": "application/json" },
         });
-        if (!resp.ok) return `Erro ao buscar emissões: ${resp.status}`;
+        console.log(`📋 listar_emissoes: status=${resp.status}`);
+        if (!resp.ok) {
+          const errBody = await resp.text().catch(() => "");
+          console.log(`📋 listar_emissoes: erro body=${errBody.substring(0, 500)}`);
+          return `Erro ao buscar emissões: ${resp.status}`;
+        }
         const emData = await resp.json();
-        const emissoes = emData?.content || emData?.data?.content || [];
-        if (emissoes.length === 0) return "Nenhuma emissão encontrada.";
+        console.log(`📋 listar_emissoes: keys=${Object.keys(emData)}, content_len=${(emData?.content || []).length}, data_content_len=${(emData?.data?.content || []).length}`);
+        const emissoes = emData?.content || emData?.data?.content || emData || [];
+        const emList = Array.isArray(emissoes) ? emissoes : [];
+        if (emList.length === 0) return "Nenhuma emissão encontrada.";
 
         let filtered = emissoes;
         if (args.status) {
