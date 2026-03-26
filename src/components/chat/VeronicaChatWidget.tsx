@@ -39,6 +39,38 @@ const WELCOME_MESSAGE: ChatMessage = {
   timestamp: new Date(),
 };
 
+const PROACTIVE_GREETINGS = [
+  (name: string) => `E aí ${name}! 👋 Precisando de alguma ajuda?\nEstou por aqui.`,
+  (name: string) => `Opa ${name}! Tudo certo por aí? 😊\nSe precisar de algo, é só chamar!`,
+  (name: string) => `Fala ${name}! Vi que você tá online 👀\nPosso te ajudar com alguma coisa?`,
+  (name: string) => `Hey ${name}! 🚀 Quer que eu dê uma olhada nos seus envios?\nTô aqui pra isso!`,
+  (name: string) => `${name}, tudo bem? 😄\nPrecisa rastrear algum pacote ou gerar etiqueta?`,
+  (name: string) => `Oi ${name}! 💜\nPassando pra ver se precisa de uma mãozinha com algo!`,
+  (name: string) => `E aí ${name}, beleza? 📦\nQuer que eu verifique o status das suas encomendas?`,
+  (name: string) => `${name}! Que bom te ver por aqui! 🎉\nPosso te ajudar com seus envios hoje?`,
+  (name: string) => `Fala ${name}! Tô de plantão aqui 💪\nPrecisa de etiqueta, rastreio ou alguma dúvida?`,
+  (name: string) => `Opa ${name}! 👋 Como vão os envios?\nSe precisar agilizar algo, conta comigo!`,
+  (name: string) => `${name}, tudo tranquilo? 😊\nTô aqui caso precise consultar saldo, rastrear ou emitir etiqueta!`,
+  (name: string) => `Hey ${name}! Bora resolver algo hoje? 🔥\nÉ só me dizer o que precisa!`,
+  (name: string) => `Oi ${name}! 📬 Alguma encomenda pra acompanhar?\nMe fala que eu busco pra você!`,
+  (name: string) => `E aí ${name}! Tô vendo que você tá ativo 👀\nQuer saber o que eu consigo fazer por aqui?`,
+  (name: string) => `${name}! 😄 Sabia que posso gerar etiquetas, rastrear pacotes e muito mais?\nMe testa!`,
+  (name: string) => `Fala ${name}! Tô online e pronta pra te ajudar 🙋‍♀️\nÉ só mandar!`,
+  (name: string) => `Opa ${name}! Precisa de ajuda com algum envio? 📦\nTô aqui rapidinho!`,
+  (name: string) => `${name}, passou por aqui e eu já vi! 👀✨\nQuer que eu faça algo por você?`,
+];
+
+function getProactiveGreeting(name: string): string {
+  const sessionKey = 'veronica_greeting_index';
+  let index = parseInt(sessionStorage.getItem(sessionKey) || '0', 10);
+  if (isNaN(index) || index >= PROACTIVE_GREETINGS.length) index = 0;
+  const greeting = PROACTIVE_GREETINGS[index](name);
+  sessionStorage.setItem(sessionKey, String((index + 1) % PROACTIVE_GREETINGS.length));
+  return greeting;
+}
+
+const FOLLOWUP_MESSAGE = 'Quer saber o que eu consigo fazer por aqui? 😉';
+
 export function VeronicaChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -51,9 +83,52 @@ export function VeronicaChatWidget() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const [proactiveShown, setProactiveShown] = useState(false);
+
   useEffect(() => {
     setUser(getLoggedUser());
   }, []);
+
+  // Auto-open with proactive greeting
+  useEffect(() => {
+    if (!user || proactiveShown || isOpen) return;
+    const alreadyGreeted = sessionStorage.getItem('veronica_proactive_shown');
+    if (alreadyGreeted) return;
+
+    const firstName = user.name.split(' ')[0];
+    const greetingText = getProactiveGreeting(firstName);
+
+    const timer1 = setTimeout(() => {
+      setIsOpen(true);
+      const greetingMsg: ChatMessage = {
+        id: 'proactive-1',
+        role: 'assistant',
+        content: greetingText,
+        timestamp: new Date(),
+      };
+      setMessages(prev => {
+        const withoutProactive = prev.filter(m => !m.id.startsWith('proactive-'));
+        return [...withoutProactive, greetingMsg];
+      });
+      setProactiveShown(true);
+      sessionStorage.setItem('veronica_proactive_shown', 'true');
+    }, 5000);
+
+    const timer2 = setTimeout(() => {
+      const followupMsg: ChatMessage = {
+        id: 'proactive-2',
+        role: 'assistant',
+        content: FOLLOWUP_MESSAGE,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, followupMsg]);
+    }, 8000);
+
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
+  }, [user, proactiveShown, isOpen]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
