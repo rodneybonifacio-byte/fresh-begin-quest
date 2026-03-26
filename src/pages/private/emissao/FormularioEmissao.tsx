@@ -511,7 +511,7 @@ const FormularioEmissao = ({ onCancel }: FormularioProdutoProps) => {
                                 <div className="w-full col-span-3">
                                     <InputLabel
                                         type="text"
-                                        labelTitulo="Celular"
+                                        labelTitulo="Celular *"
                                         {...register('destinatario.celular', {
                                             onChange: async (e: React.ChangeEvent<HTMLInputElement>) => {
                                                 const valor = formatTelefone(e.target.value, 'celular');
