@@ -47,6 +47,7 @@ export function VeronicaChatWidget() {
   const [isTyping, setIsTyping] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [user, setUser] = useState<UserInfo | null>(null);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -63,6 +64,42 @@ export function VeronicaChatWidget() {
       setTimeout(() => inputRef.current?.focus(), 300);
     }
   }, [isOpen, isMinimized]);
+
+  // Load chat history when opening for the first time
+  useEffect(() => {
+    if (isOpen && !historyLoaded) {
+      loadHistory();
+    }
+  }, [isOpen, historyLoaded]);
+
+  const loadHistory = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('veronica-client-chat', {
+        body: { action: 'load-history' },
+        headers: { 'x-brhub-authorization': `Bearer ${token}` },
+      });
+
+      if (error) throw error;
+
+      if (data?.messages && data.messages.length > 0) {
+        const loaded: ChatMessage[] = data.messages.map((m: any) => ({
+          id: m.id,
+          role: m.role,
+          content: m.content,
+          timestamp: new Date(m.timestamp),
+        }));
+        setMessages([WELCOME_MESSAGE, ...loaded]);
+        if (data.conversationId) setConversationId(data.conversationId);
+      }
+    } catch (err) {
+      console.error('❌ Erro ao carregar histórico:', err);
+    } finally {
+      setHistoryLoaded(true);
+    }
+  }, []);
 
   const sendToBackend = useCallback(async (text: string) => {
     const token = localStorage.getItem('token');
