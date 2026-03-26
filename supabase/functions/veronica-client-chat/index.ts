@@ -234,8 +234,10 @@ async function executeTool(
           return `Erro ao buscar emissões: ${resp.status}`;
         }
         const emData = await resp.json();
-        console.log(`📋 listar_emissoes: keys=${Object.keys(emData)}, content_len=${(emData?.content || []).length}, data_content_len=${(emData?.data?.content || []).length}`);
-        const emissoes = emData?.content || emData?.data?.content || emData || [];
+        const dataField = emData?.data;
+        const isDataArray = Array.isArray(dataField);
+        console.log(`📋 listar_emissoes: keys=${Object.keys(emData)}, data_is_array=${isDataArray}, data_type=${typeof dataField}, content_len=${(emData?.content || []).length}, data_content_len=${(dataField?.content || []).length}, data_len=${isDataArray ? dataField.length : 'N/A'}`);
+        const emissoes = emData?.content || (isDataArray ? dataField : dataField?.content) || [];
         const emList = Array.isArray(emissoes) ? emissoes : [];
         if (emList.length === 0) return "Nenhuma emissão encontrada.";
 
@@ -628,9 +630,11 @@ Deno.serve(async (req) => {
       console.log(`📋 quickContext emissoes: status=${emResp.status}`);
       if (emResp.ok) {
         const emData = await emResp.json();
-        const rawEmissoes = emData?.content || emData?.data?.content || emData || [];
+        const dataField = emData?.data;
+        const isDataArray = Array.isArray(dataField);
+        const rawEmissoes = emData?.content || (isDataArray ? dataField : dataField?.content) || [];
         const emissoes = Array.isArray(rawEmissoes) ? rawEmissoes : [];
-        console.log(`📋 quickContext emissoes: keys=${Object.keys(emData)}, count=${emissoes.length}`);
+        console.log(`📋 quickContext emissoes: keys=${Object.keys(emData)}, data_is_array=${isDataArray}, count=${emissoes.length}`);
         if (emissoes.length > 0) {
           quickContext += `Últimas etiquetas:\n`;
           for (const e of emissoes) {
