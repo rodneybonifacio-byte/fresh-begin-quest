@@ -36,7 +36,54 @@ Deno.serve(async (req) => {
     const userEmail = payload?.email || "";
 
     const body = await req.json();
-    const { message, conversationId: existingConvId } = body;
+    const { message, conversationId: existingConvId, action } = body;
+
+    const supabaseEarly = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    // ══════════════════════════════════════════
+    // ACTION: load-history — retorna mensagens anteriores
+    // ══════════════════════════════════════════
+    if (action === "load-history") {
+      const syntheticPhone = `web-panel-${clienteId}`;
+      
+      // Buscar conversa existente
+      const { data: conv } = await supabaseEarly
+        .from("whatsapp_conversations")
+        .select("id")
+        .eq("contact_phone", syntheticPhone)
+        .order("last_message_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!conv) {
+        return new Response(
+          JSON.stringify({ messages: [], conversationId: null }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const { data: msgs } = await supabaseEarly
+        .from("whatsapp_messages")
+        .select("id, direction, content, created_at, ai_generated, sent_by")
+        .eq("conversation_id", conv.id)
+        .order("created_at", { ascending: true })
+        .limit(50);
+
+      const formattedMsgs = (msgs || []).map((m) => ({
+        id: m.id,
+        role: m.direction === "inbound" ? "user" : "assistant",
+        content: m.content || "",
+        timestamp: m.created_at,
+      }));
+
+      return new Response(
+        JSON.stringify({ messages: formattedMsgs, conversationId: conv.id }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (!message || typeof message !== "string" || !message.trim()) {
       return new Response(JSON.stringify({ error: "Mensagem vazia" }), {
