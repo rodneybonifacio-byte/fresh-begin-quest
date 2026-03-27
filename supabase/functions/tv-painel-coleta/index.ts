@@ -97,9 +97,10 @@ Deno.serve(async (req) => {
     quatroDiasAtras.setDate(now.getDate() - 4);
     quatroDiasAtras.setHours(0, 0, 0, 0);
 
-    // Clientes que ignoram o filtro de 4 dias
-    const BYPASS_4DIAS = ['OPERA KIDS', 'OPERAKIDS', 'ÓPERA KIDS', 'ÓPERA'];
+    // Clientes que ignoram o filtro de 4 dias (nenhum no momento)
+    const BYPASS_4DIAS: string[] = [];
     const isBypass4Dias = (em: any): boolean => {
+      if (BYPASS_4DIAS.length === 0) return false;
       const nome = (em.remetenteNome || em.remetente?.nome || '').toUpperCase().trim()
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       return BYPASS_4DIAS.some(c => nome.includes(c.normalize('NFD').replace(/[\u0300-\u036f]/g, '')));

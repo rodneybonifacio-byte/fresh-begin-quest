@@ -53,6 +53,9 @@ const REFRESH_INTERVAL = 120_000;
 const BRHUB_CLIENTS = ['TG GRIFFES', '7 DAYS', 'CAIRO', 'NEXX', 'ERONIA', 'ATENDENCIA'];
 const BRHUB_HORARIO = '16:00 – 17:00';
 
+// Clientes que devem ser ocultados do painel
+const HIDDEN_CLIENTS = ['OPERA KIDS', 'OPERAKIDS', 'ÓPERA KIDS', 'OPERA KIDS VAREJO', 'ÓPERA KIDS VAREJO'];
+
 const isBrhubClient = (nome: string): boolean => {
   const upper = nome.toUpperCase().trim();
   return BRHUB_CLIENTS.some(c => upper.includes(c));
@@ -753,11 +756,7 @@ const TvBoard = () => {
 
       const now = Date.now();
       const FOUR_DAYS_MS = 4 * 24 * 60 * 60 * 1000;
-      const BYPASS_4DIAS_FE = ['OPERA KIDS', 'OPERAKIDS', 'ÓPERA KIDS'];
       const filtrada = lista.filter(et => {
-        const nomeRem = (et.remetenteNome || et.remetente?.nome || '').toUpperCase().trim()
-          .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        if (BYPASS_4DIAS_FE.some(c => nomeRem.includes(c.normalize('NFD').replace(/[\u0300-\u036f]/g, '')))) return true;
         if (!et.criadoEm) return true;
         const criado = new Date(et.criadoEm).getTime();
         return (now - criado) <= FOUR_DAYS_MS;
@@ -836,20 +835,17 @@ const TvBoard = () => {
   const etiquetasCol1: Etiqueta[] = [];
   const etiquetasCol2: Etiqueta[] = [];
 
-  // Incluir todos os clientes (BRHUB habilitado)
-  const dataFiltrada = data;
-
-  // Clientes forçados para coluna "Hoje"
-  const FORCE_TODAY_CLIENTS = ['OPERA KIDS', 'OPERAKIDS', 'ÓPERA KIDS'];
-  const isForceToday = (nome: string): boolean => {
+  // Filtrar clientes ocultos (Opera Kids)
+  const isHiddenClient = (nome: string): boolean => {
     const upper = nome.toUpperCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    return FORCE_TODAY_CLIENTS.some(c => upper.includes(c.normalize('NFD').replace(/[\u0300-\u036f]/g, '')));
+    return HIDDEN_CLIENTS.some(c => upper.includes(c.normalize('NFD').replace(/[\u0300-\u036f]/g, '')));
   };
+  const dataFiltrada = data.filter(et => {
+    const nome = et.remetenteNome || et.remetente?.nome || '';
+    return !isHiddenClient(nome);
+  });
 
   for (const et of dataFiltrada) {
-    const nomeRemet = et.remetenteNome || et.remetente?.nome || '';
-    // Override: forçar cliente para coluna Hoje
-    if (isForceToday(nomeRemet)) { etiquetasCol1.push(et); continue; }
     if (!et.criadoEm) { etiquetasCol1.push(et); continue; }
     const criadoDate = new Date(et.criadoEm);
     const criadoDia = criadoDate.getDay();
