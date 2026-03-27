@@ -884,13 +884,15 @@ const TvBoard = () => {
     }
   }
 
-  const { regulares: regularesCol1 } = agruparPorRemetente(etiquetasCol1, horariosDb);
-  const { regulares: regularesCol2 } = agruparPorRemetente(etiquetasCol2, horariosDb);
+  const { regulares: regularesCol1, brhub: brhubCol1 } = agruparPorRemetente(etiquetasCol1, horariosDb);
+  const { regulares: regularesCol2, brhub: brhubCol2 } = agruparPorRemetente(etiquetasCol2, horariosDb);
 
   const allGroupsCol1: GrupoHorario[] = [...regularesCol1];
+  if (brhubCol1) allGroupsCol1.push(brhubCol1);
   allGroupsCol1.sort((a, b) => a.sortKey - b.sortKey);
 
   const allGroupsCol2: GrupoHorario[] = [...regularesCol2];
+  if (brhubCol2) allGroupsCol2.push(brhubCol2);
   allGroupsCol2.sort((a, b) => a.sortKey - b.sortKey);
 
   const totalObjetos = dataFiltrada.length;
