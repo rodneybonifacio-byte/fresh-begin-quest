@@ -756,11 +756,7 @@ const TvBoard = () => {
 
       const now = Date.now();
       const FOUR_DAYS_MS = 4 * 24 * 60 * 60 * 1000;
-      const BYPASS_4DIAS_FE = ['OPERA KIDS', 'OPERAKIDS', 'ÓPERA KIDS'];
       const filtrada = lista.filter(et => {
-        const nomeRem = (et.remetenteNome || et.remetente?.nome || '').toUpperCase().trim()
-          .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        if (BYPASS_4DIAS_FE.some(c => nomeRem.includes(c.normalize('NFD').replace(/[\u0300-\u036f]/g, '')))) return true;
         if (!et.criadoEm) return true;
         const criado = new Date(et.criadoEm).getTime();
         return (now - criado) <= FOUR_DAYS_MS;
@@ -839,8 +835,15 @@ const TvBoard = () => {
   const etiquetasCol1: Etiqueta[] = [];
   const etiquetasCol2: Etiqueta[] = [];
 
-  // Incluir todos os clientes (BRHUB habilitado)
-  const dataFiltrada = data;
+  // Filtrar clientes ocultos (Opera Kids)
+  const isHiddenClient = (nome: string): boolean => {
+    const upper = nome.toUpperCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return HIDDEN_CLIENTS.some(c => upper.includes(c.normalize('NFD').replace(/[\u0300-\u036f]/g, '')));
+  };
+  const dataFiltrada = data.filter(et => {
+    const nome = et.remetenteNome || et.remetente?.nome || '';
+    return !isHiddenClient(nome);
+  });
 
   // Clientes forçados para coluna "Hoje"
   const FORCE_TODAY_CLIENTS = ['OPERA KIDS', 'OPERAKIDS', 'ÓPERA KIDS'];
