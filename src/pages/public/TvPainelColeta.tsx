@@ -846,7 +846,7 @@ const TvBoard = () => {
   });
 
   for (const et of dataFiltrada) {
-    const nomeRemet = et.remetenteNome || et.remetente?.nome || '';
+    const _nomeRemet = et.remetenteNome || et.remetente?.nome || '';
     if (!et.criadoEm) { etiquetasCol1.push(et); continue; }
     const criadoDate = new Date(et.criadoEm);
     const criadoDia = criadoDate.getDay();
