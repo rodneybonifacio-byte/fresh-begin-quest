@@ -836,11 +836,8 @@ const TvBoard = () => {
   const etiquetasCol1: Etiqueta[] = [];
   const etiquetasCol2: Etiqueta[] = [];
 
-  // Filtrar clientes BRHUB (temporariamente sem coleta)
-  const dataFiltrada = data.filter(et => {
-    const nome = et.remetenteNome || et.remetente?.nome || '';
-    return !isBrhubClient(nome);
-  });
+  // Incluir todos os clientes (BRHUB habilitado)
+  const dataFiltrada = data;
 
   // Clientes forçados para coluna "Hoje"
   const FORCE_TODAY_CLIENTS = ['OPERA KIDS', 'OPERAKIDS', 'ÓPERA KIDS'];
@@ -1087,7 +1084,7 @@ const TvBoard = () => {
           <span className="hidden sm:inline">Sistema operacional · Auto-refresh 2min</span>
           <span className="sm:hidden">Auto-refresh 2min</span>
           <span className="text-gray-200 hidden lg:inline">|</span>
-          <span className="text-gray-400 hidden lg:inline">BRHUB: coleta suspensa temporariamente</span>
+          <span className="text-gray-400 hidden lg:inline">BRHUB: 16:00 – 17:00</span>
         </div>
         <div className="flex items-center gap-2 lg:gap-3 flex-shrink-0">
           <span className="hidden sm:inline">
