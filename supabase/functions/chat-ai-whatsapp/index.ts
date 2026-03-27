@@ -2867,10 +2867,15 @@ function formatTrackingForAI(rastreioData: any): string {
       result += "\n";
     }
 
-    // Extrair endereço de retirada do evento mais recente que indica aguardando retirada
+    // Extrair endereço de retirada APENAS quando o evento REALMENTE indica aguardando retirada
+    // NUNCA para "tentativa de entrega", "endereço incorreto", "saiu para entrega" etc.
     const eventoRetirada = eventos.find((ev: any) => {
       const desc = (ev.descricao || "").toLowerCase();
-      return desc.includes("aguardando retirada") || desc.includes("disponível para retirada") || desc.includes("saiu para entrega");
+      // SOMENTE eventos que explicitamente dizem "aguardando retirada" ou "disponível para retirada"
+      // NÃO incluir "saiu para entrega", "tentativa de entrega", "endereço incorreto/insuficiente"
+      const isRetirada = desc.includes("aguardando retirada") || desc.includes("disponível para retirada");
+      const isNaoRetirada = desc.includes("tentativa") || desc.includes("endereço incorreto") || desc.includes("endereço insuficiente") || desc.includes("saiu para entrega") || desc.includes("encaminhado");
+      return isRetirada && !isNaoRetirada;
     });
     if (eventoRetirada) {
       const unidadeRet = eventoRetirada.unidade || {};
@@ -2881,6 +2886,15 @@ function formatTrackingForAI(rastreioData: any): string {
       } else if (unidadeRet.nome) {
         result += `\n📍 LOCAL PARA RETIRADA: ${unidadeRet.nome} (${unidadeRet.cidadeUf || ""})\n`;
       }
+    }
+
+    // Se houve tentativa de entrega frustrada (endereço incorreto/insuficiente), adicionar aviso
+    const eventoFalhaEntrega = eventos.find((ev: any) => {
+      const desc = (ev.descricao || "").toLowerCase();
+      return desc.includes("tentativa") || desc.includes("endereço incorreto") || desc.includes("endereço insuficiente") || desc.includes("não entregue");
+    });
+    if (eventoFalhaEntrega && !eventoRetirada) {
+      result += `\n⚠️ ATENÇÃO: Houve tentativa de entrega FRUSTRADA (${eventoFalhaEntrega.descricao}). Isso NÃO significa que está disponível para retirada. NÃO diga ao cliente para ir buscar na agência. Informe que houve problema na entrega e que você vai acionar a operação.\n`;
     }
   } else {
     result += "Nenhum evento de rastreio encontrado.\n";
