@@ -53,6 +53,9 @@ const REFRESH_INTERVAL = 120_000;
 const BRHUB_CLIENTS = ['TG GRIFFES', '7 DAYS', 'CAIRO', 'NEXX', 'ERONIA', 'ATENDENCIA'];
 const BRHUB_HORARIO = '16:00 – 17:00';
 
+// Clientes que devem ser ocultados do painel
+const HIDDEN_CLIENTS = ['OPERA KIDS', 'OPERAKIDS', 'ÓPERA KIDS', 'OPERA KIDS VAREJO', 'ÓPERA KIDS VAREJO'];
+
 const isBrhubClient = (nome: string): boolean => {
   const upper = nome.toUpperCase().trim();
   return BRHUB_CLIENTS.some(c => upper.includes(c));
