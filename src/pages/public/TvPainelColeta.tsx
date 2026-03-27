@@ -845,17 +845,8 @@ const TvBoard = () => {
     return !isHiddenClient(nome);
   });
 
-  // Clientes forçados para coluna "Hoje"
-  const FORCE_TODAY_CLIENTS = ['OPERA KIDS', 'OPERAKIDS', 'ÓPERA KIDS'];
-  const isForceToday = (nome: string): boolean => {
-    const upper = nome.toUpperCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    return FORCE_TODAY_CLIENTS.some(c => upper.includes(c.normalize('NFD').replace(/[\u0300-\u036f]/g, '')));
-  };
-
   for (const et of dataFiltrada) {
     const nomeRemet = et.remetenteNome || et.remetente?.nome || '';
-    // Override: forçar cliente para coluna Hoje
-    if (isForceToday(nomeRemet)) { etiquetasCol1.push(et); continue; }
     if (!et.criadoEm) { etiquetasCol1.push(et); continue; }
     const criadoDate = new Date(et.criadoEm);
     const criadoDia = criadoDate.getDay();
