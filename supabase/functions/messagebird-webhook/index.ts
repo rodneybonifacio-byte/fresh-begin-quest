@@ -703,11 +703,11 @@ serve(async (req) => {
           /\bé só chamar\b/i,
           /\bestou [àa] disposi[çc][ãa]o/i,
         ];
-        const isLastMsgFarewell = lastOutbound?.ai_generated && lastOutbound?.content
-          && farewellPatterns.some(p => p.test(lastOutbound.content));
+        const isLastMsgFarewell = isAfterFarewell; // reuse pre-computed value
         const isPassiveFollowUpAfterAI = !!lastOutbound?.ai_generated && shouldSuppress;
 
-        if ((isLastMsgPassiveHSM || isLastMsgFarewell || isPassiveFollowUpAfterAI) && shouldSuppress) {
+        // Não suprimir saudações — já foram tratadas como ACTIVE acima
+        if ((isLastMsgPassiveHSM || isLastMsgFarewell || isPassiveFollowUpAfterAI) && shouldSuppress && !isSimpleGreeting) {
           console.log("⏭️ Inbound passivo após", isLastMsgPassiveHSM ? "HSM" : isLastMsgFarewell ? "despedida IA" : "resposta IA", "— suprimindo:", conversation.id, "msg:", messageContent);
           updateData.ai_enabled = false;
           updateData.status = "closed";
