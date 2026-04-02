@@ -662,7 +662,24 @@ serve(async (req) => {
         const hadRecentAIResponse = !!lastOutbound?.ai_generated && lastOutbound?.created_at &&
           (Date.now() - new Date(lastOutbound.created_at).getTime()) < 10 * 60 * 1000; // 10 min
         
-        if (isSimpleGreeting && (hasTrackingContext || hasCriticalTrackingTrigger)) {
+        // Detectar se a última mensagem da IA já foi uma despedida (pré-classificação)
+        const preFarewellPatterns = [
+          /se precisar.*s[oó] chamar/i,
+          /estou.*pra ajudar/i,
+          /qualquer (coisa|ajuda|d[uú]vida)/i,
+          /encerrar.*atendimento/i,
+          /\bé só chamar\b/i,
+          /\bestou [àa] disposi[çc][ãa]o/i,
+        ];
+        const isAfterFarewell = lastOutbound?.ai_generated && lastOutbound?.content
+          && preFarewellPatterns.some(p => p.test(lastOutbound.content));
+        // Conversa estava fechada/inativa ou após despedida — saudação = novo atendimento
+        const isConversationDormant = conversation.status === "closed" || !conversation.ai_enabled || isAfterFarewell;
+
+        if (isSimpleGreeting && isConversationDormant) {
+          intentResult = { isPassive: false, confidence: 0.95, reason: "greeting_reopens_dormant" };
+          console.log("🎯 Saudação reabrindo conversa inativa/pós-despedida como ACTIVE:", conversation.id, messageContent);
+        } else if (isSimpleGreeting && (hasTrackingContext || hasCriticalTrackingTrigger)) {
           intentResult = { isPassive: false, confidence: 0.95, reason: "greeting_with_tracking_context" };
           console.log("🎯 Saudação com contexto logístico tratada como ACTIVE:", conversation.id, messageContent);
         } else if (isUrgencyFollowUp && hadRecentAIResponse) {
@@ -686,11 +703,11 @@ serve(async (req) => {
           /\bé só chamar\b/i,
           /\bestou [àa] disposi[çc][ãa]o/i,
         ];
-        const isLastMsgFarewell = lastOutbound?.ai_generated && lastOutbound?.content
-          && farewellPatterns.some(p => p.test(lastOutbound.content));
+        const isLastMsgFarewell = isAfterFarewell; // reuse pre-computed value
         const isPassiveFollowUpAfterAI = !!lastOutbound?.ai_generated && shouldSuppress;
 
-        if ((isLastMsgPassiveHSM || isLastMsgFarewell || isPassiveFollowUpAfterAI) && shouldSuppress) {
+        // Não suprimir saudações — já foram tratadas como ACTIVE acima
+        if ((isLastMsgPassiveHSM || isLastMsgFarewell || isPassiveFollowUpAfterAI) && shouldSuppress && !isSimpleGreeting) {
           console.log("⏭️ Inbound passivo após", isLastMsgPassiveHSM ? "HSM" : isLastMsgFarewell ? "despedida IA" : "resposta IA", "— suprimindo:", conversation.id, "msg:", messageContent);
           updateData.ai_enabled = false;
           updateData.status = "closed";
