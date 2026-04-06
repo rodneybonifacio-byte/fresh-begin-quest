@@ -26,7 +26,8 @@ export const Step1Dimensoes = ({
 }: Step1DimensoesProps) => {
   const {
     setValue,
-    getValues
+    getValues,
+    watch
   } = useFormContext();
   const [altura, setAltura] = useState<number>(0);
   const [largura, setLargura] = useState<number>(0);
@@ -49,7 +50,8 @@ export const Step1Dimensoes = ({
       quantidadeVolumes
     });
   }, [altura, largura, comprimento, peso, quantidadeVolumes, setValue]);
-  const isFormValid = !!(clienteSelecionado && altura > 0 && largura > 0 && comprimento > 0 && peso > 0);
+  const itensDeclaracao = watch('itensDeclaracaoConteudo') || [];
+  const isFormValid = !!(clienteSelecionado && altura > 0 && largura > 0 && comprimento > 0 && peso > 0 && itensDeclaracao.length > 0);
   const handleNext = () => {
     const formData = getValues();
     console.log('=== AVANÇANDO PARA DESTINATÁRIO ===');
@@ -164,7 +166,7 @@ export const Step1Dimensoes = ({
           </button>
         )}
 
-        {/* Declaração de Conteúdo */}
+        {/* Declaração de Conteúdo (obrigatória) */}
         <DeclaracaoConteudoSection />
 
         <div className="space-y-3">
@@ -184,6 +186,9 @@ export const Step1Dimensoes = ({
             </span>
             <span className={peso > 0 ? "text-green-600" : "text-muted-foreground"}>
               {peso > 0 ? "✓ Peso" : "○ Peso"}
+            </span>
+            <span className={itensDeclaracao.length > 0 ? "text-green-600" : "text-muted-foreground"}>
+              {itensDeclaracao.length > 0 ? "✓ Declaração de conteúdo" : "○ Declaração de conteúdo"}
             </span>
           </div>
 
