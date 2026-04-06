@@ -25,7 +25,7 @@ Deno.serve(async (req: Request) => {
     const loginResp = await fetch(`${baseApiUrl}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: adminEmail, senha: adminPassword }),
+      body: JSON.stringify({ email: adminEmail, password: adminPassword }),
     });
     
     const loginData = await loginResp.json();
