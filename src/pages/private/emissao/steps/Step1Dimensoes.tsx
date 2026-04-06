@@ -191,7 +191,7 @@ export const Step1Dimensoes = ({
               {peso > 0 ? "✓ Peso" : "○ Peso"}
             </span>
             <span className={itensDeclaracao.length > 0 ? "text-green-600" : "text-muted-foreground"}>
-              {itensDeclaracao.length > 0 ? "✓ Declaração de conteúdo" : "○ Declaração de conteúdo"}
+              {itensDeclaracao.length > 0 ? "✓ Declaração de conteúdo" : "○ Declaração de conteúdo (opcional, obrigatória p/ Correios)"}
             </span>
           </div>
 
