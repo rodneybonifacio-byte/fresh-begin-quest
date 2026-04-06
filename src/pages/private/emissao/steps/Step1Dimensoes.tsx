@@ -1,5 +1,6 @@
 import { Box, RefreshCw, Package } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
+import { DeclaracaoConteudoSection } from './DeclaracaoConteudoSection';
 import { useState, useEffect } from 'react';
 import { FormCard } from '../../../../components/FormCard';
 import { InputField } from '../../../../components/InputField';
