@@ -166,8 +166,11 @@ export const Step1Dimensoes = ({
           </button>
         )}
 
-        {/* Declaração de Conteúdo (obrigatória) */}
+        {/* Declaração de Conteúdo (obrigatória apenas para Correios) */}
         <DeclaracaoConteudoSection />
+        <p className="text-xs text-muted-foreground -mt-2">
+          ⚠️ Obrigatória apenas para envios via Correios. Rodonaves não exige declaração de conteúdo.
+        </p>
 
         <div className="space-y-3">
           {/* Status da validação */}
