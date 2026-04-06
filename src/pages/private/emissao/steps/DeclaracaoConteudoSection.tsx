@@ -20,8 +20,9 @@ export const DeclaracaoConteudoSection = () => {
   const addItem = () => {
     const newErrors: Record<string, string> = {};
     if (!descricao.trim()) newErrors.descricao = 'Obrigatório';
+    else if (descricao.trim().length < 3) newErrors.descricao = 'Descrição muito curta. Informe o item real.';
     if (!quantidade.trim() || Number(quantidade) <= 0) newErrors.quantidade = 'Obrigatório';
-    if (!valor.trim()) newErrors.valor = 'Obrigatório';
+    if (!valor.trim() || formatNumberString(valor) === '0' || formatNumberString(valor) === '0.00') newErrors.valor = 'Informe o valor real do item';
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
