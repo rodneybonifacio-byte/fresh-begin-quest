@@ -134,34 +134,44 @@ export const DeclaracaoConteudoSection = () => {
                     Qtd
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">
-                    Valor
+                    Valor Unit.
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">
+                    Subtotal
                   </th>
                   <th className="px-4 py-3 w-12" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {itens.map((item, index) => (
-                  <tr key={index} className="hover:bg-muted/20 transition-colors">
-                    <td className="px-4 py-3 text-sm text-foreground">{item.conteudo}</td>
-                    <td className="px-4 py-3 text-sm text-foreground text-center">{item.quantidade}</td>
-                    <td className="px-4 py-3 text-sm text-foreground text-right">R$ {item.valor}</td>
-                    <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        onClick={() => removeItem(index)}
-                        className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {itens.map((item, index) => {
+                  const subtotal = (parseFloat(item.valor) || 0) * (parseInt(item.quantidade) || 1);
+                  return (
+                    <tr key={index} className="hover:bg-muted/20 transition-colors">
+                      <td className="px-4 py-3 text-sm text-foreground">{item.conteudo}</td>
+                      <td className="px-4 py-3 text-sm text-foreground text-center">{item.quantidade}</td>
+                      <td className="px-4 py-3 text-sm text-foreground text-right">R$ {item.valor}</td>
+                      <td className="px-4 py-3 text-sm text-foreground text-right font-medium">R$ {subtotal.toFixed(2)}</td>
+                      <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => removeItem(index)}
+                          className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
-          <div className="px-4 py-2 bg-muted/30 border-t border-border text-right">
+          <div className="px-4 py-2 bg-muted/30 border-t border-border flex justify-between items-center">
             <span className="text-xs text-muted-foreground">
               {itens.length} {itens.length === 1 ? 'item' : 'itens'} adicionados
+            </span>
+            <span className="text-sm font-semibold text-foreground">
+              Total: R$ {itens.reduce((acc, item) => acc + (parseFloat(item.valor) || 0) * (parseInt(item.quantidade) || 1), 0).toFixed(2)}
             </span>
           </div>
         </div>
