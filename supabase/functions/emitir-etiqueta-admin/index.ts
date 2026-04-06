@@ -1,0 +1,211 @@
+// @ts-nocheck
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const requestData = await req.json();
+    const baseUrl = Deno.env.get('BASE_API_URL');
+    const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
+    const adminPassword = Deno.env.get('API_ADMIN_PASSWORD');
+
+    if (!baseUrl || !adminEmail || !adminPassword) {
+      throw new Error('Configuração incompleta');
+    }
+
+    // 1. Login admin
+    console.log('🔐 Login admin...');
+    const loginRes = await fetch(`${baseUrl}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: adminEmail, password: adminPassword }),
+    });
+    const loginData = await loginRes.json();
+    const adminToken = loginData.data?.token || loginData.token;
+    if (!adminToken) throw new Error('Falha ao obter token admin');
+
+    // 2. Login como cliente para obter token do cliente
+    const { clienteId, emissaoData } = requestData;
+    console.log('👤 Buscando dados do cliente:', clienteId);
+
+    const clienteRes = await fetch(`${baseUrl}/clientes/${clienteId}`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${adminToken}` },
+    });
+    const clienteData = await clienteRes.json();
+    const cliente = clienteData.data || clienteData;
+    console.log('📋 Cliente:', cliente.email, cliente.nomeEmpresa);
+
+    // Login com email do cliente (usar admin token para gerar token do cliente)
+    // Na verdade, vou usar o admin token para emitir diretamente
+    // A API pode aceitar admin token com clienteId no payload
+
+    // 3. Desabilitar WhatsApp para evitar erro
+    const toBoolean = (v: any): boolean => typeof v === 'boolean' ? v : false;
+    const cfg = cliente.configuracoes || {};
+    const configCorrigidas = {
+      periodo_faturamento: cfg.periodo_faturamento || 'SEMANAL',
+      horario_coleta: cfg.horario_coleta || '08:00',
+      link_whatsapp: String(cfg.link_whatsapp || ''),
+      incluir_valor_declarado_na_nota: toBoolean(cfg.incluir_valor_declarado_na_nota),
+      aplicar_valor_declarado: toBoolean(cfg.aplicar_valor_declarado),
+      rastreio_via_whatsapp: false,
+      fatura_via_whatsapp: false,
+      valor_disparo_evento_rastreio_whatsapp: '0',
+      eventos_rastreio_habilitados_via_whatsapp: [],
+    };
+    const transportadoraCorrigidas = (cliente.transportadoraConfiguracoes || []).map((t: any) => ({
+      ...t,
+      valorAcrescimo: typeof t.valorAcrescimo === 'string' ? parseFloat(t.valorAcrescimo) || 0 : (t.valorAcrescimo ?? 0),
+      sobrepreco: typeof t.sobrepreco === 'string' ? parseFloat(t.sobrepreco) || 0 : (t.sobrepreco ?? 0),
+    }));
+
+    await fetch(`${baseUrl}/clientes/${clienteId}`, {
+      method: 'PUT',
+      headers: { 'Authorization': `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nomeEmpresa: cliente.nomeEmpresa,
+        nomeResponsavel: cliente.nomeResponsavel,
+        cpfCnpj: cliente.cpfCnpj,
+        email: cliente.email,
+        telefone: cliente.telefone || '',
+        celular: cliente.celular,
+        role: cliente.role || 'CLIENTE',
+        endereco: cliente.endereco,
+        status: cliente.status || 'ATIVO',
+        configuracoes: configCorrigidas,
+        transportadoraConfiguracoes: transportadoraCorrigidas,
+      }),
+    });
+    console.log('✅ WhatsApp desabilitado');
+
+    // 4. Preparar payload de emissão
+    const digitsOnly = (v: any) => String(v ?? '').replace(/\D/g, '');
+    
+    // Buscar remetente do Supabase
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+    
+    const { data: remetente } = await supabase
+      .from('remetentes')
+      .select('*')
+      .eq('id', emissaoData.remetenteId)
+      .single();
+
+    const remetenteObj = remetente ? {
+      nome: remetente.nome?.trim(),
+      cpfCnpj: remetente.cpf_cnpj?.replace(/\D/g, ''),
+      documentoEstrangeiro: remetente.documento_estrangeiro || '',
+      celular: digitsOnly(remetente.celular || remetente.telefone || ''),
+      telefone: digitsOnly(remetente.telefone || remetente.celular || ''),
+      email: remetente.email?.trim() || '',
+      endereco: {
+        cep: remetente.cep?.replace(/\D/g, ''),
+        logradouro: remetente.logradouro?.trim() || '',
+        numero: remetente.numero?.trim() || '',
+        complemento: remetente.complemento?.trim() || '',
+        bairro: remetente.bairro?.trim() || '',
+        localidade: remetente.localidade?.trim() || '',
+        uf: remetente.uf?.trim() || '',
+      },
+    } : undefined;
+
+    // Sanitizar destinatário
+    if (emissaoData.destinatario?.cpfCnpj) {
+      emissaoData.destinatario.cpfCnpj = digitsOnly(emissaoData.destinatario.cpfCnpj);
+    }
+    if (emissaoData.destinatario?.celular) {
+      emissaoData.destinatario.celular = digitsOnly(emissaoData.destinatario.celular);
+    }
+    if (emissaoData.destinatario?.endereco?.cep) {
+      emissaoData.destinatario.endereco.cep = digitsOnly(emissaoData.destinatario.endereco.cep);
+    }
+
+    const payload: any = {
+      ...emissaoData,
+      clienteId,
+      cienteObjetoNaoProibido: true,
+    };
+
+    if (remetenteObj) {
+      payload.remetente = remetenteObj;
+      delete payload.remetenteId;
+    }
+
+    if (payload.embalagem) {
+      payload.embalagem.quantidadeVolumes = payload.embalagem.quantidadeVolumes || 1;
+    }
+    payload.quantidadeVolumes = payload.quantidadeVolumes || 1;
+
+    delete payload.notificarWhatsapp;
+    delete payload.rastreamentoWhatsapp;
+
+    console.log('📦 Payload:', JSON.stringify(payload));
+
+    // 5. Emitir com ADMIN TOKEN
+    console.log('🏷️ Emitindo etiqueta...');
+    const emissaoRes = await fetch(`${baseUrl}/emissoes`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${adminToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const responseText = await emissaoRes.text();
+    console.log('📄 Resposta:', emissaoRes.status, responseText.substring(0, 500));
+
+    if (!emissaoRes.ok) {
+      return new Response(JSON.stringify({ error: responseText, status: emissaoRes.status }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: emissaoRes.status,
+      });
+    }
+
+    const emissaoResult = JSON.parse(responseText);
+    console.log('✅ Etiqueta emitida!');
+
+    // 6. Bloquear créditos
+    try {
+      const emissaoId = emissaoResult?.data?.id || emissaoResult?.id;
+      const codigoObjeto = emissaoResult?.data?.codigoObjeto || emissaoResult?.codigoObjeto;
+      const valorFrete = parseFloat(emissaoResult?.data?.frete?.valorTotal || emissaoResult?.frete?.valorTotal || emissaoData?.cotacao?.preco || '0');
+
+      if (emissaoId && clienteId && valorFrete > 0) {
+        await supabase.rpc('bloquear_credito_etiqueta', {
+          p_cliente_id: clienteId,
+          p_emissao_id: emissaoId,
+          p_valor: valorFrete,
+          p_codigo_objeto: codigoObjeto || null,
+        });
+        console.log('💰 Créditos bloqueados');
+      }
+    } catch (e) {
+      console.error('⚠️ Erro ao bloquear créditos:', e);
+    }
+
+    return new Response(JSON.stringify(emissaoResult), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200,
+    });
+
+  } catch (error) {
+    console.error('❌ Erro:', error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Erro interno' }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+    );
+  }
+});
