@@ -178,7 +178,7 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
         logisticaReversa: isLogisticaReversa ? 'S' : 'N',
         valorDeclarado: 0,
         valorNotaFiscal: parseValorNotaFiscal(data.valorNotaFiscal),
-        itensDeclaracaoConteudo: [],
+        itensDeclaracaoConteudo: data.itensDeclaracaoConteudo || [],
         destinatario: data.destinatario,
         quantidadeVolumes: embalagem.quantidadeVolumes || 1,
       };

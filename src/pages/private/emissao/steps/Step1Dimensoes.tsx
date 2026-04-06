@@ -164,6 +164,9 @@ export const Step1Dimensoes = ({
           </button>
         )}
 
+        {/* Declaração de Conteúdo */}
+        <DeclaracaoConteudoSection />
+
         <div className="space-y-3">
           {/* Status da validação */}
           <div className="flex flex-wrap gap-2 text-sm">
