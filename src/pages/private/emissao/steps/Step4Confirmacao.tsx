@@ -1,4 +1,4 @@
-import { CheckCircle, User, MapPin, Package, Truck, Clock, DollarSign, BadgeCheck } from 'lucide-react';
+import { CheckCircle, User, MapPin, Package, Truck, Clock, DollarSign, BadgeCheck, FileText } from 'lucide-react';
 import { useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { FormCard } from '../../../../components/FormCard';
