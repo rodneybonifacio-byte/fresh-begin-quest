@@ -168,7 +168,6 @@ export const Step1Dimensoes = ({
 
         {/* Declaração de Conteúdo (obrigatória) */}
         <DeclaracaoConteudoSection />
-        {(() => { const itens = getValues('itensDeclaracaoConteudo') || []; return itens.length === 0 ? null : null; })()}
 
         <div className="space-y-3">
           {/* Status da validação */}
@@ -187,6 +186,9 @@ export const Step1Dimensoes = ({
             </span>
             <span className={peso > 0 ? "text-green-600" : "text-muted-foreground"}>
               {peso > 0 ? "✓ Peso" : "○ Peso"}
+            </span>
+            <span className={itensDeclaracao.length > 0 ? "text-green-600" : "text-muted-foreground"}>
+              {itensDeclaracao.length > 0 ? "✓ Declaração de conteúdo" : "○ Declaração de conteúdo"}
             </span>
           </div>
 
