@@ -50,7 +50,7 @@ export const Step1Dimensoes = ({
       quantidadeVolumes
     });
   }, [altura, largura, comprimento, peso, quantidadeVolumes, setValue]);
-  const itensDeclaracao = getValues('itensDeclaracaoConteudo') || [];
+  const itensDeclaracao = watch('itensDeclaracaoConteudo') || [];
   const isFormValid = !!(clienteSelecionado && altura > 0 && largura > 0 && comprimento > 0 && peso > 0 && itensDeclaracao.length > 0);
   const handleNext = () => {
     const formData = getValues();
