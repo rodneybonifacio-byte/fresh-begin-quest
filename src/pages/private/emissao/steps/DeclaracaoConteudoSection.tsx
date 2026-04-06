@@ -57,12 +57,19 @@ export const DeclaracaoConteudoSection = () => {
         <div className="p-2 bg-primary/10 rounded-lg">
           <FileText className="h-5 w-5 text-primary" />
         </div>
-        <div>
+         <div>
           <h4 className="font-semibold text-foreground">Declaração de Conteúdo</h4>
           <p className="text-xs text-muted-foreground">
             Informe os itens que serão enviados
           </p>
         </div>
+      </div>
+
+      {/* Aviso de fidelidade */}
+      <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+        <p className="text-xs text-amber-800 dark:text-amber-300 font-medium">
+          ⚠️ Obrigatório: A declaração deve conter a descrição real e fiel dos itens enviados, com quantidades e valores corretos. Declarações falsas ou genéricas podem resultar em multa e apreensão pela fiscalização postal.
+        </p>
       </div>
 
       {/* Form de adicionar item */}
