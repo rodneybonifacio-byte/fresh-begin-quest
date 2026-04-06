@@ -533,6 +533,32 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
           </div>
         </div>
 
+        {/* Declaração de Conteúdo */}
+        {formData.itensDeclaracaoConteudo && formData.itensDeclaracaoConteudo.length > 0 && (
+          <div className="bg-card rounded-xl p-5 border border-border shadow-sm">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-teal-100 dark:bg-teal-900/30 rounded-lg">
+                <FileText className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+              </div>
+              <h3 className="font-bold text-base text-foreground">Declaração de Conteúdo</h3>
+              <span className="text-xs bg-muted px-2 py-1 rounded-full text-muted-foreground">
+                {formData.itensDeclaracaoConteudo.length} {formData.itensDeclaracaoConteudo.length === 1 ? 'item' : 'itens'}
+              </span>
+            </div>
+            <div className="space-y-2">
+              {formData.itensDeclaracaoConteudo.map((item: any, index: number) => (
+                <div key={index} className="flex items-center justify-between bg-muted/50 rounded-lg p-3">
+                  <span className="text-sm font-medium text-foreground">{item.conteudo}</span>
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <span>Qtd: {item.quantidade}</span>
+                    <span className="font-semibold text-foreground">R$ {item.valor}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Alerta de Confirmação */}
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4">
           <div className="flex items-start gap-3">
