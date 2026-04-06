@@ -20,7 +20,6 @@ serve(async (req) => {
       throw new Error('Configuração incompleta');
     }
 
-    // Login
     const loginRes = await fetch(`${baseUrl}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -32,7 +31,6 @@ serve(async (req) => {
 
     const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 
-    // Fetch all emissions since 2025-01-01
     const allEmissoes = [];
     const statuses = ['POSTADO', 'ENTREGUE', 'PRE_POSTADO', 'EM_TRANSITO', 'DEVOLVIDO', 'CANCELADO', 'SAIU_PARA_ENTREGA', 'AGUARDANDO_RETIRADA'];
 
@@ -58,14 +56,21 @@ serve(async (req) => {
       }
     }
 
-    // Process by state
+    // Process by state - fields are at root level of each emission
     const byState: Record<string, any[]> = {};
     for (const e of allEmissoes) {
       const dest = e.destinatario || {};
       const endereco = dest.endereco || {};
       const uf = endereco.uf || e.destinatarioUf || 'N/D';
-      const cep = endereco.cep || e.destinatarioCep || '';
-      const embalagem = e.embalagem || e.cotacao?.embalagem || {};
+
+      const cepDest = endereco.cep || e.destinatarioCep || '';
+      const cepRem = e.remetenteCep || e.remetente?.cep || '';
+
+      // Weight and dimensions are at root level
+      const peso = e.peso || 0;
+      const altura = e.altura || 0;
+      const largura = e.largura || 0;
+      const comprimento = e.comprimento || 0;
 
       if (!byState[uf]) byState[uf] = [];
       byState[uf].push({
@@ -73,33 +78,43 @@ serve(async (req) => {
         status: e.status || '',
         servico: e.servico || '',
         transportadora: e.transportadora || '',
-        remetente: e.remetenteNome || '',
+        remetente: e.remetenteNome || e.remetente?.nome || '',
+        remetenteCpfCnpj: e.remetenteCpfCnpj || e.remetente?.cpfCnpj || '',
+        remetenteCep: cepRem,
+        remetenteUf: e.remetenteUf || e.remetente?.uf || '',
+        remetenteCidade: e.remetenteLocalidade || e.remetente?.localidade || '',
         destinatario: dest.nome || '',
-        cep,
-        cidade: endereco.localidade || '',
-        bairro: endereco.bairro || '',
-        uf,
-        peso: embalagem.peso || 0,
-        altura: embalagem.altura || 0,
-        largura: embalagem.largura || 0,
-        comprimento: embalagem.comprimento || 0,
-        valorFrete: e.valor || e.valorPostagem || 0,
-        valorDeclarado: e.valorDeclarado || 0,
-        data: e.criadoEm || '',
-        remetenteCpfCnpj: e.remetenteCpfCnpj || '',
         destCpfCnpj: dest.cpfCnpj || '',
         destTelefone: dest.telefone || dest.celular || '',
         destEmail: dest.email || '',
+        cepDestino: cepDest,
+        cidade: endereco.localidade || '',
+        bairro: endereco.bairro || '',
+        uf,
+        peso,
+        pesoKg: peso > 0 ? Math.round(peso / 100) / 10 : 0,
+        altura,
+        largura,
+        comprimento,
+        cubagem: altura > 0 && largura > 0 && comprimento > 0
+          ? Math.round(altura * largura * comprimento) : 0,
+        valorFrete: e.valor || 0,
+        valorPostagem: e.valorPostagem || 0,
+        valorDeclarado: e.valorDeclarado || 0,
         valorNF: e.valorNotaFiscal || 0,
         chaveNFe: e.chaveNFe || '',
         numeroNF: e.numeroNotaFiscal || '',
+        volumes: e.volumes || 1,
+        data: e.criadoEm || '',
+        clienteNome: e.cliente?.nome || '',
+        clienteId: e.cliente?.id || e.clienteId || '',
       });
     }
 
     // Build summary
     const summary = Object.keys(byState).sort().map(uf => {
       const items = byState[uf];
-      const ceps = items.map(i => i.cep).filter(Boolean);
+      const ceps = items.map(i => i.cepDestino).filter(Boolean);
       const pesos = items.map(i => i.peso).filter(Boolean);
       const fretes = items.map(i => Number(i.valorFrete)).filter(Boolean);
       return {
@@ -107,15 +122,14 @@ serve(async (req) => {
         qtd: items.length,
         cepMin: ceps.length ? ceps.sort()[0] : '',
         cepMax: ceps.length ? ceps.sort()[ceps.length - 1] : '',
-        pesoMedio: pesos.length ? Math.round(pesos.reduce((a, b) => a + b, 0) / pesos.length) : 0,
-        pesoMin: pesos.length ? Math.min(...pesos) : 0,
-        pesoMax: pesos.length ? Math.max(...pesos) : 0,
+        pesoMedioG: pesos.length ? Math.round(pesos.reduce((a, b) => a + b, 0) / pesos.length) : 0,
+        pesoMinG: pesos.length ? Math.min(...pesos) : 0,
+        pesoMaxG: pesos.length ? Math.max(...pesos) : 0,
         freteMedio: fretes.length ? Math.round(fretes.reduce((a, b) => a + b, 0) / fretes.length * 100) / 100 : 0,
         freteTotal: fretes.length ? Math.round(fretes.reduce((a, b) => a + b, 0) * 100) / 100 : 0,
       };
     });
 
-    // Flatten details
     const details = Object.keys(byState).sort().flatMap(uf => byState[uf]);
 
     return new Response(JSON.stringify({
