@@ -22,7 +22,7 @@ Deno.serve(async (req: Request) => {
     const adminPassword = Deno.env.get('API_ADMIN_PASSWORD');
 
     // Login admin
-    const loginResp = await fetch(`${baseApiUrl}/auth/login`, {
+    const loginResp = await fetch(`${baseApiUrl}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: adminEmail, senha: adminPassword }),
