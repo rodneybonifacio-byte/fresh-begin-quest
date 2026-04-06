@@ -165,8 +165,9 @@ export const Step1Dimensoes = ({
           </button>
         )}
 
-        {/* Declaração de Conteúdo */}
+        {/* Declaração de Conteúdo (obrigatória) */}
         <DeclaracaoConteudoSection />
+        {(() => { const itens = getValues('itensDeclaracaoConteudo') || []; return itens.length === 0 ? null : null; })()}
 
         <div className="space-y-3">
           {/* Status da validação */}
