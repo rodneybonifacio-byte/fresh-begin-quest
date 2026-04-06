@@ -51,7 +51,7 @@ export const Step1Dimensoes = ({
     });
   }, [altura, largura, comprimento, peso, quantidadeVolumes, setValue]);
   const itensDeclaracao = watch('itensDeclaracaoConteudo') || [];
-  const isFormValid = !!(clienteSelecionado && altura > 0 && largura > 0 && comprimento > 0 && peso > 0 && itensDeclaracao.length > 0);
+  const isFormValid = !!(clienteSelecionado && altura > 0 && largura > 0 && comprimento > 0 && peso > 0);
   const handleNext = () => {
     const formData = getValues();
     console.log('=== AVANÇANDO PARA DESTINATÁRIO ===');
@@ -166,8 +166,11 @@ export const Step1Dimensoes = ({
           </button>
         )}
 
-        {/* Declaração de Conteúdo (obrigatória) */}
+        {/* Declaração de Conteúdo (obrigatória apenas para Correios) */}
         <DeclaracaoConteudoSection />
+        <p className="text-xs text-muted-foreground -mt-2">
+          ⚠️ Obrigatória apenas para envios via Correios. Rodonaves não exige declaração de conteúdo.
+        </p>
 
         <div className="space-y-3">
           {/* Status da validação */}
@@ -188,7 +191,7 @@ export const Step1Dimensoes = ({
               {peso > 0 ? "✓ Peso" : "○ Peso"}
             </span>
             <span className={itensDeclaracao.length > 0 ? "text-green-600" : "text-muted-foreground"}>
-              {itensDeclaracao.length > 0 ? "✓ Declaração de conteúdo" : "○ Declaração de conteúdo"}
+              {itensDeclaracao.length > 0 ? "✓ Declaração de conteúdo" : "○ Declaração de conteúdo (opcional, obrigatória p/ Correios)"}
             </span>
           </div>
 

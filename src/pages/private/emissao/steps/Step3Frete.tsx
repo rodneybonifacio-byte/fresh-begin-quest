@@ -158,6 +158,15 @@ export const Step3Frete = ({
         return;
       }
     }
+
+    // Validar declaração de conteúdo se Correios
+    if (cotacaoSelecionado && isCorreios(cotacaoSelecionado)) {
+      const itens = getValues('itensDeclaracaoConteudo') || [];
+      if (itens.length === 0) {
+        toast.error('A declaração de conteúdo é obrigatória para envios via Correios. Volte ao passo 1 e adicione os itens.', { duration: 6000 });
+        return;
+      }
+    }
     
     const isValid = await trigger(['cotacao']);
     if (isValid && cotacaoSelecionado) onNext();
