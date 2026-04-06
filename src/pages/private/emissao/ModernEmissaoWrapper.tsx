@@ -44,6 +44,13 @@ const createValidationSchema = () => {
             codigoServico: yup.string().required('Selecione um serviço de frete'),
         }),
         valorNotaFiscal: yup.string().optional(),
+        itensDeclaracaoConteudo: yup.array().of(
+            yup.object().shape({
+                conteudo: yup.string().required(),
+                quantidade: yup.string().required(),
+                valor: yup.string().required(),
+            })
+        ).optional().default([]),
     });
 };
 
