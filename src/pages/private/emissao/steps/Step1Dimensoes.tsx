@@ -26,7 +26,8 @@ export const Step1Dimensoes = ({
 }: Step1DimensoesProps) => {
   const {
     setValue,
-    getValues
+    getValues,
+    watch
   } = useFormContext();
   const [altura, setAltura] = useState<number>(0);
   const [largura, setLargura] = useState<number>(0);
