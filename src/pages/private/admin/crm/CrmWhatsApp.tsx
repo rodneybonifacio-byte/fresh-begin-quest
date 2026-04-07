@@ -496,12 +496,16 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
   };
 
   const filteredConversations = conversations.filter(c => {
-    const term = searchTerm.toLowerCase();
+    const term = searchTerm.toLowerCase().replace(/\D/g, '') || searchTerm.toLowerCase();
+    const termRaw = searchTerm.toLowerCase();
+    const phoneClean = c.contact_phone.replace(/\D/g, '');
+    const cpfForPhone = cpfSearchData[phoneClean] || '';
     const matchesSearch =
-      (c.contact_name || '').toLowerCase().includes(term) ||
-      c.contact_phone.includes(term) ||
-      (c.last_message_preview || '').toLowerCase().includes(term) ||
-      (pipelineSearchData[c.id] || '').includes(term);
+      (c.contact_name || '').toLowerCase().includes(termRaw) ||
+      c.contact_phone.includes(termRaw) ||
+      cpfForPhone.includes(searchTerm.replace(/\D/g, '')) ||
+      (c.last_message_preview || '').toLowerCase().includes(termRaw) ||
+      (pipelineSearchData[c.id] || '').includes(termRaw);
     if (!matchesSearch) return false;
 
     const isClosed = closedConversationIds.has(c.id) || c.status === 'closed';
