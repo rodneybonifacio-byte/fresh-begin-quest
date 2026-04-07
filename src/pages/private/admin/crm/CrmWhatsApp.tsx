@@ -57,6 +57,7 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
   const [conversationTab, setConversationTab] = useState<'sem_atendimento' | 'ia' | 'fechados'>('sem_atendimento');
   const [closedConversationIds, setClosedConversationIds] = useState<Set<string>>(new Set());
   const [pipelineSearchData, setPipelineSearchData] = useState<Record<string, string>>({});
+  const [cpfSearchData, setCpfSearchData] = useState<Record<string, string>>({});
 
   // Load template bodies for HSM rendering
   useEffect(() => {
