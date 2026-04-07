@@ -170,15 +170,22 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
         return isNaN(numericValue) ? 0 : numericValue;
       };
 
+      // Calcular valorDeclarado a partir dos itens da declaração de conteúdo
+      const itensDeclaracao = data.itensDeclaracaoConteudo || [];
+      const valorDeclaradoCalculado = itensDeclaracao.reduce(
+        (acc: number, item: any) => acc + (parseFloat(item.valor) || 0) * (parseInt(item.quantidade) || 1),
+        0
+      );
+
       const emissao: IEmissao = {
         remetenteId: data.remetenteId,
         cienteObjetoNaoProibido: true,
         embalagem: embalagem,
         cotacao: cotacaoEnriquecida,
         logisticaReversa: isLogisticaReversa ? 'S' : 'N',
-        valorDeclarado: 0,
+        valorDeclarado: valorDeclaradoCalculado,
         valorNotaFiscal: parseValorNotaFiscal(data.valorNotaFiscal),
-        itensDeclaracaoConteudo: data.itensDeclaracaoConteudo || [],
+        itensDeclaracaoConteudo: itensDeclaracao,
         destinatario: data.destinatario,
         quantidadeVolumes: embalagem.quantidadeVolumes || 1,
       };
