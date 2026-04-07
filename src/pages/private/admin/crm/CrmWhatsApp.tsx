@@ -123,12 +123,7 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
         });
       }
 
-      const { data: cadastros } = await supabase
-        .from('cadastros_origem')
-        .select('telefone_cliente, cliente_id')
-        .not('telefone_cliente', 'is', null);
-      
-      // We don't have CPF directly in cadastros_origem, skip if not available
+      // cadastros_origem doesn't have CPF directly, skip
 
       setCpfSearchData(cpfMap);
     };
