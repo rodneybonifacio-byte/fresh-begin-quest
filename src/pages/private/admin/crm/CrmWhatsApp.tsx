@@ -57,6 +57,7 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
   const [conversationTab, setConversationTab] = useState<'sem_atendimento' | 'ia' | 'fechados'>('sem_atendimento');
   const [closedConversationIds, setClosedConversationIds] = useState<Set<string>>(new Set());
   const [pipelineSearchData, setPipelineSearchData] = useState<Record<string, string>>({});
+  const [cpfSearchData, setCpfSearchData] = useState<Record<string, string>>({});
 
   // Load template bodies for HSM rendering
   useEffect(() => {
@@ -97,6 +98,36 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
       }
     };
     loadPipelineSearch();
+  }, []);
+
+  // Load CPF data for search by phone number
+  useEffect(() => {
+    const loadCpfSearch = async () => {
+      const cpfMap: Record<string, string> = {};
+      
+      const { data: remetentes } = await supabase
+        .from('remetentes')
+        .select('celular, telefone, cpf_cnpj')
+        .not('cpf_cnpj', 'is', null);
+      
+      if (remetentes) {
+        remetentes.forEach((r: any) => {
+          const cpf = (r.cpf_cnpj || '').replace(/\D/g, '');
+          if (!cpf) return;
+          [r.celular, r.telefone].forEach((phone: string | null) => {
+            if (phone) {
+              const clean = phone.replace(/\D/g, '');
+              if (clean.length >= 10) cpfMap[clean] = cpf;
+            }
+          });
+        });
+      }
+
+      // cadastros_origem doesn't have CPF directly, skip
+
+      setCpfSearchData(cpfMap);
+    };
+    loadCpfSearch();
   }, []);
 
   // Load closed ticket conversation IDs
@@ -466,9 +497,13 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
 
   const filteredConversations = conversations.filter(c => {
     const term = searchTerm.toLowerCase();
+    const termDigits = searchTerm.replace(/\D/g, '');
+    const phoneClean = c.contact_phone.replace(/\D/g, '');
+    const cpfForPhone = cpfSearchData[phoneClean] || '';
     const matchesSearch =
       (c.contact_name || '').toLowerCase().includes(term) ||
       c.contact_phone.includes(term) ||
+      (termDigits.length >= 3 && cpfForPhone.includes(termDigits)) ||
       (c.last_message_preview || '').toLowerCase().includes(term) ||
       (pipelineSearchData[c.id] || '').includes(term);
     if (!matchesSearch) return false;
@@ -498,7 +533,7 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Buscar conversas..."
+              placeholder="Buscar por nome, telefone ou CPF..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-4 py-2 text-sm bg-muted rounded-lg border-none outline-none text-foreground placeholder:text-muted-foreground"
