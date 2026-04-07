@@ -450,12 +450,18 @@ serve(async (req) => {
     // Se existirem itens, garantir formato correto; se não, usar valorDeclarado como fallback
     if (Array.isArray(emissaoPayload.itensDeclaracaoConteudo) && emissaoPayload.itensDeclaracaoConteudo.length > 0) {
       // Sanitizar itens: garantir que conteudo, quantidade e valor estejam presentes
-      emissaoPayload.itensDeclaracaoConteudo = emissaoPayload.itensDeclaracaoConteudo.map((item: any) => ({
-        conteudo: String(item.conteudo || 'Mercadoria').trim(),
-        quantidade: String(item.quantidade || '1'),
-        valor: String(item.valor || '0'),
-      }));
-      console.log('📋 Itens declaração de conteúdo:', JSON.stringify(emissaoPayload.itensDeclaracaoConteudo));
+      // A API espera 'valor' como o TOTAL da linha (quantidade × valor unitário)
+      emissaoPayload.itensDeclaracaoConteudo = emissaoPayload.itensDeclaracaoConteudo.map((item: any) => {
+        const qty = parseInt(String(item.quantidade || '1')) || 1;
+        const unitValue = parseFloat(String(item.valor || '0').replace(',', '.')) || 0;
+        const totalValue = qty * unitValue;
+        return {
+          conteudo: String(item.conteudo || 'Mercadoria').trim(),
+          quantidade: String(qty),
+          valor: totalValue.toFixed(2),
+        };
+      });
+      console.log('📋 Itens declaração de conteúdo (valor = qty × unit):', JSON.stringify(emissaoPayload.itensDeclaracaoConteudo));
     } else if (emissaoPayload.valorDeclarado && emissaoPayload.valorDeclarado > 0) {
       // Se não tem itens mas tem valorDeclarado, criar item genérico com o valor real
       emissaoPayload.itensDeclaracaoConteudo = [{
