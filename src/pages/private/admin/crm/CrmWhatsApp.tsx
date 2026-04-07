@@ -100,6 +100,41 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
     loadPipelineSearch();
   }, []);
 
+  // Load CPF data for search by phone number
+  useEffect(() => {
+    const loadCpfSearch = async () => {
+      const cpfMap: Record<string, string> = {};
+      
+      const { data: remetentes } = await supabase
+        .from('remetentes')
+        .select('celular, telefone, cpf_cnpj')
+        .not('cpf_cnpj', 'is', null);
+      
+      if (remetentes) {
+        remetentes.forEach((r: any) => {
+          const cpf = (r.cpf_cnpj || '').replace(/\D/g, '');
+          if (!cpf) return;
+          [r.celular, r.telefone].forEach((phone: string | null) => {
+            if (phone) {
+              const clean = phone.replace(/\D/g, '');
+              if (clean.length >= 10) cpfMap[clean] = cpf;
+            }
+          });
+        });
+      }
+
+      const { data: cadastros } = await supabase
+        .from('cadastros_origem')
+        .select('telefone_cliente, cliente_id')
+        .not('telefone_cliente', 'is', null);
+      
+      // We don't have CPF directly in cadastros_origem, skip if not available
+
+      setCpfSearchData(cpfMap);
+    };
+    loadCpfSearch();
+  }, []);
+
   // Load closed ticket conversation IDs
   const loadClosedConversationIds = useCallback(async () => {
     const { data } = await supabase
