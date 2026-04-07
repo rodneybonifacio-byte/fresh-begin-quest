@@ -533,7 +533,7 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Buscar conversas..."
+              placeholder="Buscar por nome, telefone ou CPF..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-4 py-2 text-sm bg-muted rounded-lg border-none outline-none text-foreground placeholder:text-muted-foreground"
