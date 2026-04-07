@@ -496,7 +496,7 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
   };
 
   const filteredConversations = conversations.filter(c => {
-    const term = searchTerm.toLowerCase().replace(/\D/g, '') || searchTerm.toLowerCase();
+    const termRaw = searchTerm.toLowerCase();
     const termRaw = searchTerm.toLowerCase();
     const phoneClean = c.contact_phone.replace(/\D/g, '');
     const cpfForPhone = cpfSearchData[phoneClean] || '';
