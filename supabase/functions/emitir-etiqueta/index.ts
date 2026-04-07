@@ -446,6 +446,28 @@ serve(async (req) => {
       });
     }
 
+    // Garantir que itensDeclaracaoConteudo seja enviado corretamente
+    // Se existirem itens, garantir formato correto; se não, usar valorDeclarado como fallback
+    if (Array.isArray(emissaoPayload.itensDeclaracaoConteudo) && emissaoPayload.itensDeclaracaoConteudo.length > 0) {
+      // Sanitizar itens: garantir que conteudo, quantidade e valor estejam presentes
+      emissaoPayload.itensDeclaracaoConteudo = emissaoPayload.itensDeclaracaoConteudo.map((item: any) => ({
+        conteudo: String(item.conteudo || 'Mercadoria').trim(),
+        quantidade: String(item.quantidade || '1'),
+        valor: String(item.valor || '0'),
+      }));
+      console.log('📋 Itens declaração de conteúdo:', JSON.stringify(emissaoPayload.itensDeclaracaoConteudo));
+    } else if (emissaoPayload.valorDeclarado && emissaoPayload.valorDeclarado > 0) {
+      // Se não tem itens mas tem valorDeclarado, criar item genérico com o valor real
+      emissaoPayload.itensDeclaracaoConteudo = [{
+        conteudo: 'Mercadoria',
+        quantidade: '1',
+        valor: String(emissaoPayload.valorDeclarado),
+      }];
+      console.log('📋 Declaração fallback com valorDeclarado:', emissaoPayload.valorDeclarado);
+    } else {
+      console.log('⚠️ Nenhum item na declaração de conteúdo e sem valorDeclarado');
+    }
+
     console.log('📦 Payload da emissão:', JSON.stringify(emissaoPayload));
 
     // Obter token admin APENAS para operações administrativas (configurar cliente)
