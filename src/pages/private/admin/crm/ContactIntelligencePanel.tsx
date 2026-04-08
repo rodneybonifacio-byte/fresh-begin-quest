@@ -407,9 +407,6 @@ export const ContactIntelligencePanel = ({
                 uf: null,
               }));
               setRemetentes(resolvedRemetentes);
-            }
-              }
-            }
           }
         }
       }
