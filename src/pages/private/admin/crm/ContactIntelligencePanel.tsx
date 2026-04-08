@@ -491,6 +491,10 @@ export const ContactIntelligencePanel = ({
           ? currentRem
           : (isGenericSenderName(currentRem) ? incomingRem : chooseLongest(currentRem, incomingRem)),
         valorVenda: Math.max(Number(current.valorVenda || 0), Number(incoming.valorVenda || 0)),
+        peso: incoming.peso ?? current.peso,
+        altura: incoming.altura ?? current.altura,
+        largura: incoming.largura ?? current.largura,
+        comprimento: incoming.comprimento ?? current.comprimento,
       });
     };
 
