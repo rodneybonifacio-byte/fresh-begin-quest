@@ -33,6 +33,10 @@ interface ShipmentRecord {
   destEndereco: string;
   remetenteNome: string;
   valorVenda: number;
+  peso: number | null;
+  altura: number | null;
+  largura: number | null;
+  comprimento: number | null;
 }
 
 interface ShipmentSummary {
