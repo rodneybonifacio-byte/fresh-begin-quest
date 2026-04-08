@@ -312,24 +312,28 @@ serve(async (req) => {
       .limit(1)
       .single();
 
-    // Se já tem um nome válido salvo, usar ele
+    // Se já tem um nome válido salvo, SEMPRE usar ele (nunca sobrescrever nome já confirmado)
     if (existingConv?.contact_name && isValidName(existingConv.contact_name)) {
       contactName = existingConv.contact_name;
-      console.log("✅ Nome da conversa existente:", contactName);
+      console.log("✅ Nome da conversa existente (protegido):", contactName);
     }
-
-    // 2. Buscar nos remetentes por cliente_id
-    if ((!isValidName(contactName) || contactName === cleanDisplayName) && existingConv?.cliente_id) {
-      const { data: remetentes } = await supabase
-        .from("remetentes")
-        .select("nome")
-        .eq("cliente_id", existingConv.cliente_id);
-      
-      if (remetentes) {
-        const valid = remetentes.find(r => isValidName(r.nome));
-        if (valid) {
-          contactName = valid.nome;
-          console.log("✅ Nome via remetente (cliente_id):", contactName);
+    // NOTA: Só buscar nome em outras tabelas se a conversa NÃO tem nome válido
+    else {
+      // 2. Buscar nos remetentes por cliente_id
+      if ((!isValidName(contactName) || contactName === cleanDisplayName) && existingConv?.cliente_id) {
+        const { data: remetentes } = await supabase
+          .from("remetentes")
+          .select("nome")
+          .eq("cliente_id", existingConv.cliente_id);
+        
+        if (remetentes) {
+          // Preferir remetente cujo nome se parece com o displayName do WhatsApp
+          let bestMatch = remetentes.find(r => isValidName(r.nome) && cleanDisplayName && r.nome.toLowerCase().includes(cleanDisplayName.toLowerCase().split(" ")[0]));
+          if (!bestMatch) bestMatch = remetentes.find(r => isValidName(r.nome));
+          if (bestMatch) {
+            contactName = bestMatch.nome;
+            console.log("✅ Nome via remetente (cliente_id):", contactName);
+          }
         }
       }
     }

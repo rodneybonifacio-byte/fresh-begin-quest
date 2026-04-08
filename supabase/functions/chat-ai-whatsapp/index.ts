@@ -97,7 +97,8 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
         if (opcoes.length === 0) return "Nenhuma opção de frete encontrada para esses CEPs.";
         let result = `Opções de frete de ${args.cep_origem} → ${args.cep_destino}:\n`;
         for (const op of opcoes.slice(0, 5)) {
-          result += `- ${op.nomeServico}: R$ ${op.valorTotal || op.valor} (${op.prazo} dias)\n`;
+          const valor = op.valorTotal || op.valor || op.preco || op.price || 0;
+          result += `- ${op.nomeServico}: R$ ${Number(valor).toFixed(2)} (${op.prazo} dias)\n`;
         }
         return result;
       }
@@ -934,26 +935,47 @@ serve(async (req) => {
         // Só faz handoff direto se tem código de rastreio no contexto
         // Caso contrário, Veronica coleta o código primeiro e depois o sistema fará o handoff
         if (hasTrackingCodeInContext) {
-          console.log(`🔄 PRÉ-HANDOFF: Problema detectado + código disponível → Felipe assume`);
+          // === FIX 1: Verificar se já houve handoff recente (anti-duplicata) ===
+          const sixtySecsAgoHandoff = new Date(Date.now() - 60000).toISOString();
+          const { data: recentHandoffCheck } = await supabase
+            .from("whatsapp_messages")
+            .select("id")
+            .eq("conversation_id", conversationId)
+            .eq("direction", "outbound")
+            .ilike("content", "%Suporte Nível 2%")
+            .gte("created_at", sixtySecsAgoHandoff)
+            .limit(1)
+            .maybeSingle();
 
-          const preHandoffChannel = await resolveChannelForConversation(conversationId);
-          if (preHandoffChannel) {
+          if (recentHandoffCheck) {
+            console.log("⏭️ PRÉ-HANDOFF DUPLICADO BLOQUEADO: já houve handoff nos últimos 60s");
+            // Apenas garantir que o agente é felipe
+            agentName = "felipe";
             await supabase.from("whatsapp_conversations")
               .update({ active_agent: "felipe" })
               .eq("id", conversationId);
+          } else {
+            console.log(`🔄 PRÉ-HANDOFF: Problema detectado + código disponível → Felipe assume`);
 
-            await performHandoffToFelipe(supabase, conversationId, contactPhone, message, preHandoffChannel);
+            const preHandoffChannel = await resolveChannelForConversation(conversationId);
+            if (preHandoffChannel) {
+              await supabase.from("whatsapp_conversations")
+                .update({ active_agent: "felipe" })
+                .eq("id", conversationId);
 
-            return new Response(
-              JSON.stringify({ ok: true, reply: "Handoff Veronica → Felipe realizado (áudio + análise)", tools_used: [] }),
-              { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
+              await performHandoffToFelipe(supabase, conversationId, contactPhone, message, preHandoffChannel);
+
+              return new Response(
+                JSON.stringify({ ok: true, reply: "Handoff Veronica → Felipe realizado (áudio + análise)", tools_used: [] }),
+                { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+
+            agentName = "felipe";
+            await supabase.from("whatsapp_conversations")
+              .update({ active_agent: "felipe" })
+              .eq("id", conversationId);
           }
-
-          agentName = "felipe";
-          await supabase.from("whatsapp_conversations")
-            .update({ active_agent: "felipe" })
-            .eq("id", conversationId);
         } else {
           console.log(`🔄 PRÉ-HANDOFF ADIADO: Problema detectado mas SEM código de rastreio → Veronica coleta primeiro`);
           // Veronica vai responder normalmente e coletar o código antes do handoff
@@ -1471,7 +1493,7 @@ EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de a
     console.log("👤 Contexto de contato:", contactContext ? contactContext.substring(0, 120) : "NENHUM (não identificado)");
 
     const hojeFormatado = new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric" });
-    const enrichedSystemPrompt = systemPrompt + `\n\n📅 DATA DE HOJE: ${hojeFormatado}. Use esta data como referência para avaliar se prazos estão vencidos.` + "\n\nREGRA TÉCNICA: NÃO inclua prefixo como '*Veronica:*' ou '*Felipe:*' no início da sua resposta. O sistema adiciona automaticamente. Responda apenas com o conteúdo da mensagem." + "\n\n[REGRA DE NÚMERO ERRADO]\nSe a pessoa disser que o número não é dela, que não conhece o destinatário, que não fez nenhuma compra, ou qualquer variação de 'número errado':\n1. Peça desculpas de forma breve e educada\n2. Informe que o número será removido da base e que não receberá mais mensagens\n3. NÃO tente explicar o que é a BRHUB ou oferecer serviços\n4. NÃO envie mensagem longa. Máximo 2 frases.\n5. Exemplo: 'Peço desculpas pelo incômodo! Já estou removendo seu número da nossa base, você não receberá mais mensagens. Tenha um bom dia! 😊'" + "\n\n[REGRA DE REDIRECIONAMENTO — PRODUTOS, TROCA E LOJA]\nQuando o cliente perguntar sobre PRODUTOS, COMPRAS, CATÁLOGO, PREÇOS de produtos, ESTOQUE, TROCA DE PRODUTO, DEVOLUÇÃO DE PRODUTO, ou quiser COMPRAR algo na loja:\n1. Use a ferramenta 'buscar_remetentes_api' para buscar os dados cadastrais do remetente vinculado ao cliente\n2. A ferramenta SEMPRE retorna os dados completos (nome, telefone, email, endereço) quando o cliente está identificado. Use esses dados diretamente na resposta.\n3. Responda ao cliente orientando a entrar em contato direto com a loja remetente, fornecendo os dados retornados pela ferramenta.\n4. Exemplo: \"[Nome], para troca/devolução entre em contato direto com a loja [Nome do Remetente]! 📞 [celular/telefone] | 📍 [endereço completo] 😊\"\nIMPORTANTE: Essa regra se aplica APENAS a perguntas sobre produtos/compras/trocas/devoluções. Questões sobre ENVIO, RASTREIO, ETIQUETAS, CRÉDITOS continuam sendo atendidas normalmente por você.\nCRÍTICO: Se a ferramenta retornar dados do remetente, SEMPRE forneça esses dados ao cliente. NUNCA diga que não conseguiu localizar se a ferramenta retornou resultados.\nApenas se a ferramenta retornar 'Nenhum remetente cadastrado' ou 'Não consegui identificar o cliente', aí sim peça o nome ou CNPJ da loja." + "\n\n[REGRA DE RASTREIO E LINK OFICIAL]\nSe o cliente perguntar como rastrear, pedir o link de rastreio, ou disser que quer acompanhar o pedido, informe o link oficial https://brhubenvios.com.br/rastreio/encomenda?objeto=[CODIGO]. Se houver um código de referência ativo no contexto, substitua [CODIGO] pelo código correto. Se existirem vários códigos e o cliente falar no singular ('meu pedido', 'meu pacote', 'meu envio'), escolha apenas UM código prioritário e não misture respostas de códigos diferentes na mesma mensagem. Só mencione outro código se o cliente pedir explicitamente." + "\n\n[REGRA DE HONESTIDADE — LIMITAÇÕES]\nQuando NÃO tiver uma ferramenta ou capacidade real para resolver algo:\n- NUNCA diga 'vou acionar a operação', 'vou verificar com o time', 'vou escalar' se você NÃO tem uma ferramenta que faça isso de verdade.\n- Se o endereço está errado e o pacote já saiu para entrega, seja HONESTO: 'Infelizmente não consigo alterar o endereço de entrega depois que o pacote já saiu. Se não for entregue, ele vai voltar pro remetente e a loja pode reenviar com o endereço correto.'\n- Se não consegue fazer algo concreto, diga claramente o que o cliente deve fazer em vez de prometer ações que você não vai executar.\n- MÁXIMO 1 vez por conversa dizer que vai 'verificar'. Após isso, dê uma resposta concreta ou admita a limitação.\n\n[REGRA DE CONTESTAÇÃO DE ENDEREÇO]\nQuando o cliente disser que o endereço está ERRADO, que não é o endereço dele, ou contestar o endereço informado:\n- NÃO repita o mesmo endereço que o cliente acabou de contestar.\n- Reconheça que houve um problema com o endereço cadastrado.\n- Explique claramente: se o pacote já saiu para entrega, não é possível alterar o endereço pelo sistema.\n- Oriente o cliente a entrar em contato com a loja remetente para correção do endereço em caso de reenvio.\n- Se o cliente está pedindo para corrigir um endereço antes da postagem, use a ferramenta adequada.\n- Exemplo: '[Nome], entendi que o endereço cadastrado não está correto. Como o pacote já está em rota, não dá pra alterar agora. Se ele voltar, a loja pode reenviar com o endereço certo 😊'" + contactContext;
+    const enrichedSystemPrompt = systemPrompt + `\n\n📅 DATA DE HOJE: ${hojeFormatado}. Use esta data como referência para avaliar se prazos estão vencidos.` + "\n\nREGRA TÉCNICA: NÃO inclua prefixo como '*Veronica:*' ou '*Felipe:*' no início da sua resposta. O sistema adiciona automaticamente. Responda apenas com o conteúdo da mensagem." + "\n\n[REGRA DE ESCOPO — GUARDRAIL]\nVocê é uma assistente EXCLUSIVA para assuntos de LOGÍSTICA, ENVIOS, RASTREIO, ETIQUETAS, CRÉDITOS, COTAÇÃO DE FRETE, e serviços da BRHUB Envios.\n- NUNCA responda sobre assuntos que não sejam relacionados a envios e logística.\n- Se o cliente pedir conselhos de negócios, receitas, dicas pessoais, ou qualquer assunto fora do escopo de logística, responda educadamente: '[Nome], aqui eu só consigo te ajudar com questões de envio, rastreio e etiquetas! Se precisar de algo nessa área, é só falar 😊'\n- Exemplos de assuntos PROIBIDOS: conselhos financeiros, dicas de marketing, receitas, conversas pessoais, delivery de comida, etc.\n- Exemplos de assuntos PERMITIDOS: rastreio, cotação, emissão de etiqueta, saldo, extrato, status de envio, endereço, remetente, destinatário, manifestação, etc." + "\n\n[REGRA DE PRIORIDADE — RESPONDA O QUE FOI PERGUNTADO]\nANTES de contextualizar qualquer problema ou dar informações adicionais, RESPONDA DIRETAMENTE a pergunta do cliente.\n- Se o cliente perguntou 'nome do destinatário', forneça o nome PRIMEIRO.\n- Se o cliente perguntou 'CPF', forneça o CPF PRIMEIRO.\n- Se o cliente perguntou 'todos os dados', forneça TODOS os dados disponíveis (nome, CPF, endereço, telefone).\n- SOMENTE DEPOIS de responder a pergunta direta, adicione contexto relevante (status, problema, etc).\n- NUNCA ignore a pergunta para falar sobre outro assunto." + "\n\n[REGRA DE NÚMERO ERRADO]\nSe a pessoa disser que o número não é dela, que não conhece o destinatário, que não fez nenhuma compra, ou qualquer variação de 'número errado':\n1. Peça desculpas de forma breve e educada\n2. Informe que o número será removido da base e que não receberá mais mensagens\n3. NÃO tente explicar o que é a BRHUB ou oferecer serviços\n4. NÃO envie mensagem longa. Máximo 2 frases.\n5. Exemplo: 'Peço desculpas pelo incômodo! Já estou removendo seu número da nossa base, você não receberá mais mensagens. Tenha um bom dia! 😊'" + "\n\n[REGRA DE REDIRECIONAMENTO — PRODUTOS, TROCA E LOJA]\nQuando o cliente perguntar sobre PRODUTOS, COMPRAS, CATÁLOGO, PREÇOS de produtos, ESTOQUE, TROCA DE PRODUTO, DEVOLUÇÃO DE PRODUTO, ou quiser COMPRAR algo na loja:\n1. Use a ferramenta 'buscar_remetentes_api' para buscar os dados cadastrais do remetente vinculado ao cliente\n2. A ferramenta SEMPRE retorna os dados completos (nome, telefone, email, endereço) quando o cliente está identificado. Use esses dados diretamente na resposta.\n3. Responda ao cliente orientando a entrar em contato direto com a loja remetente, fornecendo os dados retornados pela ferramenta.\n4. Exemplo: \"[Nome], para troca/devolução entre em contato direto com a loja [Nome do Remetente]! 📞 [celular/telefone] | 📍 [endereço completo] 😊\"\nIMPORTANTE: Essa regra se aplica APENAS a perguntas sobre produtos/compras/trocas/devoluções. Questões sobre ENVIO, RASTREIO, ETIQUETAS, CRÉDITOS continuam sendo atendidas normalmente por você.\nCRÍTICO: Se a ferramenta retornar dados do remetente, SEMPRE forneça esses dados ao cliente. NUNCA diga que não conseguiu localizar se a ferramenta retornou resultados.\nApenas se a ferramenta retornar 'Nenhum remetente cadastrado' ou 'Não consegui identificar o cliente', aí sim peça o nome ou CNPJ da loja." + "\n\n[REGRA DE RASTREIO E LINK OFICIAL]\nSe o cliente perguntar como rastrear, pedir o link de rastreio, ou disser que quer acompanhar o pedido, informe o link oficial https://brhubenvios.com.br/rastreio/encomenda?objeto=[CODIGO]. Se houver um código de referência ativo no contexto, substitua [CODIGO] pelo código correto. Se existirem vários códigos e o cliente falar no singular ('meu pedido', 'meu pacote', 'meu envio'), escolha apenas UM código prioritário e não misture respostas de códigos diferentes na mesma mensagem. Só mencione outro código se o cliente pedir explicitamente." + "\n\n[REGRA DE HONESTIDADE — LIMITAÇÕES]\nQuando NÃO tiver uma ferramenta ou capacidade real para resolver algo:\n- NUNCA diga 'vou acionar a operação', 'vou verificar com o time', 'vou escalar' se você NÃO tem uma ferramenta que faça isso de verdade.\n- Se o endereço está errado e o pacote já saiu para entrega, seja HONESTO: 'Infelizmente não consigo alterar o endereço de entrega depois que o pacote já saiu. Se não for entregue, ele vai voltar pro remetente e a loja pode reenviar com o endereço correto.'\n- Se não consegue fazer algo concreto, diga claramente o que o cliente deve fazer em vez de prometer ações que você não vai executar.\n- MÁXIMO 1 vez por conversa dizer que vai 'verificar'. Após isso, dê uma resposta concreta ou admita a limitação.\n\n[REGRA DE CONTESTAÇÃO DE ENDEREÇO]\nQuando o cliente disser que o endereço está ERRADO, que não é o endereço dele, ou contestar o endereço informado:\n- NÃO repita o mesmo endereço que o cliente acabou de contestar.\n- Reconheça que houve um problema com o endereço cadastrado.\n- Explique claramente: se o pacote já saiu para entrega, não é possível alterar o endereço pelo sistema.\n- Oriente o cliente a entrar em contato com a loja remetente para correção do endereço em caso de reenvio.\n- Se o cliente está pedindo para corrigir um endereço antes da postagem, use a ferramenta adequada.\n- Exemplo: '[Nome], entendi que o endereço cadastrado não está correto. Como o pacote já está em rota, não dá pra alterar agora. Se ele voltar, a loja pode reenviar com o endereço certo 😊'" + contactContext;
     const messages: any[] = [{ role: "system", content: enrichedSystemPrompt }];
 
     if (history) {
@@ -1770,31 +1792,48 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
             const problemKeywords = ["avariado", "avariada", "danificado", "extraviado", "roubado", "apreendido", "retido", "devolvido ao remetente", "objeto não localizado"];
             const hasProblem = problemKeywords.some(k => toolLower.includes(k));
             if (hasProblem) {
-              console.log("🔄 POST-TOOL HANDOFF: Resultado do rastreio indica problema grave → Felipe assume");
-              
-              const preHandoffChannel = await resolveChannelForConversation(conversationId);
-              if (preHandoffChannel) {
-                const { data: convPre } = await supabase.from("whatsapp_conversations")
-                  .select("contact_name").eq("id", conversationId).single();
-                const firstName = convPre?.contact_name ? convPre.contact_name.split(" ")[0] : "";
-                const nameGreeting = firstName ? `${firstName}, ` : "";
+              // === FIX 1: ANTI-DUPLICATA DE HANDOFF — verificar se já houve handoff nos últimos 60s ===
+              const sixtySecsAgo = new Date(Date.now() - 60000).toISOString();
+              const { data: recentHandoff } = await supabase
+                .from("whatsapp_messages")
+                .select("id")
+                .eq("conversation_id", conversationId)
+                .eq("direction", "outbound")
+                .eq("sent_by", "veronica")
+                .ilike("content", "%Suporte Nível 2%")
+                .gte("created_at", sixtySecsAgo)
+                .limit(1)
+                .maybeSingle();
 
-                const veronicaHandoffMsg = `*Veronica:*\n\n${nameGreeting}vi aqui que rolou um problema com seu pacote. Esse tipo de caso é tratado pelo Felipe, nosso especialista do Suporte Nível 2 — ele tem acesso direto à operação e vai te dar um retorno completo. Vou te transferir agora, um instante! 😊`;
+              if (recentHandoff) {
+                console.log("⏭️ HANDOFF DUPLICADO BLOQUEADO: já houve handoff nos últimos 60s, apenas trocando agente");
+              } else {
+                console.log("🔄 POST-TOOL HANDOFF: Resultado do rastreio indica problema grave → Felipe assume");
+                
+                const preHandoffChannel = await resolveChannelForConversation(conversationId);
+                if (preHandoffChannel) {
+                  const { data: convPre } = await supabase.from("whatsapp_conversations")
+                    .select("contact_name").eq("id", conversationId).single();
+                  const firstName = convPre?.contact_name ? convPre.contact_name.split(" ")[0] : "";
+                  const nameGreeting = firstName ? `${firstName}, ` : "";
 
-                await fetch("https://conversations.messagebird.com/v1/send", {
-                  method: "POST",
-                  headers: { Authorization: `AccessKey ${preHandoffChannel.access_key}`, "Content-Type": "application/json" },
-                  body: JSON.stringify({ to: contactPhone, from: preHandoffChannel.channel_id, type: "text", content: { text: veronicaHandoffMsg } }),
-                }).then(r => r.json()).then(async (mbResult) => {
-                  await supabase.from("whatsapp_messages").insert({
-                    conversation_id: conversationId, messagebird_id: mbResult.id || null,
-                    direction: "outbound", content_type: "text", content: veronicaHandoffMsg,
-                    status: "sent", sent_by: "veronica", ai_generated: true,
+                  const veronicaHandoffMsg = `*Veronica:*\n\n${nameGreeting}vi aqui que rolou um problema com seu pacote. Esse tipo de caso é tratado pelo Felipe, nosso especialista do Suporte Nível 2 — ele tem acesso direto à operação e vai te dar um retorno completo. Vou te transferir agora, um instante! 😊`;
+
+                  await fetch("https://conversations.messagebird.com/v1/send", {
+                    method: "POST",
+                    headers: { Authorization: `AccessKey ${preHandoffChannel.access_key}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({ to: contactPhone, from: preHandoffChannel.channel_id, type: "text", content: { text: veronicaHandoffMsg } }),
+                  }).then(r => r.json()).then(async (mbResult) => {
+                    await supabase.from("whatsapp_messages").insert({
+                      conversation_id: conversationId, messagebird_id: mbResult.id || null,
+                      direction: "outbound", content_type: "text", content: veronicaHandoffMsg,
+                      status: "sent", sent_by: "veronica", ai_generated: true,
+                    });
                   });
-                });
 
-                // Delay de 1 minuto para transição natural
-                await new Promise(resolve => setTimeout(resolve, 60000));
+                  // Delay de 1 minuto para transição natural
+                  await new Promise(resolve => setTimeout(resolve, 60000));
+                }
               }
 
               // Trocar agente para Felipe e reinjetar contexto
@@ -1803,9 +1842,10 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
                 .update({ active_agent: "felipe" })
                 .eq("id", conversationId);
 
-              // Recarregar config do Felipe e atualizar system prompt
+              // === FIX 2: RECARREGAR agentConfig DO FELIPE para corrigir identidade ===
               const { data: felipeConf } = await supabase.from("ai_agents").select("*").eq("name", "felipe").eq("is_active", true).single();
               if (felipeConf) {
+                agentConfig = felipeConf; // Atualizar agentConfig para que o prefixo use "Felipe" em vez de "Veronica"
                 messages[0].content = (felipeConf.system_prompt || getDefaultPrompt("felipe")) + (trackingContext || "");
               } else {
                 messages[0].content = getDefaultPrompt("felipe") + (trackingContext || "");
