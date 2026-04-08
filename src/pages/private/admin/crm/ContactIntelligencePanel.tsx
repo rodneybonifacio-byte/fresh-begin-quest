@@ -335,16 +335,15 @@ export const ContactIntelligencePanel = ({
         }
       }
 
-      // Fallback: buscar direto na API externa quando não tiver no banco
-      const codesInDb = new Set((emissoes || []).map((e: any) => e.codigo_objeto).filter(Boolean));
-      const missingCodes = codes.filter(code => !codesInDb.has(code));
-
-      if (missingCodes.length > 0) {
+      // Buscar TODOS os códigos na API externa para enriquecer com peso/dimensões
+      // (mesmo os que já estão no banco, pois o banco local não tem peso/medidas)
+      if (codes.length > 0) {
         const { data: apiFallback, error: apiFallbackError } = await supabase.functions.invoke('crm-buscar-envio-api', {
-          body: { codes: missingCodes },
+          body: { codes },
         });
 
         if (!apiFallbackError && apiFallback?.data?.length) {
+          const codesInDb = new Set((emissoes || []).map((e: any) => e.codigo_objeto).filter(Boolean));
           const normalizedFromApi: ShipmentRecord[] = apiFallback.data
             .filter((item: any) => !item?.notFound)
             .map((item: any) => ({
@@ -371,28 +370,44 @@ export const ContactIntelligencePanel = ({
             if (firstClient) clienteId = firstClient;
           }
 
-          if (normalizedFromApi.length > 0) {
-            emissaoShipments = [...emissaoShipments, ...normalizedFromApi];
-            emissaoTotal = Math.max(emissaoTotal, normalizedFromApi.length);
-            totalGastoEmissoes += normalizedFromApi.reduce((sum, item) => sum + Number(item.valorVenda || 0), 0);
+          // Apenas adicionar como novos os que não estavam no banco; 
+          // para os que já estavam, serão mesclados pelo upsertShipment
+          const newFromApi = normalizedFromApi.filter(item => !codesInDb.has(item.codigo));
+          if (newFromApi.length > 0) {
+            emissaoShipments = [...emissaoShipments, ...newFromApi];
+            emissaoTotal = Math.max(emissaoTotal, newFromApi.length);
+            totalGastoEmissoes += newFromApi.reduce((sum, item) => sum + Number(item.valorVenda || 0), 0);
+          }
 
-            if (remetentesRes.data?.length === 0 && resolvedRemetentes.length === 0) {
-              const senderNames = Array.from(
-                new Set(
-                  normalizedFromApi
-                    .map(s => normalizePersonName(s.remetenteNome))
-                    .filter(name => !isGenericSenderName(name))
-                )
-              );
-              if (senderNames.length > 0) {
-                resolvedRemetentes = senderNames.map((name, index) => ({
-                  id: `api-${index}`,
-                  nome: name,
-                  cpfMasked: '',
-                  cidade: null,
-                  uf: null,
-                }));
-                setRemetentes(resolvedRemetentes);
+          // Enriquecer emissaoShipments existentes com peso/dimensões da API
+          for (const apiItem of normalizedFromApi) {
+            const existing = emissaoShipments.find(s => s.codigo === apiItem.codigo);
+            if (existing) {
+              existing.peso = apiItem.peso ?? existing.peso;
+              existing.altura = apiItem.altura ?? existing.altura;
+              existing.largura = apiItem.largura ?? existing.largura;
+              existing.comprimento = apiItem.comprimento ?? existing.comprimento;
+            }
+          }
+
+          if (remetentesRes.data?.length === 0 && resolvedRemetentes.length === 0) {
+            const senderNames = Array.from(
+              new Set(
+                normalizedFromApi
+                  .map(s => normalizePersonName(s.remetenteNome))
+                  .filter(name => !isGenericSenderName(name))
+              )
+            );
+            if (senderNames.length > 0) {
+              resolvedRemetentes = senderNames.map((name, index) => ({
+                id: `api-${index}`,
+                nome: name,
+                cpfMasked: '',
+                cidade: null,
+                uf: null,
+              }));
+              setRemetentes(resolvedRemetentes);
+            }
               }
             }
           }
