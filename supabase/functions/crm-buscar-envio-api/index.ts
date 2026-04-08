@@ -215,6 +215,15 @@ async function resolveSenderName(emissao: any): Promise<string> {
   return "Loja";
 }
 
+function parseNumber(...values: any[]): number | null {
+  for (const value of values) {
+    if (value === null || value === undefined || value === "") continue;
+    const num = typeof value === "number" ? value : Number(String(value).replace(",", "."));
+    if (!Number.isNaN(num) && Number.isFinite(num) && num > 0) return num;
+  }
+  return null;
+}
+
 function normalizeShipment(emissao: any, code: string, remetenteNome: string) {
   const destinatarioNome = pickFirst(
     emissao?.destinatario?.nome,
@@ -227,6 +236,11 @@ function normalizeShipment(emissao: any, code: string, remetenteNome: string) {
     emissao?.valor, emissao?.valorCusto, emissao?.valor_custo,
   );
 
+  const peso = parseNumber(emissao?.peso, emissao?.pesoReal, emissao?.peso_real, emissao?.weight);
+  const altura = parseNumber(emissao?.altura, emissao?.height);
+  const largura = parseNumber(emissao?.largura, emissao?.width);
+  const comprimento = parseNumber(emissao?.comprimento, emissao?.length, emissao?.depth);
+
   return {
     codigoObjeto: code,
     clienteId: pickFirst(emissao?.clienteId, emissao?.cliente_id, emissao?.cliente?.id),
@@ -237,6 +251,10 @@ function normalizeShipment(emissao: any, code: string, remetenteNome: string) {
     destinatarioEndereco: buildDestinationAddress(emissao),
     remetenteNome,
     valorGasto,
+    peso,
+    altura,
+    largura,
+    comprimento,
   };
 }
 
@@ -279,8 +297,18 @@ serve(async (req: Request) => {
           continue;
         }
 
+        // Log raw keys for debugging weight/dimension fields
+        console.log(`📦 Raw keys for ${code}:`, Object.keys(emissao).join(', '));
+
         const remetenteNome = await resolveSenderName(emissao);
-        results.push(normalizeShipment(emissao, code, remetenteNome));
+        const normalized = normalizeShipment(emissao, code, remetenteNome);
+        
+        // Include raw data if debug mode
+        if (body?.debug) {
+          (normalized as any)._raw = emissao;
+        }
+        
+        results.push(normalized);
       }
     }
 
