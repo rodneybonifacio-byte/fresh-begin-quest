@@ -35,6 +35,67 @@ interface Message {
   metadata: Record<string, any> | null;
 }
 
+interface ConversationNameCandidate {
+  conversation_id: string | null;
+  contact_name: string | null;
+}
+
+const normalizeConversationName = (value: string | null | undefined) =>
+  (value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+
+const isUsableConversationName = (value: string | null | undefined) => {
+  const normalized = normalizeConversationName(value);
+  if (!normalized || normalized.length < 2) return false;
+
+  return ![
+    /^cadastro\s*\d*$/i,
+    /^teste?\s*\d*$/i,
+    /^cliente\s*\d*$/i,
+    /nolastnameentered/i,
+    /^\d+$/,
+  ].some((pattern) => pattern.test(normalized));
+};
+
+const getConversationFirstName = (value: string | null | undefined) =>
+  normalizeConversationName(value).split(' ')[0] || '';
+
+const shouldUseTrustedConversationName = (
+  currentName: string | null | undefined,
+  trustedName: string | null | undefined,
+) => {
+  if (!isUsableConversationName(trustedName)) return false;
+  if (!isUsableConversationName(currentName)) return true;
+
+  const normalizedCurrent = normalizeConversationName(currentName);
+  const normalizedTrusted = normalizeConversationName(trustedName);
+
+  if (normalizedCurrent === normalizedTrusted) return false;
+
+  const currentFirstName = getConversationFirstName(currentName);
+  const trustedFirstName = getConversationFirstName(trustedName);
+
+  return !!currentFirstName && !!trustedFirstName && currentFirstName !== trustedFirstName;
+};
+
+const buildLatestConversationNameMap = (rows: ConversationNameCandidate[] = []) => {
+  const map = new Map<string, string>();
+
+  rows.forEach((row) => {
+    if (!row.conversation_id || !isUsableConversationName(row.contact_name) || map.has(row.conversation_id)) {
+      return;
+    }
+
+    map.set(row.conversation_id, row.contact_name!.trim());
+  });
+
+  return map;
+};
+
 const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialConversationId?: string | null; onConversationOpened?: () => void }) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
@@ -142,16 +203,46 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
   }, []);
 
   const loadConversations = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('whatsapp_conversations')
-      .select('*')
-      .order('last_message_at', { ascending: false });
+    setLoadingConversations(true);
 
-    if (!error && data) {
-      // Excluir conversas do chat web (aparecem na aba CRM Chat)
-      const filtered = (data as Conversation[]).filter(c => !c.contact_phone.startsWith('web-panel-'));
+    const [conversationsResult, ticketsResult, pipelineResult] = await Promise.all([
+      supabase
+        .from('whatsapp_conversations')
+        .select('*')
+        .order('last_message_at', { ascending: false }),
+      supabase
+        .from('whatsapp_tickets')
+        .select('conversation_id, contact_name')
+        .not('conversation_id', 'is', null)
+        .not('contact_name', 'is', null)
+        .order('updated_at', { ascending: false }),
+      supabase
+        .from('ai_support_pipeline')
+        .select('conversation_id, contact_name')
+        .not('conversation_id', 'is', null)
+        .not('contact_name', 'is', null)
+        .order('updated_at', { ascending: false }),
+    ]);
+
+    if (!conversationsResult.error && conversationsResult.data) {
+      const ticketNameMap = buildLatestConversationNameMap((ticketsResult.data as ConversationNameCandidate[]) || []);
+      const pipelineNameMap = buildLatestConversationNameMap((pipelineResult.data as ConversationNameCandidate[]) || []);
+
+      const filtered = (conversationsResult.data as Conversation[])
+        .filter((conversation) => !conversation.contact_phone.startsWith('web-panel-'))
+        .map((conversation) => {
+          const trustedName = ticketNameMap.get(conversation.id) || pipelineNameMap.get(conversation.id) || null;
+
+          if (trustedName && shouldUseTrustedConversationName(conversation.contact_name, trustedName)) {
+            return { ...conversation, contact_name: trustedName };
+          }
+
+          return conversation;
+        });
+
       setConversations(filtered);
     }
+
     setLoadingConversations(false);
   }, []);
 
@@ -193,6 +284,15 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
       onConversationOpened?.();
     }
   }, [initialConversationId, conversations, loadMessages, onConversationOpened]);
+
+  useEffect(() => {
+    if (!selectedConversation) return;
+
+    const refreshedConversation = conversations.find((conversation) => conversation.id === selectedConversation.id);
+    if (refreshedConversation && refreshedConversation.contact_name !== selectedConversation.contact_name) {
+      setSelectedConversation(refreshedConversation);
+    }
+  }, [conversations, selectedConversation]);
 
   // Realtime para novas mensagens
   useEffect(() => {

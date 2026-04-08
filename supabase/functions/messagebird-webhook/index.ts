@@ -292,6 +292,21 @@ serve(async (req) => {
 
     // === RESOLVER NOME REAL DO CLIENTE ===
     const normalizedPhoneForLookup = normalizeBrazilianPhone(contactPhone);
+    const normalizeComparableName = (value: string | null | undefined) =>
+      (value || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase();
+    const getComparableFirstName = (value: string | null | undefined) =>
+      normalizeComparableName(value).split(" ")[0] || "";
+    const hasStrongNameConflict = (currentName: string | null | undefined, nextName: string | null | undefined) => {
+      if (!isValidName(currentName) || !isValidName(nextName)) return false;
+      const currentFirstName = getComparableFirstName(currentName);
+      const nextFirstName = getComparableFirstName(nextName);
+      return !!currentFirstName && !!nextFirstName && currentFirstName !== nextFirstName;
+    };
 
     // Limpar displayName do WhatsApp (remover "NoLastNameEntered" etc)
     let cleanDisplayName = whatsappDisplayName;
@@ -312,13 +327,52 @@ serve(async (req) => {
       .limit(1)
       .single();
 
-    // Se já tem um nome válido salvo, SEMPRE usar ele (nunca sobrescrever nome já confirmado)
-    if (existingConv?.contact_name && isValidName(existingConv.contact_name)) {
+    const [latestTicketResult, latestPipelineResult] = await Promise.all([
+      supabase
+        .from("whatsapp_tickets")
+        .select("contact_name")
+        .in("contact_phone", lookupVariants)
+        .not("contact_name", "is", null)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from("ai_support_pipeline")
+        .select("contact_name")
+        .in("contact_phone", lookupVariants)
+        .not("contact_name", "is", null)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+
+    const trustedRecentName = [
+      latestTicketResult.data?.contact_name,
+      latestPipelineResult.data?.contact_name,
+      cleanDisplayName,
+    ].find((name) => isValidName(name)) || null;
+
+    const shouldProtectExistingConversationName =
+      !!existingConv?.contact_name &&
+      isValidName(existingConv.contact_name) &&
+      !hasStrongNameConflict(existingConv.contact_name, trustedRecentName);
+
+    if (shouldProtectExistingConversationName) {
       contactName = existingConv.contact_name;
       console.log("✅ Nome da conversa existente (protegido):", contactName);
-    }
-    // NOTA: Só buscar nome em outras tabelas se a conversa NÃO tem nome válido
-    else {
+    } else {
+      if (existingConv?.contact_name && trustedRecentName && hasStrongNameConflict(existingConv.contact_name, trustedRecentName)) {
+        console.log("♻️ Nome legado divergente detectado, usando nome mais confiável:", {
+          atual: existingConv.contact_name,
+          trusted: trustedRecentName,
+        });
+      }
+
+      if (trustedRecentName) {
+        contactName = trustedRecentName;
+        console.log("✅ Nome confiável via ticket/pipeline/displayName:", contactName);
+      }
+
       // 2. Buscar nos remetentes por cliente_id
       if ((!isValidName(contactName) || contactName === cleanDisplayName) && existingConv?.cliente_id) {
         const { data: remetentes } = await supabase
@@ -327,7 +381,6 @@ serve(async (req) => {
           .eq("cliente_id", existingConv.cliente_id);
         
         if (remetentes) {
-          // Preferir remetente cujo nome se parece com o displayName do WhatsApp
           let bestMatch = remetentes.find(r => isValidName(r.nome) && cleanDisplayName && r.nome.toLowerCase().includes(cleanDisplayName.toLowerCase().split(" ")[0]));
           if (!bestMatch) bestMatch = remetentes.find(r => isValidName(r.nome));
           if (bestMatch) {
@@ -435,8 +488,6 @@ serve(async (req) => {
       .single();
 
     if (convError || !conversation) {
-      // Para mensagens outbound (HSM/templates), criar conversa como 'closed' e ai_enabled=false
-      // Ela só será reaberta quando o cliente responder (inbound)
       const isOutbound = direction === "outbound";
       const { data: newConv, error: createError } = await supabase
         .from("whatsapp_conversations")
@@ -464,16 +515,24 @@ serve(async (req) => {
         last_message_at: new Date().toISOString(),
         last_message_preview: messageContent.substring(0, 100),
       };
-      // Só forçar status 'open' para mensagens inbound (cliente respondendo)
-      // Para outbound (HSM/templates), manter o status atual da conversa
       if (direction === "inbound") {
         updateData.status = "open";
       }
       if (channel?.id) updateData.whatsapp_channel_id = channel.id;
-      // Só atualizar nome se o novo for válido e melhor que o atual
       if (isValidName(contactName) && contactName !== normalizedPhone) {
-        if (!isValidName(conversation.contact_name) || conversation.contact_name === normalizedPhone) {
+        const shouldUpdateConversationName =
+          !isValidName(conversation.contact_name) ||
+          conversation.contact_name === normalizedPhone ||
+          hasStrongNameConflict(conversation.contact_name, contactName);
+
+        if (shouldUpdateConversationName) {
           updateData.contact_name = contactName;
+          if (hasStrongNameConflict(conversation.contact_name, contactName)) {
+            console.log("♻️ Corrigindo nome legado da conversa:", {
+              atual: conversation.contact_name,
+              novo: contactName,
+            });
+          }
         }
       }
       let intentResult: { isPassive: boolean; confidence: number; reason: string } | undefined;
