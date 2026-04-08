@@ -935,26 +935,47 @@ serve(async (req) => {
         // Só faz handoff direto se tem código de rastreio no contexto
         // Caso contrário, Veronica coleta o código primeiro e depois o sistema fará o handoff
         if (hasTrackingCodeInContext) {
-          console.log(`🔄 PRÉ-HANDOFF: Problema detectado + código disponível → Felipe assume`);
+          // === FIX 1: Verificar se já houve handoff recente (anti-duplicata) ===
+          const sixtySecsAgoHandoff = new Date(Date.now() - 60000).toISOString();
+          const { data: recentHandoffCheck } = await supabase
+            .from("whatsapp_messages")
+            .select("id")
+            .eq("conversation_id", conversationId)
+            .eq("direction", "outbound")
+            .ilike("content", "%Suporte Nível 2%")
+            .gte("created_at", sixtySecsAgoHandoff)
+            .limit(1)
+            .maybeSingle();
 
-          const preHandoffChannel = await resolveChannelForConversation(conversationId);
-          if (preHandoffChannel) {
+          if (recentHandoffCheck) {
+            console.log("⏭️ PRÉ-HANDOFF DUPLICADO BLOQUEADO: já houve handoff nos últimos 60s");
+            // Apenas garantir que o agente é felipe
+            agentName = "felipe";
             await supabase.from("whatsapp_conversations")
               .update({ active_agent: "felipe" })
               .eq("id", conversationId);
+          } else {
+            console.log(`🔄 PRÉ-HANDOFF: Problema detectado + código disponível → Felipe assume`);
 
-            await performHandoffToFelipe(supabase, conversationId, contactPhone, message, preHandoffChannel);
+            const preHandoffChannel = await resolveChannelForConversation(conversationId);
+            if (preHandoffChannel) {
+              await supabase.from("whatsapp_conversations")
+                .update({ active_agent: "felipe" })
+                .eq("id", conversationId);
 
-            return new Response(
-              JSON.stringify({ ok: true, reply: "Handoff Veronica → Felipe realizado (áudio + análise)", tools_used: [] }),
-              { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
+              await performHandoffToFelipe(supabase, conversationId, contactPhone, message, preHandoffChannel);
+
+              return new Response(
+                JSON.stringify({ ok: true, reply: "Handoff Veronica → Felipe realizado (áudio + análise)", tools_used: [] }),
+                { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+
+            agentName = "felipe";
+            await supabase.from("whatsapp_conversations")
+              .update({ active_agent: "felipe" })
+              .eq("id", conversationId);
           }
-
-          agentName = "felipe";
-          await supabase.from("whatsapp_conversations")
-            .update({ active_agent: "felipe" })
-            .eq("id", conversationId);
         } else {
           console.log(`🔄 PRÉ-HANDOFF ADIADO: Problema detectado mas SEM código de rastreio → Veronica coleta primeiro`);
           // Veronica vai responder normalmente e coletar o código antes do handoff
