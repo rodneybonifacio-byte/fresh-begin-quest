@@ -297,6 +297,12 @@ serve(async (req: Request) => {
           continue;
         }
 
+        // Debug: log raw keys to discover weight/dimension fields
+        if (body?.debug) {
+          console.log(`[DEBUG] Raw keys for ${code}:`, Object.keys(emissao));
+          console.log(`[DEBUG] Raw emissao sample for ${code}:`, JSON.stringify(emissao).slice(0, 2000));
+        }
+
         const remetenteNome = await resolveSenderName(emissao);
         results.push(normalizeShipment(emissao, code, remetenteNome));
       }
