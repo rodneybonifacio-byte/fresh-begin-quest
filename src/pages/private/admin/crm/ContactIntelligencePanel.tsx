@@ -199,6 +199,7 @@ export const ContactIntelligencePanel = ({
               destEndereco: '',
               remetenteNome: remNome,
               valorVenda: 0,
+              peso: null, altura: null, largura: null, comprimento: null,
             });
           }
         }
@@ -228,6 +229,7 @@ export const ContactIntelligencePanel = ({
                 destEndereco: '',
                 remetenteNome: remFromPipeline,
                 valorVenda: 0,
+                peso: null, altura: null, largura: null, comprimento: null,
               });
             } else {
               const existing = trackingFromMeta.find(t => t.codigo === code);
@@ -308,6 +310,7 @@ export const ContactIntelligencePanel = ({
           destEndereco: buildEndereco(e),
           remetenteNome: (e.remetente as any)?.nome || '',
           valorVenda: Number(e.valor_venda || 0),
+          peso: null, altura: null, largura: null, comprimento: null,
         }));
         emissaoTotal = emissoes.length;
         totalGastoEmissoes = emissoes.reduce((s, e) => s + Number(e.valor_venda || 0), 0);
@@ -353,6 +356,10 @@ export const ContactIntelligencePanel = ({
               destEndereco: item.destinatarioEndereco || '',
               remetenteNome: item.remetenteNome || '',
               valorVenda: Number(item.valorGasto || 0),
+              peso: item.peso ?? null,
+              altura: item.altura ?? null,
+              largura: item.largura ?? null,
+              comprimento: item.comprimento ?? null,
             }));
 
           // Collect ALL clienteIds from API results
@@ -502,6 +509,7 @@ export const ContactIntelligencePanel = ({
         destEndereco: '',
         remetenteNome: '',
         valorVenda: 0,
+        peso: null, altura: null, largura: null, comprimento: null,
       });
     }
 
@@ -627,6 +635,10 @@ export const ContactIntelligencePanel = ({
             destEndereco: item.destinatarioEndereco || '',
             remetenteNome: item.remetenteNome || '',
             valorVenda: Number(item.valorGasto || 0),
+            peso: item.peso ?? null,
+            altura: item.altura ?? null,
+            largura: item.largura ?? null,
+            comprimento: item.comprimento ?? null,
           });
         }
       }
