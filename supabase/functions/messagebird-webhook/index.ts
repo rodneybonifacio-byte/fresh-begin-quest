@@ -336,6 +336,7 @@ serve(async (req) => {
           }
         }
       }
+    }
 
     // 3. Buscar nos remetentes por telefone
     if (!isValidName(contactName) || contactName === cleanDisplayName || contactName === normalizedPhoneForLookup) {
