@@ -823,6 +823,13 @@ export const ContactIntelligencePanel = ({
                       <span className="truncate">{s.destEndereco}</span>
                     </p>
                   )}
+                  {(s.peso || s.altura || s.largura || s.comprimento) && (
+                    <p className="text-[10px] text-muted-foreground">
+                      <span className="font-medium text-foreground">📦</span>
+                      {s.peso ? ` ${s.peso >= 1000 ? `${(s.peso / 1000).toFixed(1)}kg` : `${s.peso}g`}` : ''}
+                      {(s.altura && s.largura && s.comprimento) ? ` — ${s.altura}×${s.largura}×${s.comprimento}cm` : ''}
+                    </p>
+                  )}
                   <div className="flex items-center justify-between text-[10px]">
                     <span className="text-muted-foreground">{s.servico}</span>
                     {s.valorVenda > 0 && (
