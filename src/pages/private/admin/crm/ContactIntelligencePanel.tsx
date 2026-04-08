@@ -696,6 +696,7 @@ export const ContactIntelligencePanel = ({
         recentes: updatedRecentes.slice(0, 15),
       });
     }
+    }
 
     // Interactions
     const tickets = ticketsRes.data || [];
