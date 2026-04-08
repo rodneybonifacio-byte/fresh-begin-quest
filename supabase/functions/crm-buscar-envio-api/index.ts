@@ -297,14 +297,18 @@ serve(async (req: Request) => {
           continue;
         }
 
-        // Debug: log raw keys to discover weight/dimension fields
-        if (body?.debug) {
-          console.log(`[DEBUG] Raw keys for ${code}:`, Object.keys(emissao));
-          console.log(`[DEBUG] Raw emissao sample for ${code}:`, JSON.stringify(emissao).slice(0, 2000));
-        }
+        // Log raw keys for debugging weight/dimension fields
+        console.log(`📦 Raw keys for ${code}:`, Object.keys(emissao).join(', '));
 
         const remetenteNome = await resolveSenderName(emissao);
-        results.push(normalizeShipment(emissao, code, remetenteNome));
+        const normalized = normalizeShipment(emissao, code, remetenteNome);
+        
+        // Include raw data if debug mode
+        if (body?.debug) {
+          (normalized as any)._raw = emissao;
+        }
+        
+        results.push(normalized);
       }
     }
 
