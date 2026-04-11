@@ -68,11 +68,12 @@ export default function AtualizarPrecosPlanilha() {
   const [carregando, setCarregando] = useState(false);
   const [fileName, setFileName] = useState('');
   const [filtroAtivo, setFiltroAtivo] = useState<'TODOS' | 'OK' | 'MARGEM_BAIXA' | 'CUSTO_MENOR'>('TODOS');
-  const [resultadoExecucao, setResultadoExecucao] = useState<{ atualizados: string[]; erros: { codigoObjeto: string; erro: string }[] } | null>(null);
+  const [resultadoExecucao, setResultadoExecucao] = useState<{ atualizados: string[]; custosAtualizados: string[]; erros: { codigoObjeto: string; erro: string }[] } | null>(null);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [valoresEditados, setValoresEditados] = useState<Record<string, number>>({});
   const [filtroDataIni, setFiltroDataIni] = useState('');
   const [filtroDataFim, setFiltroDataFim] = useState('');
+  const [atualizarCusto, setAtualizarCusto] = useState(true);
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -197,7 +198,7 @@ export default function AtualizarPrecosPlanilha() {
       }));
 
       const { data, error } = await supabase.functions.invoke('analisar-precos-planilha', {
-        body: { etiquetas: etiquetasParaEnviar, margemMinima, executar: true },
+        body: { etiquetas: etiquetasParaEnviar, margemMinima, executar: true, atualizarCusto },
       });
 
       if (error) throw error;
@@ -205,7 +206,7 @@ export default function AtualizarPrecosPlanilha() {
 
       setResultados(data.resultados);
       setResumo(data.resumo);
-      setResultadoExecucao({ atualizados: data.atualizados || [], erros: data.erros || [] });
+      setResultadoExecucao({ atualizados: data.atualizados || [], custosAtualizados: data.custosAtualizados || [], erros: data.erros || [] });
       setEtapa('resultado');
       toast.success(`${data.resumo.atualizados} etiquetas atualizadas!`);
     } catch (err: any) {
@@ -497,12 +498,23 @@ export default function AtualizarPrecosPlanilha() {
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-4">
               <p className="text-sm text-muted-foreground">
-              {selecionados.size > 0
-                ? `${selecionados.size} etiqueta(s) selecionadas para atualização`
-                : 'Selecione as etiquetas que deseja atualizar'}
-            </p>
+                {selecionados.size > 0
+                  ? `${selecionados.size} etiqueta(s) selecionadas para atualização`
+                  : 'Selecione as etiquetas que deseja atualizar'}
+              </p>
+              <label className="flex items-center gap-2 cursor-pointer bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-1.5">
+                <input
+                  type="checkbox"
+                  checked={atualizarCusto}
+                  onChange={(e) => setAtualizarCusto(e.target.checked)}
+                  className="rounded border-border"
+                />
+                <span className="text-xs font-medium text-amber-700 dark:text-amber-400">Corrigir custo no sistema</span>
+              </label>
+            </div>
             <div className="flex gap-2">
               <button onClick={handleReset} className="px-4 py-2 text-sm border border-border rounded-lg hover:bg-muted transition-colors">
                 Nova análise
@@ -517,7 +529,7 @@ export default function AtualizarPrecosPlanilha() {
                   className="flex items-center gap-2 px-6 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
                 >
                   {carregando ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                  Executar Atualizações ({selecionados.size})
+                  Executar ({selecionados.size})
                 </button>
               )}
             </div>
@@ -626,14 +638,16 @@ export default function AtualizarPrecosPlanilha() {
           <div className="bg-card border border-border rounded-xl p-6 text-center">
             <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
             <h2 className="text-xl font-bold mb-2">Atualização Concluída</h2>
-            <p className="text-muted-foreground">
-              {resultadoExecucao.atualizados.length} etiqueta(s) atualizadas com sucesso
+             <p className="text-muted-foreground">
+              {resultadoExecucao.atualizados.length} venda(s) atualizada(s)
+              {resultadoExecucao.custosAtualizados.length > 0 && `, ${resultadoExecucao.custosAtualizados.length} custo(s) corrigido(s)`}
               {resultadoExecucao.erros.length > 0 && `, ${resultadoExecucao.erros.length} com erro`}
             </p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <SummaryCard label="Atualizadas" value={resultadoExecucao.atualizados.length} color="bg-green-500/10 text-green-600" />
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <SummaryCard label="Vendas Atualizadas" value={resultadoExecucao.atualizados.length} color="bg-green-500/10 text-green-600" />
+            <SummaryCard label="Custos Corrigidos" value={resultadoExecucao.custosAtualizados.length} color="bg-amber-500/10 text-amber-600" />
             <SummaryCard label="Erros" value={resultadoExecucao.erros.length} color="bg-red-500/10 text-red-600" />
             <SummaryCard label="Sem alteração" value={resumo.ok} color="bg-muted" />
             <SummaryCard label="Não encontradas" value={resumo.naoEncontradas} color="bg-muted" />

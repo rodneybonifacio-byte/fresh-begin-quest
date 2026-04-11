@@ -24,6 +24,7 @@ interface ResultadoAnalise {
   margemAtual: number;
   novoValorVenda: number | null;
   novaMargemCalculada: number | null;
+  custoAtualizado: boolean;
   cenario: 'OK' | 'MARGEM_BAIXA' | 'CUSTO_MENOR';
   descricao: string;
 }
@@ -83,16 +84,40 @@ async function buscarEmissaoPorCodigo(codigoObjeto: string, token: string): Prom
   return null;
 }
 
+async function atualizarPreco(emissaoId: string, tipoAtualizacao: string, valor: number, token: string): Promise<{ ok: boolean; erro?: string }> {
+  const BASE_API_URL = Deno.env.get('BASE_API_URL') || 'https://envios.brhubb.com.br/api';
+  
+  const response = await fetch(`${BASE_API_URL}/emissoes/${emissaoId}/atualizar-precos`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      emissaoId,
+      tipoAtualizacao,
+      valor,
+    }),
+  });
+
+  if (response.ok) {
+    return { ok: true };
+  }
+  const errorText = await response.text();
+  return { ok: false, erro: errorText };
+}
+
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { etiquetas, margemMinima = 18, executar = false } = await req.json() as {
+    const { etiquetas, margemMinima = 18, executar = false, atualizarCusto = false } = await req.json() as {
       etiquetas: EtiquetaPlanilha[];
       margemMinima?: number;
       executar?: boolean;
+      atualizarCusto?: boolean;
     };
 
     if (!etiquetas || !Array.isArray(etiquetas) || etiquetas.length === 0) {
@@ -102,7 +127,7 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log(`📋 Analisando ${etiquetas.length} etiquetas (margemMinima: ${margemMinima}%, executar: ${executar})`);
+    console.log(`📋 Analisando ${etiquetas.length} etiquetas (margemMinima: ${margemMinima}%, executar: ${executar}, atualizarCusto: ${atualizarCusto})`);
 
     const adminToken = await getAdminToken();
     console.log('✅ Login admin realizado');
@@ -125,7 +150,6 @@ serve(async (req: Request) => {
       const remetenteNome = emissao.remetenteNome || emissao.remetente?.nome || 'N/A';
       const dataPostagem = emissao.criadoEm || emissao.dataPostagem || emissao.createdAt || '';
 
-      // Calculate current margin based on spreadsheet cost
       const margemAtual = valorVendaAtual > 0 && valorCustoPlanilha > 0
         ? ((valorVendaAtual - valorCustoPlanilha) / valorCustoPlanilha) * 100
         : 0;
@@ -136,19 +160,17 @@ serve(async (req: Request) => {
       let novoValorVenda: number | null = null;
       let novaMargemCalculada: number | null = null;
       let descricao: string;
+      const custoDiferente = Math.abs(valorCustoPlanilha - valorCustoSistema) > 0.01;
 
       if (valorCustoPlanilha < valorCustoSistema) {
-        // Spreadsheet cost is LOWER than system cost
         cenario = 'CUSTO_MENOR';
         descricao = `Custo planilha (R$ ${valorCustoPlanilha.toFixed(2)}) menor que sistema (R$ ${valorCustoSistema.toFixed(2)})`;
-        // Still check if margin is ok
         if (margemAtual < margemMinima) {
           novoValorVenda = parseFloat(valorVendaMinimo.toFixed(2));
           novaMargemCalculada = margemMinima;
           descricao += ` | Margem ${margemAtual.toFixed(1)}% < ${margemMinima}%, ajuste necessário`;
         }
       } else if (margemAtual < margemMinima) {
-        // Margin is below minimum
         cenario = 'MARGEM_BAIXA';
         novoValorVenda = parseFloat(valorVendaMinimo.toFixed(2));
         novaMargemCalculada = margemMinima;
@@ -169,6 +191,7 @@ serve(async (req: Request) => {
         margemAtual: parseFloat(margemAtual.toFixed(2)),
         novoValorVenda,
         novaMargemCalculada,
+        custoAtualizado: custoDiferente,
         cenario,
         descricao,
       });
@@ -176,7 +199,6 @@ serve(async (req: Request) => {
       await new Promise(resolve => setTimeout(resolve, 80));
     }
 
-    // Summary counts
     const resumo = {
       total: resultados.length,
       ok: resultados.filter(r => r.cenario === 'OK').length,
@@ -184,54 +206,56 @@ serve(async (req: Request) => {
       custoMenor: resultados.filter(r => r.cenario === 'CUSTO_MENOR').length,
       naoEncontradas: naoEncontradas.length,
       paraAtualizar: resultados.filter(r => r.novoValorVenda !== null).length,
+      custoDivergente: resultados.filter(r => r.custoAtualizado).length,
     };
 
-    console.log(`📊 Resumo: OK=${resumo.ok}, Margem Baixa=${resumo.margemBaixa}, Custo Menor=${resumo.custoMenor}, Não encontradas=${resumo.naoEncontradas}`);
+    console.log(`📊 Resumo: OK=${resumo.ok}, Margem Baixa=${resumo.margemBaixa}, Custo Menor=${resumo.custoMenor}, Custo Divergente=${resumo.custoDivergente}`);
 
-    // If executar=true, update the ones that need it
     if (executar) {
-      const BASE_API_URL = Deno.env.get('BASE_API_URL') || 'https://envios.brhubb.com.br/api';
       const atualizados: string[] = [];
+      const custosAtualizados: string[] = [];
       const erros: { codigoObjeto: string; erro: string }[] = [];
 
-      // Use override values from frontend when available
       const overrideMap = new Map(etiquetas.map(e => [e.codigoObjeto, e.novoValorVendaOverride]));
       const paraAtualizar = resultados
         .filter(r => r.emissaoId)
         .map(r => ({
           ...r,
           novoValorVenda: overrideMap.get(r.codigoObjeto) ?? r.novoValorVenda,
-        }))
-        .filter(r => r.novoValorVenda !== null && r.novoValorVenda > 0);
+        }));
 
       for (const item of paraAtualizar) {
         try {
-          const updateResponse = await fetch(`${BASE_API_URL}/emissoes/${item.emissaoId}/atualizar-precos`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${adminToken}`,
-            },
-            body: JSON.stringify({
-              emissaoId: item.emissaoId,
-              tipoAtualizacao: 'VALOR_VENDA',
-              valor: item.novoValorVenda,
-            }),
-          });
+          // 1. Update VALOR_VENDA if there's a new value
+          if (item.novoValorVenda !== null && item.novoValorVenda > 0) {
+            const res = await atualizarPreco(item.emissaoId!, 'VALOR_VENDA', item.novoValorVenda, adminToken);
+            if (res.ok) {
+              atualizados.push(item.codigoObjeto);
+              console.log(`✅ Venda atualizada: ${item.codigoObjeto} → R$ ${item.novoValorVenda}`);
+            } else {
+              erros.push({ codigoObjeto: item.codigoObjeto, erro: `Venda: ${res.erro}` });
+              console.error(`❌ Erro venda: ${item.codigoObjeto} - ${res.erro}`);
+            }
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
 
-          if (updateResponse.ok) {
-            atualizados.push(item.codigoObjeto);
-            console.log(`✅ Atualizada: ${item.codigoObjeto} → R$ ${item.novoValorVenda}`);
-          } else {
-            const errorText = await updateResponse.text();
-            erros.push({ codigoObjeto: item.codigoObjeto, erro: errorText });
-            console.error(`❌ Erro: ${item.codigoObjeto} - ${errorText}`);
+          // 2. Update VALOR_CUSTO with spreadsheet value if enabled and cost differs
+          if (atualizarCusto && item.custoAtualizado) {
+            const res = await atualizarPreco(item.emissaoId!, 'VALOR_CUSTO', item.valorCustoPlanilha, adminToken);
+            if (res.ok) {
+              custosAtualizados.push(item.codigoObjeto);
+              console.log(`✅ Custo atualizado: ${item.codigoObjeto} → R$ ${item.valorCustoPlanilha}`);
+            } else {
+              erros.push({ codigoObjeto: item.codigoObjeto, erro: `Custo: ${res.erro}` });
+              console.error(`❌ Erro custo: ${item.codigoObjeto} - ${res.erro}`);
+            }
+            await new Promise(resolve => setTimeout(resolve, 100));
           }
         } catch (err) {
           erros.push({ codigoObjeto: item.codigoObjeto, erro: err.message });
         }
 
-        await new Promise(resolve => setTimeout(resolve, 150));
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
 
       return new Response(
@@ -241,9 +265,11 @@ serve(async (req: Request) => {
           resumo: {
             ...resumo,
             atualizados: atualizados.length,
+            custosAtualizados: custosAtualizados.length,
             erros: erros.length,
           },
           atualizados,
+          custosAtualizados,
           erros,
           resultados,
           naoEncontradas,
