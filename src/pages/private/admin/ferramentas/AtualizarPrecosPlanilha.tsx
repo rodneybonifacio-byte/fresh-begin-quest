@@ -498,12 +498,23 @@ export default function AtualizarPrecosPlanilha() {
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-4">
               <p className="text-sm text-muted-foreground">
-              {selecionados.size > 0
-                ? `${selecionados.size} etiqueta(s) selecionadas para atualização`
-                : 'Selecione as etiquetas que deseja atualizar'}
-            </p>
+                {selecionados.size > 0
+                  ? `${selecionados.size} etiqueta(s) selecionadas para atualização`
+                  : 'Selecione as etiquetas que deseja atualizar'}
+              </p>
+              <label className="flex items-center gap-2 cursor-pointer bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-1.5">
+                <input
+                  type="checkbox"
+                  checked={atualizarCusto}
+                  onChange={(e) => setAtualizarCusto(e.target.checked)}
+                  className="rounded border-border"
+                />
+                <span className="text-xs font-medium text-amber-700 dark:text-amber-400">Corrigir custo no sistema</span>
+              </label>
+            </div>
             <div className="flex gap-2">
               <button onClick={handleReset} className="px-4 py-2 text-sm border border-border rounded-lg hover:bg-muted transition-colors">
                 Nova análise
@@ -518,7 +529,7 @@ export default function AtualizarPrecosPlanilha() {
                   className="flex items-center gap-2 px-6 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
                 >
                   {carregando ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                  Executar Atualizações ({selecionados.size})
+                  Executar ({selecionados.size})
                 </button>
               )}
             </div>
