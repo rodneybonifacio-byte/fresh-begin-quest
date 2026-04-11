@@ -7,293 +7,188 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-interface EtiquetaPlanilha {
-  codigoObjeto: string;
-  valorCustoPlanilha: number;
-  novoValorVendaOverride?: number;
-}
-
-interface ResultadoAnalise {
-  codigoObjeto: string;
-  dataPostagem: string;
-  remetenteNome: string;
-  emissaoId: string | null;
-  valorCustoPlanilha: number;
-  valorCustoSistema: number;
-  valorVendaAtual: number;
-  margemAtual: number;
-  novoValorVenda: number | null;
-  novaMargemCalculada: number | null;
-  custoAtualizado: boolean;
-  cenario: 'OK' | 'MARGEM_BAIXA' | 'CUSTO_MENOR';
-  descricao: string;
-}
-
 async function getAdminToken(): Promise<string> {
   const BASE_API_URL = Deno.env.get('BASE_API_URL') || 'https://envios.brhubb.com.br/api';
-  const API_ADMIN_EMAIL = Deno.env.get('API_ADMIN_EMAIL');
-  const API_ADMIN_PASSWORD = Deno.env.get('API_ADMIN_PASSWORD');
-
-  const loginResponse = await fetch(`${BASE_API_URL}/login`, {
+  const res = await fetch(`${BASE_API_URL}/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: API_ADMIN_EMAIL, password: API_ADMIN_PASSWORD }),
+    body: JSON.stringify({ email: Deno.env.get('API_ADMIN_EMAIL'), password: Deno.env.get('API_ADMIN_PASSWORD') }),
   });
-
-  if (!loginResponse.ok) {
-    const errorText = await loginResponse.text();
-    console.error('Login error:', errorText);
-    throw new Error(`Falha no login admin: ${loginResponse.status}`);
-  }
-
-  const loginData = await loginResponse.json();
-  return loginData.token || loginData.accessToken;
+  if (!res.ok) throw new Error(`Login falhou: ${res.status}`);
+  const d = await res.json();
+  return d.token || d.accessToken;
 }
 
-async function buscarEmissaoPorCodigo(codigoObjeto: string, token: string): Promise<any | null> {
+async function buscarEmissao(cod: string, token: string) {
   const BASE_API_URL = Deno.env.get('BASE_API_URL') || 'https://envios.brhubb.com.br/api';
-  
-  const searchParams = new URLSearchParams({
-    codigoObjeto: codigoObjeto,
-    limit: '1',
-    offset: '0',
+  const r = await fetch(`${BASE_API_URL}/emissoes/admin?codigoObjeto=${cod}&limit=1&offset=0`, {
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
   });
-
-  const response = await fetch(`${BASE_API_URL}/emissoes/admin?${searchParams.toString()}`, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`Erro ao buscar ${codigoObjeto}: ${response.status} - ${errorText}`);
-    return null;
-  }
-
-  const data = await response.json();
-  if (!data) return null;
-  const emissoes = data.data || data;
-  
-  if (Array.isArray(emissoes) && emissoes.length > 0) {
-    return emissoes[0];
-  }
-  
-  return null;
+  if (!r.ok) return null;
+  const d = await r.json();
+  const arr = d?.data || d;
+  return Array.isArray(arr) && arr.length > 0 ? arr[0] : null;
 }
 
-async function atualizarPreco(emissaoId: string, tipoAtualizacao: string, valor: number, token: string): Promise<{ ok: boolean; erro?: string }> {
+async function atualizarPreco(emissaoId: string, tipo: string, valor: number, token: string) {
   const BASE_API_URL = Deno.env.get('BASE_API_URL') || 'https://envios.brhubb.com.br/api';
-  
-  const response = await fetch(`${BASE_API_URL}/emissoes/${emissaoId}/atualizar-precos`, {
+  const r = await fetch(`${BASE_API_URL}/emissoes/${emissaoId}/atualizar-precos`, {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-    body: JSON.stringify({
-      emissaoId,
-      tipoAtualizacao,
-      valor,
-    }),
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ emissaoId, tipoAtualizacao: tipo, valor }),
   });
-
-  if (response.ok) {
-    return { ok: true };
-  }
-  const errorText = await response.text();
-  return { ok: false, erro: errorText };
+  if (r.ok) return { ok: true };
+  return { ok: false, erro: await r.text() };
 }
 
 serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const { etiquetas, margemMinima = 18, executar = false, atualizarCusto = false } = await req.json() as {
-      etiquetas: EtiquetaPlanilha[];
-      margemMinima?: number;
-      executar?: boolean;
-      atualizarCusto?: boolean;
-    };
+    const body = await req.json();
+    const { etiquetas, margemMinima = 18, executar = false, modo } = body;
+    // modo: 'corrigir_venda' | 'corrigir_custo' | undefined (legacy = both analysis)
 
-    if (!etiquetas || !Array.isArray(etiquetas) || etiquetas.length === 0) {
-      return new Response(
-        JSON.stringify({ error: 'Lista de etiquetas é obrigatória' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (!etiquetas?.length) {
+      return new Response(JSON.stringify({ error: 'Lista vazia' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    console.log(`📋 Analisando ${etiquetas.length} etiquetas (margemMinima: ${margemMinima}%, executar: ${executar}, atualizarCusto: ${atualizarCusto})`);
+    console.log(`📋 ${etiquetas.length} etiquetas | modo=${modo} | executar=${executar} | margem=${margemMinima}%`);
+    const token = await getAdminToken();
 
-    const adminToken = await getAdminToken();
-    console.log('✅ Login admin realizado');
+    const resultados = [];
+    const naoEncontradas = [];
 
-    const resultados: ResultadoAnalise[] = [];
-    const naoEncontradas: string[] = [];
+    for (const et of etiquetas) {
+      const emissao = await buscarEmissao(et.codigoObjeto, token);
+      if (!emissao) { naoEncontradas.push(et.codigoObjeto); continue; }
 
-    for (const etiqueta of etiquetas) {
-      const emissao = await buscarEmissaoPorCodigo(etiqueta.codigoObjeto, adminToken);
-      
-      if (!emissao) {
-        naoEncontradas.push(etiqueta.codigoObjeto);
-        console.warn(`⚠️ Não encontrada: ${etiqueta.codigoObjeto}`);
-        continue;
-      }
+      const valorVenda = parseFloat(emissao.valor || emissao.valorPostagem || '0');
+      const custoSistema = parseFloat(emissao.valorPostagem || emissao.valorCusto || '0');
+      const custoPlanilha = et.valorCustoPlanilha;
+      const remetente = emissao.remetenteNome || emissao.remetente?.nome || 'N/A';
+      const data = emissao.criadoEm || emissao.dataPostagem || emissao.createdAt || '';
 
-      const valorVendaAtual = parseFloat(emissao.valor || emissao.valorPostagem || '0');
-      const valorCustoSistema = parseFloat(emissao.valorPostagem || emissao.valorCusto || '0');
-      const valorCustoPlanilha = etiqueta.valorCustoPlanilha;
-      const remetenteNome = emissao.remetenteNome || emissao.remetente?.nome || 'N/A';
-      const dataPostagem = emissao.criadoEm || emissao.dataPostagem || emissao.createdAt || '';
+      // Classify
+      const custoPlanilhaMaior = custoPlanilha > custoSistema + 0.01;
+      const custoPlanilhaMenor = custoPlanilha < custoSistema - 0.01;
+      const margemAtual = custoPlanilha > 0 ? ((valorVenda - custoPlanilha) / custoPlanilha) * 100 : 0;
 
-      const margemAtual = valorVendaAtual > 0 && valorCustoPlanilha > 0
-        ? ((valorVendaAtual - valorCustoPlanilha) / valorCustoPlanilha) * 100
-        : 0;
-
-      const valorVendaMinimo = valorCustoPlanilha * (1 + margemMinima / 100);
-      
-      let cenario: 'OK' | 'MARGEM_BAIXA' | 'CUSTO_MENOR';
+      let cenario: string;
       let novoValorVenda: number | null = null;
-      let novaMargemCalculada: number | null = null;
-      let descricao: string;
-      const custoDiferente = Math.abs(valorCustoPlanilha - valorCustoSistema) > 0.01;
+      let novoCusto: number | null = null;
 
-      if (valorCustoPlanilha < valorCustoSistema) {
-        cenario = 'CUSTO_MENOR';
-        descricao = `Custo planilha (R$ ${valorCustoPlanilha.toFixed(2)}) menor que sistema (R$ ${valorCustoSistema.toFixed(2)})`;
-        if (margemAtual < margemMinima) {
-          novoValorVenda = parseFloat(valorVendaMinimo.toFixed(2));
-          novaMargemCalculada = margemMinima;
-          descricao += ` | Margem ${margemAtual.toFixed(1)}% < ${margemMinima}%, ajuste necessário`;
-        }
-      } else if (margemAtual < margemMinima) {
-        cenario = 'MARGEM_BAIXA';
-        novoValorVenda = parseFloat(valorVendaMinimo.toFixed(2));
-        novaMargemCalculada = margemMinima;
-        descricao = `Margem ${margemAtual.toFixed(1)}% < ${margemMinima}% mínimo. Novo valor: R$ ${novoValorVenda.toFixed(2)}`;
+      if (custoPlanilhaMaior) {
+        // Etapa 1: custo planilha > custo sistema → corrigir custo + venda
+        cenario = 'CUSTO_PLANILHA_MAIOR';
+        novoCusto = custoPlanilha;
+        novoValorVenda = parseFloat((custoPlanilha * (1 + margemMinima / 100)).toFixed(2));
+      } else if (custoPlanilhaMenor) {
+        // Etapa 2: custo planilha < custo sistema → só corrigir custo
+        cenario = 'CUSTO_PLANILHA_MENOR';
+        novoCusto = custoPlanilha;
       } else {
         cenario = 'OK';
-        descricao = `Margem ${margemAtual.toFixed(1)}% ≥ ${margemMinima}%. Sem alteração.`;
       }
 
       resultados.push({
-        codigoObjeto: etiqueta.codigoObjeto,
-        dataPostagem,
-        remetenteNome,
+        codigoObjeto: et.codigoObjeto,
+        dataPostagem: data,
+        remetenteNome: remetente,
         emissaoId: emissao.id,
-        valorCustoPlanilha,
-        valorCustoSistema,
-        valorVendaAtual,
+        valorCustoPlanilha: custoPlanilha,
+        valorCustoSistema: custoSistema,
+        valorVendaAtual: valorVenda,
         margemAtual: parseFloat(margemAtual.toFixed(2)),
         novoValorVenda,
-        novaMargemCalculada,
-        custoAtualizado: custoDiferente,
+        novoCusto,
         cenario,
-        descricao,
       });
 
-      await new Promise(resolve => setTimeout(resolve, 80));
+      await new Promise(r => setTimeout(r, 80));
     }
+
+    // Filter by mode
+    const etapa1 = resultados.filter(r => r.cenario === 'CUSTO_PLANILHA_MAIOR');
+    const etapa2 = resultados.filter(r => r.cenario === 'CUSTO_PLANILHA_MENOR');
+    const ok = resultados.filter(r => r.cenario === 'OK');
 
     const resumo = {
       total: resultados.length,
-      ok: resultados.filter(r => r.cenario === 'OK').length,
-      margemBaixa: resultados.filter(r => r.cenario === 'MARGEM_BAIXA').length,
-      custoMenor: resultados.filter(r => r.cenario === 'CUSTO_MENOR').length,
+      ok: ok.length,
+      etapa1: etapa1.length,
+      etapa2: etapa2.length,
       naoEncontradas: naoEncontradas.length,
-      paraAtualizar: resultados.filter(r => r.novoValorVenda !== null).length,
-      custoDivergente: resultados.filter(r => r.custoAtualizado).length,
     };
 
-    console.log(`📊 Resumo: OK=${resumo.ok}, Margem Baixa=${resumo.margemBaixa}, Custo Menor=${resumo.custoMenor}, Custo Divergente=${resumo.custoDivergente}`);
-
-    if (executar) {
-      const atualizados: string[] = [];
-      const custosAtualizados: string[] = [];
-      const erros: { codigoObjeto: string; erro: string }[] = [];
-
-      const overrideMap = new Map(etiquetas.map(e => [e.codigoObjeto, e.novoValorVendaOverride]));
-      const paraAtualizar = resultados
-        .filter(r => r.emissaoId)
-        .map(r => ({
-          ...r,
-          novoValorVenda: overrideMap.get(r.codigoObjeto) ?? r.novoValorVenda,
-        }));
-
-      for (const item of paraAtualizar) {
-        try {
-          // 1. Update VALOR_VENDA if there's a new value
-          if (item.novoValorVenda !== null && item.novoValorVenda > 0) {
-            const res = await atualizarPreco(item.emissaoId!, 'VALOR_VENDA', item.novoValorVenda, adminToken);
-            if (res.ok) {
-              atualizados.push(item.codigoObjeto);
-              console.log(`✅ Venda atualizada: ${item.codigoObjeto} → R$ ${item.novoValorVenda}`);
-            } else {
-              erros.push({ codigoObjeto: item.codigoObjeto, erro: `Venda: ${res.erro}` });
-              console.error(`❌ Erro venda: ${item.codigoObjeto} - ${res.erro}`);
-            }
-            await new Promise(resolve => setTimeout(resolve, 100));
-          }
-
-          // 2. Update VALOR_CUSTO with spreadsheet value if enabled and cost differs
-          if (atualizarCusto && item.custoAtualizado) {
-            const res = await atualizarPreco(item.emissaoId!, 'VALOR_CUSTO', item.valorCustoPlanilha, adminToken);
-            if (res.ok) {
-              custosAtualizados.push(item.codigoObjeto);
-              console.log(`✅ Custo atualizado: ${item.codigoObjeto} → R$ ${item.valorCustoPlanilha}`);
-            } else {
-              erros.push({ codigoObjeto: item.codigoObjeto, erro: `Custo: ${res.erro}` });
-              console.error(`❌ Erro custo: ${item.codigoObjeto} - ${res.erro}`);
-            }
-            await new Promise(resolve => setTimeout(resolve, 100));
-          }
-        } catch (err) {
-          erros.push({ codigoObjeto: item.codigoObjeto, erro: err.message });
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 50));
-      }
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          executado: true,
-          resumo: {
-            ...resumo,
-            atualizados: atualizados.length,
-            custosAtualizados: custosAtualizados.length,
-            erros: erros.length,
-          },
-          atualizados,
-          custosAtualizados,
-          erros,
-          resultados,
-          naoEncontradas,
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (!executar) {
+      return new Response(JSON.stringify({ success: true, resumo, resultados, naoEncontradas }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        executado: false,
-        resumo,
-        resultados,
-        naoEncontradas,
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    // Execute updates
+    const atualizadosVenda = [];
+    const atualizadosCusto = [];
+    const erros = [];
+
+    // Determine which items to process based on modo
+    let items = [];
+    if (modo === 'corrigir_venda') {
+      // Etapa 1: custo planilha > sistema → update cost + sale
+      items = etapa1;
+    } else if (modo === 'corrigir_custo') {
+      // Etapa 2: custo planilha < sistema → update cost only
+      items = etapa2;
+    } else {
+      // Legacy: all that have changes
+      items = resultados.filter(r => r.cenario !== 'OK');
+    }
+
+    // Apply overrides from frontend
+    const overrideMap = new Map(etiquetas.map(e => [e.codigoObjeto, e.novoValorVendaOverride]));
+
+    for (const item of items) {
+      try {
+        // Update cost if different
+        if (item.novoCusto !== null) {
+          const res = await atualizarPreco(item.emissaoId, 'VALOR_CUSTO', item.novoCusto, token);
+          if (res.ok) {
+            atualizadosCusto.push(item.codigoObjeto);
+            console.log(`✅ Custo: ${item.codigoObjeto} → R$ ${item.novoCusto}`);
+          } else {
+            erros.push({ codigoObjeto: item.codigoObjeto, erro: `Custo: ${res.erro}` });
+          }
+          await new Promise(r => setTimeout(r, 100));
+        }
+
+        // Update sale if applicable (only etapa1 or override)
+        const vendaOverride = overrideMap.get(item.codigoObjeto);
+        const vendaFinal = vendaOverride ?? item.novoValorVenda;
+        if (vendaFinal !== null && vendaFinal > 0) {
+          const res = await atualizarPreco(item.emissaoId, 'VALOR_VENDA', vendaFinal, token);
+          if (res.ok) {
+            atualizadosVenda.push(item.codigoObjeto);
+            console.log(`✅ Venda: ${item.codigoObjeto} → R$ ${vendaFinal}`);
+          } else {
+            erros.push({ codigoObjeto: item.codigoObjeto, erro: `Venda: ${res.erro}` });
+          }
+          await new Promise(r => setTimeout(r, 100));
+        }
+      } catch (err) {
+        erros.push({ codigoObjeto: item.codigoObjeto, erro: err.message });
+      }
+      await new Promise(r => setTimeout(r, 50));
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      resumo: { ...resumo, atualizadosVenda: atualizadosVenda.length, atualizadosCusto: atualizadosCusto.length, erros: erros.length },
+      atualizadosVenda, atualizadosCusto, erros, resultados, naoEncontradas,
+    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (error) {
-    console.error('❌ Erro geral:', error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    console.error('❌', error);
+    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });
