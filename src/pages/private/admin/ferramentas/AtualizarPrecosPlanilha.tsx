@@ -68,7 +68,7 @@ export default function AtualizarPrecosPlanilha() {
   const [carregando, setCarregando] = useState(false);
   const [fileName, setFileName] = useState('');
   const [filtroAtivo, setFiltroAtivo] = useState<'TODOS' | 'OK' | 'MARGEM_BAIXA' | 'CUSTO_MENOR'>('TODOS');
-  const [resultadoExecucao, setResultadoExecucao] = useState<{ atualizados: string[]; erros: { codigoObjeto: string; erro: string }[] } | null>(null);
+  const [resultadoExecucao, setResultadoExecucao] = useState<{ atualizados: string[]; custosAtualizados: string[]; erros: { codigoObjeto: string; erro: string }[] } | null>(null);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [valoresEditados, setValoresEditados] = useState<Record<string, number>>({});
   const [filtroDataIni, setFiltroDataIni] = useState('');
@@ -198,7 +198,7 @@ export default function AtualizarPrecosPlanilha() {
       }));
 
       const { data, error } = await supabase.functions.invoke('analisar-precos-planilha', {
-        body: { etiquetas: etiquetasParaEnviar, margemMinima, executar: true },
+        body: { etiquetas: etiquetasParaEnviar, margemMinima, executar: true, atualizarCusto },
       });
 
       if (error) throw error;
@@ -206,7 +206,7 @@ export default function AtualizarPrecosPlanilha() {
 
       setResultados(data.resultados);
       setResumo(data.resumo);
-      setResultadoExecucao({ atualizados: data.atualizados || [], erros: data.erros || [] });
+      setResultadoExecucao({ atualizados: data.atualizados || [], custosAtualizados: data.custosAtualizados || [], erros: data.erros || [] });
       setEtapa('resultado');
       toast.success(`${data.resumo.atualizados} etiquetas atualizadas!`);
     } catch (err: any) {
