@@ -73,6 +73,7 @@ export default function AtualizarPrecosPlanilha() {
   const [valoresEditados, setValoresEditados] = useState<Record<string, number>>({});
   const [filtroDataIni, setFiltroDataIni] = useState('');
   const [filtroDataFim, setFiltroDataFim] = useState('');
+  const [atualizarCusto, setAtualizarCusto] = useState(true);
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
