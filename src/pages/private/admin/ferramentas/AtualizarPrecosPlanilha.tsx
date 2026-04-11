@@ -638,14 +638,16 @@ export default function AtualizarPrecosPlanilha() {
           <div className="bg-card border border-border rounded-xl p-6 text-center">
             <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
             <h2 className="text-xl font-bold mb-2">Atualização Concluída</h2>
-            <p className="text-muted-foreground">
-              {resultadoExecucao.atualizados.length} etiqueta(s) atualizadas com sucesso
+             <p className="text-muted-foreground">
+              {resultadoExecucao.atualizados.length} venda(s) atualizada(s)
+              {resultadoExecucao.custosAtualizados.length > 0 && `, ${resultadoExecucao.custosAtualizados.length} custo(s) corrigido(s)`}
               {resultadoExecucao.erros.length > 0 && `, ${resultadoExecucao.erros.length} com erro`}
             </p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <SummaryCard label="Atualizadas" value={resultadoExecucao.atualizados.length} color="bg-green-500/10 text-green-600" />
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <SummaryCard label="Vendas Atualizadas" value={resultadoExecucao.atualizados.length} color="bg-green-500/10 text-green-600" />
+            <SummaryCard label="Custos Corrigidos" value={resultadoExecucao.custosAtualizados.length} color="bg-amber-500/10 text-amber-600" />
             <SummaryCard label="Erros" value={resultadoExecucao.erros.length} color="bg-red-500/10 text-red-600" />
             <SummaryCard label="Sem alteração" value={resumo.ok} color="bg-muted" />
             <SummaryCard label="Não encontradas" value={resumo.naoEncontradas} color="bg-muted" />
