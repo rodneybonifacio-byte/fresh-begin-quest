@@ -45,10 +45,6 @@ serve(async (req) => {
     const cliente = clienteData.data || clienteData;
     console.log('📋 Cliente:', cliente.email, cliente.nomeEmpresa);
 
-    // Login com email do cliente (usar admin token para gerar token do cliente)
-    // Na verdade, vou usar o admin token para emitir diretamente
-    // A API pode aceitar admin token com clienteId no payload
-
     // 3. Desabilitar WhatsApp para evitar erro
     const toBoolean = (v: any): boolean => typeof v === 'boolean' ? v : false;
     const cfg = cliente.configuracoes || {};
@@ -130,6 +126,72 @@ serve(async (req) => {
     }
     if (emissaoData.destinatario?.endereco?.cep) {
       emissaoData.destinatario.endereco.cep = digitsOnly(emissaoData.destinatario.endereco.cep);
+    }
+
+    // 4.5 Se cotacao não tem idLote, fazer cotação automática
+    if (emissaoData.cotacao && !emissaoData.cotacao.idLote) {
+      console.log('🔄 Cotação sem idLote - realizando cotação automática...');
+      const cepOrigem = remetenteObj?.endereco?.cep || remetente?.cep?.replace(/\D/g, '') || '';
+      const cepDestino = emissaoData.destinatario?.endereco?.cep || '';
+      
+      const cotacaoPayload = {
+        cepOrigem,
+        cepDestino,
+        embalagem: emissaoData.embalagem,
+        valorDeclarado: emissaoData.valorDeclarado || 0,
+        clienteId,
+      };
+      
+      console.log('📊 Cotação payload:', JSON.stringify(cotacaoPayload));
+      
+      const cotacaoRes = await fetch(`${baseUrl}/frete/cotacao`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(cotacaoPayload),
+      });
+      
+      const cotacaoText = await cotacaoRes.text();
+      console.log('📄 Cotação resposta:', cotacaoRes.status, cotacaoText.substring(0, 500));
+      
+      if (!cotacaoRes.ok) {
+        return new Response(JSON.stringify({ error: `Erro na cotação: ${cotacaoText}` }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        });
+      }
+      
+      const cotacaoResult = JSON.parse(cotacaoText);
+      const cotacoes = cotacaoResult.data || cotacaoResult;
+      
+      // Encontrar o serviço solicitado pelo codigoServico
+      const servicoDesejado = emissaoData.cotacao.codigoServico;
+      const cotacaoEncontrada = Array.isArray(cotacoes) 
+        ? cotacoes.find((c: any) => c.codigoServico === servicoDesejado)
+        : null;
+      
+      if (!cotacaoEncontrada) {
+        console.error('❌ Serviço não encontrado:', servicoDesejado, 'Disponíveis:', cotacoes?.map?.((c: any) => c.codigoServico));
+        return new Response(JSON.stringify({ 
+          error: `Serviço ${servicoDesejado} não disponível para esta rota. Disponíveis: ${cotacoes?.map?.((c: any) => `${c.nomeServico} (${c.codigoServico})`)?.join(', ')}` 
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        });
+      }
+      
+      console.log('✅ Cotação encontrada:', cotacaoEncontrada.nomeServico, 'R$', cotacaoEncontrada.preco || cotacaoEncontrada.valorTotal);
+      
+      // Atualizar cotacao com dados completos incluindo idLote
+      emissaoData.cotacao = {
+        idLote: cotacaoEncontrada.idLote,
+        codigoServico: cotacaoEncontrada.codigoServico,
+        nomeServico: cotacaoEncontrada.nomeServico,
+        preco: cotacaoEncontrada.preco || cotacaoEncontrada.valorTotal || '0',
+        prazo: cotacaoEncontrada.prazo || cotacaoEncontrada.prazoEntrega || 0,
+      };
     }
 
     const payload: any = {
