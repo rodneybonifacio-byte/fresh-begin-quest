@@ -8,6 +8,22 @@ const corsHeaders = {
 };
 
 // ═══════════════════════════════════════════════════════════
+// HELPER: Roteamento multi-provider (OpenAI / Gemini)
+// ═══════════════════════════════════════════════════════════
+
+function getAIEndpoint(provider: string): { url: string; apiKey: string; providerName: string } {
+  const p = (provider || "gemini").toLowerCase();
+  if (p === "openai") {
+    const key = Deno.env.get("OPENAI_API_KEY");
+    if (!key) throw new Error("OPENAI_API_KEY não configurada");
+    return { url: "https://api.openai.com/v1/chat/completions", apiKey: key, providerName: "openai" };
+  }
+  const key = Deno.env.get("GEMINI_API_KEY");
+  if (!key) throw new Error("GEMINI_API_KEY não configurada");
+  return { url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", apiKey: key, providerName: "gemini" };
+}
+
+// ═══════════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════════
 
