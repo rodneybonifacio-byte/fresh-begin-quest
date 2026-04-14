@@ -3854,10 +3854,12 @@ async function performHandoffToFelipe(
     // Delay de 1 minuto para transição natural (simula tempo de análise pelo Felipe)
     await new Promise(resolve => setTimeout(resolve, 60000));
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) return;
-
     const { data: felipeConfig } = await supabase.from("ai_agents").select("*").eq("name", "felipe").eq("is_active", true).single();
+    let felipeEndpoint: { url: string; apiKey: string; providerName: string };
+    try {
+      felipeEndpoint = getAIEndpoint(felipeConfig?.provider || "gemini");
+    } catch { return; }
+
     const { data: conv } = await supabase.from("whatsapp_conversations").select("contact_name").eq("id", conversationId).single();
 
     const contactName = conv?.contact_name || "";
@@ -3869,11 +3871,11 @@ O cliente disse: "${userMessage}"
 Se apresente de forma BREVE: "E aí ${greeting}, aqui é o Felipe". Diga que a Veronica te passou a situação e que você já analisou. Tranquilize dizendo que vai mandar os detalhes.
 Tom calmo, confiante, informal. Máximo 2-3 frases CURTAS. SEM emojis (vai virar áudio). SEM perguntas. SEM detalhes técnicos — só a apresentação.`;
 
-    const felipeIntroResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const felipeIntroResponse = await fetch(felipeEndpoint.url, {
       method: "POST",
-      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${felipeEndpoint.apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: felipeConfig?.model || "gpt-4o",
+        model: felipeConfig?.model || "gemini-2.5-flash",
         messages: [{ role: "system", content: felipeIntroPrompt }, { role: "user", content: userMessage }],
         max_tokens: 100, temperature: 0.8,
       }),
