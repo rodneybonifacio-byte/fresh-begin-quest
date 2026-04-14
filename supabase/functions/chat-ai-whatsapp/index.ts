@@ -3822,7 +3822,7 @@ Tom amigável, informal, acolhedor. Máximo 2-3 frases CURTAS. SEM emojis (vai v
 
     await logInteraction(supabase, {
       conversation_id: conversationId, agent_name: "veronica", content_type: introAudioSent ? "voice" : "text",
-      provider: "openai", model: veronicaConfig?.model || "gpt-4o", success: true,
+      provider: handoffEndpoint.providerName, model: veronicaConfig?.model || "gemini-2.5-flash", success: true,
       response_time_ms: 0, tool_used: "handoff_from_felipe",
     });
 
@@ -4023,11 +4023,11 @@ qualquer novidade te aviso aqui, tá tranquilo 😊
 
 NUNCA terceirize ("entre em contato com os Correios"). NÓS somos os responsáveis.`;
 
-    const felipeAnalysisResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const felipeAnalysisResponse = await fetch(felipeEndpoint.url, {
       method: "POST",
-      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${felipeEndpoint.apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: felipeConfig?.model || "gpt-4o",
+        model: felipeConfig?.model || "gemini-2.5-flash",
         messages: [{ role: "system", content: felipeAnalysisPrompt }, { role: "user", content: userMessage }],
         max_tokens: 500, temperature: 0.7,
       }),
