@@ -70,7 +70,6 @@ const ProvedoresTab: React.FC = () => {
         <p className="text-xs text-muted-foreground">
           Google Gemini para lógica conversacional e raciocínio · Google Gemini para visão computacional · ElevenLabs para voz (transcrição STT + síntese TTS)
         </p>
-        </p>
       </div>
 
       <div className="space-y-3">
