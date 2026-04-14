@@ -3720,8 +3720,12 @@ async function performHandoffToVeronica(
     // Delay de 1 minuto para transição natural (simula tempo de preparação da Veronica)
     await new Promise(resolve => setTimeout(resolve, 60000));
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) return;
+    let handoffEndpoint: { url: string; apiKey: string; providerName: string };
+    try {
+      // Usa provider da config da Veronica, ou default gemini
+      const { data: veronicaConfig } = await supabase.from("ai_agents").select("*").eq("name", "veronica").eq("is_active", true).single();
+      handoffEndpoint = getAIEndpoint(veronicaConfig?.provider || "gemini");
+    } catch { return; }
 
     const { data: veronicaConfig } = await supabase.from("ai_agents").select("*").eq("name", "veronica").eq("is_active", true).single();
     const { data: conv } = await supabase.from("whatsapp_conversations").select("contact_name").eq("id", conversationId).single();
