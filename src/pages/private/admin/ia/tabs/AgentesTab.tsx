@@ -270,16 +270,31 @@ const AgentesTab: React.FC = () => {
                 <div className="p-4 bg-muted/20 rounded-xl">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
-                      <label className="block text-xs font-medium text-foreground mb-1">Modelo</label>
-                      <select className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm" value={editForm.model || 'gpt-4o'} onChange={(e) => setEditForm({ ...editForm, model: e.target.value })}>
-                        <option value="gpt-4o">GPT-4o</option>
-                        <option value="gpt-4o-mini">GPT-4o Mini</option>
+                      <label className="block text-xs font-medium text-foreground mb-1">Provedor</label>
+                      <select className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm" value={editForm.provider || 'gemini'} onChange={(e) => {
+                        const prov = e.target.value;
+                        const defaultModel = prov === 'openai' ? 'gpt-4o' : 'gemini-2.5-flash';
+                        setEditForm({ ...editForm, provider: prov, model: defaultModel });
+                      }}>
+                        <option value="gemini">Google Gemini</option>
+                        <option value="openai">OpenAI</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-foreground mb-1">Provedor</label>
-                      <select className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm" value={editForm.provider || 'openai'} onChange={(e) => setEditForm({ ...editForm, provider: e.target.value })}>
-                        <option value="openai">OpenAI</option>
+                      <label className="block text-xs font-medium text-foreground mb-1">Modelo</label>
+                      <select className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm" value={editForm.model || 'gemini-2.5-flash'} onChange={(e) => setEditForm({ ...editForm, model: e.target.value })}>
+                        {(editForm.provider || 'gemini') === 'gemini' ? (
+                          <>
+                            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                            <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                            <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                          </>
+                        ) : (
+                          <>
+                            <option value="gpt-4o">GPT-4o</option>
+                            <option value="gpt-4o-mini">GPT-4o Mini</option>
+                          </>
+                        )}
                       </select>
                     </div>
                     <div>
