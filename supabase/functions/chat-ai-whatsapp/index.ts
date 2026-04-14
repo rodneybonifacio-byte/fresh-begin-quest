@@ -3720,14 +3720,12 @@ async function performHandoffToVeronica(
     // Delay de 1 minuto para transição natural (simula tempo de preparação da Veronica)
     await new Promise(resolve => setTimeout(resolve, 60000));
 
+    const { data: veronicaConfig } = await supabase.from("ai_agents").select("*").eq("name", "veronica").eq("is_active", true).single();
     let handoffEndpoint: { url: string; apiKey: string; providerName: string };
     try {
-      // Usa provider da config da Veronica, ou default gemini
-      const { data: veronicaConfig } = await supabase.from("ai_agents").select("*").eq("name", "veronica").eq("is_active", true).single();
       handoffEndpoint = getAIEndpoint(veronicaConfig?.provider || "gemini");
     } catch { return; }
 
-    const { data: veronicaConfig } = await supabase.from("ai_agents").select("*").eq("name", "veronica").eq("is_active", true).single();
     const { data: conv } = await supabase.from("whatsapp_conversations").select("contact_name").eq("id", conversationId).single();
 
     const contactName = conv?.contact_name || "";
@@ -3739,11 +3737,11 @@ O cliente disse: "${userMessage}"
 Se apresente de volta: "Oi ${greeting}, aqui é a Veronica de novo!". Diga que o Felipe te passou a situação e pergunte como pode ajudar.
 Tom amigável, informal, acolhedor. Máximo 2-3 frases CURTAS. SEM emojis (vai virar áudio). SEM detalhes técnicos — só a apresentação.`;
 
-    const veronicaIntroResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const veronicaIntroResponse = await fetch(handoffEndpoint.url, {
       method: "POST",
-      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${handoffEndpoint.apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: veronicaConfig?.model || "gpt-4o",
+        model: veronicaConfig?.model || "gemini-2.5-flash",
         messages: [{ role: "system", content: veronicaIntroPrompt }, { role: "user", content: userMessage }],
         max_tokens: 100, temperature: 0.8,
       }),
