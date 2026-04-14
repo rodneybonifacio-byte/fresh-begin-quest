@@ -68,7 +68,8 @@ const ProvedoresTab: React.FC = () => {
       <div className="bg-gradient-to-r from-primary/5 to-transparent rounded-2xl p-5 border border-primary/10">
         <h3 className="text-sm font-bold text-foreground mb-1">Arquitetura Multi-Provedor</h3>
         <p className="text-xs text-muted-foreground">
-          OpenAI para lógica conversacional e raciocínio · Google Gemini para visão computacional · ElevenLabs para voz (transcrição STT + síntese TTS)
+          Google Gemini para lógica conversacional e raciocínio · Google Gemini para visão computacional · ElevenLabs para voz (transcrição STT + síntese TTS)
+        </p>
         </p>
       </div>
 
