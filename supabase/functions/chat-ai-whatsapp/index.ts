@@ -1932,7 +1932,7 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
       conversation_id: conversationId,
       agent_name: agentName,
       content_type: contentType || "text",
-      provider: "openai",
+      provider: aiEndpoint.providerName,
       model: modelName,
       success: true,
       input_tokens: totalInputTokens,
