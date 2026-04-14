@@ -10,6 +10,23 @@ const corsHeaders = {
 };
 
 // ═══════════════════════════════════════════════════════════
+// HELPER: Roteamento multi-provider (OpenAI / Gemini)
+// ═══════════════════════════════════════════════════════════
+
+function getAIEndpoint(provider: string): { url: string; apiKey: string; providerName: string } {
+  const p = (provider || "gemini").toLowerCase();
+  if (p === "openai") {
+    const key = Deno.env.get("OPENAI_API_KEY");
+    if (!key) throw new Error("OPENAI_API_KEY não configurada");
+    return { url: "https://api.openai.com/v1/chat/completions", apiKey: key, providerName: "openai" };
+  }
+  // Default: Gemini (compatível com formato OpenAI)
+  const key = Deno.env.get("GEMINI_API_KEY");
+  if (!key) throw new Error("GEMINI_API_KEY não configurada");
+  return { url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", apiKey: key, providerName: "gemini" };
+}
+
+// ═══════════════════════════════════════════════════════════
 // TOOLS: Carregadas dinamicamente do banco (ai_tools.ai_callable = true)
 // ═══════════════════════════════════════════════════════════
 
@@ -1088,9 +1105,10 @@ serve(async (req) => {
     }
 
     const systemPrompt = agentConfig?.system_prompt || getDefaultPrompt(agentName);
-    const modelName = agentConfig?.model || "gpt-4o";
+    const modelName = agentConfig?.model || "gemini-2.5-flash";
     const temperature = agentConfig?.temperature || 0.7;
     const maxTokens = Math.min(agentConfig?.max_tokens || 200, 250);
+    const providerName = agentConfig?.provider || "gemini";
 
     // === BUSCAR HISTÓRICO (mais recente primeiro, depois reordenar para cronológico) ===
     const { data: historyDesc } = await supabase
@@ -1705,10 +1723,12 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
     // LOOP DE TOOL CALLING (máximo 3 iterações)
     // ═══════════════════════════════════════════════════════════
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) {
+    let aiEndpoint: { url: string; apiKey: string; providerName: string };
+    try {
+      aiEndpoint = getAIEndpoint(providerName);
+    } catch (e) {
       return new Response(
-        JSON.stringify({ error: "AI não configurada" }),
+        JSON.stringify({ error: e.message || "AI não configurada" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -1719,7 +1739,7 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
     let toolsUsed: string[] = [];
 
     for (let iteration = 0; iteration < 3; iteration++) {
-      console.log(`🔄 Iteração ${iteration + 1} - ${messages.length} mensagens`);
+      console.log(`🔄 Iteração ${iteration + 1} - ${messages.length} mensagens (provider: ${aiEndpoint.providerName})`);
 
       const requestBody: any = {
         model: modelName,
@@ -1733,10 +1753,10 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
         requestBody.tool_choice = "auto";
       }
 
-      const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+      const aiResponse = await fetch(aiEndpoint.url, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          Authorization: `Bearer ${aiEndpoint.apiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(requestBody),
@@ -1744,18 +1764,18 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
 
       if (!aiResponse.ok) {
         const errText = await aiResponse.text();
-        console.error("❌ OpenAI error:", aiResponse.status, errText);
+        console.error(`❌ ${aiEndpoint.providerName} error:`, aiResponse.status, errText);
         await logInteraction(supabase, {
           conversation_id: conversationId,
           agent_name: agentName,
           content_type: contentType || "text",
-          provider: "openai",
+          provider: aiEndpoint.providerName,
           model: modelName,
           success: false,
-          error_message: `OpenAI ${aiResponse.status}: ${errText.substring(0, 200)}`,
+          error_message: `${aiEndpoint.providerName} ${aiResponse.status}: ${errText.substring(0, 200)}`,
           response_time_ms: Date.now() - startTime,
         });
-        throw new Error(`OpenAI error: ${aiResponse.status}`);
+        throw new Error(`${aiEndpoint.providerName} error: ${aiResponse.status}`);
       }
 
       const aiData = await aiResponse.json();
@@ -1912,7 +1932,7 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
       conversation_id: conversationId,
       agent_name: agentName,
       content_type: contentType || "text",
-      provider: "openai",
+      provider: aiEndpoint.providerName,
       model: modelName,
       success: true,
       input_tokens: totalInputTokens,
@@ -3700,10 +3720,12 @@ async function performHandoffToVeronica(
     // Delay de 1 minuto para transição natural (simula tempo de preparação da Veronica)
     await new Promise(resolve => setTimeout(resolve, 60000));
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) return;
-
     const { data: veronicaConfig } = await supabase.from("ai_agents").select("*").eq("name", "veronica").eq("is_active", true).single();
+    let handoffEndpoint: { url: string; apiKey: string; providerName: string };
+    try {
+      handoffEndpoint = getAIEndpoint(veronicaConfig?.provider || "gemini");
+    } catch { return; }
+
     const { data: conv } = await supabase.from("whatsapp_conversations").select("contact_name").eq("id", conversationId).single();
 
     const contactName = conv?.contact_name || "";
@@ -3715,11 +3737,11 @@ O cliente disse: "${userMessage}"
 Se apresente de volta: "Oi ${greeting}, aqui é a Veronica de novo!". Diga que o Felipe te passou a situação e pergunte como pode ajudar.
 Tom amigável, informal, acolhedor. Máximo 2-3 frases CURTAS. SEM emojis (vai virar áudio). SEM detalhes técnicos — só a apresentação.`;
 
-    const veronicaIntroResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const veronicaIntroResponse = await fetch(handoffEndpoint.url, {
       method: "POST",
-      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${handoffEndpoint.apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: veronicaConfig?.model || "gpt-4o",
+        model: veronicaConfig?.model || "gemini-2.5-flash",
         messages: [{ role: "system", content: veronicaIntroPrompt }, { role: "user", content: userMessage }],
         max_tokens: 100, temperature: 0.8,
       }),
@@ -3800,7 +3822,7 @@ Tom amigável, informal, acolhedor. Máximo 2-3 frases CURTAS. SEM emojis (vai v
 
     await logInteraction(supabase, {
       conversation_id: conversationId, agent_name: "veronica", content_type: introAudioSent ? "voice" : "text",
-      provider: "openai", model: veronicaConfig?.model || "gpt-4o", success: true,
+      provider: handoffEndpoint.providerName, model: veronicaConfig?.model || "gemini-2.5-flash", success: true,
       response_time_ms: 0, tool_used: "handoff_from_felipe",
     });
 
@@ -3832,10 +3854,12 @@ async function performHandoffToFelipe(
     // Delay de 1 minuto para transição natural (simula tempo de análise pelo Felipe)
     await new Promise(resolve => setTimeout(resolve, 60000));
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) return;
-
     const { data: felipeConfig } = await supabase.from("ai_agents").select("*").eq("name", "felipe").eq("is_active", true).single();
+    let felipeEndpoint: { url: string; apiKey: string; providerName: string };
+    try {
+      felipeEndpoint = getAIEndpoint(felipeConfig?.provider || "gemini");
+    } catch { return; }
+
     const { data: conv } = await supabase.from("whatsapp_conversations").select("contact_name").eq("id", conversationId).single();
 
     const contactName = conv?.contact_name || "";
@@ -3847,11 +3871,11 @@ O cliente disse: "${userMessage}"
 Se apresente de forma BREVE: "E aí ${greeting}, aqui é o Felipe". Diga que a Veronica te passou a situação e que você já analisou. Tranquilize dizendo que vai mandar os detalhes.
 Tom calmo, confiante, informal. Máximo 2-3 frases CURTAS. SEM emojis (vai virar áudio). SEM perguntas. SEM detalhes técnicos — só a apresentação.`;
 
-    const felipeIntroResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const felipeIntroResponse = await fetch(felipeEndpoint.url, {
       method: "POST",
-      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${felipeEndpoint.apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: felipeConfig?.model || "gpt-4o",
+        model: felipeConfig?.model || "gemini-2.5-flash",
         messages: [{ role: "system", content: felipeIntroPrompt }, { role: "user", content: userMessage }],
         max_tokens: 100, temperature: 0.8,
       }),
@@ -3999,11 +4023,11 @@ qualquer novidade te aviso aqui, tá tranquilo 😊
 
 NUNCA terceirize ("entre em contato com os Correios"). NÓS somos os responsáveis.`;
 
-    const felipeAnalysisResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const felipeAnalysisResponse = await fetch(felipeEndpoint.url, {
       method: "POST",
-      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${felipeEndpoint.apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: felipeConfig?.model || "gpt-4o",
+        model: felipeConfig?.model || "gemini-2.5-flash",
         messages: [{ role: "system", content: felipeAnalysisPrompt }, { role: "user", content: userMessage }],
         max_tokens: 500, temperature: 0.7,
       }),
@@ -4050,7 +4074,7 @@ NUNCA terceirize ("entre em contato com os Correios"). NÓS somos os responsáve
 
     await logInteraction(supabase, {
       conversation_id: conversationId, agent_name: "felipe", content_type: "voice",
-      provider: "openai", model: felipeConfig?.model || "gpt-4o", success: true,
+      provider: felipeEndpoint.providerName, model: felipeConfig?.model || "gemini-2.5-flash", success: true,
       response_time_ms: 0, tool_used: "handoff_from_veronica",
     });
 

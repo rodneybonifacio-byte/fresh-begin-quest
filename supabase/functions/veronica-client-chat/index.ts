@@ -8,6 +8,22 @@ const corsHeaders = {
 };
 
 // ═══════════════════════════════════════════════════════════
+// HELPER: Roteamento multi-provider (OpenAI / Gemini)
+// ═══════════════════════════════════════════════════════════
+
+function getAIEndpoint(provider: string): { url: string; apiKey: string; providerName: string } {
+  const p = (provider || "gemini").toLowerCase();
+  if (p === "openai") {
+    const key = Deno.env.get("OPENAI_API_KEY");
+    if (!key) throw new Error("OPENAI_API_KEY não configurada");
+    return { url: "https://api.openai.com/v1/chat/completions", apiKey: key, providerName: "openai" };
+  }
+  const key = Deno.env.get("GEMINI_API_KEY");
+  if (!key) throw new Error("GEMINI_API_KEY não configurada");
+  return { url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", apiKey: key, providerName: "gemini" };
+}
+
+// ═══════════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════════
 
@@ -713,8 +729,7 @@ REGRAS:
 10. Reproduza datas e valores EXATAMENTE como retornados pelas ferramentas.`;
 
     // 7. Chamar IA com Function Calling (loop de até 3 iterações)
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) throw new Error("AI não configurada");
+    const clientChatEndpoint = getAIEndpoint("gemini"); // Chat web sempre usa Gemini
 
     let aiMessages: any[] = [
       { role: "system", content: systemPrompt },
@@ -725,14 +740,14 @@ REGRAS:
     const MAX_TOOL_ITERATIONS = 3;
 
     for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
-      const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+      const aiResponse = await fetch(clientChatEndpoint.url, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          Authorization: `Bearer ${clientChatEndpoint.apiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini",
+          model: "gemini-2.5-flash",
           messages: aiMessages,
           tools,
           tool_choice: "auto",
