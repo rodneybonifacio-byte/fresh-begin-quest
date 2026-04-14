@@ -4074,7 +4074,7 @@ NUNCA terceirize ("entre em contato com os Correios"). NÓS somos os responsáve
 
     await logInteraction(supabase, {
       conversation_id: conversationId, agent_name: "felipe", content_type: "voice",
-      provider: "openai", model: felipeConfig?.model || "gpt-4o", success: true,
+      provider: felipeEndpoint.providerName, model: felipeConfig?.model || "gemini-2.5-flash", success: true,
       response_time_ms: 0, tool_used: "handoff_from_veronica",
     });
 
