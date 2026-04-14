@@ -1105,9 +1105,10 @@ serve(async (req) => {
     }
 
     const systemPrompt = agentConfig?.system_prompt || getDefaultPrompt(agentName);
-    const modelName = agentConfig?.model || "gpt-4o";
+    const modelName = agentConfig?.model || "gemini-2.5-flash";
     const temperature = agentConfig?.temperature || 0.7;
     const maxTokens = Math.min(agentConfig?.max_tokens || 200, 250);
+    const providerName = agentConfig?.provider || "gemini";
 
     // === BUSCAR HISTÓRICO (mais recente primeiro, depois reordenar para cronológico) ===
     const { data: historyDesc } = await supabase
@@ -1722,10 +1723,12 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
     // LOOP DE TOOL CALLING (máximo 3 iterações)
     // ═══════════════════════════════════════════════════════════
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) {
+    let aiEndpoint: { url: string; apiKey: string; providerName: string };
+    try {
+      aiEndpoint = getAIEndpoint(providerName);
+    } catch (e) {
       return new Response(
-        JSON.stringify({ error: "AI não configurada" }),
+        JSON.stringify({ error: e.message || "AI não configurada" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -1736,7 +1739,7 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
     let toolsUsed: string[] = [];
 
     for (let iteration = 0; iteration < 3; iteration++) {
-      console.log(`🔄 Iteração ${iteration + 1} - ${messages.length} mensagens`);
+      console.log(`🔄 Iteração ${iteration + 1} - ${messages.length} mensagens (provider: ${aiEndpoint.providerName})`);
 
       const requestBody: any = {
         model: modelName,
@@ -1750,10 +1753,10 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
         requestBody.tool_choice = "auto";
       }
 
-      const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+      const aiResponse = await fetch(aiEndpoint.url, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          Authorization: `Bearer ${aiEndpoint.apiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(requestBody),
@@ -1761,18 +1764,18 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
 
       if (!aiResponse.ok) {
         const errText = await aiResponse.text();
-        console.error("❌ OpenAI error:", aiResponse.status, errText);
+        console.error(`❌ ${aiEndpoint.providerName} error:`, aiResponse.status, errText);
         await logInteraction(supabase, {
           conversation_id: conversationId,
           agent_name: agentName,
           content_type: contentType || "text",
-          provider: "openai",
+          provider: aiEndpoint.providerName,
           model: modelName,
           success: false,
-          error_message: `OpenAI ${aiResponse.status}: ${errText.substring(0, 200)}`,
+          error_message: `${aiEndpoint.providerName} ${aiResponse.status}: ${errText.substring(0, 200)}`,
           response_time_ms: Date.now() - startTime,
         });
-        throw new Error(`OpenAI error: ${aiResponse.status}`);
+        throw new Error(`${aiEndpoint.providerName} error: ${aiResponse.status}`);
       }
 
       const aiData = await aiResponse.json();
