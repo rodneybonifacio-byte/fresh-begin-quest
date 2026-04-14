@@ -287,7 +287,7 @@ const AgentesTab: React.FC = () => {
                           <>
                             <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
                             <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
-                            <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                            <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
                           </>
                         ) : (
                           <>
