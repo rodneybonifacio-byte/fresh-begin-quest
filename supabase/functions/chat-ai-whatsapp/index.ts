@@ -3743,7 +3743,7 @@ Tom amigável, informal, acolhedor. Máximo 2-3 frases CURTAS. SEM emojis (vai v
       body: JSON.stringify({
         model: veronicaConfig?.model || "gemini-2.5-flash",
         messages: [{ role: "system", content: veronicaIntroPrompt }, { role: "user", content: userMessage }],
-        max_tokens: 100, temperature: 0.8,
+        max_tokens: 512, temperature: 0.8,
       }),
     });
 
@@ -3877,7 +3877,7 @@ Tom calmo, confiante, informal. Máximo 2-3 frases CURTAS. SEM emojis (vai virar
       body: JSON.stringify({
         model: felipeConfig?.model || "gemini-2.5-flash",
         messages: [{ role: "system", content: felipeIntroPrompt }, { role: "user", content: userMessage }],
-        max_tokens: 100, temperature: 0.8,
+        max_tokens: 512, temperature: 0.8,
       }),
     });
 
