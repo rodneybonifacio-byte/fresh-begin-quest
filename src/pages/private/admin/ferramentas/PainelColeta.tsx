@@ -224,7 +224,7 @@ const PainelColeta: React.FC = () => {
                         <div className="bg-gray-50 dark:bg-slate-700/50 px-4 py-2.5 flex items-center gap-2">
                             <Clock className="w-4 h-4 text-secondary dark:text-secondary-dark" />
                             <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                                {ordem.dataHoraColeta || 'Horário não definido'}
+                                {formatarDataHoraColeta(ordem.dataHoraColeta)}
                             </span>
                         </div>
                     </div>
