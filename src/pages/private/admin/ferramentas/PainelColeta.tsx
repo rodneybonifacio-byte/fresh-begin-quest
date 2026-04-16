@@ -4,8 +4,33 @@ import type { IEmissaoOrdemColeta } from '../../../../types/emissao/IEmissaoOrde
 import type { IResponse } from '../../../../types/IResponse';
 import { LoadSpinner } from '../../../../components/loading';
 import { MapPin, Package, Phone, Clock, Truck, RefreshCw, User } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+
+/**
+ * Formata dataHoraColeta da API para horário de Brasília legível.
+ * Aceita ISO strings (ex: "2026-04-16T14:00:00.000Z") ou formatos BR.
+ */
+const formatarDataHoraColeta = (raw: string | undefined | null): string => {
+    if (!raw) return 'Horário não definido';
+
+    try {
+        // Tenta parsear como ISO ou qualquer formato reconhecido
+        const date = new Date(raw);
+        if (isNaN(date.getTime())) return raw; // fallback: exibe como veio
+
+        return date.toLocaleString('pt-BR', {
+            timeZone: 'America/Sao_Paulo',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    } catch {
+        return raw; // fallback seguro
+    }
+};
 
 /**
  * Calcula as datas de filtro inteligentes para coleta:
