@@ -2575,7 +2575,7 @@ async function getAdminToken(): Promise<string | null> {
 // HELPERS: Mídia (imagem, áudio)
 // ═══════════════════════════════════════════════════════════
 
-async function analyzeImageWithGemini(imageUrl: string, geminiKey: string): Promise<{ description: string; trackingCode: string | null; cepOrigem?: string; cepDestino?: string }> {
+async function analyzeImageWithGemini(imageUrl: string, geminiKey: string): Promise<{ description: string; trackingCode: string | null; cepOrigem?: string; cepDestino?: string; fullAnalysis?: string }> {
   const imageResponse = await fetch(imageUrl);
   if (!imageResponse.ok) throw new Error(`Erro ao baixar imagem: ${imageResponse.status}`);
   const imageBuffer = await imageResponse.arrayBuffer();
@@ -2657,6 +2657,7 @@ CEP_DESTINO: [se visível, ou NENHUM]`;
     trackingCode,
     cepOrigem: cepOrigemMatch?.[1] || undefined,
     cepDestino: cepDestinoMatch?.[1] || undefined,
+    fullAnalysis: fullText || undefined,
   };
 }
 
