@@ -1553,14 +1553,18 @@ EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de a
           console.log("🖼️ Gemini extraiu:", JSON.stringify(imageAnalysis).substring(0, 200));
           
           // Compor contexto: dados extraídos da imagem + texto do usuário
-          let imageInfo = imageAnalysis.description || "";
+          let imageInfo = "";
           if (imageAnalysis.trackingCode) {
-            imageInfo = `Código de rastreio encontrado na imagem: ${imageAnalysis.trackingCode}. ${imageInfo}`;
+            imageInfo = `Código de rastreio encontrado na imagem: ${imageAnalysis.trackingCode}. `;
           }
-          if (imageAnalysis.cepOrigem) imageInfo += ` CEP origem: ${imageAnalysis.cepOrigem}`;
-          if (imageAnalysis.cepDestino) imageInfo += ` CEP destino: ${imageAnalysis.cepDestino}`;
+          if (imageAnalysis.cepOrigem) imageInfo += `CEP origem: ${imageAnalysis.cepOrigem}. `;
+          if (imageAnalysis.cepDestino) imageInfo += `CEP destino: ${imageAnalysis.cepDestino}. `;
           
-          userContent = `[Dados extraídos da imagem enviada: ${imageInfo}]${message ? ` Mensagem do cliente: "${message}"` : ""}`;
+          // Incluir análise completa do Gemini para contexto rico
+          const fullDesc = imageAnalysis.fullAnalysis || imageAnalysis.description || "Imagem analisada";
+          imageInfo += `Análise visual completa: ${fullDesc}`;
+          
+          userContent = `[O cliente enviou uma imagem. ${imageInfo}]${message ? ` Mensagem do cliente: "${message}"` : " O cliente não escreveu nenhum texto junto à imagem."}`;
         } catch (e) {
           console.warn("⚠️ Erro Gemini:", e);
           userContent = message || "[imagem não processada]";
