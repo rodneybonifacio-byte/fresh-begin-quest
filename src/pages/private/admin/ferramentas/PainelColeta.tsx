@@ -4,7 +4,7 @@ import type { IEmissaoOrdemColeta } from '../../../../types/emissao/IEmissaoOrde
 import type { IResponse } from '../../../../types/IResponse';
 import { LoadSpinner } from '../../../../components/loading';
 import { MapPin, Package, Phone, Clock, Truck, RefreshCw, User } from 'lucide-react';
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
 /**
