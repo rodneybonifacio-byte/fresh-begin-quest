@@ -235,11 +235,12 @@ export const useEmissao = () => {
             queryClient.invalidateQueries({ queryKey: ["emissoes"] });
             // Toast visual + sonoro premium
             const emissaoData = (data as any)?.data || data;
-            const { showEtiquetaGeradaToast } = await import('@/components/EtiquetaGeradaToast');
-            showEtiquetaGeradaToast({
-              destinatario: emissaoData?.destinatario?.nome || emissaoData?.destinatarioNome,
-              servico: emissaoData?.frete?.nomeServico || emissaoData?.nomeServico,
-              codigoRastreio: emissaoData?.codigoObjeto || emissaoData?.codigoRastreio,
+            import('@/components/EtiquetaGeradaToast').then(({ showEtiquetaGeradaToast }) => {
+              showEtiquetaGeradaToast({
+                destinatario: emissaoData?.destinatario?.nome || emissaoData?.destinatarioNome,
+                servico: emissaoData?.frete?.nomeServico || emissaoData?.nomeServico,
+                codigoRastreio: emissaoData?.codigoObjeto || emissaoData?.codigoRastreio,
+              });
             });
 
             // Notificação WhatsApp "etiqueta_criada" agora é disparada pelo backend (cron a cada 3 min)
