@@ -8,6 +8,31 @@ import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
 /**
+ * Formata dataHoraColeta da API para horário de Brasília legível.
+ * Aceita ISO strings (ex: "2026-04-16T14:00:00.000Z") ou formatos BR.
+ */
+const formatarDataHoraColeta = (raw: string | undefined | null): string => {
+    if (!raw) return 'Horário não definido';
+
+    try {
+        // Tenta parsear como ISO ou qualquer formato reconhecido
+        const date = new Date(raw);
+        if (isNaN(date.getTime())) return raw; // fallback: exibe como veio
+
+        return date.toLocaleString('pt-BR', {
+            timeZone: 'America/Sao_Paulo',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    } catch {
+        return raw; // fallback seguro
+    }
+};
+
+/**
  * Calcula as datas de filtro inteligentes para coleta:
  * - Seg-Sex antes das 15h: hoje e ontem
  * - Sex após 15h, Sáb, Dom: desde sexta-feira
@@ -199,7 +224,7 @@ const PainelColeta: React.FC = () => {
                         <div className="bg-gray-50 dark:bg-slate-700/50 px-4 py-2.5 flex items-center gap-2">
                             <Clock className="w-4 h-4 text-secondary dark:text-secondary-dark" />
                             <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                                {ordem.dataHoraColeta || 'Horário não definido'}
+                                {formatarDataHoraColeta(ordem.dataHoraColeta)}
                             </span>
                         </div>
                     </div>
