@@ -26,7 +26,7 @@ export const useImprimirEtiquetaPDF = () => {
             return service.imprimirEtiquetaCorreios(emissao);
         },
         onSuccess: () => {
-            toast.success("Etiqueta gerada com sucesso!", { duration: 5000, position: "top-center" });
+            import('@/components/EtiquetaGeradaToast').then(({ showEtiquetaGeradaToast }) => showEtiquetaGeradaToast());
         },
         onError: (error) => {
             console.error('❌ [API] Erro ao gerar etiqueta:', error);

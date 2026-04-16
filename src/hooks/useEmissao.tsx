@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef } from "react";
-import { toast } from "sonner";
+
 import { EmissaoService } from "../services/EmissaoService";
 import type { IEmissao } from "../types/IEmissao";
 import { useFetchQuery } from "./useFetchQuery";
@@ -233,7 +233,15 @@ export const useEmissao = () => {
         onSuccess: (data) => {
             console.log('✅ Mutation Success:', data);
             queryClient.invalidateQueries({ queryKey: ["emissoes"] });
-            toast.success("Emissão cadastrada com sucesso!", { duration: 5000, position: "top-center" });
+            // Toast visual + sonoro premium
+            const emissaoData = (data as any)?.data || data;
+            import('@/components/EtiquetaGeradaToast').then(({ showEtiquetaGeradaToast }) => {
+              showEtiquetaGeradaToast({
+                destinatario: emissaoData?.destinatario?.nome || emissaoData?.destinatarioNome,
+                servico: emissaoData?.frete?.nomeServico || emissaoData?.nomeServico,
+                codigoRastreio: emissaoData?.codigoObjeto || emissaoData?.codigoRastreio,
+              });
+            });
 
             // Notificação WhatsApp "etiqueta_criada" agora é disparada pelo backend (cron a cada 3 min)
             // dispararNotificacaoEtiquetaCriada(data, lastEmissaoInputRef.current);
