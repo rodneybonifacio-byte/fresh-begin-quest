@@ -1789,7 +1789,13 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
           const fallbackEndpoint = getAIEndpoint(fallbackProvider);
           // Modelo equivalente
           const fallbackModel = fallbackProvider === "openai" ? "gpt-5-mini" : "google/gemini-2.5-flash";
-          const fallbackBody = { ...requestBody, model: fallbackModel };
+          const fallbackBody: any = { ...requestBody, model: fallbackModel };
+          // GPT-5 family usa max_completion_tokens em vez de max_tokens e não aceita temperature custom
+          if (fallbackProvider === "openai" && fallbackBody.max_tokens !== undefined) {
+            fallbackBody.max_completion_tokens = fallbackBody.max_tokens;
+            delete fallbackBody.max_tokens;
+            delete fallbackBody.temperature;
+          }
           console.warn(`🔀 FALLBACK ${aiEndpoint.providerName} → ${fallbackProvider} (modelo ${fallbackModel}) por erro ${lastStatus}`);
           const fbResp = await fetch(fallbackEndpoint.url, {
             method: "POST",
