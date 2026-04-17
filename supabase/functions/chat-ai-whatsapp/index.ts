@@ -1757,18 +1757,68 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
         requestBody.tool_choice = "auto";
       }
 
-      const aiResponse = await fetch(aiEndpoint.url, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${aiEndpoint.apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
-      });
+      // === RETRY + FALLBACK: tenta o provider atual com 2 retries; se persistir 5xx/429, faz fallback para o outro provider ===
+      let aiResponse: Response | null = null;
+      let lastErrText = "";
+      let lastStatus = 0;
 
-      if (!aiResponse.ok) {
-        const errText = await aiResponse.text();
-        console.error(`❌ ${aiEndpoint.providerName} error:`, aiResponse.status, errText);
+      const transientStatus = (s: number) => s === 429 || s === 502 || s === 503 || s === 504 || s === 500;
+
+      // 3 tentativas no provider primário com backoff exponencial (0ms, 800ms, 2000ms)
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0) {
+          await new Promise((r) => setTimeout(r, attempt === 1 ? 800 : 2000));
+          console.warn(`🔁 Retry ${attempt} no ${aiEndpoint.providerName} após ${lastStatus}`);
+        }
+        const resp = await fetch(aiEndpoint.url, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${aiEndpoint.apiKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify(requestBody),
+        });
+        if (resp.ok) { aiResponse = resp; break; }
+        lastStatus = resp.status;
+        lastErrText = await resp.text();
+        console.warn(`⚠️ ${aiEndpoint.providerName} ${resp.status} (tentativa ${attempt + 1}/3): ${lastErrText.substring(0, 200)}`);
+        if (!transientStatus(resp.status)) break; // erro permanente (4xx) → não retentar
+      }
+
+      // Fallback para o outro provider se o primário continuar falhando com erro transiente
+      if (!aiResponse && transientStatus(lastStatus)) {
+        const fallbackProvider = aiEndpoint.providerName === "gemini" ? "openai" : "gemini";
+        try {
+          const fallbackEndpoint = getAIEndpoint(fallbackProvider);
+          // Modelo equivalente
+          const fallbackModel = fallbackProvider === "openai" ? "gpt-5-mini" : "google/gemini-2.5-flash";
+          const fallbackBody: any = { ...requestBody, model: fallbackModel };
+          // GPT-5 family usa max_completion_tokens em vez de max_tokens e não aceita temperature custom
+          if (fallbackProvider === "openai" && fallbackBody.max_tokens !== undefined) {
+            fallbackBody.max_completion_tokens = fallbackBody.max_tokens;
+            delete fallbackBody.max_tokens;
+            delete fallbackBody.temperature;
+          }
+          console.warn(`🔀 FALLBACK ${aiEndpoint.providerName} → ${fallbackProvider} (modelo ${fallbackModel}) por erro ${lastStatus}`);
+          const fbResp = await fetch(fallbackEndpoint.url, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${fallbackEndpoint.apiKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify(fallbackBody),
+          });
+          if (fbResp.ok) {
+            aiResponse = fbResp;
+            aiEndpoint = fallbackEndpoint; // atualiza para logs subsequentes
+            console.log(`✅ Fallback para ${fallbackProvider} bem sucedido`);
+          } else {
+            const fbErr = await fbResp.text();
+            console.error(`❌ Fallback ${fallbackProvider} também falhou (${fbResp.status}): ${fbErr.substring(0, 200)}`);
+            lastStatus = fbResp.status;
+            lastErrText = fbErr;
+          }
+        } catch (fbErr: any) {
+          console.error(`❌ Fallback indisponível: ${fbErr?.message || fbErr}`);
+        }
+      }
+
+      if (!aiResponse) {
+        console.error(`❌ ${aiEndpoint.providerName} falhou após retries+fallback: ${lastStatus}`);
         await logInteraction(supabase, {
           conversation_id: conversationId,
           agent_name: agentName,
@@ -1776,10 +1826,10 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
           provider: aiEndpoint.providerName,
           model: modelName,
           success: false,
-          error_message: `${aiEndpoint.providerName} ${aiResponse.status}: ${errText.substring(0, 200)}`,
+          error_message: `${aiEndpoint.providerName} ${lastStatus} (após retries+fallback): ${lastErrText.substring(0, 200)}`,
           response_time_ms: Date.now() - startTime,
         });
-        throw new Error(`${aiEndpoint.providerName} error: ${aiResponse.status}`);
+        throw new Error(`${aiEndpoint.providerName} error: ${lastStatus}`);
       }
 
       const aiData = await aiResponse.json();
