@@ -1,0 +1,1 @@
+SELECT id, contact_phone, status, ai_enabled, updated_at FROM public.whatsapp_conversations WHERE contact_phone = '5511911544095';

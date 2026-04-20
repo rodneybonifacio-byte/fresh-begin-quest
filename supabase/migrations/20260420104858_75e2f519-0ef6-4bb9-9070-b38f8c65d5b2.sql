@@ -1,0 +1,1 @@
+SELECT phone_number, is_active, reason, blocked_by, blocked_at FROM public.whatsapp_phone_blocklist WHERE phone_number = '5511911544095';
