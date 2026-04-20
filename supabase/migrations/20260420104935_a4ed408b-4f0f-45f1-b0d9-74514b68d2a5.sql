@@ -1,0 +1,3 @@
+SELECT phone_number, is_active, blocked_by FROM public.whatsapp_phone_blocklist WHERE phone_number = '5511911544095';
+SELECT id, contact_phone, status, ai_enabled FROM public.whatsapp_conversations WHERE contact_phone = '5511911544095';
+SELECT id, status, closed_at, closed_by FROM public.whatsapp_tickets WHERE conversation_id IN (SELECT id FROM public.whatsapp_conversations WHERE contact_phone = '5511911544095') ORDER BY updated_at DESC LIMIT 5;
