@@ -37,6 +37,20 @@ function normalizeMessageStatus(status: string | null | undefined): "sent" | "de
   return null;
 }
 
+function isGreetingOnlyMessage(text: string | null | undefined): boolean {
+  const normalized = (text || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[!.,;:?]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!normalized) return false;
+
+  return /^(?:(?:oi+|ola+|oie+|opa+|ei|hey|e ai|eai|bom dia|boa tarde|boa noite)\s*){1,3}$/.test(normalized);
+}
+
 /**
  * Classifica intenção da mensagem usando IA (Gemini Flash Lite).
  * Retorna true se a mensagem é PASSIVE (não requer atendimento).
@@ -703,7 +717,7 @@ serve(async (req) => {
           .toLowerCase()
           .replace(/[!.,;:?]/g, "")
           .trim();
-        const isSimpleGreeting = /^(oi+|ola+|oie+|opa+|bom dia|boa tarde|boa noite|e ai|ei)$/.test(normalizedInbound);
+        const isSimpleGreeting = isGreetingOnlyMessage(normalizedInbound);
         const conversationTags = Array.isArray(conversation.tags)
           ? conversation.tags.map((tag: any) => String(tag).toLowerCase())
           : [];
@@ -984,7 +998,7 @@ serve(async (req) => {
             "recebi tudo", "chegou tudo", "perfeito", "recebido com sucesso",
           ];
           const isExplicitDeliveryConfirmation = deliveryConfirmationPatterns.some(p => normalizedMsg.includes(p));
-          const isGreeting = /^(boa?\s*(tarde|noite|dia)|oi|ola|hey|eai)$/i.test(normalizedMsg.replace(/[!.,]/g, ""));
+          const isGreeting = isGreetingOnlyMessage(normalizedMsg);
 
           if (isDeliveryRelated && isExplicitDeliveryConfirmation && !isGreeting) {
             // === CONFIRMAÇÃO EXPLÍCITA DE ENTREGA ===
