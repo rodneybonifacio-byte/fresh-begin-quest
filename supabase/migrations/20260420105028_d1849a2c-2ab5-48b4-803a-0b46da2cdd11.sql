@@ -1,0 +1,1 @@
+UPDATE public.whatsapp_conversations SET ai_enabled = true, status = 'open', updated_at = now() WHERE contact_phone = '5511911544095';
