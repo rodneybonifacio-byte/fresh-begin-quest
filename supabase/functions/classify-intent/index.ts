@@ -54,6 +54,14 @@ serve(async (req) => {
       );
     }
 
+    // Fast-path: qualquer mensagem com "?" → ACTIVE (é uma pergunta)
+    if (cleaned.includes("?")) {
+      return new Response(
+        JSON.stringify({ intent: "ACTIVE", confidence: 0.95, reason: "question_mark" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const normalized = withoutEmojis.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const passiveAcks = [
       "ok", "oks", "okey", "okay", "okk", "okei",
