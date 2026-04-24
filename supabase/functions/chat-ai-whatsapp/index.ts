@@ -1107,7 +1107,7 @@ serve(async (req) => {
     const systemPrompt = agentConfig?.system_prompt || getDefaultPrompt(agentName);
     const modelName = agentConfig?.model || "gemini-2.5-flash";
     const temperature = agentConfig?.temperature || 0.7;
-    const maxTokens = Math.min(agentConfig?.max_tokens || 1024, 2048);
+    const maxTokens = Math.min(agentConfig?.max_tokens || 1500, 4096);
     const providerName = agentConfig?.provider || "gemini";
 
     // === BUSCAR HISTÓRICO (mais recente primeiro, depois reordenar para cronológico) ===
