@@ -1,4 +1,5 @@
 import { supabase } from "../integrations/supabase/client";
+import authStore from "../authentica/authentication.store";
 import { CustomHttpClient } from "../utils/http-axios-client";
 import { BaseService } from "./BaseService";
 
@@ -12,6 +13,10 @@ export class FreteService extends BaseService<any> {
 
     async calculadoraFrete(item: any): Promise<any> {
         console.log('🚚 Chamando edge function cotacao-frete...');
+
+        if (!authStore.isLoggedIn()) {
+            throw new Error('Sessão expirada. Faça login novamente.');
+        }
         
         // Obter token do usuário para aplicar regras de negócio do cliente
         const userToken = localStorage.getItem('token');
@@ -50,6 +55,12 @@ export class FreteService extends BaseService<any> {
                     }
                 }
             } catch { /* mantém realMessage original */ }
+
+            if ((realMessage || '').toLowerCase().includes('token inválido ou expirado')) {
+                authStore.logout();
+                throw new Error('Sessão expirada. Faça login novamente.');
+            }
+
             throw new Error(realMessage || 'Erro ao calcular frete');
         }
 

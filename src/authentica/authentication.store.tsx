@@ -24,6 +24,19 @@ class AuthenticationStore {
     public isAuth = false;
     public user: IUser = { email: "", token: "", data: undefined };
 
+    private isTokenExpired(token: string): boolean {
+        try {
+            const decoded = jwtDecode<TokenPayload>(token);
+            if (!decoded?.exp) return true;
+
+            const nowInSeconds = Math.floor(Date.now() / 1000);
+            return decoded.exp <= nowInSeconds;
+        } catch (error) {
+            console.error("Erro ao validar expiração do token:", error);
+            return true;
+        }
+    }
+
     constructor() {
         makeObservable(this, {
             isAuth: observable,
@@ -42,12 +55,26 @@ class AuthenticationStore {
     isLoggedIn(): boolean {
         const token = localStorage.getItem("token");
         if (!token) return false;
+
+        if (this.isTokenExpired(token)) {
+            localStorage.removeItem("token");
+            this.isAuth = false;
+            this.user = { email: "", token: "", data: undefined };
+            return false;
+        }
+
         return true;
     }
 
     getUser(): TokenPayload | null {
         const token = localStorage.getItem("token");
         if (!token) return null;
+
+        if (this.isTokenExpired(token)) {
+            localStorage.removeItem("token");
+            return null;
+        }
+
         try {
             const decoded = jwtDecode<TokenPayload>(token);
             return decoded || null;
@@ -61,6 +88,11 @@ class AuthenticationStore {
         const token = localStorage.getItem("token");
         if (!token) return [];
 
+        if (this.isTokenExpired(token)) {
+            localStorage.removeItem("token");
+            return [];
+        }
+
         try {
             const decoded = jwtDecode<TokenPayload>(token);
             return decoded.permissoes || [];
@@ -71,6 +103,7 @@ class AuthenticationStore {
     }
 
     logout() {
+        localStorage.removeItem("token");
         this.isAuth = false;
         this.user = { email: "", token: "" };
     }

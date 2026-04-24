@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { FreteService } from "../services/FreteService";
 import type { ICotacaoMinimaResponse } from "../types/ICotacao";
@@ -9,6 +10,7 @@ import { formatNumberString } from "../utils/formatCurrency";
 export const useCotacao = () => {
 
     const queryClient = useQueryClient();
+    const navigate = useNavigate();
     const serviceFrete = new FreteService();
 
     const [cotacoes, setCotacoes] = useState<ICotacaoMinimaResponse[] | undefined>(undefined);
@@ -51,6 +53,10 @@ export const useCotacao = () => {
                                  errorMessage.includes('cotação válida') ||
                                  errorMessage.includes('no freight') ||
                                  errorMessage.includes('non-2xx');
+
+            const isAuthError = errorMessage.includes('sessão expirada') ||
+                                errorMessage.includes('token inválido') ||
+                                errorMessage.includes('token expirado');
             
             const isDimensionError = errorMessage.includes('comprimento') ||
                                      errorMessage.includes('largura') ||
@@ -59,7 +65,13 @@ export const useCotacao = () => {
                                      errorMessage.includes('dimensão') ||
                                      errorMessage.includes('excede');
 
-            if (isDimensionError) {
+            if (isAuthError) {
+                toast.error('Sua sessão expirou. Faça login novamente para calcular o frete.', {
+                    duration: 5000,
+                    position: "top-center"
+                });
+                navigate('/login');
+            } else if (isDimensionError) {
                 toast.error('As dimensões ou peso informados excedem os limites das transportadoras. Correios: máx. 100cm e 30kg. Rodonaves: máx. 200cm e 200kg.', {
                     duration: 8000,
                     position: "top-center"
@@ -123,6 +135,13 @@ export const useCotacao = () => {
             setCotacoes(response.data);
         } catch (error) {
             console.error('❌ Erro na cotação:', error);
+
+            const errorMessage = error instanceof Error ? error.message.toLowerCase() : '';
+            if (errorMessage.includes('sessão expirada')) {
+                navigate('/login');
+                return;
+            }
+
             toast.error('Erro ao calcular frete. Tente novamente.');
         }
     }
