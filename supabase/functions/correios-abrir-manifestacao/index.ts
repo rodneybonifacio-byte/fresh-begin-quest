@@ -80,8 +80,7 @@ async function tentarPICorreios(params: {
       console.log(`🔑 Auth simples (${authResponse.status}):`, authText.substring(0, 300));
     }
 
-    const authText = await authResponse.text();
-    console.log(`🔑 Auth response (${authResponse.status}):`, authText.substring(0, 500));
+    console.log(`🔑 Auth response final (${authResponse.status}):`, authText.substring(0, 500));
     if (!authResponse.ok) {
       return { success: false, protocolo: null, dados: { error: `Auth falhou (${authResponse.status})`, detalhes: authText.substring(0, 300) } };
     }
