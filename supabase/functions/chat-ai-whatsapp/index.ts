@@ -1938,7 +1938,50 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
       }
 
       // Resposta final (sem tool calls)
-      aiReply = choice?.message?.content || "Desculpe, não consegui processar sua mensagem.";
+      const rawContent = choice?.message?.content;
+      const finishReason = choice?.finish_reason;
+
+      // === FIX: Detectar resposta vazia (Gemini gastou tokens em thinking ou bateu MAX_TOKENS) ===
+      // Sintomas: content vazio/null + completion_tokens === 0 ou finish_reason === "length"
+      if ((!rawContent || rawContent.trim() === "") && (aiData.usage?.completion_tokens === 0 || finishReason === "length" || finishReason === "MAX_TOKENS")) {
+        console.warn(`⚠️ RESPOSTA VAZIA detectada (finish_reason=${finishReason}, completion_tokens=${aiData.usage?.completion_tokens}). Tentando fallback para outro provider...`);
+
+        const fallbackProvider = aiEndpoint.providerName === "gemini" ? "openai" : "gemini";
+        try {
+          const fallbackEndpoint = getAIEndpoint(fallbackProvider);
+          const fallbackModel = fallbackProvider === "openai" ? "gpt-5-mini" : "google/gemini-2.5-flash";
+          const fallbackBody: any = { ...requestBody, model: fallbackModel, max_tokens: Math.max(maxTokens, 4000) };
+          if (fallbackProvider === "openai") {
+            fallbackBody.max_completion_tokens = fallbackBody.max_tokens;
+            delete fallbackBody.max_tokens;
+            delete fallbackBody.temperature;
+          }
+          const fbResp = await fetch(fallbackEndpoint.url, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${fallbackEndpoint.apiKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify(fallbackBody),
+          });
+          if (fbResp.ok) {
+            const fbData = await fbResp.json();
+            const fbChoice = fbData.choices?.[0];
+            const fbContent = fbChoice?.message?.content;
+            totalInputTokens += fbData.usage?.prompt_tokens || 0;
+            totalOutputTokens += fbData.usage?.completion_tokens || 0;
+            if (fbContent && fbContent.trim() !== "") {
+              aiReply = fbContent;
+              console.log(`✅ Fallback ${fallbackProvider} retornou conteúdo válido (${fbContent.length} chars)`);
+              break;
+            }
+            console.error(`❌ Fallback ${fallbackProvider} também retornou vazio`);
+          } else {
+            console.error(`❌ Fallback ${fallbackProvider} HTTP ${fbResp.status}`);
+          }
+        } catch (fbErr: any) {
+          console.error(`❌ Fallback empty-response falhou: ${fbErr?.message || fbErr}`);
+        }
+      }
+
+      aiReply = rawContent || aiReply || "Desculpe, não consegui processar sua mensagem.";
       break;
     }
 
