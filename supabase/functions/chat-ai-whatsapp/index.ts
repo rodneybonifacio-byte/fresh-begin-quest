@@ -1107,7 +1107,7 @@ serve(async (req) => {
     const systemPrompt = agentConfig?.system_prompt || getDefaultPrompt(agentName);
     const modelName = agentConfig?.model || "gemini-2.5-flash";
     const temperature = agentConfig?.temperature || 0.7;
-    const maxTokens = Math.min(agentConfig?.max_tokens || 1500, 4096);
+    const maxTokens = Math.min(agentConfig?.max_tokens || 1500, 8192);
     const providerName = agentConfig?.provider || "gemini";
 
     // === BUSCAR HISTÓRICO (mais recente primeiro, depois reordenar para cronológico) ===
@@ -1940,22 +1940,60 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
       // Resposta final (sem tool calls)
       const rawContent = choice?.message?.content;
       const finishReason = choice?.finish_reason;
+      const completionTokens = aiData.usage?.completion_tokens || 0;
 
-      // === FIX: Detectar resposta vazia (Gemini gastou tokens em thinking ou bateu MAX_TOKENS) ===
-      // Sintomas: content vazio/null + completion_tokens === 0 ou finish_reason === "length"
-      if ((!rawContent || rawContent.trim() === "") && (aiData.usage?.completion_tokens === 0 || finishReason === "length" || finishReason === "MAX_TOKENS")) {
-        console.warn(`⚠️ RESPOSTA VAZIA detectada (finish_reason=${finishReason}, completion_tokens=${aiData.usage?.completion_tokens}). Tentando fallback para outro provider...`);
+      // === FIX ROBUSTO: Detectar QUALQUER resposta vazia, independente de finish_reason ===
+      // Casos comuns: Gemini gasta budget em thinking (output_tokens=0, finish_reason=stop|length|MAX_TOKENS)
+      const isEmpty = !rawContent || rawContent.trim() === "";
 
+      if (isEmpty) {
+        console.warn(`⚠️ RESPOSTA VAZIA (finish_reason=${finishReason}, completion_tokens=${completionTokens}, provider=${aiEndpoint.providerName}, model=${modelName}). Iniciando cascata de fallbacks...`);
+
+        // === NÍVEL 1: mesmo provider, modelo mais robusto + tokens dobrados (Gemini Pro pensa menos em vão) ===
+        const sameProviderRetryModel = aiEndpoint.providerName === "gemini" ? "google/gemini-2.5-pro" : "openai/gpt-5";
+        try {
+          const retryBody: any = { ...requestBody, model: sameProviderRetryModel, max_tokens: 8192 };
+          if (aiEndpoint.providerName === "openai") {
+            retryBody.max_completion_tokens = retryBody.max_tokens;
+            delete retryBody.max_tokens;
+            delete retryBody.temperature;
+          }
+          console.warn(`🔁 NÍVEL 1: retry com ${sameProviderRetryModel} (8192 tokens)`);
+          const r1 = await fetch(aiEndpoint.url, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${aiEndpoint.apiKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify(retryBody),
+          });
+          if (r1.ok) {
+            const d1 = await r1.json();
+            const c1 = d1.choices?.[0]?.message?.content;
+            totalInputTokens += d1.usage?.prompt_tokens || 0;
+            totalOutputTokens += d1.usage?.completion_tokens || 0;
+            if (c1 && c1.trim() !== "") {
+              aiReply = c1;
+              console.log(`✅ NÍVEL 1 OK (${c1.length} chars)`);
+              break;
+            }
+            console.warn(`⚠️ NÍVEL 1 também vazio`);
+          } else {
+            console.warn(`⚠️ NÍVEL 1 HTTP ${r1.status}`);
+          }
+        } catch (e: any) {
+          console.warn(`⚠️ NÍVEL 1 erro: ${e?.message || e}`);
+        }
+
+        // === NÍVEL 2: provider OPOSTO, com tools (mantém capacidade plena) ===
         const fallbackProvider = aiEndpoint.providerName === "gemini" ? "openai" : "gemini";
         try {
           const fallbackEndpoint = getAIEndpoint(fallbackProvider);
-          const fallbackModel = fallbackProvider === "openai" ? "gpt-5-mini" : "google/gemini-2.5-flash";
-          const fallbackBody: any = { ...requestBody, model: fallbackModel, max_tokens: Math.max(maxTokens, 4000) };
+          const fallbackModel = fallbackProvider === "openai" ? "openai/gpt-5-mini" : "google/gemini-2.5-flash";
+          const fallbackBody: any = { ...requestBody, model: fallbackModel, max_tokens: 8192 };
           if (fallbackProvider === "openai") {
             fallbackBody.max_completion_tokens = fallbackBody.max_tokens;
             delete fallbackBody.max_tokens;
             delete fallbackBody.temperature;
           }
+          console.warn(`🔀 NÍVEL 2: fallback cross-provider para ${fallbackModel}`);
           const fbResp = await fetch(fallbackEndpoint.url, {
             method: "POST",
             headers: { Authorization: `Bearer ${fallbackEndpoint.apiKey}`, "Content-Type": "application/json" },
@@ -1963,25 +2001,73 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
           });
           if (fbResp.ok) {
             const fbData = await fbResp.json();
-            const fbChoice = fbData.choices?.[0];
-            const fbContent = fbChoice?.message?.content;
+            const fbContent = fbData.choices?.[0]?.message?.content;
             totalInputTokens += fbData.usage?.prompt_tokens || 0;
             totalOutputTokens += fbData.usage?.completion_tokens || 0;
             if (fbContent && fbContent.trim() !== "") {
               aiReply = fbContent;
-              console.log(`✅ Fallback ${fallbackProvider} retornou conteúdo válido (${fbContent.length} chars)`);
+              console.log(`✅ NÍVEL 2 OK (${fbContent.length} chars)`);
               break;
             }
-            console.error(`❌ Fallback ${fallbackProvider} também retornou vazio`);
+            console.warn(`⚠️ NÍVEL 2 também vazio`);
           } else {
-            console.error(`❌ Fallback ${fallbackProvider} HTTP ${fbResp.status}`);
+            console.warn(`⚠️ NÍVEL 2 HTTP ${fbResp.status}`);
           }
         } catch (fbErr: any) {
-          console.error(`❌ Fallback empty-response falhou: ${fbErr?.message || fbErr}`);
+          console.warn(`⚠️ NÍVEL 2 erro: ${fbErr?.message || fbErr}`);
         }
+
+        // === NÍVEL 3: EMERGÊNCIA — sem tools, mensagens simplificadas (só system + último user), provider oposto ===
+        try {
+          const lastUser = [...messages].reverse().find((m: any) => m.role === "user");
+          const emergencyMessages = [
+            { role: "system", content: messages[0]?.content || systemPrompt },
+            lastUser || { role: "user", content: "Continue o atendimento de forma breve e cordial." },
+          ];
+          const emergencyProvider = aiEndpoint.providerName === "gemini" ? "openai" : "gemini";
+          const emergencyEndpoint = getAIEndpoint(emergencyProvider);
+          const emergencyModel = emergencyProvider === "openai" ? "openai/gpt-5-mini" : "google/gemini-2.5-flash-lite";
+          const emergencyBody: any = {
+            model: emergencyModel,
+            messages: emergencyMessages,
+            max_tokens: 1024,
+            temperature: 0.5,
+          };
+          if (emergencyProvider === "openai") {
+            emergencyBody.max_completion_tokens = emergencyBody.max_tokens;
+            delete emergencyBody.max_tokens;
+            delete emergencyBody.temperature;
+          }
+          console.warn(`🆘 NÍVEL 3: EMERGÊNCIA simplificada com ${emergencyModel} (sem tools, sem histórico)`);
+          const emResp = await fetch(emergencyEndpoint.url, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${emergencyEndpoint.apiKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify(emergencyBody),
+          });
+          if (emResp.ok) {
+            const emData = await emResp.json();
+            const emContent = emData.choices?.[0]?.message?.content;
+            totalInputTokens += emData.usage?.prompt_tokens || 0;
+            totalOutputTokens += emData.usage?.completion_tokens || 0;
+            if (emContent && emContent.trim() !== "") {
+              aiReply = emContent;
+              console.log(`✅ NÍVEL 3 OK (${emContent.length} chars)`);
+              break;
+            }
+          } else {
+            console.error(`❌ NÍVEL 3 HTTP ${emResp.status}: ${(await emResp.text()).substring(0, 200)}`);
+          }
+        } catch (emErr: any) {
+          console.error(`❌ NÍVEL 3 erro: ${emErr?.message || emErr}`);
+        }
+
+        // === ÚLTIMO RECURSO: mensagem humana, NÃO técnica ===
+        console.error(`💀 TODOS OS FALLBACKS FALHARAM. Enviando mensagem de espera.`);
+        aiReply = "Só um instante, estou verificando isso para você 🙏";
+        break;
       }
 
-      aiReply = rawContent || aiReply || "Desculpe, não consegui processar sua mensagem.";
+      aiReply = rawContent;
       break;
     }
 
