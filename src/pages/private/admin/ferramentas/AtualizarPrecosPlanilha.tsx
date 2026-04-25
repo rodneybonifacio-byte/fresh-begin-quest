@@ -484,9 +484,16 @@ export default function AtualizarPrecosPlanilha() {
                           )}
                         </td>
                         <td className="px-3 py-2 text-right">{formatBRL(r.valorVendaAtual)}</td>
-                        <td className={`px-3 py-2 text-right font-medium ${r.margemAtual < 0 ? 'text-destructive' : r.margemAtual < margemMinima ? 'text-amber-600' : 'text-primary'}`}>
-                          {r.margemAtual.toFixed(1)}%
-                        </td>
+                        {(() => {
+                          const margemVsPlanilha = r.valorCustoPlanilha > 0
+                            ? ((r.valorVendaAtual - r.valorCustoPlanilha) / r.valorCustoPlanilha) * 100
+                            : 0;
+                          return (
+                            <td className={`px-3 py-2 text-right font-medium ${margemVsPlanilha < 0 ? 'text-destructive' : margemVsPlanilha < margemMinima ? 'text-amber-600' : 'text-primary'}`}>
+                              {margemVsPlanilha.toFixed(1)}%
+                            </td>
+                          );
+                        })()}
                         {modoAtivo === 'corrigir_venda' && (
                           <>
                             <td className="px-3 py-2 text-right">
