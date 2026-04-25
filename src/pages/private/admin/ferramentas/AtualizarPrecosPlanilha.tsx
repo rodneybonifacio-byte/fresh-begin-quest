@@ -446,15 +446,26 @@ export default function AtualizarPrecosPlanilha() {
                     <th className="text-right px-3 py-3 font-medium text-muted-foreground">Custo Planilha</th>
                     <th className="text-right px-3 py-3 font-medium text-muted-foreground">Custo Sistema</th>
                     <th className="text-right px-3 py-3 font-medium text-muted-foreground">Venda Atual</th>
-                    <th className="text-right px-3 py-3 font-medium text-muted-foreground">Margem</th>
+                    <th className="text-right px-3 py-3 font-medium text-muted-foreground" title="Margem atual: venda atual sobre custo sistema">
+                      Margem Atual
+                    </th>
                     {modoAtivo === 'corrigir_venda' && (
-                      <th className="text-right px-3 py-3 font-medium text-muted-foreground">Nova Venda</th>
+                      <>
+                        <th className="text-right px-3 py-3 font-medium text-muted-foreground">Nova Venda</th>
+                        <th className="text-right px-3 py-3 font-medium text-amber-700 dark:text-amber-400" title="Margem da nova venda sobre o custo da planilha (custo real)">
+                          Margem s/ Planilha
+                        </th>
+                      </>
                     )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {itensModo.map((r, i) => {
                     const isSelected = selecionados.has(r.codigoObjeto);
+                    const novaVenda = valoresEditados[r.codigoObjeto] ?? r.novoValorVenda ?? 0;
+                    const margemPlanilha = r.valorCustoPlanilha > 0 && novaVenda > 0
+                      ? ((novaVenda - r.valorCustoPlanilha) / r.valorCustoPlanilha) * 100
+                      : 0;
                     return (
                       <tr key={i} className={`hover:bg-muted/30 ${isSelected ? 'bg-primary/5' : ''}`}>
                         <td className="px-3 py-2">
@@ -464,24 +475,40 @@ export default function AtualizarPrecosPlanilha() {
                         <td className="px-3 py-2 text-xs truncate max-w-[150px]" title={r.remetenteNome}>{r.remetenteNome}</td>
                         <td className="px-3 py-2 text-xs">{formatDate(r.dataPostagem)}</td>
                         <td className="px-3 py-2 text-right font-medium">{formatBRL(r.valorCustoPlanilha)}</td>
-                        <td className="px-3 py-2 text-right text-muted-foreground">{formatBRL(r.valorCustoSistema)}</td>
+                        <td className="px-3 py-2 text-right text-muted-foreground">
+                          {formatBRL(r.valorCustoSistema)}
+                          {modoAtivo === 'corrigir_venda' && r.valorCustoSistema < r.valorCustoPlanilha && (
+                            <div className="text-[10px] text-sky-600 dark:text-sky-400 font-medium mt-0.5">
+                              → {formatBRL(r.valorCustoPlanilha)}
+                            </div>
+                          )}
+                        </td>
                         <td className="px-3 py-2 text-right">{formatBRL(r.valorVendaAtual)}</td>
                         <td className={`px-3 py-2 text-right font-medium ${r.margemAtual < 0 ? 'text-destructive' : r.margemAtual < margemMinima ? 'text-amber-600' : 'text-primary'}`}>
                           {r.margemAtual.toFixed(1)}%
                         </td>
                         {modoAtivo === 'corrigir_venda' && (
-                          <td className="px-3 py-2 text-right">
-                            <input type="number" step="0.01" min="0"
-                              value={valoresEditados[r.codigoObjeto] ?? r.novoValorVenda ?? ''}
-                              onChange={(e) => setValoresEditados(prev => ({ ...prev, [r.codigoObjeto]: parseFloat(e.target.value) || 0 }))}
-                              className="w-24 text-right px-2 py-1 text-xs bg-background border border-border rounded text-foreground" />
-                          </td>
+                          <>
+                            <td className="px-3 py-2 text-right">
+                              <input type="number" step="0.01" min="0"
+                                value={valoresEditados[r.codigoObjeto] ?? r.novoValorVenda ?? ''}
+                                onChange={(e) => setValoresEditados(prev => ({ ...prev, [r.codigoObjeto]: parseFloat(e.target.value) || 0 }))}
+                                className="w-24 text-right px-2 py-1 text-xs bg-background border border-border rounded text-foreground" />
+                            </td>
+                            <td className={`px-3 py-2 text-right font-semibold ${
+                              margemPlanilha < 0 ? 'text-destructive'
+                              : margemPlanilha < margemMinima ? 'text-amber-600'
+                              : 'text-primary'
+                            }`}>
+                              {margemPlanilha.toFixed(1)}%
+                            </td>
+                          </>
                         )}
                       </tr>
                     );
                   })}
                   {itensModo.length === 0 && (
-                    <tr><td colSpan={9} className="text-center py-8 text-muted-foreground">
+                    <tr><td colSpan={modoAtivo === 'corrigir_venda' ? 10 : 8} className="text-center py-8 text-muted-foreground">
                       Nenhuma etiqueta nesta categoria
                     </td></tr>
                   )}
