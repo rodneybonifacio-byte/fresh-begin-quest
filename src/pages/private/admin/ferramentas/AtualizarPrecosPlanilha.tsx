@@ -178,23 +178,6 @@ export default function AtualizarPrecosPlanilha() {
         novoValorVendaOverride: valoresEditados[r.codigoObjeto] ?? r.novoValorVenda,
       }));
 
-  const handleExecutar = async () => {
-    if (selecionados.size === 0) { toast.info('Selecione pelo menos uma etiqueta'); return; }
-
-    const paraEnviar = resultados
-      .filter(r => {
-        if (!selecionados.has(r.codigoObjeto) || !r.emissaoId) return false;
-        if (modoAtivo === 'corrigir_venda') return r.cenario === 'CUSTO_PLANILHA_MAIOR';
-        if (modoAtivo === 'corrigir_custo') return r.cenario === 'CUSTO_PLANILHA_MENOR';
-        // apenas_custo: aceita qualquer cenário com divergência
-        return r.cenario !== 'OK';
-      })
-      .map(r => ({
-        codigoObjeto: r.codigoObjeto,
-        valorCustoPlanilha: r.valorCustoPlanilha,
-        novoValorVendaOverride: valoresEditados[r.codigoObjeto] ?? r.novoValorVenda,
-      }));
-
     if (!paraEnviar.length) { toast.info('Nenhuma etiqueta válida para o modo selecionado'); return; }
 
     const msg = modoAtivo === 'corrigir_venda'
