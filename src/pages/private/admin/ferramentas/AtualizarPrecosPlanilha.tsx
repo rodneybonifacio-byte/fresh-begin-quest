@@ -217,8 +217,8 @@ export default function AtualizarPrecosPlanilha() {
     setNaoEncontradas([]);
     setFileName('');
     setResultadoExecucao(null);
-    setSelecionados(new Set());
-    setValoresEditados({});
+    setSelecionadosPorModo({ corrigir_venda: new Set(), corrigir_custo: new Set(), apenas_custo: new Set() });
+    setValoresEditadosPorModo({ corrigir_venda: {}, corrigir_custo: {}, apenas_custo: {} });
     setFiltroDataIni('');
     setFiltroDataFim('');
   };
