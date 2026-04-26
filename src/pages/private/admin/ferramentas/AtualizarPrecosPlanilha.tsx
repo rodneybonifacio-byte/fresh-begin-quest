@@ -25,7 +25,7 @@ interface Resultado {
 }
 
 type Etapa = 'upload' | 'preview' | 'analise' | 'resultado';
-type Modo = 'corrigir_venda' | 'corrigir_custo';
+type Modo = 'corrigir_venda' | 'corrigir_custo' | 'apenas_custo';
 
 const formatBRL = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
@@ -120,13 +120,17 @@ export default function AtualizarPrecosPlanilha() {
   // When switching tabs, auto-select items for that mode
   const switchModo = (modo: Modo) => {
     setModoAtivo(modo);
-    const cenario = modo === 'corrigir_venda' ? 'CUSTO_PLANILHA_MAIOR' : 'CUSTO_PLANILHA_MENOR';
     const sel = new Set<string>();
     const vals: Record<string, number> = {};
     resultadosFiltradosPorData.forEach(r => {
-      if (r.cenario === cenario) {
+      if (modo === 'corrigir_venda' && r.cenario === 'CUSTO_PLANILHA_MAIOR') {
         sel.add(r.codigoObjeto);
         if (r.novoValorVenda) vals[r.codigoObjeto] = r.novoValorVenda;
+      } else if (modo === 'corrigir_custo' && r.cenario === 'CUSTO_PLANILHA_MENOR') {
+        sel.add(r.codigoObjeto);
+      } else if (modo === 'apenas_custo' && r.cenario !== 'OK') {
+        // Qualquer item com divergência de custo
+        sel.add(r.codigoObjeto);
       }
     });
     setSelecionados(sel);
@@ -136,9 +140,14 @@ export default function AtualizarPrecosPlanilha() {
   const handleExecutar = async () => {
     if (selecionados.size === 0) { toast.info('Selecione pelo menos uma etiqueta'); return; }
 
-    const cenario = modoAtivo === 'corrigir_venda' ? 'CUSTO_PLANILHA_MAIOR' : 'CUSTO_PLANILHA_MENOR';
     const paraEnviar = resultados
-      .filter(r => selecionados.has(r.codigoObjeto) && r.emissaoId && r.cenario === cenario)
+      .filter(r => {
+        if (!selecionados.has(r.codigoObjeto) || !r.emissaoId) return false;
+        if (modoAtivo === 'corrigir_venda') return r.cenario === 'CUSTO_PLANILHA_MAIOR';
+        if (modoAtivo === 'corrigir_custo') return r.cenario === 'CUSTO_PLANILHA_MENOR';
+        // apenas_custo: aceita qualquer cenário com divergência
+        return r.cenario !== 'OK';
+      })
       .map(r => ({
         codigoObjeto: r.codigoObjeto,
         valorCustoPlanilha: r.valorCustoPlanilha,
@@ -149,7 +158,9 @@ export default function AtualizarPrecosPlanilha() {
 
     const msg = modoAtivo === 'corrigir_venda'
       ? `Etapa 1: Atualizar CUSTO + VENDA de ${paraEnviar.length} etiqueta(s)?\n(Custo planilha → custo sistema, Venda = custo + ${margemMinima}%)`
-      : `Etapa 2: Atualizar CUSTO de ${paraEnviar.length} etiqueta(s)?\n(Custo planilha → custo sistema)`;
+      : modoAtivo === 'corrigir_custo'
+      ? `Etapa 2: Atualizar CUSTO de ${paraEnviar.length} etiqueta(s)?\n(Custo planilha → custo sistema)`
+      : `Apenas Custo: Atualizar SOMENTE o custo sistema = custo planilha de ${paraEnviar.length} etiqueta(s)?\n(Venda permanece intocada)`;
     if (!window.confirm(msg)) return;
 
     setCarregando(true);
@@ -203,6 +214,9 @@ export default function AtualizarPrecosPlanilha() {
 
   // Items for the current tab
   const itensModo = useMemo(() => {
+    if (modoAtivo === 'apenas_custo') {
+      return resultadosFiltradosPorData.filter(r => r.cenario !== 'OK');
+    }
     const cenario = modoAtivo === 'corrigir_venda' ? 'CUSTO_PLANILHA_MAIOR' : 'CUSTO_PLANILHA_MENOR';
     return resultadosFiltradosPorData.filter(r => r.cenario === cenario);
   }, [resultadosFiltradosPorData, modoAtivo]);
@@ -367,6 +381,16 @@ export default function AtualizarPrecosPlanilha() {
               Etapa 2: Corrigir Custo ({contadores.etapa2})
               <span className="text-[10px] opacity-60 ml-1">Custo planilha {'<'} sistema</span>
             </button>
+            <button onClick={() => switchModo('apenas_custo')}
+              className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium transition-all border ${
+                modoAtivo === 'apenas_custo'
+                  ? 'bg-primary/10 border-primary/40 text-primary ring-2 ring-primary/30'
+                  : 'bg-card border-border text-muted-foreground hover:bg-muted'
+              }`}>
+              <Wallet className="w-4 h-4" />
+              Apenas Custo ({contadores.etapa1 + contadores.etapa2})
+              <span className="text-[10px] opacity-60 ml-1">Só custo, sem mexer na venda</span>
+            </button>
             <div className="flex items-center px-4 py-2 bg-muted rounded-xl text-sm text-muted-foreground">
               ✅ OK: {contadores.ok}
             </div>
@@ -376,12 +400,16 @@ export default function AtualizarPrecosPlanilha() {
           <div className={`p-3 rounded-lg text-xs ${
             modoAtivo === 'corrigir_venda'
               ? 'bg-amber-500/5 border border-amber-500/20 text-amber-700 dark:text-amber-400'
-              : 'bg-sky-500/5 border border-sky-500/20 text-sky-700 dark:text-sky-400'
+              : modoAtivo === 'corrigir_custo'
+              ? 'bg-sky-500/5 border border-sky-500/20 text-sky-700 dark:text-sky-400'
+              : 'bg-primary/5 border border-primary/20 text-primary'
           }`}>
             {modoAtivo === 'corrigir_venda' ? (
               <><strong>Etapa 1:</strong> O custo real (planilha) é MAIOR que o custo no sistema. Ação: atualiza o <strong>custo sistema = custo planilha</strong> e <strong>venda = custo planilha + {margemMinima}%</strong></>
-            ) : (
+            ) : modoAtivo === 'corrigir_custo' ? (
               <><strong>Etapa 2:</strong> O custo real (planilha) é MENOR que o custo no sistema. Ação: atualiza apenas o <strong>custo sistema = custo planilha</strong> (venda permanece)</>
+            ) : (
+              <><strong>Apenas Custo:</strong> Atualiza SOMENTE o <strong>custo sistema = custo planilha</strong> nos itens marcados, sem alterar o valor de venda. Funciona em qualquer divergência.</>
             )}
           </div>
 
@@ -424,7 +452,7 @@ export default function AtualizarPrecosPlanilha() {
                 <button onClick={handleExecutar} disabled={carregando}
                   className="flex items-center gap-2 px-6 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50">
                   {carregando ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                  Executar {modoAtivo === 'corrigir_venda' ? 'Etapa 1' : 'Etapa 2'} ({selecionados.size})
+                  Executar {modoAtivo === 'corrigir_venda' ? 'Etapa 1' : modoAtivo === 'corrigir_custo' ? 'Etapa 2' : 'Apenas Custo'} ({selecionados.size})
                 </button>
               )}
             </div>
