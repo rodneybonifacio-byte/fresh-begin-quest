@@ -47,9 +47,32 @@ export default function AtualizarPrecosPlanilha() {
   const [naoEncontradas, setNaoEncontradas] = useState<string[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [fileName, setFileName] = useState('');
-  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
-  const [valoresEditados, setValoresEditados] = useState<Record<string, number>>({});
+  // Seleções e valores persistidos POR MODO (não se perdem ao trocar de aba)
+  const [selecionadosPorModo, setSelecionadosPorModo] = useState<Record<Modo, Set<string>>>({
+    corrigir_venda: new Set(),
+    corrigir_custo: new Set(),
+    apenas_custo: new Set(),
+  });
+  const [valoresEditadosPorModo, setValoresEditadosPorModo] = useState<Record<Modo, Record<string, number>>>({
+    corrigir_venda: {},
+    corrigir_custo: {},
+    apenas_custo: {},
+  });
   const [modoAtivo, setModoAtivo] = useState<Modo>('corrigir_venda');
+  const selecionados = selecionadosPorModo[modoAtivo];
+  const valoresEditados = valoresEditadosPorModo[modoAtivo];
+  const setSelecionados = (updater: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+    setSelecionadosPorModo(prev => ({
+      ...prev,
+      [modoAtivo]: typeof updater === 'function' ? (updater as any)(prev[modoAtivo]) : updater,
+    }));
+  };
+  const setValoresEditados = (updater: Record<string, number> | ((prev: Record<string, number>) => Record<string, number>)) => {
+    setValoresEditadosPorModo(prev => ({
+      ...prev,
+      [modoAtivo]: typeof updater === 'function' ? (updater as any)(prev[modoAtivo]) : updater,
+    }));
+  };
   const [filtroDataIni, setFiltroDataIni] = useState('');
   const [filtroDataFim, setFiltroDataFim] = useState('');
   const [resultadoExecucao, setResultadoExecucao] = useState<{
@@ -96,17 +119,33 @@ export default function AtualizarPrecosPlanilha() {
       if (!data?.success) throw new Error(data?.error || 'Erro na análise');
       setResultados(data.resultados);
       setNaoEncontradas(data.naoEncontradas || []);
-      // Auto-select items for the active mode
-      const autoSelect = new Set<string>();
-      const autoValues: Record<string, number> = {};
+      // Auto-select inicial para CADA MODO (persistido por aba)
+      const selVenda = new Set<string>();
+      const valVenda: Record<string, number> = {};
+      const selCusto = new Set<string>();
+      const selApenasCusto = new Set<string>();
       (data.resultados as Resultado[]).forEach(r => {
         if (r.cenario === 'CUSTO_PLANILHA_MAIOR' && r.novoValorVenda) {
-          autoSelect.add(r.codigoObjeto);
-          autoValues[r.codigoObjeto] = r.novoValorVenda;
+          selVenda.add(r.codigoObjeto);
+          valVenda[r.codigoObjeto] = r.novoValorVenda;
+        }
+        if (r.cenario === 'CUSTO_PLANILHA_MENOR') {
+          selCusto.add(r.codigoObjeto);
+        }
+        if (r.cenario !== 'OK') {
+          selApenasCusto.add(r.codigoObjeto);
         }
       });
-      setSelecionados(autoSelect);
-      setValoresEditados(autoValues);
+      setSelecionadosPorModo({
+        corrigir_venda: selVenda,
+        corrigir_custo: selCusto,
+        apenas_custo: selApenasCusto,
+      });
+      setValoresEditadosPorModo({
+        corrigir_venda: valVenda,
+        corrigir_custo: {},
+        apenas_custo: {},
+      });
       setModoAtivo('corrigir_venda');
       setEtapa('analise');
       toast.success(`Análise concluída: ${data.resumo.total} etiquetas`);
@@ -117,24 +156,9 @@ export default function AtualizarPrecosPlanilha() {
     }
   };
 
-  // When switching tabs, auto-select items for that mode
+  // Trocar aba apenas muda o modo ativo — mantém as seleções/edições já feitas
   const switchModo = (modo: Modo) => {
     setModoAtivo(modo);
-    const sel = new Set<string>();
-    const vals: Record<string, number> = {};
-    resultadosFiltradosPorData.forEach(r => {
-      if (modo === 'corrigir_venda' && r.cenario === 'CUSTO_PLANILHA_MAIOR') {
-        sel.add(r.codigoObjeto);
-        if (r.novoValorVenda) vals[r.codigoObjeto] = r.novoValorVenda;
-      } else if (modo === 'corrigir_custo' && r.cenario === 'CUSTO_PLANILHA_MENOR') {
-        sel.add(r.codigoObjeto);
-      } else if (modo === 'apenas_custo' && r.cenario !== 'OK') {
-        // Qualquer item com divergência de custo
-        sel.add(r.codigoObjeto);
-      }
-    });
-    setSelecionados(sel);
-    setValoresEditados(vals);
   };
 
   const handleExecutar = async () => {
@@ -193,8 +217,8 @@ export default function AtualizarPrecosPlanilha() {
     setNaoEncontradas([]);
     setFileName('');
     setResultadoExecucao(null);
-    setSelecionados(new Set());
-    setValoresEditados({});
+    setSelecionadosPorModo({ corrigir_venda: new Set(), corrigir_custo: new Set(), apenas_custo: new Set() });
+    setValoresEditadosPorModo({ corrigir_venda: {}, corrigir_custo: {}, apenas_custo: {} });
     setFiltroDataIni('');
     setFiltroDataFim('');
   };
