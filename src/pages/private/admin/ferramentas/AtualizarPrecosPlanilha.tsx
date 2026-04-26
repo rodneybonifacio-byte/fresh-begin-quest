@@ -452,7 +452,7 @@ export default function AtualizarPrecosPlanilha() {
                 <button onClick={handleExecutar} disabled={carregando}
                   className="flex items-center gap-2 px-6 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50">
                   {carregando ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                  Executar {modoAtivo === 'corrigir_venda' ? 'Etapa 1' : 'Etapa 2'} ({selecionados.size})
+                  Executar {modoAtivo === 'corrigir_venda' ? 'Etapa 1' : modoAtivo === 'corrigir_custo' ? 'Etapa 2' : 'Apenas Custo'} ({selecionados.size})
                 </button>
               )}
             </div>
