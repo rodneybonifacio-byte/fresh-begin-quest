@@ -412,12 +412,6 @@ export default function AtualizarPrecosPlanilha() {
               <><strong>Apenas Custo:</strong> Atualiza SOMENTE o <strong>custo sistema = custo planilha</strong> nos itens marcados, sem alterar o valor de venda. Funciona em qualquer divergência.</>
             )}
           </div>
-            {modoAtivo === 'corrigir_venda' ? (
-              <><strong>Etapa 1:</strong> O custo real (planilha) é MAIOR que o custo no sistema. Ação: atualiza o <strong>custo sistema = custo planilha</strong> e <strong>venda = custo planilha + {margemMinima}%</strong></>
-            ) : (
-              <><strong>Etapa 2:</strong> O custo real (planilha) é MENOR que o custo no sistema. Ação: atualiza apenas o <strong>custo sistema = custo planilha</strong> (venda permanece)</>
-            )}
-          </div>
 
           {/* Financial totals */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
