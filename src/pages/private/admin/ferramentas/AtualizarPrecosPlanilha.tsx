@@ -446,8 +446,11 @@ export default function AtualizarPrecosPlanilha() {
                     <th className="text-right px-3 py-3 font-medium text-muted-foreground">Custo Planilha</th>
                     <th className="text-right px-3 py-3 font-medium text-muted-foreground">Custo Sistema</th>
                     <th className="text-right px-3 py-3 font-medium text-muted-foreground">Venda Atual</th>
-                    <th className="text-right px-3 py-3 font-medium text-muted-foreground" title="Margem atual: venda atual sobre custo sistema">
-                      Margem Atual
+                    <th className="text-right px-3 py-3 font-medium text-muted-foreground" title="(Venda Atual - Custo Sistema) / Custo Sistema">
+                      Margem Sistema
+                    </th>
+                    <th className="text-right px-3 py-3 font-medium text-muted-foreground" title="(Venda Atual - Custo Planilha) / Custo Planilha">
+                      Margem Planilha
                     </th>
                     {modoAtivo === 'corrigir_venda' && (
                       <>
@@ -485,13 +488,21 @@ export default function AtualizarPrecosPlanilha() {
                         </td>
                         <td className="px-3 py-2 text-right">{formatBRL(r.valorVendaAtual)}</td>
                         {(() => {
+                          const margemSistema = r.valorCustoSistema > 0
+                            ? ((r.valorVendaAtual - r.valorCustoSistema) / r.valorCustoSistema) * 100
+                            : 0;
                           const margemVsPlanilha = r.valorCustoPlanilha > 0
                             ? ((r.valorVendaAtual - r.valorCustoPlanilha) / r.valorCustoPlanilha) * 100
                             : 0;
                           return (
-                            <td className={`px-3 py-2 text-right font-medium ${margemVsPlanilha < 0 ? 'text-destructive' : margemVsPlanilha < margemMinima ? 'text-amber-600' : 'text-primary'}`}>
-                              {margemVsPlanilha.toFixed(1)}%
-                            </td>
+                            <>
+                              <td className={`px-3 py-2 text-right font-medium ${margemSistema < 0 ? 'text-destructive' : margemSistema < margemMinima ? 'text-amber-600' : 'text-primary'}`}>
+                                {margemSistema.toFixed(1)}%
+                              </td>
+                              <td className={`px-3 py-2 text-right font-medium ${margemVsPlanilha < 0 ? 'text-destructive' : margemVsPlanilha < margemMinima ? 'text-amber-600' : 'text-primary'}`}>
+                                {margemVsPlanilha.toFixed(1)}%
+                              </td>
+                            </>
                           );
                         })()}
                         {modoAtivo === 'corrigir_venda' && (
@@ -515,7 +526,7 @@ export default function AtualizarPrecosPlanilha() {
                     );
                   })}
                   {itensModo.length === 0 && (
-                    <tr><td colSpan={modoAtivo === 'corrigir_venda' ? 10 : 8} className="text-center py-8 text-muted-foreground">
+                    <tr><td colSpan={modoAtivo === 'corrigir_venda' ? 11 : 9} className="text-center py-8 text-muted-foreground">
                       Nenhuma etiqueta nesta categoria
                     </td></tr>
                   )}
