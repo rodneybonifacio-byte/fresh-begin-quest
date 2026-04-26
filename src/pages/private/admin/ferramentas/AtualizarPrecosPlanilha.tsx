@@ -119,17 +119,33 @@ export default function AtualizarPrecosPlanilha() {
       if (!data?.success) throw new Error(data?.error || 'Erro na análise');
       setResultados(data.resultados);
       setNaoEncontradas(data.naoEncontradas || []);
-      // Auto-select items for the active mode
-      const autoSelect = new Set<string>();
-      const autoValues: Record<string, number> = {};
+      // Auto-select inicial para CADA MODO (persistido por aba)
+      const selVenda = new Set<string>();
+      const valVenda: Record<string, number> = {};
+      const selCusto = new Set<string>();
+      const selApenasCusto = new Set<string>();
       (data.resultados as Resultado[]).forEach(r => {
         if (r.cenario === 'CUSTO_PLANILHA_MAIOR' && r.novoValorVenda) {
-          autoSelect.add(r.codigoObjeto);
-          autoValues[r.codigoObjeto] = r.novoValorVenda;
+          selVenda.add(r.codigoObjeto);
+          valVenda[r.codigoObjeto] = r.novoValorVenda;
+        }
+        if (r.cenario === 'CUSTO_PLANILHA_MENOR') {
+          selCusto.add(r.codigoObjeto);
+        }
+        if (r.cenario !== 'OK') {
+          selApenasCusto.add(r.codigoObjeto);
         }
       });
-      setSelecionados(autoSelect);
-      setValoresEditados(autoValues);
+      setSelecionadosPorModo({
+        corrigir_venda: selVenda,
+        corrigir_custo: selCusto,
+        apenas_custo: selApenasCusto,
+      });
+      setValoresEditadosPorModo({
+        corrigir_venda: valVenda,
+        corrigir_custo: {},
+        apenas_custo: {},
+      });
       setModoAtivo('corrigir_venda');
       setEtapa('analise');
       toast.success(`Análise concluída: ${data.resumo.total} etiquetas`);
@@ -140,25 +156,27 @@ export default function AtualizarPrecosPlanilha() {
     }
   };
 
-  // When switching tabs, auto-select items for that mode
+  // Trocar aba apenas muda o modo ativo — mantém as seleções/edições já feitas
   const switchModo = (modo: Modo) => {
     setModoAtivo(modo);
-    const sel = new Set<string>();
-    const vals: Record<string, number> = {};
-    resultadosFiltradosPorData.forEach(r => {
-      if (modo === 'corrigir_venda' && r.cenario === 'CUSTO_PLANILHA_MAIOR') {
-        sel.add(r.codigoObjeto);
-        if (r.novoValorVenda) vals[r.codigoObjeto] = r.novoValorVenda;
-      } else if (modo === 'corrigir_custo' && r.cenario === 'CUSTO_PLANILHA_MENOR') {
-        sel.add(r.codigoObjeto);
-      } else if (modo === 'apenas_custo' && r.cenario !== 'OK') {
-        // Qualquer item com divergência de custo
-        sel.add(r.codigoObjeto);
-      }
-    });
-    setSelecionados(sel);
-    setValoresEditados(vals);
   };
+
+  const handleExecutar = async () => {
+    if (selecionados.size === 0) { toast.info('Selecione pelo menos uma etiqueta'); return; }
+
+    const paraEnviar = resultados
+      .filter(r => {
+        if (!selecionados.has(r.codigoObjeto) || !r.emissaoId) return false;
+        if (modoAtivo === 'corrigir_venda') return r.cenario === 'CUSTO_PLANILHA_MAIOR';
+        if (modoAtivo === 'corrigir_custo') return r.cenario === 'CUSTO_PLANILHA_MENOR';
+        // apenas_custo: aceita qualquer cenário com divergência
+        return r.cenario !== 'OK';
+      })
+      .map(r => ({
+        codigoObjeto: r.codigoObjeto,
+        valorCustoPlanilha: r.valorCustoPlanilha,
+        novoValorVendaOverride: valoresEditados[r.codigoObjeto] ?? r.novoValorVenda,
+      }));
 
   const handleExecutar = async () => {
     if (selecionados.size === 0) { toast.info('Selecione pelo menos uma etiqueta'); return; }
