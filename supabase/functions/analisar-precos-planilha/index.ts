@@ -134,46 +134,53 @@ serve(async (req: Request) => {
 
     // Determine which items to process based on modo
     let items = [];
+    const apenasCusto = modo === 'apenas_custo';
     if (modo === 'corrigir_venda') {
       // Etapa 1: custo planilha > sistema → update cost + sale
       items = etapa1;
     } else if (modo === 'corrigir_custo') {
       // Etapa 2: custo planilha < sistema → update cost only
       items = etapa2;
+    } else if (apenasCusto) {
+      // Apenas custo: qualquer item com divergência, atualiza só o custo (ignora venda)
+      items = resultados.filter(r => r.cenario !== 'OK');
     } else {
       // Legacy: all that have changes
       items = resultados.filter(r => r.cenario !== 'OK');
     }
 
-    // Apply overrides from frontend
+    // Apply overrides from frontend (only when not apenas_custo)
     const overrideMap = new Map(etiquetas.map(e => [e.codigoObjeto, e.novoValorVendaOverride]));
 
     for (const item of items) {
       try {
-        // Update cost if different
-        if (item.novoCusto !== null) {
-          const res = await atualizarPreco(item.emissaoId, 'VALOR_CUSTO', item.novoCusto, token);
+        // Update cost (always force to custo planilha when apenasCusto)
+        const novoCustoFinal = apenasCusto ? item.valorCustoPlanilha : item.novoCusto;
+        if (novoCustoFinal !== null && novoCustoFinal !== undefined) {
+          const res = await atualizarPreco(item.emissaoId, 'VALOR_CUSTO', novoCustoFinal, token);
           if (res.ok) {
             atualizadosCusto.push(item.codigoObjeto);
-            console.log(`✅ Custo: ${item.codigoObjeto} → R$ ${item.novoCusto}`);
+            console.log(`✅ Custo: ${item.codigoObjeto} → R$ ${novoCustoFinal}`);
           } else {
             erros.push({ codigoObjeto: item.codigoObjeto, erro: `Custo: ${res.erro}` });
           }
           await new Promise(r => setTimeout(r, 100));
         }
 
-        // Update sale if applicable (only etapa1 or override)
-        const vendaOverride = overrideMap.get(item.codigoObjeto);
-        const vendaFinal = vendaOverride ?? item.novoValorVenda;
-        if (vendaFinal !== null && vendaFinal > 0) {
-          const res = await atualizarPreco(item.emissaoId, 'VALOR_VENDA', vendaFinal, token);
-          if (res.ok) {
-            atualizadosVenda.push(item.codigoObjeto);
-            console.log(`✅ Venda: ${item.codigoObjeto} → R$ ${vendaFinal}`);
-          } else {
-            erros.push({ codigoObjeto: item.codigoObjeto, erro: `Venda: ${res.erro}` });
+        // Update sale ONLY if not apenasCusto
+        if (!apenasCusto) {
+          const vendaOverride = overrideMap.get(item.codigoObjeto);
+          const vendaFinal = vendaOverride ?? item.novoValorVenda;
+          if (vendaFinal !== null && vendaFinal > 0) {
+            const res = await atualizarPreco(item.emissaoId, 'VALOR_VENDA', vendaFinal, token);
+            if (res.ok) {
+              atualizadosVenda.push(item.codigoObjeto);
+              console.log(`✅ Venda: ${item.codigoObjeto} → R$ ${vendaFinal}`);
+            } else {
+              erros.push({ codigoObjeto: item.codigoObjeto, erro: `Venda: ${res.erro}` });
+            }
+            await new Promise(r => setTimeout(r, 100));
           }
-          await new Promise(r => setTimeout(r, 100));
         }
       } catch (err) {
         erros.push({ codigoObjeto: item.codigoObjeto, erro: err.message });
