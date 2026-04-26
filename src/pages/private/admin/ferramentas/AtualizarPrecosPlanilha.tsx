@@ -47,9 +47,32 @@ export default function AtualizarPrecosPlanilha() {
   const [naoEncontradas, setNaoEncontradas] = useState<string[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [fileName, setFileName] = useState('');
-  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
-  const [valoresEditados, setValoresEditados] = useState<Record<string, number>>({});
+  // Seleções e valores persistidos POR MODO (não se perdem ao trocar de aba)
+  const [selecionadosPorModo, setSelecionadosPorModo] = useState<Record<Modo, Set<string>>>({
+    corrigir_venda: new Set(),
+    corrigir_custo: new Set(),
+    apenas_custo: new Set(),
+  });
+  const [valoresEditadosPorModo, setValoresEditadosPorModo] = useState<Record<Modo, Record<string, number>>>({
+    corrigir_venda: {},
+    corrigir_custo: {},
+    apenas_custo: {},
+  });
   const [modoAtivo, setModoAtivo] = useState<Modo>('corrigir_venda');
+  const selecionados = selecionadosPorModo[modoAtivo];
+  const valoresEditados = valoresEditadosPorModo[modoAtivo];
+  const setSelecionados = (updater: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+    setSelecionadosPorModo(prev => ({
+      ...prev,
+      [modoAtivo]: typeof updater === 'function' ? (updater as any)(prev[modoAtivo]) : updater,
+    }));
+  };
+  const setValoresEditados = (updater: Record<string, number> | ((prev: Record<string, number>) => Record<string, number>)) => {
+    setValoresEditadosPorModo(prev => ({
+      ...prev,
+      [modoAtivo]: typeof updater === 'function' ? (updater as any)(prev[modoAtivo]) : updater,
+    }));
+  };
   const [filtroDataIni, setFiltroDataIni] = useState('');
   const [filtroDataFim, setFiltroDataFim] = useState('');
   const [resultadoExecucao, setResultadoExecucao] = useState<{
