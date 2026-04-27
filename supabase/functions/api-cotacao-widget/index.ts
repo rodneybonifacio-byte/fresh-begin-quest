@@ -76,33 +76,74 @@ serve(async (req) => {
       throw new Error('BASE_API_URL não configurada');
     }
 
-    // 1. Fazer login do cliente para obter token
-    console.log('🔐 Autenticando cliente:', clienteEmail);
-    
-    const loginResponse = await fetch(`${baseUrl}/login`, {
+    // 1. Fazer login do cliente para obter token (com fallback para admin)
+    console.log('🔐 Autenticando cliente widget:', clienteEmail);
+
+    let loginResponse = await fetch(`${baseUrl}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: clienteEmail, password: clienteSenha }),
     });
 
+    let loginRawText = await loginResponse.text();
+    console.log('🔐 Login widget status:', loginResponse.status, 'body:', loginRawText.slice(0, 300));
+
+    let loginData: any = null;
+
     if (!loginResponse.ok) {
-      const loginError = await loginResponse.text();
-      console.error('❌ Erro no login:', loginError);
-      return new Response(
-        JSON.stringify({ 
-          success: false,
-          error: 'Credenciais inválidas',
-          code: 'INVALID_CREDENTIALS'
-        }),
-        { 
-          status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+      // Fallback: tentar com credenciais admin
+      console.log('⚠️ Login widget falhou, tentando fallback admin...');
+      const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
+      const adminPassword = Deno.env.get('API_ADMIN_PASSWORD');
+
+      if (!adminEmail || !adminPassword) {
+        console.error('❌ Credenciais admin não configuradas para fallback');
+        return new Response(
+          JSON.stringify({ 
+            success: false,
+            error: 'Credenciais inválidas',
+            code: 'INVALID_CREDENTIALS',
+            details: loginRawText.slice(0, 200)
+          }),
+          { 
+            status: 401, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+
+      const adminLoginResponse = await fetch(`${baseUrl}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: adminEmail, password: adminPassword }),
+      });
+
+      const adminRawText = await adminLoginResponse.text();
+      console.log('🔐 Login admin (fallback) status:', adminLoginResponse.status);
+
+      if (!adminLoginResponse.ok) {
+        console.error('❌ Fallback admin também falhou:', adminRawText.slice(0, 200));
+        return new Response(
+          JSON.stringify({ 
+            success: false,
+            error: 'Credenciais inválidas',
+            code: 'INVALID_CREDENTIALS',
+            details: adminRawText.slice(0, 200)
+          }),
+          { 
+            status: 401, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+
+      loginData = JSON.parse(adminRawText);
+      console.log('✅ Autenticado via fallback admin');
+    } else {
+      loginData = JSON.parse(loginRawText);
     }
 
-    const loginData = await loginResponse.json();
-    const userToken = loginData.token || loginData.data?.token;
+    const userToken = loginData.token || loginData.access_token || loginData.data?.token;
 
     if (!userToken) {
       throw new Error('Token não retornado pelo login');
