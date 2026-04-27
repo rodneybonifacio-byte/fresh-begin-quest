@@ -887,6 +887,22 @@ serve(async (req) => {
       cpfCnpj: cpfCnpj,
       cep: cep
     });
+
+    // Regra especial: clientes LARAS MODAS e LOOK POWER têm prazo de 3 dias úteis para pagamento
+    const nomeClienteUpper = (clienteData.nome || '').toUpperCase();
+    const clientePrazoEstendido = nomeClienteUpper.includes('LARAS') || nomeClienteUpper.includes('LOOK POWER') || nomeClienteUpper.includes('LOOKPOWER');
+    let dataVencimentoCustom: string | undefined;
+    if (clientePrazoEstendido) {
+      const venc = new Date();
+      let diasAdicionados = 0;
+      while (diasAdicionados < 3) {
+        venc.setDate(venc.getDate() + 1);
+        const dia = venc.getDay();
+        if (dia !== 0 && dia !== 6) diasAdicionados++;
+      }
+      dataVencimentoCustom = venc.toISOString().split('T')[0];
+      console.log(`📅 Cliente ${clienteData.nome} com prazo estendido (3 dias úteis). Vencimento:`, dataVencimentoCustom);
+    }
     
     // Adicionar timeout de 60 segundos para evitar trava
     const boletoController = new AbortController();
@@ -903,6 +919,7 @@ serve(async (req) => {
         faturaId: fatura.id,
         codigoFatura: codigo_fatura,
         valorCobrado: valorBoleto,
+        ...(dataVencimentoCustom ? { dataVencimento: dataVencimentoCustom } : {}),
         pagadorNome: clienteData.nome,
         pagadorCpfCnpj: cpfCnpj,
         pagadorEndereco: {
