@@ -63,6 +63,16 @@ serve(async (req) => {
     }
 
     const normalized = withoutEmojis.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+    // Fast-path: palavras interrogativas em português → ACTIVE
+    // Cobre casos onde o cliente esquece o "?" (ex: "Quando saem as roupas.")
+    const interrogativeWords = /\b(quando|onde|cade|cadê|qual|quais|como|porque|por que|porq|pq|quanto|quantos|quanta|quantas|quem|sera|será|tem como|consegue|poderia|pode me|me ajuda|me informa|me diz|preciso saber|gostaria de saber|queria saber|estou aguardando|to aguardando|nao recebi|não recebi|nao chegou|não chegou|atrasad|sumiu|perdid|extraviad|cancelar|alterar|trocar|reembolso|devolver)\b/i;
+    if (interrogativeWords.test(normalized)) {
+      return new Response(
+        JSON.stringify({ intent: "ACTIVE", confidence: 0.9, reason: "interrogative_word" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     const passiveAcks = [
       "ok", "oks", "okey", "okay", "okk", "okei",
       "certo", "certoo", "ta", "taa", "ta bom", "ta bem", "ta certo",
