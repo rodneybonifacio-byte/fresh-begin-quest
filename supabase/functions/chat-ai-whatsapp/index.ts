@@ -30,7 +30,7 @@ function getAIEndpoint(provider: string): { url: string; apiKey: string; provide
 // TOOLS: Carregadas dinamicamente do banco (ai_tools.ai_callable = true)
 // ═══════════════════════════════════════════════════════════
 
-async function loadCallableTools(supabase: any, agentName: string): Promise<any[]> {
+async function loadCallableTools(supabase: any, agentName: string, isBoss: boolean = false): Promise<any[]> {
   const { data: tools } = await supabase
     .from("ai_tools")
     .select("name, ai_function_schema, allowed_agents")
@@ -41,6 +41,8 @@ async function loadCallableTools(supabase: any, agentName: string): Promise<any[
 
   return tools
     .filter((t: any) => {
+      // 👑 BOSS tem acesso TOTAL - ignora restrição de allowed_agents
+      if (isBoss) return true;
       // Se allowed_agents vazio/null = todos podem usar
       if (!t.allowed_agents || t.allowed_agents.length === 0) return true;
       return t.allowed_agents.includes(agentName);
@@ -64,12 +66,16 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
 
   try {
     // ── Restrição de ferramentas sensíveis por telefone ──
+    // BOSS phones têm acesso irrestrito a TODAS as tools
+    const BOSS_PHONES = ["5511911544095"];
+    const normalizedPhone = (contactPhone || "").replace(/\D/g, "");
+    const isBoss = BOSS_PHONES.some(p => normalizedPhone.includes(p) || p.includes(normalizedPhone));
+
     const RESTRICTED_TOOLS: Record<string, string[]> = {
       "emitir_etiqueta": ["5511911544095"],
     };
-    if (RESTRICTED_TOOLS[toolName]) {
+    if (RESTRICTED_TOOLS[toolName] && !isBoss) {
       const allowedPhones = RESTRICTED_TOOLS[toolName];
-      const normalizedPhone = contactPhone.replace(/\D/g, "");
       if (!allowedPhones.some(p => normalizedPhone.includes(p) || p.includes(normalizedPhone))) {
         return `Desculpe, essa funcionalidade está disponível apenas para números autorizados. Entre em contato com o suporte.`;
       }
@@ -856,8 +862,31 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
         return result;
       }
 
-      default:
-        return `Ferramenta "${toolName}" não tem executor implementado.`;
+      default: {
+        // 🔁 Fallback genérico: se a tool tem edge_function configurada no banco,
+        // invocar diretamente passando os args. Permite que o BOSS use qualquer tool
+        // do catálogo sem precisar de implementação manual no switch.
+        const { data: toolMeta } = await supabase
+          .from("ai_tools")
+          .select("edge_function")
+          .eq("name", toolName)
+          .maybeSingle();
+
+        const edgeFn = toolMeta?.edge_function;
+        if (edgeFn) {
+          try {
+            console.log(`🔁 Fallback genérico invocando edge function: ${edgeFn}`);
+            const { data, error } = await supabase.functions.invoke(edgeFn, { body: args || {} });
+            if (error) return `Erro ao executar ${toolName}: ${error.message || error}`;
+            if (typeof data === "string") return data;
+            return JSON.stringify(data).substring(0, 4000);
+          } catch (invokeErr: any) {
+            return `Erro ao invocar ${toolName} (${edgeFn}): ${invokeErr.message}`;
+          }
+        }
+
+        return `Ferramenta "${toolName}" não tem executor implementado nem edge_function configurada.`;
+      }
     }
   } catch (e: any) {
     console.error(`❌ Erro executando tool ${toolName}:`, e);
@@ -1720,8 +1749,9 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
     // CARREGAR TOOLS DINÂMICAS DO BANCO
     // ═══════════════════════════════════════════════════════════
 
-    const dynamicTools = await loadCallableTools(supabase, agentName);
-    console.log(`🔧 ${dynamicTools.length} tools carregadas para ${agentName}`);
+    const isBossContact = contactContext.includes("[PERMISSÕES ESPECIAIS - VIP / BOSS]");
+    const dynamicTools = await loadCallableTools(supabase, agentName, isBossContact);
+    console.log(`🔧 ${dynamicTools.length} tools carregadas para ${agentName}${isBossContact ? " (👑 BOSS — acesso total)" : ""}`);
 
     // ═══════════════════════════════════════════════════════════
     // LOOP DE TOOL CALLING (máximo 3 iterações)
