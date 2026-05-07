@@ -1726,8 +1726,9 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
     // CARREGAR TOOLS DINÂMICAS DO BANCO
     // ═══════════════════════════════════════════════════════════
 
-    const dynamicTools = await loadCallableTools(supabase, agentName);
-    console.log(`🔧 ${dynamicTools.length} tools carregadas para ${agentName}`);
+    const isBossContact = contactContext.includes("[PERMISSÕES ESPECIAIS - VIP / BOSS]");
+    const dynamicTools = await loadCallableTools(supabase, agentName, isBossContact);
+    console.log(`🔧 ${dynamicTools.length} tools carregadas para ${agentName}${isBossContact ? " (👑 BOSS — acesso total)" : ""}`);
 
     // ═══════════════════════════════════════════════════════════
     // LOOP DE TOOL CALLING (máximo 3 iterações)
