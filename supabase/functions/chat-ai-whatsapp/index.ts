@@ -30,7 +30,7 @@ function getAIEndpoint(provider: string): { url: string; apiKey: string; provide
 // TOOLS: Carregadas dinamicamente do banco (ai_tools.ai_callable = true)
 // ═══════════════════════════════════════════════════════════
 
-async function loadCallableTools(supabase: any, agentName: string): Promise<any[]> {
+async function loadCallableTools(supabase: any, agentName: string, isBoss: boolean = false): Promise<any[]> {
   const { data: tools } = await supabase
     .from("ai_tools")
     .select("name, ai_function_schema, allowed_agents")
@@ -41,6 +41,8 @@ async function loadCallableTools(supabase: any, agentName: string): Promise<any[
 
   return tools
     .filter((t: any) => {
+      // 👑 BOSS tem acesso TOTAL - ignora restrição de allowed_agents
+      if (isBoss) return true;
       // Se allowed_agents vazio/null = todos podem usar
       if (!t.allowed_agents || t.allowed_agents.length === 0) return true;
       return t.allowed_agents.includes(agentName);
