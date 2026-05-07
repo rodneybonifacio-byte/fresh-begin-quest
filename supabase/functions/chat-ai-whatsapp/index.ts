@@ -862,8 +862,31 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
         return result;
       }
 
-      default:
-        return `Ferramenta "${toolName}" não tem executor implementado.`;
+      default: {
+        // 🔁 Fallback genérico: se a tool tem edge_function configurada no banco,
+        // invocar diretamente passando os args. Permite que o BOSS use qualquer tool
+        // do catálogo sem precisar de implementação manual no switch.
+        const { data: toolMeta } = await supabase
+          .from("ai_tools")
+          .select("edge_function")
+          .eq("name", toolName)
+          .maybeSingle();
+
+        const edgeFn = toolMeta?.edge_function;
+        if (edgeFn) {
+          try {
+            console.log(`🔁 Fallback genérico invocando edge function: ${edgeFn}`);
+            const { data, error } = await supabase.functions.invoke(edgeFn, { body: args || {} });
+            if (error) return `Erro ao executar ${toolName}: ${error.message || error}`;
+            if (typeof data === "string") return data;
+            return JSON.stringify(data).substring(0, 4000);
+          } catch (invokeErr: any) {
+            return `Erro ao invocar ${toolName} (${edgeFn}): ${invokeErr.message}`;
+          }
+        }
+
+        return `Ferramenta "${toolName}" não tem executor implementado nem edge_function configurada.`;
+      }
     }
   } catch (e: any) {
     console.error(`❌ Erro executando tool ${toolName}:`, e);
