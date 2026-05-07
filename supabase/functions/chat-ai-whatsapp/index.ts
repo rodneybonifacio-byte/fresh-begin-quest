@@ -66,12 +66,16 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
 
   try {
     // ── Restrição de ferramentas sensíveis por telefone ──
+    // BOSS phones têm acesso irrestrito a TODAS as tools
+    const BOSS_PHONES = ["5511911544095"];
+    const normalizedPhone = (contactPhone || "").replace(/\D/g, "");
+    const isBoss = BOSS_PHONES.some(p => normalizedPhone.includes(p) || p.includes(normalizedPhone));
+
     const RESTRICTED_TOOLS: Record<string, string[]> = {
       "emitir_etiqueta": ["5511911544095"],
     };
-    if (RESTRICTED_TOOLS[toolName]) {
+    if (RESTRICTED_TOOLS[toolName] && !isBoss) {
       const allowedPhones = RESTRICTED_TOOLS[toolName];
-      const normalizedPhone = contactPhone.replace(/\D/g, "");
       if (!allowedPhones.some(p => normalizedPhone.includes(p) || p.includes(normalizedPhone))) {
         return `Desculpe, essa funcionalidade está disponível apenas para números autorizados. Entre em contato com o suporte.`;
       }
