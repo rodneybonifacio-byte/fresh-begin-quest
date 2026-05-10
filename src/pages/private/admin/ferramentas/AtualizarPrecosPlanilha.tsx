@@ -629,8 +629,8 @@ export default function AtualizarPrecosPlanilha() {
                   <CheckCircle2 className="w-4 h-4" /> Detalhes das atualizações
                 </h3>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+              <div className="overflow-auto max-h-[55vh] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-muted/30">
+                <table className="w-full text-sm min-w-[1100px] [&_th]:whitespace-nowrap [&_td]:whitespace-nowrap">
                   <thead>
                     <tr className="border-b border-border bg-muted/50">
                       <th className="text-left p-3 font-medium text-muted-foreground">Etiqueta</th>
