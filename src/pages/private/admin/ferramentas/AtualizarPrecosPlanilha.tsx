@@ -484,8 +484,8 @@ export default function AtualizarPrecosPlanilha() {
 
           {/* Table */}
           <div className="bg-card border border-border rounded-xl overflow-hidden">
-            <div className="overflow-x-auto max-h-[55vh] overflow-y-auto">
-              <table className="w-full text-sm">
+            <div className="max-h-[55vh] overflow-auto [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-muted/30">
+              <table className="w-full text-sm min-w-[1200px] [&_th]:whitespace-nowrap [&_td]:whitespace-nowrap">
                 <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
                   <tr>
                     <th className="px-3 py-3 w-10">
@@ -629,8 +629,8 @@ export default function AtualizarPrecosPlanilha() {
                   <CheckCircle2 className="w-4 h-4" /> Detalhes das atualizações
                 </h3>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+              <div className="overflow-auto max-h-[55vh] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-muted/30">
+                <table className="w-full text-sm min-w-[1100px] [&_th]:whitespace-nowrap [&_td]:whitespace-nowrap">
                   <thead>
                     <tr className="border-b border-border bg-muted/50">
                       <th className="text-left p-3 font-medium text-muted-foreground">Etiqueta</th>
