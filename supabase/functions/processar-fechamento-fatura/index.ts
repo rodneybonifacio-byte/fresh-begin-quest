@@ -593,25 +593,73 @@ serve(async (req) => {
       temRemetenteData: !!remetenteData,
     });
 
-    // ✅ ETAPA 3: Extrair cadastro completo do cliente/pagador
-    // Para subfaturas: usar dados do remetente buscado via API como pagador
-    // Para faturas normais: usar dados do cliente da fatura
-    console.log('👤 Etapa 3: Validando dados do pagador...');
+    // ✅ ETAPA 3: Extrair cadastro completo do pagador
+    // REGRA: O pagador do boleto SEMPRE deve ser o REMETENTE.
+    // - Subfatura: remetente buscado via API/BrasilAPI (já preparado acima)
+    // - Fatura normal: tentar derivar remetente único da fatura/detalhes; se não conseguir, usar cliente como fallback
+    console.log('👤 Etapa 3: Validando dados do pagador (sempre REMETENTE quando possível)...');
     
     let clienteData;
     
     if (isSubfatura && remetenteData) {
-      // Subfatura: pagador é o remetente buscado via API
-      console.log('📋 Usando dados do REMETENTE (buscado via API) como pagador');
+      console.log('📋 [SUBFATURA] Usando dados do REMETENTE (BrasilAPI) como pagador');
       clienteData = remetenteData;
     } else if (isSubfatura && fatura.remetente) {
-      // Subfatura: pagador é o remetente da fatura
-      console.log('📋 Usando dados do REMETENTE da fatura como pagador');
+      console.log('📋 [SUBFATURA] Usando dados do REMETENTE da fatura como pagador');
+      clienteData = fatura.remetente;
+    } else if (fatura.remetente && (fatura.remetente.cpfCnpj || fatura.remetente.cpf_cnpj)) {
+      // Fatura normal com remetente explícito
+      console.log('📋 [FATURA] Usando dados do REMETENTE da fatura como pagador');
       clienteData = fatura.remetente;
     } else {
-      // Fatura normal: pagador é o cliente da fatura
-      console.log('📋 Usando dados do CLIENTE da fatura como pagador');
-      clienteData = fatura.cliente;
+      // Fatura normal: tentar derivar remetente único dos detalhes
+      let remetenteUnicoCnpj: string | null = null;
+      try {
+        if (fatura.detalhe && Array.isArray(fatura.detalhe)) {
+          const cnpjs = new Set<string>();
+          for (const item of fatura.detalhe) {
+            const c = (item.remetenteCpfCnpj || item.remetente?.cpfCnpj || '').replace(/\D/g, '');
+            if (c) cnpjs.add(c);
+          }
+          if (cnpjs.size === 1) {
+            remetenteUnicoCnpj = Array.from(cnpjs)[0];
+            console.log('🎯 [FATURA] Remetente único detectado nos detalhes:', remetenteUnicoCnpj);
+          } else {
+            console.log(`ℹ️ [FATURA] ${cnpjs.size} remetentes distintos nos detalhes — não é possível usar remetente único`);
+          }
+        }
+      } catch (e) {
+        console.log('⚠️ Erro ao detectar remetente único:', e);
+      }
+      
+      if (remetenteUnicoCnpj && remetenteUnicoCnpj.length === 14) {
+        try {
+          const r = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${remetenteUnicoCnpj}`);
+          if (r.ok) {
+            const cnpjData = await r.json();
+            clienteData = {
+              nome: cnpjData.razao_social || cnpjData.nome_fantasia || fatura.cliente?.nome,
+              cpfCnpj: remetenteUnicoCnpj,
+              telefone: cnpjData.ddd_telefone_1 ? `${cnpjData.ddd_telefone_1}`.replace(/\D/g, '') : (fatura.cliente?.telefone || '11999999999'),
+              cep: cnpjData.cep?.replace(/\D/g, '') || '',
+              logradouro: cnpjData.logradouro || '',
+              numero: cnpjData.numero || 'S/N',
+              complemento: (cnpjData.complemento || '').substring(0, 30),
+              bairro: cnpjData.bairro || '',
+              localidade: cnpjData.municipio || '',
+              uf: cnpjData.uf || '',
+            };
+            console.log('📋 [FATURA] Usando dados do REMETENTE (BrasilAPI) como pagador:', clienteData.nome);
+          }
+        } catch (e) {
+          console.log('⚠️ Falha BrasilAPI para remetente único:', e);
+        }
+      }
+      
+      if (!clienteData) {
+        console.log('📋 [FATURA] Fallback: usando dados do CLIENTE da fatura como pagador');
+        clienteData = fatura.cliente;
+      }
     }
     
     // Log completo do objeto cliente/pagador para debug
