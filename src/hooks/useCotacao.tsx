@@ -15,15 +15,18 @@ export const useCotacao = () => {
 
     const [cotacoes, setCotacoes] = useState<ICotacaoMinimaResponse[] | undefined>(undefined);
     const [isLoadingCotacao, setIsLoading] = useState(false);
+    const [cotacaoError, setCotacaoError] = useState<string | null>(null);
 
     const mutation = useMutation({
         mutationFn: async (requestData: any) => {
             setIsLoading(true);
+            setCotacaoError(null);
             console.log('🔄 Enviando requisição de cotação para API...');
             return serviceFrete.calculadoraFrete(requestData);
         },
         onSuccess: (response) => {
             setIsLoading(false);
+            setCotacaoError(null);
             console.log('✅ Resposta da API recebida:', {
                 status: 'success',
                 totalCotacoes: response?.data?.length || 0,
@@ -65,23 +68,37 @@ export const useCotacao = () => {
                                      errorMessage.includes('dimensão') ||
                                      errorMessage.includes('excede');
 
+            const isCarrierConfigError = errorMessage.includes('configurações de transportadora') ||
+                                         errorMessage.includes('configuracoes de transportadora');
+
             if (isAuthError) {
+                setCotacaoError('Sessão expirada. Faça login novamente para calcular o frete.');
                 toast.error('Sua sessão expirou. Faça login novamente para calcular o frete.', {
                     duration: 5000,
                     position: "top-center"
                 });
                 navigate('/login');
             } else if (isDimensionError) {
+                setCotacaoError('As dimensões ou peso informados excedem os limites das transportadoras.');
                 toast.error('As dimensões ou peso informados excedem os limites das transportadoras. Correios: máx. 100cm e 30kg. Rodonaves: máx. 200cm e 200kg.', {
                     duration: 8000,
                     position: "top-center"
                 });
+            } else if (isCarrierConfigError) {
+                const message = 'Remetente sem configuração de transportadora para logística reversa. Troque o remetente ou solicite a ativação da reversa para este CNPJ.';
+                setCotacaoError(message);
+                toast.error(message, {
+                    duration: 9000,
+                    position: "top-center"
+                });
             } else if (isLimitError) {
+                setCotacaoError('Nenhuma transportadora disponível para esta rota com os dados informados.');
                 toast.warning('Nenhuma transportadora disponível para esta rota com os dados informados. Verifique o CEP de origem/destino, peso e dimensões.', {
                     duration: 8000,
                     position: "top-center"
                 });
             } else {
+                setCotacaoError(error instanceof Error && error.message ? error.message : 'Não foi possível calcular o frete. Verifique os dados e tente novamente.');
                 toast.error(`Não foi possível calcular o frete. Verifique os dados e tente novamente.`, {
                     duration: 5000,
                     position: "top-center"
@@ -141,10 +158,8 @@ export const useCotacao = () => {
                 navigate('/login');
                 return;
             }
-
-            toast.error('Erro ao calcular frete. Tente novamente.');
         }
     }
 
-    return { onGetCotacaoCorreios, cotacoes, setCotacoes, isLoadingCotacao };
+    return { onGetCotacaoCorreios, cotacoes, setCotacoes, isLoadingCotacao, cotacaoError };
 }
