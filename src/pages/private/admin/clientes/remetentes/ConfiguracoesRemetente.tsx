@@ -87,13 +87,29 @@ const ConfiguracoesRemetente = () => {
                 porcentagem: config.tipoAcrescimo === 'PERCENTUAL' ? config.valorAcrescimo : undefined,
             }));
 
-            // Envia todas as configurações em uma única chamada
-            await service.createMultipleConfigs(configsParaAPI);
+            console.log('[ConfigRemetente] Enviando configurações para API:', configsParaAPI);
 
-            // Não recarrega os dados para manter o formulário preenchido
+            // Envia todas as configurações em uma única chamada
+            const response: any = await service.createMultipleConfigs(configsParaAPI);
+
+            console.log('[ConfigRemetente] Resposta da API:', response);
+
+            // Valida resposta da API (alguns endpoints retornam 200 com success:false)
+            if (response && response.success === false) {
+                const msg = response.message || response.error || 'API retornou falha sem detalhes.';
+                console.error('[ConfigRemetente] API retornou success=false:', response);
+                toastError(`Não foi possível salvar: ${msg}`);
+                return;
+            }
+
             toastSuccess("Configurações do remetente salvas com sucesso!");
-        } catch (error) {
-            toastError("Erro ao salvar configurações do remetente. Tente novamente.");
+        } catch (error: any) {
+            console.error('[ConfigRemetente] Erro ao salvar:', error?.response?.data || error?.message || error);
+            const apiMsg = error?.response?.data?.message
+                || error?.response?.data?.error
+                || error?.message
+                || 'Erro desconhecido';
+            toastError(`Erro ao salvar configurações: ${apiMsg}`);
         } finally {
             setIsLoading(false);
         }
