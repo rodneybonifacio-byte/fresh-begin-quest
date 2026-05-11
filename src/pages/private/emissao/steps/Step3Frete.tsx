@@ -37,7 +37,8 @@ export const Step3Frete = ({
   const {
     onGetCotacaoCorreios,
     cotacoes,
-    isLoadingCotacao
+    isLoadingCotacao,
+    cotacaoError
   } = useCotacao();
 
   // Obter quantidade de volumes do formulário
@@ -202,6 +203,16 @@ export const Step3Frete = ({
             <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary"></div>
             <span className="text-lg font-medium text-muted-foreground animate-pulse">Calculando melhores fretes...</span>
           </div>}
+
+        {cotacaoError && !isLoadingCotacao && (
+          <div className="rounded-xl border-2 border-destructive/30 bg-destructive/10 p-4 flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-destructive">Não foi possível calcular o frete</p>
+              <p className="text-sm text-foreground/80">{cotacaoError}</p>
+            </div>
+          </div>
+        )}
         
         {cotacoes && cotacoes.length > 0 && (
           <ListaFretesDisponiveis 
@@ -212,7 +223,7 @@ export const Step3Frete = ({
           />
         )}
 
-        {cotacoes && cotacoes.length === 0 && !isLoadingCotacao && <div className="text-center py-8 text-muted-foreground">
+        {cotacoes && cotacoes.length === 0 && !isLoadingCotacao && !cotacaoError && <div className="text-center py-8 text-muted-foreground">
             Nenhum frete disponível para esta rota. Verifique os dados informados.
           </div>}
 
