@@ -16,6 +16,7 @@ export const useCotacao = () => {
     const [cotacoes, setCotacoes] = useState<ICotacaoMinimaResponse[] | undefined>(undefined);
     const [isLoadingCotacao, setIsLoading] = useState(false);
     const [cotacaoError, setCotacaoError] = useState<string | null>(null);
+    const ultimaReversaRef = useRef<boolean>(false);
 
     const mutation = useMutation({
         mutationFn: async (requestData: any) => {
