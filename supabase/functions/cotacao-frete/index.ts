@@ -117,6 +117,9 @@ serve(async (req) => {
 
     const responseText = await cotacaoResponse.text();
     console.log('📄 Resposta da cotação (status):', cotacaoResponse.status);
+    if (isLogisticaReversa) {
+      console.log('🔄 [REVERSA] Resposta bruta da BRHUB:', responseText);
+    }
 
     if (!cotacaoResponse.ok) {
       console.error('❌ Erro na cotação:', responseText);
