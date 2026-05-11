@@ -105,14 +105,6 @@ const ConfiguracoesRemetente = () => {
                 return;
             }
 
-            // Valida resposta da API (alguns endpoints retornam 200 com success:false)
-            if (response && response.success === false) {
-                const msg = response.message || response.error || 'API retornou falha sem detalhes.';
-                console.error('[ConfigRemetente] API retornou success=false:', response);
-                toastError(`Não foi possível salvar: ${msg}`);
-                return;
-            }
-
             toastSuccess("Configurações do remetente salvas com sucesso!");
         } catch (error: any) {
             console.error('[ConfigRemetente] Erro ao salvar:', error?.response?.data || error?.message || error);
