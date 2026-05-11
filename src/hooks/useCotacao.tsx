@@ -125,8 +125,11 @@ export const useCotacao = () => {
         remetente?: any
     ) => {
         try {
-            // Busca o CPF/CNPJ em diferentes propriedades possíveis
+            // Busca o CPF/CNPJ em diferentes propriedades possíveis.
+            // Na cotação normal, não enviar cpfCnpjLoja: a API usa a configuração do cliente.
+            // Quando enviado, a API exige configuração específica para a loja/remetente.
             const cpfCnpj = remetente?.cpfCnpj || remetente?.documento || remetente?.cpf || remetente?.cnpj;
+            const isLogisticaReversa = logisticaReversa === 'S';
             
             const data: any = {
                 cepOrigem,
@@ -140,14 +143,13 @@ export const useCotacao = () => {
                 },
                 logisticaReversa,
                 valorDeclarado: Number(formatNumberString(valorDeclarado || "0")),
-                // Sempre inclui cpfCnpjLoja quando o remetente existe e tem cpfCnpj
-                ...(cpfCnpj && {
+                ...(isLogisticaReversa && cpfCnpj && {
                     cpfCnpjLoja: cpfCnpj,
                 })
             }
             
-            console.log('📦 Cotação enviada com CPF/CNPJ:', cpfCnpj ? 'Sim' : 'Não');
-            ultimaReversaRef.current = logisticaReversa === 'S';
+            console.log('📦 Cotação enviada com CPF/CNPJ loja:', isLogisticaReversa && cpfCnpj ? 'Sim' : 'Não');
+            ultimaReversaRef.current = isLogisticaReversa;
             const response = await mutation.mutateAsync(data);
             
             console.log('✅ Resposta da API de cotação:', response);

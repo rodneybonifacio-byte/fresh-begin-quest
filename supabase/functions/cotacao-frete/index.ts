@@ -99,7 +99,7 @@ serve(async (req) => {
       embalagem: requestData.embalagem,
       valorDeclarado: requestData.valorDeclarado || 0,
       clienteId,
-      ...(requestData.cpfCnpjLoja && { cpfCnpjLoja: requestData.cpfCnpjLoja }),
+      ...(isLogisticaReversa && requestData.cpfCnpjLoja && { cpfCnpjLoja: requestData.cpfCnpjLoja }),
     };
 
     if (isLogisticaReversa) {
