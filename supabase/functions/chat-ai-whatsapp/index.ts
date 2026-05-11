@@ -781,15 +781,18 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
           return `Saldo insuficiente! Saldo: R$ ${saldoDisponivel.toFixed(2)}, Valor da etiqueta: R$ ${valorEtiqueta.toFixed(2)} (${cotacaoEscolhida.nomeServico}). O cliente precisa fazer uma recarga.`;
         }
 
-        // 7. Criar a emissão via API
+        // 7. Criar a emissão via API (endpoint correto: /emissoes)
         const emissaoPayload = {
+          clienteId,
           remetenteId,
           cienteObjetoNaoProibido: true,
           embalagem: { peso, altura, largura, comprimento, diametro: 0, quantidadeVolumes: 1 },
           cotacao: {
-            ...cotacaoEscolhida,
-            transportadora: cotacaoEscolhida.transportadora || cotacaoEscolhida.codigoServico || (cotacaoEscolhida.nomeServico || "").toUpperCase(),
-            embalagem: { peso, comprimento, altura, largura, diametro: 0 },
+            idLote: cotacaoEscolhida.idLote,
+            codigoServico: cotacaoEscolhida.codigoServico,
+            nomeServico: cotacaoEscolhida.nomeServico,
+            preco: cotacaoEscolhida.preco || cotacaoEscolhida.valorTotal || "0",
+            prazo: cotacaoEscolhida.prazo || cotacaoEscolhida.prazoEntrega || 0,
           },
           logisticaReversa: "N",
           valorDeclarado: 0,
@@ -812,8 +815,8 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
           quantidadeVolumes: 1,
         };
 
-        console.log(`📦 Emitindo etiqueta via IA para ${args.destinatario_nome}...`);
-        const emissaoResp = await fetch(`${BASE_API_URL}/frete`, {
+        console.log(`📦 Emitindo etiqueta via IA para ${args.destinatario_nome}... endpoint=/emissoes`);
+        const emissaoResp = await fetch(`${BASE_API_URL}/emissoes`, {
           method: "POST",
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
           body: JSON.stringify(emissaoPayload),
@@ -822,7 +825,7 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
         if (!emissaoResp.ok) {
           const errBody = await emissaoResp.text().catch(() => "");
           console.error(`❌ Erro ao criar emissão: ${emissaoResp.status} - ${errBody}`);
-          return `Erro ao gerar etiqueta: ${emissaoResp.status}. ${errBody.substring(0, 200)}`;
+          return `Erro ao gerar etiqueta: ${emissaoResp.status}. ${errBody.substring(0, 300)}`;
         }
 
         const emissaoData = await emissaoResp.json();
