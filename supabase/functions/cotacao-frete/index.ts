@@ -99,9 +99,12 @@ serve(async (req) => {
       embalagem: requestData.embalagem,
       valorDeclarado: requestData.valorDeclarado || 0,
       clienteId,
-      ...(isLogisticaReversa && { logisticaReversa: 'S' }),
       ...(requestData.cpfCnpjLoja && { cpfCnpjLoja: requestData.cpfCnpjLoja }),
     };
+
+    if (isLogisticaReversa) {
+      console.log('🔄 [REVERSA] Cotação sem logisticaReversa para obter serviços Correios; flag será enviada apenas na emissão');
+    }
 
     console.log('📊 Realizando cotação com clienteId:', clienteId);
     console.log('📦 Payload:', JSON.stringify(cotacaoPayload));
