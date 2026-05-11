@@ -136,35 +136,35 @@ export const SelecionarRemetente = ({
 
     // Variant padrão (default)
     return (
-        <div className={`flex flex-row w-full gap-2 ${className}`}>
-            <div className="flex flex-col w-full gap-2">
-                <div className="flex items-center justify-between">
-                    <h1 className="font-semibold text-2xl text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                        <User size={24} className="text-blue-600 dark:text-blue-400" />
-                        {titulo}
+        <div className={`flex flex-col sm:flex-row w-full gap-2 ${className}`}>
+            <div className="flex flex-col w-full gap-2 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                    <h1 className="font-semibold text-lg sm:text-2xl text-gray-900 dark:text-gray-100 flex items-center gap-2 min-w-0">
+                        <User size={20} className="text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                        <span className="truncate">{titulo}</span>
                     </h1>
                     <ButtonComponent
                         variant="ghost"
                         type="button"
                         onClick={handleSyncData}
                         disabled={isLoading}
-                        className="text-xs px-2 py-1 flex items-center gap-1"
+                        className="text-xs px-2 py-1 flex items-center gap-1 flex-shrink-0"
                     >
                         <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
-                        {isLoading ? 'Sincronizando...' : 'Atualizar'}
+                        <span className="hidden sm:inline">{isLoading ? 'Sincronizando...' : 'Atualizar'}</span>
                     </ButtonComponent>
                 </div>
-                
+
                 {remetenteSelecionado ? (
                     <div className="flex flex-col w-full p-4 bg-gray-50 dark:bg-slate-700 rounded-lg border border-gray-200 dark:border-slate-600">
                         <div className="flex items-center gap-2 mb-2">
-                            <span className="font-medium text-gray-900 dark:text-white">
+                            <span className="font-medium text-gray-900 dark:text-white break-words">
                                 {remetenteSelecionado.nome}
                             </span>
                         </div>
                         <div className="flex items-start gap-2">
                             <MapPin size={14} className="text-gray-500 dark:text-slate-400 mt-0.5 flex-shrink-0" />
-                            <span className="text-sm text-gray-600 dark:text-slate-300">
+                            <span className="text-sm text-gray-600 dark:text-slate-300 break-words">
                                 {formatEndereco(remetenteSelecionado.endereco)}
                             </span>
                         </div>
@@ -177,22 +177,25 @@ export const SelecionarRemetente = ({
                             </span>
                         </div>
                         <span className="text-xs text-yellow-600 dark:text-yellow-500 mt-1">
-                            Clique no botão ao lado para selecionar um remetente
+                            Toque em "Trocar remetente" para selecionar
                         </span>
                     </div>
                 )}
             </div>
-            
+
             {showChangeButton && (
-                <div className="flex flex-col justify-end">
+                <div className="flex sm:flex-col sm:justify-end w-full sm:w-auto">
                     <ButtonComponent
                         variant="primary"
                         border="outline"
                         type="button"
                         onClick={() => setIsModalOpen(true)}
-                        className="p-3"
+                        className="w-full sm:w-auto px-4 py-3 flex items-center justify-center gap-2 min-h-[44px]"
                     >
-                        <ArrowRightLeft className="w-5 h-5" />
+                        <ArrowRightLeft className="w-5 h-5 flex-shrink-0" />
+                        <span className="sm:hidden font-medium">
+                            {remetenteSelecionado ? 'Trocar remetente' : 'Selecionar remetente'}
+                        </span>
                     </ButtonComponent>
                 </div>
             )}
