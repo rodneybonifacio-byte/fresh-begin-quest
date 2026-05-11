@@ -90,7 +90,7 @@ const ConfiguracoesRemetente = () => {
             console.log('[ConfigRemetente] Enviando configurações para API:', configsParaAPI);
 
             // A API não possui POST /remetentes/config individual; o endpoint válido é /remetentes/config/bulk
-            const response = await service.createMultipleConfigs(configsParaAPI);
+            const response = await service.createMultipleConfigs(configsParaAPI) as any;
 
             console.log('[ConfigRemetente] Resposta da API:', response);
 
