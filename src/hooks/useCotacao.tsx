@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { FreteService } from "../services/FreteService";
@@ -16,6 +16,7 @@ export const useCotacao = () => {
     const [cotacoes, setCotacoes] = useState<ICotacaoMinimaResponse[] | undefined>(undefined);
     const [isLoadingCotacao, setIsLoading] = useState(false);
     const [cotacaoError, setCotacaoError] = useState<string | null>(null);
+    const ultimaReversaRef = useRef<boolean>(false);
 
     const mutation = useMutation({
         mutationFn: async (requestData: any) => {
@@ -85,7 +86,10 @@ export const useCotacao = () => {
                     position: "top-center"
                 });
             } else if (isCarrierConfigError) {
-                const message = 'Remetente sem configuração de transportadora para logística reversa. Troque o remetente ou solicite a ativação da reversa para este CNPJ.';
+                const isReversa = ultimaReversaRef.current;
+                const message = isReversa
+                    ? 'Remetente sem configuração de logística reversa nesta conta BRHUB. Solicite a ativação da reversa para este CNPJ ou troque de remetente.'
+                    : 'Remetente sem transportadoras ativas na BRHUB. Verifique no painel BRHUB se este CNPJ tem contrato/serviços configurados (PAC, SEDEX, etc.) ou troque de remetente.';
                 setCotacaoError(message);
                 toast.error(message, {
                     duration: 9000,
@@ -143,6 +147,7 @@ export const useCotacao = () => {
             }
             
             console.log('📦 Cotação enviada com CPF/CNPJ:', cpfCnpj ? 'Sim' : 'Não');
+            ultimaReversaRef.current = logisticaReversa === 'S';
             const response = await mutation.mutateAsync(data);
             
             console.log('✅ Resposta da API de cotação:', response);
