@@ -86,7 +86,10 @@ export const useCotacao = () => {
                     position: "top-center"
                 });
             } else if (isCarrierConfigError) {
-                const message = 'Remetente sem configuração de transportadora para logística reversa. Troque o remetente ou solicite a ativação da reversa para este CNPJ.';
+                const isReversa = ultimaReversaRef.current;
+                const message = isReversa
+                    ? 'Remetente sem configuração de logística reversa nesta conta BRHUB. Solicite a ativação da reversa para este CNPJ ou troque de remetente.'
+                    : 'Remetente sem transportadoras ativas na BRHUB. Verifique no painel BRHUB se este CNPJ tem contrato/serviços configurados (PAC, SEDEX, etc.) ou troque de remetente.';
                 setCotacaoError(message);
                 toast.error(message, {
                     duration: 9000,
