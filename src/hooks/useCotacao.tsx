@@ -147,6 +147,7 @@ export const useCotacao = () => {
             }
             
             console.log('📦 Cotação enviada com CPF/CNPJ:', cpfCnpj ? 'Sim' : 'Não');
+            ultimaReversaRef.current = logisticaReversa === 'S';
             const response = await mutation.mutateAsync(data);
             
             console.log('✅ Resposta da API de cotação:', response);
