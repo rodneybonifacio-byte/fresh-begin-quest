@@ -89,16 +89,19 @@ const ConfiguracoesRemetente = () => {
 
             console.log('[ConfigRemetente] Enviando configurações para API:', configsParaAPI);
 
-            // Envia todas as configurações em uma única chamada
-            const response: any = await service.createMultipleConfigs(configsParaAPI);
+            // Envia uma config por vez (endpoint /bulk não persiste corretamente)
+            const respostas = await Promise.allSettled(
+                configsParaAPI.map(cfg => service.createConfig(cfg))
+            );
 
-            console.log('[ConfigRemetente] Resposta da API:', response);
+            console.log('[ConfigRemetente] Respostas da API:', respostas);
 
-            // Valida resposta da API (alguns endpoints retornam 200 com success:false)
-            if (response && response.success === false) {
-                const msg = response.message || response.error || 'API retornou falha sem detalhes.';
-                console.error('[ConfigRemetente] API retornou success=false:', response);
-                toastError(`Não foi possível salvar: ${msg}`);
+            const falhas = respostas.filter(r => r.status === 'rejected');
+            if (falhas.length > 0) {
+                const primeira: any = (falhas[0] as PromiseRejectedResult).reason;
+                const msg = primeira?.response?.data?.message || primeira?.message || 'Erro desconhecido';
+                console.error('[ConfigRemetente] Falhas:', falhas);
+                toastError(`${falhas.length} configuração(ões) falharam: ${msg}`);
                 return;
             }
 
