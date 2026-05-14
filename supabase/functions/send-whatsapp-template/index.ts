@@ -91,7 +91,9 @@ Deno.serve(async (req) => {
       existingHsm = data;
     }
 
-    if (!existingHsm) {
+    // Fallback por telefone APENAS quando não há código de rastreio
+    // (evita bloquear novos envios para destinatários recorrentes)
+    if (!existingHsm && !codigoRastreio) {
       const { data } = await supabase
         .from("whatsapp_messages")
         .select("id, created_at")
