@@ -39,17 +39,21 @@ export const Step2Destinatario = ({
       setBuscandoCep(true);
       try {
         const endereco = await viacepService.consulta(cepLimpo);
-        if (endereco && endereco.logradouro) {
+        if (endereco && (endereco.localidade || endereco.uf)) {
           setLogradouro(endereco.logradouro || '');
           setBairro(endereco.bairro || '');
           setLocalidade(endereco.localidade || '');
           setUf(endereco.uf || '');
-          toast.success('✓ Endereço encontrado!');
+          if (!endereco.logradouro) {
+            toast.info('CEP geral: preencha rua e bairro manualmente');
+          } else {
+            toast.success('✓ Endereço encontrado!');
+          }
         } else {
           toast.error('CEP não encontrado');
         }
-      } catch (error) {
-        toast.error('Erro ao buscar CEP');
+      } catch (error: any) {
+        toast.error(error?.message || 'Erro ao buscar CEP');
       } finally {
         setBuscandoCep(false);
       }
