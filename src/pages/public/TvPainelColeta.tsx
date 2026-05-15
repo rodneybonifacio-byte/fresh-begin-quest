@@ -50,7 +50,7 @@ interface ClienteHorario {
 const TV_PIN = '7890';
 const REFRESH_INTERVAL = 120_000;
 
-const BRHUB_CLIENTS = ['TG GRIFFES', '7 DAYS', 'CAIRO', 'NEXX', 'ERONIA', 'ATENDENCIA', 'LIVENCE'];
+const BRHUB_CLIENTS = ['TG GRIFFES', '7 DAYS', 'CAIRO', 'NEXX', 'ERONIA', 'ATENDENCIA', 'LIVENCE', 'IMPERIAL ESSENCE'];
 const BRHUB_HORARIO = '16:00 – 17:00';
 
 // Clientes que devem ser ocultados do painel
