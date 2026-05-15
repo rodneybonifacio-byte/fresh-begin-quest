@@ -41,13 +41,10 @@ export const EnderecoComponent = ({ onCancel, onConfirm, isOpen }: FormEnderecoP
 
     const buscarCep = async (cep: string) => {
         try {
-            const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-            const data = await response.json();
-
-            if (data.erro) {
-                return;
-            }
-
+            const cepLimpo = (cep || "").replace(/\D/g, "");
+            if (cepLimpo.length !== 8) return;
+            const { ViacepService } = await import("../../services/viacepService");
+            const data = await new ViacepService().consulta(cepLimpo);
             setValue("logradouro", data.logradouro || "");
             setValue("bairro", data.bairro || "");
             setValue("localidade", data.localidade || "");
