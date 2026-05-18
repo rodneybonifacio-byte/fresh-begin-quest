@@ -79,19 +79,33 @@ const normalizeMarketplacePessoa = (pessoa: any) => {
   const endereco = pessoa?.endereco || {};
   const cep = digits(endereco?.cep || pessoa?.cep);
   const cidade = String(endereco?.cidade || endereco?.localidade || pessoa?.cidade || pessoa?.localidade || '').trim();
+  const logradouro = String(endereco?.logradouro || pessoa?.logradouro || '').trim();
+  const numero = String(endereco?.numero || pessoa?.numero || '').trim();
+  const complemento = String(endereco?.complemento || pessoa?.complemento || '').trim();
+  const bairro = String(endereco?.bairro || pessoa?.bairro || '').trim();
+  const uf = String(endereco?.uf || pessoa?.uf || '').trim().toUpperCase();
   return {
     nome: String(pessoa?.nome || '').trim(),
     cpfCnpj: digits(pessoa?.cpfCnpj || pessoa?.cpf_cnpj),
     celular: digits(pessoa?.celular || pessoa?.telefone || ''),
     email: String(pessoa?.email || '').trim(),
+    cep,
+    logradouro,
+    numero,
+    complemento,
+    bairro,
+    cidade,
+    localidade: cidade,
+    uf,
     endereco: {
       cep,
-      logradouro: String(endereco?.logradouro || pessoa?.logradouro || '').trim(),
-      numero: String(endereco?.numero || pessoa?.numero || '').trim(),
-      complemento: String(endereco?.complemento || pessoa?.complemento || '').trim(),
-      bairro: String(endereco?.bairro || pessoa?.bairro || '').trim(),
+      logradouro,
+      numero,
+      complemento,
+      bairro,
       cidade,
-      uf: String(endereco?.uf || pessoa?.uf || '').trim().toUpperCase(),
+      localidade: cidade,
+      uf,
     },
   };
 };
@@ -213,6 +227,10 @@ export async function emitirEtiquetaMarketplace(
     remetenteId: emissaoPayload?.remetenteId,
     remetente,
     destinatario,
+    cepOrigem: cepOrigemFromRem,
+    cepDestino: cepDestinoFromDest,
+    enderecoOrigem: remetente?.endereco,
+    enderecoDestino: destinatario?.endereco,
     embalagem,
     cotacao,
     valorDeclarado: Number(emissaoPayload?.valorDeclarado ?? 0),
@@ -229,7 +247,8 @@ export async function emitirEtiquetaMarketplace(
     nomeServico: cotacao?.nomeServico,
     usandoRemetenteId: Boolean(mpPayload.remetenteId),
     temRemetenteObj: Boolean(remetente),
-    cepDestino: destinatario?.endereco?.cep,
+    cepOrigem: mpPayload.cepOrigem,
+    cepDestino: mpPayload.cepDestino,
   }));
 
   const r = await fetch(`${MARKETPLACE_BASE}/emissoes`, {
