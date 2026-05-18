@@ -132,3 +132,119 @@ export async function emitirEtiquetaMarketplace(
 
   return result;
 }
+
+/**
+ * Rastreia uma emissão na API Marketplace.
+ * Retorna no formato BRHUB-compatível para reuso da UI atual.
+ */
+export async function rastrearMarketplace(codigoObjeto: string): Promise<any> {
+  const auth = await getMarketplaceAuth();
+  if (!auth) throw new Error('Marketplace indisponível');
+
+  const r = await fetch(
+    `${MARKETPLACE_BASE}/emissoes/status/${encodeURIComponent(codigoObjeto)}`,
+    { headers: { 'x-api-key': auth.apiKey } }
+  );
+  const text = await r.text();
+  let j: any;
+  try { j = JSON.parse(text); } catch { j = { raw: text }; }
+  if (!r.ok) {
+    console.error('[MP] rastreio falhou:', r.status, text.slice(0, 300));
+    throw new Error(`Marketplace rastreio falhou (${r.status})`);
+  }
+  const data = j?.data || j;
+  // Normalizar minimamente: garantir que tenha eventos[]
+  const eventos = data?.eventos || data?.historico || [];
+  return {
+    codigoObjeto,
+    dataPrevisaoEntrega: data?.dataPrevisaoEntrega || data?.previsao || null,
+    servico: data?.servico || data?.nomeServico || null,
+    eventos,
+    origem: 'marketplace',
+    raw: j,
+  };
+}
+
+/**
+ * Busca o PDF da etiqueta Marketplace pelo uuid.
+ * Retorna { nome, dados (base64) } no formato esperado pela UI atual.
+ */
+export async function getPdfEtiquetaMarketplace(
+  uuidMarketplace: string
+): Promise<{ nome: string; dados: string }> {
+  const auth = await getMarketplaceAuth();
+  if (!auth) throw new Error('Marketplace indisponível');
+
+  const r = await fetch(
+    `${MARKETPLACE_BASE}/emissoes/etiqueta/pdf/${encodeURIComponent(uuidMarketplace)}`,
+    { headers: { 'x-api-key': auth.apiKey } }
+  );
+  if (!r.ok) {
+    const t = await r.text();
+    console.error('[MP] pdf etiqueta falhou:', r.status, t.slice(0, 300));
+    throw new Error(`Marketplace PDF falhou (${r.status})`);
+  }
+  const ct = r.headers.get('content-type') || '';
+  if (ct.includes('application/pdf')) {
+    const buf = new Uint8Array(await r.arrayBuffer());
+    let bin = '';
+    for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+    return { nome: `etiqueta_${uuidMarketplace}.pdf`, dados: btoa(bin) };
+  }
+  // JSON com base64
+  const j = await r.json();
+  const dados = j?.data?.dados || j?.dados || j?.pdf || j?.base64;
+  const nome = j?.data?.nome || j?.nome || `etiqueta_${uuidMarketplace}.pdf`;
+  if (!dados) throw new Error('Marketplace PDF: resposta sem dados');
+  return { nome, dados };
+}
+
+/**
+ * Cancela uma emissão Marketplace.
+ */
+export async function cancelarEmissaoMarketplace(
+  uuidMarketplace: string,
+  motivo: string
+): Promise<any> {
+  const auth = await getMarketplaceAuth();
+  if (!auth) throw new Error('Marketplace indisponível');
+
+  const r = await fetch(
+    `${MARKETPLACE_BASE}/emissoes/${encodeURIComponent(uuidMarketplace)}/cancelar`,
+    {
+      method: 'DELETE',
+      headers: { 'x-api-key': auth.apiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ motivo }),
+    }
+  );
+  const text = await r.text();
+  let j: any;
+  try { j = JSON.parse(text); } catch { j = { raw: text }; }
+  if (!r.ok || j?.success === false) {
+    console.error('[MP] cancelamento falhou:', r.status, text.slice(0, 300));
+    throw new Error(`Marketplace cancelamento falhou (${r.status}): ${j?.message || text.slice(0, 200)}`);
+  }
+  return j;
+}
+
+/**
+ * Cria uma reversa (logística reversa) na API Marketplace.
+ */
+export async function criarReversaMarketplace(payload: any): Promise<any> {
+  const auth = await getMarketplaceAuth();
+  if (!auth) throw new Error('Marketplace indisponível');
+
+  const r = await fetch(`${MARKETPLACE_BASE}/emissoes/reversa`, {
+    method: 'POST',
+    headers: { 'x-api-key': auth.apiKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const text = await r.text();
+  let j: any;
+  try { j = JSON.parse(text); } catch { j = { raw: text }; }
+  if (!r.ok || j?.success === false) {
+    console.error('[MP] reversa falhou:', r.status, text.slice(0, 300));
+    throw new Error(`Marketplace reversa falhou (${r.status}): ${j?.message || text.slice(0, 200)}`);
+  }
+  return j?.data || j;
+}
