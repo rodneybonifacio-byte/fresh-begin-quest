@@ -580,13 +580,15 @@ serve(async (req) => {
         responseText = JSON.stringify(fakeBody);
         emissaoResponse = new Response(responseText, { status: 200 });
       } catch (mpErr: any) {
-        console.error('[MP] emissão falhou:', mpErr?.message);
+        console.error('[MP] emissão falhou:', mpErr?.message, mpErr?.details);
+        const status = typeof mpErr?.status === 'number' ? mpErr.status : 502;
         return new Response(
           JSON.stringify({
             error: mpErr?.message || 'Erro na emissão Marketplace',
+            details: Array.isArray(mpErr?.details) ? mpErr.details : undefined,
             origem: 'marketplace',
           }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 502 }
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status }
         );
       }
     } else {
