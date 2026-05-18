@@ -220,13 +220,21 @@ export async function emitirEtiquetaMarketplace(
     );
   }
 
-  // numeroPedido (v2.9) — usado para reconciliação no painel da transportadora
-  const numeroPedido = trim(
+  // numeroPedido (v2.9) — usado para reconciliação no painel da transportadora.
+  // IMPORTANTE: quando omitido, a MP gera fallback "MKT-<uuid>" (>20 chars) que
+  // estoura o campo `nf.numero` da Correios (max 20). Sempre forçamos um valor
+  // curto (≤20 chars) — timestamp em base36 + sufixo aleatório.
+  let numeroPedido = trim(
     emissaoPayload?.numeroPedido ||
     emissaoPayload?.pedido ||
     emissaoPayload?.codigoPedido ||
     '',
-  );
+  ).slice(0, 20);
+  if (!numeroPedido) {
+    const ts = Date.now().toString(36).toUpperCase();
+    const rnd = Math.random().toString(36).slice(2, 6).toUpperCase();
+    numeroPedido = `BRH${ts}${rnd}`.slice(0, 20);
+  }
 
   const mpPayload = cleanObject({
     remetenteId: emissaoPayload?.remetenteId,
@@ -426,7 +434,12 @@ export async function criarReversaMarketplace(emissaoPayload: any): Promise<any>
 
   const chaveNFe = digits(emissaoPayload?.chaveNFe);
   const numeroNotaFiscal = trim(emissaoPayload?.numeroNotaFiscal);
-  const numeroPedido = trim(emissaoPayload?.numeroPedido || emissaoPayload?.pedido || '');
+  let numeroPedido = trim(emissaoPayload?.numeroPedido || emissaoPayload?.pedido || '').slice(0, 20);
+  if (!numeroPedido) {
+    const ts = Date.now().toString(36).toUpperCase();
+    const rnd = Math.random().toString(36).slice(2, 6).toUpperCase();
+    numeroPedido = `BRR${ts}${rnd}`.slice(0, 20);
+  }
 
   const body = cleanObject({
     remetenteId: emissaoPayload?.remetenteId,
