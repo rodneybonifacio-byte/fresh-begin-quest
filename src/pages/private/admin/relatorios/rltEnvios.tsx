@@ -30,6 +30,73 @@ import { supabase } from '../../../../integrations/supabase/client';
 import { toast } from 'sonner';
 import { ShipmentTrackingMap } from '../../../../components/maps/ShipmentTrackingMap';
 import { ModalGerarManifestoSaida } from './ModalGerarManifestoSaida';
+import { getSupabaseWithAuth } from '../../../../integrations/supabase/custom-auth';
+
+const mapMarketplaceStatus = (status?: string | null) => {
+    const s = String(status || '').toUpperCase();
+    if (s.includes('ENTREGUE')) return 'ENTREGUE';
+    if (s.includes('CANCEL')) return 'CANCELADO';
+    if (s.includes('EXTRAV')) return 'EXTRAVIADO';
+    if (s.includes('DEVOL')) return 'DEVOLVIDO';
+    if (s.includes('AGUARDANDO')) return 'AGUARDANDO_RETIRADA';
+    if (s.includes('SAIU')) return 'SAIU_PARA_ENTREGA';
+    if (s.includes('TRANSITO') || s.includes('TRÂNSITO')) return 'EM_TRANSITO';
+    if (s.includes('COLET')) return 'COLETADO';
+    if (s.includes('POSTADO') && !s.includes('PRE')) return 'POSTADO';
+    return 'PRE_POSTADO';
+};
+
+const mapMarketplaceToEmissao = (m: any): IEmissao => ({
+    id: m.id,
+    uuidMarketplace: m.uuid_marketplace,
+    origem: 'marketplace',
+    remetenteId: m.remetente_id || '',
+    remetenteNome: m.remetente_nome || '',
+    remetenteCpfCnpj: m.remetente_cpf_cnpj || '',
+    codigoObjeto: m.codigo_objeto,
+    transportadora: m.transportadora || 'Correios',
+    servico: m.nome_servico || '',
+    codigoServico: m.codigo_servico || '',
+    status: mapMarketplaceStatus(m.status_rastreio || m.status),
+    valor: Number(m.valor_total ?? 0),
+    valorPostagem: Number(m.valor_custo ?? m.valor_original ?? m.valor_total ?? 0),
+    valorDeclarado: Number(m.valor_declarado ?? 0),
+    valorNotaFiscal: Number(m.valor_nota_fiscal ?? 0),
+    criadoEm: m.created_at,
+    cienteObjetoNaoProibido: true,
+    logisticaReversa: 'N',
+    cotacao: {} as any,
+    cliente: {
+        id: m.cliente_id,
+        nome: m.payload_request?.cliente?.nome || m.payload_request?.clienteNome || m.cliente_id || '',
+        cpfCnpj: m.payload_request?.cliente?.cpfCnpj || '',
+        telefone: '',
+        email: '',
+    },
+    remetente: {
+        nome: m.remetente_nome || '',
+        cpfCnpj: m.remetente_cpf_cnpj || '',
+        endereco: {
+            cep: m.cep_origem || '',
+            localidade: '',
+            uf: '',
+        },
+    } as any,
+    destinatario: {
+        nome: m.destinatario_nome || '',
+        celular: m.destinatario_celular || '',
+        cpfCnpj: m.destinatario_cpf_cnpj || '',
+        endereco: {
+            cep: m.destinatario_cep || '',
+            logradouro: m.destinatario_logradouro || '',
+            numero: m.destinatario_numero || '',
+            complemento: m.destinatario_complemento || '',
+            bairro: m.destinatario_bairro || '',
+            localidade: m.destinatario_cidade || '',
+            uf: m.destinatario_uf || '',
+        },
+    } as any,
+});
 
 const RltEnvios = () => {
     const config = useGlobalConfig();
@@ -53,6 +120,44 @@ const RltEnvios = () => {
 
     const [searchParams] = useSearchParams();
     const filtros = Object.fromEntries(searchParams.entries());
+
+    const buscarEmissoesMarketplace = async (limit = 200, statusFiltro?: string): Promise<IEmissao[]> => {
+        const sb = getSupabaseWithAuth();
+        const dataIni = searchParams.get('dataIni') || undefined;
+        const dataFim = searchParams.get('dataFim') || undefined;
+        const codigoObjeto = searchParams.get('codigoObjeto') || undefined;
+        const clienteId = searchParams.get('clienteId') || undefined;
+        const remetenteId = searchParams.get('remetenteId') || undefined;
+        const transportadora = searchParams.get('transportadora') || undefined;
+
+        let query = sb
+            .from('emissoes_marketplace')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(limit);
+
+        if (dataIni) query = query.gte('created_at', `${dataIni}T00:00:00`);
+        if (dataFim) query = query.lte('created_at', `${dataFim}T23:59:59.999`);
+        if (codigoObjeto) query = query.ilike('codigo_objeto', `%${codigoObjeto}%`);
+        if (clienteId) query = query.eq('cliente_id', clienteId);
+        if (remetenteId) query = query.eq('remetente_id', remetenteId);
+
+        const { data: rows, error } = await query;
+        if (error) {
+            console.warn('Falha ao buscar emissões marketplace no admin:', error.message);
+            return [];
+        }
+
+        const statusPermitidos = (statusFiltro || tab || '')
+            .split(',')
+            .map((s) => s.trim().toUpperCase())
+            .filter(Boolean);
+
+        return (rows || [])
+            .map(mapMarketplaceToEmissao)
+            .filter((e) => !statusPermitidos.length || statusPermitidos.includes(String(e.status || '').toUpperCase()))
+            .filter((e) => !transportadora || String(e.transportadora || e.servico || '').toUpperCase().includes(transportadora.toUpperCase()));
+    };
 
     //Dashboard estatisticas
     const { data: dashboard } = useFetchQuery<IDashboard>(['dashboard-totais', 'admin', filtros], async () => {
@@ -96,8 +201,15 @@ const RltEnvios = () => {
                     hasMore = false;
                 }
             }
+
+            const marketplace = await buscarEmissoesMarketplace(5000, searchParams.get('status') || undefined);
+            const dedup = new Map<string, IEmissao>();
+            [...marketplace, ...allEmissoes].forEach((emissao) => {
+                const key = String(emissao.codigoObjeto || emissao.id);
+                if (!dedup.has(key)) dedup.set(key, emissao);
+            });
             
-            return allEmissoes;
+            return Array.from(dedup.values());
         },
         { staleTime: 5 * 60 * 1000 } // Cache por 5 minutos
     );
@@ -171,7 +283,31 @@ const RltEnvios = () => {
         if (remetenteId) params.remetenteId = remetenteId;
         if (transportadora) params.transportadora = transportadora;
 
-        return await service.getAll(params, 'admin');
+        const response = await service.getAll(params, 'admin');
+
+        if (page !== 1) return response;
+
+        const marketplace = await buscarEmissoesMarketplace(200, params.status);
+        if (!marketplace.length) return response;
+
+        const existingCodes = new Set((response.data || []).map((e) => e.codigoObjeto).filter(Boolean));
+        const novos = marketplace.filter((e) => e.codigoObjeto && !existingCodes.has(e.codigoObjeto));
+        if (!novos.length) return response;
+
+        const dataMesclada = [...novos, ...(response.data || [])].slice(0, perPage);
+        const totalRecords = (response.meta?.totalRecords || response.total || response.data?.length || 0) + novos.length;
+
+        return {
+            ...response,
+            data: dataMesclada,
+            total: totalRecords,
+            meta: response.meta ? {
+                ...response.meta,
+                totalRecords,
+                totalPages: Math.max(response.meta.totalPages || 1, Math.ceil(totalRecords / perPage)),
+                recordsOnPage: dataMesclada.length,
+            } : response.meta,
+        };
     });
 
     // Filtro client-side para custo zero/positivo
