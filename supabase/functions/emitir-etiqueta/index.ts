@@ -485,18 +485,83 @@ serve(async (req) => {
 
     // USAR TOKEN DO CLIENTE para emissão (não admin!)
     console.log('📊 Emitindo com TOKEN DO CLIENTE (não admin)...');
-    
-    let emissaoResponse = await fetch(`${baseUrl}/emissoes`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${userToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(emissaoPayload),
-    });
 
-    let responseText = await emissaoResponse.text();
-    console.log('📄 Resposta da emissão (status):', emissaoResponse.status);
+    // 🔀 ROTEADOR DE ORIGEM: Marketplace vs BRHUB
+    const origemCotacao = String(emissaoPayload?.cotacao?.origem || 'brhub').toLowerCase();
+    console.log(`🔀 Origem da cotação: ${origemCotacao.toUpperCase()}`);
+
+    let emissaoResponse: Response | null = null;
+    let responseText = '';
+    let mpEmissao: any = null;
+
+    if (origemCotacao === 'marketplace') {
+      try {
+        mpEmissao = await emitirEtiquetaMarketplace(emissaoPayload);
+
+        // Persistir mapeamento Marketplace
+        try {
+          const sbPersist = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+          );
+          await sbPersist.from('emissoes_marketplace').insert({
+            cliente_id: clienteId,
+            uuid_marketplace: mpEmissao.uuidMarketplace || mpEmissao.id,
+            codigo_objeto: mpEmissao.codigoObjeto,
+            codigo_servico: emissaoPayload?.cotacao?.codigoServico ?? null,
+            nome_servico: emissaoPayload?.cotacao?.nomeServico ?? null,
+            valor_total: mpEmissao.frete?.valorTotal ?? null,
+            valor_original: emissaoPayload?.cotacao?.valorOriginalSemGrupo ?? null,
+            prazo: emissaoPayload?.cotacao?.prazo ?? null,
+            cep_origem: emissaoPayload?.remetente?.endereco?.cep ?? null,
+            cep_destino: emissaoPayload?.destinatario?.endereco?.cep ?? null,
+            destinatario_nome: emissaoPayload?.destinatario?.nome ?? null,
+            payload_request: emissaoPayload,
+            payload_response: mpEmissao.raw,
+            status: 'emitida',
+          });
+          console.log('[MP] mapeamento persistido em emissoes_marketplace');
+        } catch (persistErr: any) {
+          console.error('[MP] falha ao persistir mapeamento (não impede emissão):', persistErr?.message);
+        }
+
+        // Construir resposta compatível com o resto do fluxo BRHUB
+        const fakeBody = {
+          data: {
+            id: mpEmissao.id,
+            codigoObjeto: mpEmissao.codigoObjeto,
+            uuidMarketplace: mpEmissao.uuidMarketplace,
+            pdfUrl: mpEmissao.pdfUrl,
+            frete: { valorTotal: mpEmissao.frete.valorTotal },
+            origem: 'marketplace',
+          },
+        };
+        responseText = JSON.stringify(fakeBody);
+        emissaoResponse = new Response(responseText, { status: 200 });
+      } catch (mpErr: any) {
+        console.error('[MP] emissão falhou:', mpErr?.message);
+        return new Response(
+          JSON.stringify({
+            error: mpErr?.message || 'Erro na emissão Marketplace',
+            origem: 'marketplace',
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 502 }
+        );
+      }
+    } else {
+      // Fluxo BRHUB (atual)
+      emissaoResponse = await fetch(`${baseUrl}/emissoes`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${userToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(emissaoPayload),
+      });
+
+      responseText = await emissaoResponse.text();
+      console.log('📄 Resposta da emissão (status):', emissaoResponse.status);
+    }
 
     // Se for erro 404 de remetente, enviar objeto remetente completo ao invés de remetenteId
     if (emissaoResponse.status === 404 && responseText.toLowerCase().includes('remetente')) {
