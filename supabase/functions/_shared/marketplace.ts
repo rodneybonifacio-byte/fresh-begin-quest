@@ -278,30 +278,51 @@ export async function emitirEtiquetaMarketplace(
     throw extractError(r.status, j, `Marketplace emissão falhou (${r.status})`);
   }
 
+  // A MP pode aninhar a etiqueta em vários lugares: j.data, j.emissao,
+  // j.data.emissao, j.etiqueta, j.result, etc. Procuramos recursivamente
+  // pelos campos chave (uuidEmissao, codigoRastreio).
+  const findFirst = (obj: any, keys: string[], depth = 0): any => {
+    if (!obj || typeof obj !== 'object' || depth > 6) return null;
+    for (const k of keys) {
+      if (obj[k] !== undefined && obj[k] !== null && obj[k] !== '') return obj[k];
+    }
+    for (const v of Object.values(obj)) {
+      if (v && typeof v === 'object') {
+        const found = findFirst(v, keys, depth + 1);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
   const data = j?.data || j;
+  const uuid = findFirst(j, ['uuidEmissao', 'uuid', 'id', 'uuidMarketplace']);
+  const codigoRastreio = findFirst(j, ['codigoRastreio', 'codigoObjeto', 'tracking', 'codigoEtiqueta']);
+  const pdfUrl = findFirst(j, ['pdfUrl', 'urlEtiqueta', 'linkEtiqueta', 'url']);
+  const valor = findFirst(j, ['valorTotal', 'preco', 'valor']);
+
   const result: NormalizedEmissaoResult = {
-    id: data?.id || data?.uuid || data?.uuidEmissao || null,
-    codigoObjeto: data?.codigoObjeto || data?.codigoRastreio || data?.tracking || null,
-    uuidMarketplace: data?.uuid || data?.uuidEmissao || data?.id || null,
-    pdfUrl: data?.pdfUrl || data?.urlEtiqueta || null,
+    id: uuid || codigoRastreio || null,
+    codigoObjeto: codigoRastreio || null,
+    uuidMarketplace: uuid || null,
+    pdfUrl: pdfUrl || null,
     frete: {
-      valorTotal: Number(
-        data?.frete?.valorTotal ??
-        data?.valorTotal ??
-        data?.preco ??
-        cotacao?.valorTotal ??
-        cotacao?.preco ??
-        0,
-      ),
+      valorTotal: Number(valor ?? cotacao?.valorTotal ?? cotacao?.preco ?? 0),
     },
     origem: 'marketplace',
     raw: j,
   };
-  console.log('[MP] emissão ok:', {
-    id: result.id,
-    codigoObjeto: result.codigoObjeto,
-    valor: result.frete.valorTotal,
-  });
+
+  if (!result.id || !result.codigoObjeto) {
+    // Resposta inesperada — logamos o JSON inteiro para mapear o shape real.
+    console.error('[MP] emissão sem id/codigoRastreio — RAW:', JSON.stringify(j).slice(0, 1500));
+  } else {
+    console.log('[MP] emissão ok:', {
+      id: result.id,
+      codigoObjeto: result.codigoObjeto,
+      valor: result.frete.valorTotal,
+    });
+  }
   return result;
 }
 
