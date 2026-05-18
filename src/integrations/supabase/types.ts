@@ -827,6 +827,9 @@ export type Database = {
           observacao: string | null
           payload_request: Json | null
           payload_response: Json | null
+          pdf_armazenado_em: string | null
+          pdf_base64: string | null
+          pdf_nome: string | null
           peso: number | null
           prazo: number | null
           remetente_cpf_cnpj: string | null
@@ -883,6 +886,9 @@ export type Database = {
           observacao?: string | null
           payload_request?: Json | null
           payload_response?: Json | null
+          pdf_armazenado_em?: string | null
+          pdf_base64?: string | null
+          pdf_nome?: string | null
           peso?: number | null
           prazo?: number | null
           remetente_cpf_cnpj?: string | null
@@ -939,6 +945,9 @@ export type Database = {
           observacao?: string | null
           payload_request?: Json | null
           payload_response?: Json | null
+          pdf_armazenado_em?: string | null
+          pdf_base64?: string | null
+          pdf_nome?: string | null
           peso?: number | null
           prazo?: number | null
           remetente_cpf_cnpj?: string | null
