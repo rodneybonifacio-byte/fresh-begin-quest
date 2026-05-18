@@ -4,8 +4,6 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 import { emitirEtiquetaMarketplace } from '../_shared/marketplace.ts';
 
-const BRHUB_NATIVE_MARKETPLACE_CODES = new Set(['03220', '03298']);
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -490,10 +488,9 @@ serve(async (req) => {
 
     // 🔀 ROTEADOR DE ORIGEM: Marketplace vs BRHUB
     let origemCotacao = String(emissaoPayload?.cotacao?.origem || 'brhub').toLowerCase();
-    const codigoServicoCotacao = String(emissaoPayload?.cotacao?.codigoServico || '');
-    const isCorreiosNativoBrhub = BRHUB_NATIVE_MARKETPLACE_CODES.has(codigoServicoCotacao);
-    if (isCorreiosNativoBrhub && (!emissaoPayload?.cotacao?.idLote || origemCotacao === 'marketplace')) {
-      console.log(`[BRHUB] serviço ${codigoServicoCotacao} precisa de idLote BRHUB; recotando antes da emissão`);
+    if (origemCotacao === 'brhub' && !emissaoPayload?.cotacao?.idLote) {
+      const codigoServicoCotacao = String(emissaoPayload?.cotacao?.codigoServico || '');
+      console.log(`[BRHUB] serviço ${codigoServicoCotacao} sem idLote; recotando antes da emissão`);
       const sbQuote = createClient(
         Deno.env.get('SUPABASE_URL') ?? '',
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
