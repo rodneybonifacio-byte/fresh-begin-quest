@@ -506,20 +506,22 @@ serve(async (req) => {
 
     console.log('📦 Payload da emissão:', JSON.stringify(emissaoPayload));
 
-    // Obter token admin APENAS para operações administrativas (configurar cliente)
-    const adminToken = await getAdminToken();
-
-    // Desabilitar WhatsApp do cliente para evitar erro de configuração inválida
-    await disableClientWhatsApp(clienteId, adminToken);
-
-    // USAR TOKEN DO CLIENTE para emissão (não admin!)
-    console.log('📊 Emitindo com TOKEN DO CLIENTE (não admin)...');
-
     // 🔀 ROTEADOR DE ORIGEM: Marketplace vs BRHUB
     // v3.1: Marketplace agora cobre todas as transportadoras (Correios + privadas) sem
     // bugs históricos — não há mais redirect forçado SEDEX/PAC → BRHUB.
     const origemCotacao = String(emissaoPayload?.cotacao?.origem || 'brhub').toLowerCase();
     console.log(`🔀 Origem da cotação: ${origemCotacao.toUpperCase()}`);
+
+    // ⚡ OTIMIZAÇÃO: adminToken + disableClientWhatsApp são config da API BRHUB.
+    // Para Marketplace eles não fazem nada útil (~2-3s economizados por emissão).
+    let adminToken: string | null = null;
+    if (origemCotacao !== 'marketplace') {
+      adminToken = await getAdminToken();
+      await disableClientWhatsApp(clienteId, adminToken);
+    }
+
+    // USAR TOKEN DO CLIENTE para emissão (não admin!)
+    console.log('📊 Emitindo com TOKEN DO CLIENTE (não admin)...');
 
     let emissaoResponse: Response | null = null;
     let responseText = '';
@@ -624,24 +626,33 @@ serve(async (req) => {
           });
           console.log('[MP] mapeamento persistido em emissoes_marketplace');
 
-          // Best-effort: já baixa e armazena o PDF para reimpressão offline
+          // ⚡ Fire-and-forget: cacheia PDF em background, não bloqueia o retorno.
+          // Se o usuário clicar em "imprimir" antes do cache, a função marketplace-pdf-etiqueta
+          // baixa sob demanda e popula. Próximas impressões serão instantâneas.
           const uuidParaPdf = mpEmissao.uuidMarketplace || mpEmissao.id;
           if (uuidParaPdf) {
-            try {
-              const pdf = await getPdfEtiquetaMarketplace(uuidParaPdf);
-              if (pdf?.dados) {
-                await sbPersist
-                  .from('emissoes_marketplace')
-                  .update({
-                    pdf_base64: pdf.dados,
-                    pdf_nome: pdf.nome,
-                    pdf_armazenado_em: new Date().toISOString(),
-                  })
-                  .eq('uuid_marketplace', uuidParaPdf);
-                console.log('[MP] PDF da etiqueta cacheado localmente');
+            const cachePdfTask = (async () => {
+              try {
+                const pdf = await getPdfEtiquetaMarketplace(uuidParaPdf);
+                if (pdf?.dados) {
+                  await sbPersist
+                    .from('emissoes_marketplace')
+                    .update({
+                      pdf_base64: pdf.dados,
+                      pdf_nome: pdf.nome,
+                      pdf_armazenado_em: new Date().toISOString(),
+                    })
+                    .eq('uuid_marketplace', uuidParaPdf);
+                  console.log('[MP] PDF cacheado em background');
+                }
+              } catch (pdfErr: any) {
+                console.error('[MP] cache PDF background falhou:', pdfErr?.message);
               }
-            } catch (pdfErr: any) {
-              console.error('[MP] falha ao cachear PDF (será buscado on-demand):', pdfErr?.message);
+            })();
+            // @ts-ignore — EdgeRuntime existe no Supabase
+            if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime?.waitUntil) {
+              // @ts-ignore
+              EdgeRuntime.waitUntil(cachePdfTask);
             }
           }
         } catch (persistErr: any) {
