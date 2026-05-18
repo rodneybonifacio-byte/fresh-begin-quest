@@ -6,6 +6,8 @@ export interface ICotacaoMinimaResponse {
     prazo: number;
     imagem?: string;
     isNotaFiscal?: boolean;
+    requerNotaFiscal?: boolean; // v2.3 Marketplace: true para SAME DAY / NEXT DAY / HOT 3HORAS
+    origem?: 'brhub' | 'marketplace';
     // Campos adicionais para Rodonaves e outras transportadoras
     transportadora?: string;
     embalagem?: {
