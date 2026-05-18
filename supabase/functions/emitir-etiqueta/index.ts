@@ -513,9 +513,17 @@ serve(async (req) => {
     console.log(`🔀 Origem da cotação: ${origemCotacao.toUpperCase()}`);
 
     // ⚡ OTIMIZAÇÃO: adminToken + disableClientWhatsApp são config da API BRHUB.
-    // Para Marketplace eles não fazem nada útil (~2-3s economizados por emissão).
+    // Para Marketplace só precisamos quando o serviço usa Correios (PPN-353:
+    // sem desativar `aplicar_valor_declarado` / `incluir_valor_declarado_na_nota`
+    // a MP injeta chaveNFe placeholder e o Correios rejeita).
     let adminToken: string | null = null;
-    if (origemCotacao !== 'marketplace') {
+    const codigoServicoEmissao = String(
+      emissaoPayload?.cotacao?.codigoServico || emissaoPayload?.cotacao?.codigo || ''
+    ).trim();
+    // Códigos Correios conhecidos (SEDEX/PAC/Mini/Internacional): começam com 0 e são numéricos
+    const isCorreios = /^0\d{4}$/.test(codigoServicoEmissao);
+    const precisaNormalizarCliente = origemCotacao !== 'marketplace' || isCorreios;
+    if (precisaNormalizarCliente) {
       adminToken = await getAdminToken();
       await disableClientWhatsApp(clienteId, adminToken);
     }
