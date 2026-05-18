@@ -121,6 +121,44 @@ const RltEnvios = () => {
     const [searchParams] = useSearchParams();
     const filtros = Object.fromEntries(searchParams.entries());
 
+    const buscarEmissoesMarketplace = async (limit = 200, statusFiltro?: string): Promise<IEmissao[]> => {
+        const sb = getSupabaseWithAuth();
+        const dataIni = searchParams.get('dataIni') || undefined;
+        const dataFim = searchParams.get('dataFim') || undefined;
+        const codigoObjeto = searchParams.get('codigoObjeto') || undefined;
+        const clienteId = searchParams.get('clienteId') || undefined;
+        const remetenteId = searchParams.get('remetenteId') || undefined;
+        const transportadora = searchParams.get('transportadora') || undefined;
+
+        let query = sb
+            .from('emissoes_marketplace')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(limit);
+
+        if (dataIni) query = query.gte('created_at', `${dataIni}T00:00:00`);
+        if (dataFim) query = query.lte('created_at', `${dataFim}T23:59:59.999`);
+        if (codigoObjeto) query = query.ilike('codigo_objeto', `%${codigoObjeto}%`);
+        if (clienteId) query = query.eq('cliente_id', clienteId);
+        if (remetenteId) query = query.eq('remetente_id', remetenteId);
+
+        const { data: rows, error } = await query;
+        if (error) {
+            console.warn('Falha ao buscar emissões marketplace no admin:', error.message);
+            return [];
+        }
+
+        const statusPermitidos = (statusFiltro || tab || '')
+            .split(',')
+            .map((s) => s.trim().toUpperCase())
+            .filter(Boolean);
+
+        return (rows || [])
+            .map(mapMarketplaceToEmissao)
+            .filter((e) => !statusPermitidos.length || statusPermitidos.includes(String(e.status || '').toUpperCase()))
+            .filter((e) => !transportadora || String(e.transportadora || e.servico || '').toUpperCase().includes(transportadora.toUpperCase()));
+    };
+
     //Dashboard estatisticas
     const { data: dashboard } = useFetchQuery<IDashboard>(['dashboard-totais', 'admin', filtros], async () => {
         const response = await service.dashboard(filtros, 'dashboard/admin');
