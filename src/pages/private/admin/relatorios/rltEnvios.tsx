@@ -30,6 +30,73 @@ import { supabase } from '../../../../integrations/supabase/client';
 import { toast } from 'sonner';
 import { ShipmentTrackingMap } from '../../../../components/maps/ShipmentTrackingMap';
 import { ModalGerarManifestoSaida } from './ModalGerarManifestoSaida';
+import { getSupabaseWithAuth } from '../../../../integrations/supabase/custom-auth';
+
+const mapMarketplaceStatus = (status?: string | null) => {
+    const s = String(status || '').toUpperCase();
+    if (s.includes('ENTREGUE')) return 'ENTREGUE';
+    if (s.includes('CANCEL')) return 'CANCELADO';
+    if (s.includes('EXTRAV')) return 'EXTRAVIADO';
+    if (s.includes('DEVOL')) return 'DEVOLVIDO';
+    if (s.includes('AGUARDANDO')) return 'AGUARDANDO_RETIRADA';
+    if (s.includes('SAIU')) return 'SAIU_PARA_ENTREGA';
+    if (s.includes('TRANSITO') || s.includes('TRÂNSITO')) return 'EM_TRANSITO';
+    if (s.includes('COLET')) return 'COLETADO';
+    if (s.includes('POSTADO') && !s.includes('PRE')) return 'POSTADO';
+    return 'PRE_POSTADO';
+};
+
+const mapMarketplaceToEmissao = (m: any): IEmissao => ({
+    id: m.id,
+    uuidMarketplace: m.uuid_marketplace,
+    origem: 'marketplace',
+    remetenteId: m.remetente_id || '',
+    remetenteNome: m.remetente_nome || '',
+    remetenteCpfCnpj: m.remetente_cpf_cnpj || '',
+    codigoObjeto: m.codigo_objeto,
+    transportadora: m.transportadora || 'Correios',
+    servico: m.nome_servico || '',
+    codigoServico: m.codigo_servico || '',
+    status: mapMarketplaceStatus(m.status_rastreio || m.status),
+    valor: Number(m.valor_total ?? 0),
+    valorPostagem: Number(m.valor_custo ?? m.valor_original ?? m.valor_total ?? 0),
+    valorDeclarado: Number(m.valor_declarado ?? 0),
+    valorNotaFiscal: Number(m.valor_nota_fiscal ?? 0),
+    criadoEm: m.created_at,
+    cienteObjetoNaoProibido: true,
+    logisticaReversa: 'N',
+    cotacao: {} as any,
+    cliente: {
+        id: m.cliente_id,
+        nome: m.payload_request?.cliente?.nome || m.payload_request?.clienteNome || m.cliente_id || '',
+        cpfCnpj: m.payload_request?.cliente?.cpfCnpj || '',
+        telefone: '',
+        email: '',
+    },
+    remetente: {
+        nome: m.remetente_nome || '',
+        cpfCnpj: m.remetente_cpf_cnpj || '',
+        endereco: {
+            cep: m.cep_origem || '',
+            localidade: '',
+            uf: '',
+        },
+    } as any,
+    destinatario: {
+        nome: m.destinatario_nome || '',
+        celular: m.destinatario_celular || '',
+        cpfCnpj: m.destinatario_cpf_cnpj || '',
+        endereco: {
+            cep: m.destinatario_cep || '',
+            logradouro: m.destinatario_logradouro || '',
+            numero: m.destinatario_numero || '',
+            complemento: m.destinatario_complemento || '',
+            bairro: m.destinatario_bairro || '',
+            localidade: m.destinatario_cidade || '',
+            uf: m.destinatario_uf || '',
+        },
+    } as any,
+});
 
 const RltEnvios = () => {
     const config = useGlobalConfig();
