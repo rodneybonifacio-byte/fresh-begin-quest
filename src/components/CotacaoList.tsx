@@ -88,8 +88,8 @@ export const CotacaoList = ({
         return precoA - precoB;
     });
 
-    // Limitar ao número máximo de itens
-    const cotacoesExibidas = cotacoesOrdenadas.slice(0, maxItems);
+    // Limitar ao número máximo de itens (se especificado)
+    const cotacoesExibidas = typeof maxItems === 'number' ? cotacoesOrdenadas.slice(0, maxItems) : cotacoesOrdenadas;
 
     // Determinar o número de colunas baseado na quantidade de cotações
     const getGridCols = () => {
