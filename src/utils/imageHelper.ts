@@ -8,6 +8,11 @@ export const getTransportadoraImage = (nomeTransportadora: string): string => {
         return "/assets/images/logolight.svg"; // fallback padrão
     }
 
+    // Se já for uma URL completa (http/https) ou data URI (base64), retorna direto
+    if (/^(https?:\/\/|data:image\/)/i.test(nomeTransportadora)) {
+        return nomeTransportadora;
+    }
+
     const nome = nomeTransportadora.toLowerCase().trim();
     
     // Mapeamento de transportadoras para suas respectivas imagens
