@@ -91,18 +91,8 @@ export const CotacaoList = ({
     // Limitar ao número máximo de itens (se especificado)
     const cotacoesExibidas = typeof maxItems === 'number' ? cotacoesOrdenadas.slice(0, maxItems) : cotacoesOrdenadas;
 
-    // Determinar o número de colunas baseado na quantidade de cotações
-    const getGridCols = () => {
-        const count = cotacoesExibidas.length;
-        if (count === 1) return 'grid-cols-1';
-        if (count === 2) return 'grid-cols-1 sm:grid-cols-2';
-        if (count === 3) return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3';
-        if (count === 4) return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4';
-        return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5';
-    };
-
     return (
-        <div className={`w-full grid ${getGridCols()} gap-4`}>
+        <div className="w-full flex flex-col gap-3">
             {cotacoesExibidas.map((cotacao: ICotacaoMinimaResponse, index: number) => {
                 const isDisabled = isServiceDisabled(cotacao, disabledServices);
                 return (
@@ -113,7 +103,6 @@ export const CotacaoList = ({
                         isSelected={selectedCotacao?.nomeServico === cotacao.nomeServico}
                         showSelectButton={showSelectButtons}
                         isBestPrice={index === 0 && !isDisabled}
-                        compact={cotacoesExibidas.length > 3}
                         isDisabled={isDisabled}
                         disabledReason="Não disponível para múltiplos volumes"
                     />
