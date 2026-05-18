@@ -109,16 +109,17 @@ const sanitizeMarketplaceCotacao = (cotacao: any, emissaoPayload?: any) => clean
   preco: Number(cotacao?.preco ?? cotacao?.valorTotal ?? cotacao?.valor ?? 0),
 });
 
-const normalizeMarketplaceItem = (item: any) => {
+const normalizeMarketplaceItem = (item: any, forceSingleLine = false) => {
   const quantidade = Number(item?.quantidade || 1) || 1;
   const rawValor = Number(String(item?.valor || 0).replace(',', '.')) || 0;
   // O fluxo BRHUB transforma item.valor em total da linha; Marketplace v2.2 espera valor unitário.
-  const valorUnitario = quantidade > 1 ? rawValor / quantidade : rawValor;
+  const valorUnitario = forceSingleLine ? rawValor : (quantidade > 1 ? rawValor / quantidade : rawValor);
+  const quantidadeMarketplace = forceSingleLine ? 1 : quantidade;
   const valorTexto = valorUnitario.toFixed(2);
   // A pré-postagem dos Correios valida o campo final "nota" com no máximo 20 chars.
   // A API Marketplace pode montar essa nota usando conteudo/descricao + qtd + valor, então enviamos todos
   // os aliases já curtos e também a nota explícita para evitar fallback longo interno (ex.: "Mercadoria").
-  const qtdFormatadaLen = quantidade.toFixed(2).length; // ex.: 20 -> "20.00" / "20,00"
+  const qtdFormatadaLen = quantidadeMarketplace.toFixed(2).length; // ex.: 20 -> "20.00" / "20,00"
   const valLen = valorTexto.length; // ex.: "21.11" / "21,11"
   const suffixLen = 3 /* " - " */ + qtdFormatadaLen + 3 /* " - " */ + valLen;
   const maxDescricao = Math.max(1, 20 - suffixLen);
@@ -126,15 +127,34 @@ const normalizeMarketplaceItem = (item: any) => {
     normalizeText(item?.conteudo || item?.descricao || item?.descric || 'X').replace(/[^A-Z0-9]/g, '') || 'X',
     maxDescricao,
   );
-  const nota = truncate(`${descricaoCurta}/${String(quantidade)}/${valorTexto}`, 20);
+  const nota = truncate(`${descricaoCurta}/${String(quantidadeMarketplace)}/${valorTexto}`, 20);
   return {
     conteudo: descricaoCurta,
-    descricao: descricaoCurta,
-    descric: descricaoCurta,
     nota,
-    quantidade: String(quantidade),
+    quantidade: String(quantidadeMarketplace),
     valor: valorTexto,
   };
+};
+
+const normalizeMarketplaceItens = (items: any[], emissaoPayload: any) => {
+  const totalDeclarado = Number(emissaoPayload?.valorDeclarado ?? 0);
+  const totalItens = items.reduce((sum, item) => {
+    const qtd = Number(item?.quantidade || 1) || 1;
+    const valor = Number(String(item?.valor || 0).replace(',', '.')) || 0;
+    return sum + valor;
+  }, 0);
+
+  // Para envios sem NF, a pré-postagem Marketplace monta internamente o campo "nota".
+  // Consolidar em 1 item curto evita estouro quando há muitas unidades (ex.: 20 camisetas).
+  if (!digits(emissaoPayload?.chaveNFe) && (items.length > 1 || Number(items[0]?.quantidade || 1) > 1)) {
+    return [normalizeMarketplaceItem({
+      conteudo: 'X',
+      quantidade: 1,
+      valor: (totalDeclarado > 0 ? totalDeclarado : totalItens).toFixed(2),
+    }, true)];
+  }
+
+  return items.map((item) => normalizeMarketplaceItem(item));
 };
 
 async function refreshMarketplaceCotacao(auth: { apiKey: string; token: string }, emissaoPayload: any, remetenteObj: any): Promise<any> {
@@ -250,7 +270,7 @@ export async function emitirEtiquetaMarketplace(
   const embalagemMarketplace = normalizeMarketplaceEmbalagem(emissaoPayload?.embalagem);
   const cotacaoObj = await refreshMarketplaceCotacao(auth, emissaoPayload, remetenteObj);
   const itensDeclaracaoConteudo = Array.isArray(emissaoPayload?.itensDeclaracaoConteudo)
-    ? emissaoPayload.itensDeclaracaoConteudo.map(normalizeMarketplaceItem)
+    ? normalizeMarketplaceItens(emissaoPayload.itensDeclaracaoConteudo, emissaoPayload)
     : emissaoPayload?.itensDeclaracaoConteudo;
 
   // Payload conforme doc oficial v2.2 — POST /emissoes
