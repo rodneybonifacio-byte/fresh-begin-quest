@@ -139,6 +139,12 @@ export async function emitirEtiquetaMarketplace(
   delete cotacao.grupoRegraAplicada;
   delete cotacao.valorOriginalSemGrupo;
 
+  // Reinjeta CEPs caso a UI tenha removido — a API MP usa cepOrigem/cepDestino na cotacao
+  const cepOrigemFromRem = digits(remetente?.endereco?.cep);
+  const cepDestinoFromDest = digits(destinatario?.endereco?.cep);
+  if (!cotacao.cepOrigem && cepOrigemFromRem) cotacao.cepOrigem = cepOrigemFromRem;
+  if (!cotacao.cepDestino && cepDestinoFromDest) cotacao.cepDestino = cepDestinoFromDest;
+
   const itensDeclaracaoConteudo = Array.isArray(emissaoPayload?.itensDeclaracaoConteudo)
     ? emissaoPayload.itensDeclaracaoConteudo.map(normalizeMarketplaceItem)
     : undefined;
