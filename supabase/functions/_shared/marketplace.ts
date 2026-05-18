@@ -397,8 +397,26 @@ export async function getPdfEtiquetaMarketplace(
     return { nome: `etiqueta_${uuidMarketplace}.pdf`, dados: btoa(bin) };
   }
   const j = await r.json();
-  const dados = j?.data?.dados || j?.dados || j?.pdf || j?.base64;
+  const findFirst = (obj: any, keys: string[], depth = 0): any => {
+    if (!obj || typeof obj !== 'object' || depth > 6) return null;
+    for (const k of keys) if (obj[k]) return obj[k];
+    for (const v of Object.values(obj)) {
+      const found = findFirst(v, keys, depth + 1);
+      if (found) return found;
+    }
+    return null;
+  };
+  let dados = findFirst(j, ['dados', 'pdf', 'base64', 'pdfBase64']);
+  const url = findFirst(j, ['url', 'pdfUrl', 'urlEtiqueta', 'linkEtiqueta']);
   const nome = j?.data?.nome || j?.nome || `etiqueta_${uuidMarketplace}.pdf`;
+  if (!dados && typeof url === 'string') {
+    const pdfResp = await fetch(url);
+    const buf = new Uint8Array(await pdfResp.arrayBuffer());
+    let bin = '';
+    for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+    dados = btoa(bin);
+  }
+  if (!dados) console.error('[MP] pdf resposta sem dados — RAW:', JSON.stringify(j).slice(0, 1000));
   if (!dados) throw new MarketplaceApiError('Marketplace PDF: resposta sem dados', 502);
   return { nome, dados };
 }
