@@ -1,6 +1,6 @@
 import type { ICotacaoMinimaResponse } from '../types/ICotacao';
 import { getTransportadoraAltText, getTransportadoraImage } from '../utils/imageHelper';
-import { AlertCircle, Check, Clock, TrendingDown } from 'lucide-react';
+import { AlertCircle, Check, Clock, Package, TrendingDown } from 'lucide-react';
 
 interface CotacaoCardProps {
     cotacao: ICotacaoMinimaResponse;
@@ -54,15 +54,20 @@ export const CotacaoCard = ({
         ? 'opacity-60 cursor-not-allowed border-border bg-muted/20'
         : isSelected
         ? 'border-primary ring-2 ring-primary/20 bg-primary/5'
+        : isCargas
+        ? 'border-blue-400/70 bg-blue-50/40 dark:bg-blue-950/20 hover:border-blue-500 hover:bg-blue-50/70 dark:hover:bg-blue-950/30'
         : 'border-border/70 bg-card hover:border-primary/50 hover:bg-accent/30';
 
     return (
         <div
             onClick={handleClick}
-            className={`relative w-full rounded-2xl border-2 px-4 sm:px-5 py-4 transition-all duration-200 ${
+            className={`relative w-full rounded-2xl border-2 pl-5 pr-4 sm:pr-5 py-4 transition-all duration-200 overflow-hidden ${
                 isDisabled ? '' : 'cursor-pointer'
             } ${ring}`}
         >
+            {isCargas && !isDisabled && (
+                <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-blue-500 to-blue-700" />
+            )}
             <div className="flex items-center gap-4">
                 {/* Logo transportadora */}
                 <div className="bg-white rounded-xl p-2 border border-border/60 w-20 h-14 flex items-center justify-center flex-shrink-0">
@@ -85,8 +90,9 @@ export const CotacaoCard = ({
                             </span>
                         )}
                         {isCargas && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[10px] font-bold uppercase tracking-wide">
-                                Cargas
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-blue-600 to-blue-700 text-white text-[10px] font-bold uppercase tracking-wide shadow-sm">
+                                <Package className="h-3 w-3" />
+                                Grandes Volumes
                             </span>
                         )}
                         {isSelected && (
