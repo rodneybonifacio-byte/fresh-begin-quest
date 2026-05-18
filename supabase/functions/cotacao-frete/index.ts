@@ -85,6 +85,8 @@ async function cotarMarketplace(payload: any): Promise<any[]> {
       const precoNum = Number(c.preco ?? 0);
       const precoStr = precoNum.toFixed(2);
       return {
+        // Preserva TODOS os campos originais do marketplace (id, cardpost, etc.) — necessários para POST /emissoes
+        ...c,
         codigoServico: c.codigoServico,
         nomeServico: mapModalidade(c.nomeServico),
         preco: precoStr,
