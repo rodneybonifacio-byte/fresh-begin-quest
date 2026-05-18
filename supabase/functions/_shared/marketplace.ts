@@ -144,8 +144,18 @@ export async function emitirEtiquetaMarketplace(
     : undefined;
 
   const chaveNFe = digits(emissaoPayload?.chaveNFe);
+  const numeroNotaFiscal = String(emissaoPayload?.numeroNotaFiscal || '').trim();
 
-  // Payload conforme doc oficial v2.2 — POST /emissoes
+  // v2.3: SAME DAY / NEXT DAY / HOT 3HORAS exigem NF (validação local antes de chamar a API)
+  const requerNF = cotacao?.requerNotaFiscal === true;
+  if (requerNF && (chaveNFe.length !== 44 || !numeroNotaFiscal)) {
+    throw new Error(
+      `O serviço ${cotacao?.nomeServico || cotacao?.codigoServico} exige Nota Fiscal: informe numeroNotaFiscal e chaveNFe (44 dígitos).`
+    );
+  }
+
+  // Payload conforme doc oficial v2.3 — POST /emissoes
+
   const mpPayload: any = cleanObject({
     remetenteId: emissaoPayload?.remetenteId,
     remetente,
