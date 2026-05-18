@@ -7,38 +7,57 @@ Deno.serve(async (req) => {
   const auth = await getMarketplaceAuth();
   if (!auth) return new Response('{"error":"no auth"}', { status: 500 });
 
-  const endereco = (cep: string, log: string, num: string, comp: string, bairro: string) => ({
-    cep, logradouro: log, numero: num, complemento: comp, bairro, localidade: 'São Paulo', uf: 'SP',
+  const url = new URL(req.url);
+  const action = url.searchParams.get('action') || 'cotar';
+
+  if (action === 'cotar') {
+    const r = await fetch(`${MARKETPLACE_BASE}/frete/cotacao`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': auth.apiKey, Authorization: `Bearer ${auth.token}` },
+      body: JSON.stringify({
+        cepOrigem: '02076040', cepDestino: '03027000',
+        embalagem: { altura: 15, largura: 20, comprimento: 25, peso: 500, diametro: 0 },
+        valorDeclarado: 50,
+      }),
+    });
+    const text = await r.text();
+    return new Response(JSON.stringify({ status: r.status, body: text.slice(0, 3000) }, null, 2), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  // action=emitir&servico=xxx
+  const codigoServico = url.searchParams.get('servico') || 'nextdayhub';
+  const endereco = (cep: string, log: string, num: string, comp: string, bairro: string, loc = 'São Paulo', uf = 'SP') => ({
+    cep, logradouro: log, numero: num, complemento: comp, bairro, localidade: loc, uf,
   });
   const sender = {
-    nome: 'TESTE EMISSOR', cpfCnpj: '11144477735', celular: '11999999999', email: 'teste@teste.com',
-    endereco: endereco('02076040', 'Rua A', '1', '', 'X'),
+    nome: 'BRHUB TESTES', cpfCnpj: '11144477735', celular: '11999999999', email: 'teste@brhub.com',
+    endereco: endereco('02076040', 'Rua Voluntários da Pátria', '4234', '', 'Mandaqui'),
   };
   const destinatario = {
-    nome: 'RODNEY BONIFACIO', cpfCnpj: '22571976826', celular: '11911544095', email: 'r@r.com',
-    endereco: endereco('03027000', 'Rua Xavantes', '718', 'Sala 120', 'Brás'),
+    nome: 'Rodney Bonifacio', cpfCnpj: '22571976826', celular: '11911544095', email: 'rodney@brhub.com',
+    endereco: endereco('03027000', 'Rua dos Xavantes', '718', 'Sala 120', 'Brás'),
   };
-  const base = {
-    cotacao: { codigoServico: 'nextdayhub', nomeServico: 'BRHUB NEXT DAY', preco: '10.92', valorTotal: '10.92', valor: '10.92', prazo: 1 },
+  const payload = {
+    cotacao: { codigoServico, nomeServico: 'TESTE', preco: '15.00', valorTotal: '15.00', valor: '15.00', prazo: 2 },
     sender, remetente: sender,
     contact: destinatario, destinatario, recipient: destinatario,
-    delivery: {
-      cepOrigem: '02076040', cepDestino: '03027000',
-      embalagem: { altura: 30, largura: 30, comprimento: 30, peso: 500, diametro: 0 },
-    },
-    embalagem: { altura: 30, largura: 30, comprimento: 30, peso: 500, diametro: 0 },
+    delivery: { cepOrigem: '02076040', cepDestino: '03027000', embalagem: { altura: 15, largura: 20, comprimento: 25, peso: 500, diametro: 0 } },
+    embalagem: { altura: 15, largura: 20, comprimento: 25, peso: 500, diametro: 0 },
     cepOrigem: '02076040', cepDestino: '03027000',
-    valorDeclarado: 20,
-    itensDeclaracaoConteudo: [{ conteudo: 'calca', quantidade: '1', valor: '20.00' }],
+    valorDeclarado: 50, valorNotaFiscal: 0,
+    itensDeclaracaoConteudo: [{ conteudo: 'Camiseta', quantidade: '1', valor: '50.00' }],
+    logisticaReversa: 'N', cienteObjetoNaoProibido: true,
+    observacao: 'TESTE INTEGRACAO',
   };
-
   const r = await fetch(`${MARKETPLACE_BASE}/emissoes`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': auth.apiKey, 'Authorization': `Bearer ${auth.token}` },
-    body: JSON.stringify(base),
+    headers: { 'Content-Type': 'application/json', 'x-api-key': auth.apiKey, Authorization: `Bearer ${auth.token}` },
+    body: JSON.stringify(payload),
   });
   const text = await r.text();
-  return new Response(JSON.stringify({ status: r.status, body: text.slice(0, 1500) }, null, 2), {
+  return new Response(JSON.stringify({ status: r.status, body: text.slice(0, 3000), enviado: payload }, null, 2), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 });
