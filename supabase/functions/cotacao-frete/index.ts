@@ -72,13 +72,13 @@ async function cotarMarketplace(payload: any): Promise<any[]> {
     // Normaliza para o formato BRHUB
     return j.cotacoes.map((c: any) => {
       const precoNum = Number(c.preco ?? 0);
-      const precoFmt = `R$ ${precoNum.toFixed(2).replace('.', ',')}`;
+      const precoStr = precoNum.toFixed(2); // formato BRHUB: "8.40"
       return {
         codigoServico: c.codigoServico,
         nomeServico: c.nomeServico,
-        preco: precoFmt,
-        valorTotal: precoNum.toFixed(2),
-        valor: precoNum.toFixed(2),
+        preco: precoStr,
+        valorTotal: precoStr,
+        valor: precoStr,
         prazo: c.prazo,
         transportadora: c.transportadora || 'Marketplace',
         imagem: c.imagem,
