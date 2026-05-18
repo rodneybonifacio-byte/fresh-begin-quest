@@ -8,6 +8,89 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const MARKETPLACE_BASE = 'https://icnwmceefmgavmbzsomo.supabase.co/functions/v1/marketplace-api';
+
+// Cache de token Marketplace (in-memory por instância)
+let mpTokenCache: { token: string; apiKey: string; exp: number } | null = null;
+
+async function getMarketplaceAuth(): Promise<{ apiKey: string } | null> {
+  const email = Deno.env.get('MARKETPLACE_EMAIL');
+  const password = Deno.env.get('MARKETPLACE_PASSWORD');
+  if (!email || !password) {
+    console.log('ℹ️ Marketplace: credenciais não configuradas, pulando');
+    return null;
+  }
+  const now = Math.floor(Date.now() / 1000);
+  if (mpTokenCache && mpTokenCache.exp - 300 > now) {
+    return { apiKey: mpTokenCache.apiKey };
+  }
+  try {
+    const r = await fetch(`${MARKETPLACE_BASE}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const j = await r.json();
+    if (!j?.success || !j?.tenant?.apiKey) {
+      console.error('❌ Marketplace login falhou:', JSON.stringify(j));
+      return null;
+    }
+    // decodifica exp do JWT
+    let exp = now + 3600;
+    try {
+      const payload = JSON.parse(atob(j.token.split('.')[1]));
+      if (payload?.exp) exp = payload.exp;
+    } catch (_) { /* noop */ }
+    mpTokenCache = { token: j.token, apiKey: j.tenant.apiKey, exp };
+    console.log('✅ Marketplace autenticado, tenant:', j.tenant.id);
+    return { apiKey: j.tenant.apiKey };
+  } catch (e) {
+    console.error('❌ Marketplace login erro:', e?.message);
+    return null;
+  }
+}
+
+async function cotarMarketplace(payload: any): Promise<any[]> {
+  const auth = await getMarketplaceAuth();
+  if (!auth) return [];
+  try {
+    const r = await fetch(`${MARKETPLACE_BASE}/frete/cotacao`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': auth.apiKey },
+      body: JSON.stringify({
+        cepOrigem: payload.cepOrigem,
+        cepDestino: payload.cepDestino,
+        embalagem: payload.embalagem,
+      }),
+    });
+    const j = await r.json();
+    if (!j?.success || !Array.isArray(j.cotacoes)) {
+      console.error('❌ Marketplace cotação falhou:', JSON.stringify(j).slice(0, 300));
+      return [];
+    }
+    console.log(`✅ Marketplace retornou ${j.cotacoes.length} cotações`);
+    // Normaliza para o formato BRHUB
+    return j.cotacoes.map((c: any) => {
+      const precoNum = Number(c.preco ?? 0);
+      const precoFmt = `R$ ${precoNum.toFixed(2).replace('.', ',')}`;
+      return {
+        codigoServico: c.codigoServico,
+        nomeServico: c.nomeServico,
+        preco: precoFmt,
+        valorTotal: precoNum.toFixed(2),
+        valor: precoNum.toFixed(2),
+        prazo: c.prazo,
+        transportadora: c.transportadora || 'Marketplace',
+        imagem: c.imagem,
+        origem: 'marketplace',
+      };
+    });
+  } catch (e) {
+    console.error('❌ Marketplace cotação erro:', e?.message);
+    return [];
+  }
+}
+
 // Buscar regras de grupo do cliente
 async function getGrupoRegras(clienteId: string) {
   const supabase = createClient(
@@ -55,7 +138,7 @@ serve(async (req) => {
 
   try {
     const requestData = await req.json();
-    
+
     console.log('🚚 Iniciando cotação de frete...');
 
     const baseUrl = Deno.env.get('BASE_API_URL');
@@ -65,7 +148,7 @@ serve(async (req) => {
     }
 
     const userToken = requestData.userToken;
-    
+
     if (!userToken) {
       console.error('❌ Token do usuário não fornecido');
       throw new Error('Token de autenticação não fornecido');
@@ -86,11 +169,11 @@ serve(async (req) => {
     }
 
     const isLogisticaReversa = requestData.logisticaReversa === 'S';
-    
+
     if (isLogisticaReversa) {
       console.log('🔄 Logística reversa ativa');
     }
-    
+
     const normalizeCep = (cep: string) => cep?.replace(/\D/g, '').padStart(8, '0') || '';
 
     const cotacaoPayload = {
@@ -108,64 +191,91 @@ serve(async (req) => {
 
     console.log('📊 Realizando cotação com clienteId:', clienteId);
     console.log('📦 Payload:', JSON.stringify(cotacaoPayload));
-    
-    const cotacaoResponse = await fetch(`${baseUrl}/frete/cotacao`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${userToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(cotacaoPayload),
-    });
 
-    const responseText = await cotacaoResponse.text();
-    console.log('📄 Resposta da cotação (status):', cotacaoResponse.status);
+    // ✅ Dispara BRHUB + Marketplace em paralelo
+    const [brhubRes, marketplaceCotacoes] = await Promise.all([
+      fetch(`${baseUrl}/frete/cotacao`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${userToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(cotacaoPayload),
+      }),
+      // Marketplace apenas se não for reversa (endpoint não suporta CPF loja)
+      isLogisticaReversa ? Promise.resolve([]) : cotarMarketplace(cotacaoPayload),
+    ]);
+
+    const responseText = await brhubRes.text();
+    console.log('📄 Resposta da cotação (status):', brhubRes.status);
     if (isLogisticaReversa) {
       console.log('🔄 [REVERSA] Resposta bruta da BRHUB:', responseText);
     }
 
-    if (!cotacaoResponse.ok) {
+    if (!brhubRes.ok) {
       console.error('❌ Erro na cotação:', responseText);
       return new Response(
         JSON.stringify({
           error: `Erro na cotação: ${responseText}`,
-          status: cotacaoResponse.status,
+          status: brhubRes.status,
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: cotacaoResponse.status,
+          status: brhubRes.status,
         }
       );
     }
 
     const cotacaoData = JSON.parse(responseText);
-    console.log('✅ Cotação realizada com sucesso:', cotacaoData.data?.length || 0, 'opções');
+    const totalBrhub = cotacaoData.data?.length || 0;
+    console.log(`✅ BRHUB retornou ${totalBrhub} cotações`);
+
+    // Marca origem nos itens BRHUB
+    if (Array.isArray(cotacaoData.data)) {
+      cotacaoData.data = cotacaoData.data.map((c: any) => ({ ...c, origem: c.origem || 'brhub' }));
+    } else {
+      cotacaoData.data = [];
+    }
+
+    // Mescla com Marketplace
+    if (marketplaceCotacoes && marketplaceCotacoes.length > 0) {
+      cotacaoData.data = [...cotacaoData.data, ...marketplaceCotacoes];
+      console.log(`🔀 Mesclado: ${totalBrhub} BRHUB + ${marketplaceCotacoes.length} Marketplace = ${cotacaoData.data.length}`);
+    }
 
     // Verificar se o cliente pertence a um grupo de regras
     const grupoRegras = await getGrupoRegras(clienteId);
-    
+
     if (grupoRegras && !grupoRegras.primeiraEtiquetaEmitida && grupoRegras.aplicarEmSimulacao) {
       console.log('🎯 Aplicando multiplicador do grupo:', grupoRegras.multiplicador);
-      
-      if (cotacaoData.data && Array.isArray(cotacaoData.data)) {
-        cotacaoData.data = cotacaoData.data.map((cotacao: any) => {
-          const valorOriginal = parseFloat(cotacao.valorTotal || cotacao.valor || '0');
-          const valorComMultiplicador = (valorOriginal * grupoRegras.multiplicador).toFixed(2);
-          
-          console.log(`  📦 ${cotacao.nomeServico}: R$ ${valorOriginal} → R$ ${valorComMultiplicador} (×${grupoRegras.multiplicador})`);
-          
-          return {
-            ...cotacao,
-            valorTotal: valorComMultiplicador,
-            valor: valorComMultiplicador,
-            valorOriginalSemGrupo: valorOriginal,
-            grupoRegraAplicada: true,
-          };
-        });
-      }
+
+      cotacaoData.data = cotacaoData.data.map((cotacao: any) => {
+        const valorOriginal = parseFloat(cotacao.valorTotal || cotacao.valor || '0');
+        const valorComMultiplicador = (valorOriginal * grupoRegras.multiplicador).toFixed(2);
+
+        console.log(`  📦 [${cotacao.origem}] ${cotacao.nomeServico}: R$ ${valorOriginal} → R$ ${valorComMultiplicador} (×${grupoRegras.multiplicador})`);
+
+        return {
+          ...cotacao,
+          valorTotal: valorComMultiplicador,
+          valor: valorComMultiplicador,
+          valorOriginalSemGrupo: valorOriginal,
+          grupoRegraAplicada: true,
+        };
+      });
     } else if (grupoRegras) {
       console.log('ℹ️ Cliente já emitiu primeira etiqueta - cotação normal do plano');
     }
+
+    // Ordena por preço (mais barato primeiro)
+    const parsePreco = (c: any) => {
+      const n = parseFloat(c.valorTotal || c.valor || '0');
+      if (n > 0) return n;
+      // fallback: parse de "R$ 19,70"
+      const s = String(c.preco || '').replace(/[^\d,.-]/g, '').replace(',', '.');
+      return parseFloat(s) || 0;
+    };
+    cotacaoData.data.sort((a: any, b: any) => parsePreco(a) - parsePreco(b));
 
     return new Response(
       JSON.stringify(cotacaoData),
