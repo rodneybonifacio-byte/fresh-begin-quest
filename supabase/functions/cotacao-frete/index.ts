@@ -101,6 +101,17 @@ async function cotarMarketplace(payload: any): Promise<any[]> {
       if (n.includes('EXPRESSO') || n.includes('RÁPIDO') || n.includes('RAPIDO')) return 'BRHUB RÁPIDO';
       if (n.includes('ECONÔMICO MINI') || n.includes('ECONOMICO MINI')) return 'BRHUB ECON. MINI';
       if (n.includes('ECONÔMICO') || n.includes('ECONOMICO')) return 'BRHUB ECONÔMICO';
+      // Cargas / grandes volumes — nomes mais claros para o usuário
+      if (n.includes('RODONAVES')) return 'BRHUB CARGAS RODONAVES';
+      if (n.includes('JADLOG') && (n.includes('CARGA') || n.includes('RODOVI'))) return 'BRHUB CARGAS JADLOG';
+      if (n.includes('JADLOG')) return 'BRHUB JADLOG';
+      if (n.includes('BRASPRESS')) return 'BRHUB CARGAS BRASPRESS';
+      if (n.includes('TOTAL EXPRESS') || n.includes('TOTALEXPRESS')) return 'BRHUB TOTAL EXPRESS';
+      if (n.includes('LOGGI')) return 'BRHUB LOGGI';
+      if (n.includes('AZUL')) return 'BRHUB AZUL CARGO';
+      if (n.includes('CARGA') || n.includes('FRACIONAD') || n.includes('LOTAÇÃO') || n.includes('LOTACAO')) {
+        return `BRHUB CARGAS ${limpo}`.toUpperCase();
+      }
       return `BRHUB ${limpo}`.toUpperCase();
     };
     return j.cotacoes.map((c: any) => {
