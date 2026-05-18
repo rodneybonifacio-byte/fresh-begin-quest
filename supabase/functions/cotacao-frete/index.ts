@@ -13,7 +13,7 @@ const MARKETPLACE_BASE = 'https://icnwmceefmgavmbzsomo.supabase.co/functions/v1/
 // Cache de token Marketplace (in-memory por instância)
 let mpTokenCache: { token: string; apiKey: string; exp: number } | null = null;
 
-async function getMarketplaceAuth(): Promise<{ apiKey: string } | null> {
+async function getMarketplaceAuth(): Promise<{ apiKey: string; token: string } | null> {
   const email = Deno.env.get('MARKETPLACE_EMAIL');
   const password = Deno.env.get('MARKETPLACE_PASSWORD');
   if (!email || !password) {
@@ -22,7 +22,7 @@ async function getMarketplaceAuth(): Promise<{ apiKey: string } | null> {
   }
   const now = Math.floor(Date.now() / 1000);
   if (mpTokenCache && mpTokenCache.exp - 300 > now) {
-    return { apiKey: mpTokenCache.apiKey };
+    return { apiKey: mpTokenCache.apiKey, token: mpTokenCache.token };
   }
   try {
     const r = await fetch(`${MARKETPLACE_BASE}/login`, {
@@ -43,7 +43,7 @@ async function getMarketplaceAuth(): Promise<{ apiKey: string } | null> {
     } catch (_) { /* noop */ }
     mpTokenCache = { token: j.token, apiKey: j.tenant.apiKey, exp };
     console.log('✅ Marketplace autenticado, tenant:', j.tenant.id);
-    return { apiKey: j.tenant.apiKey };
+    return { apiKey: j.tenant.apiKey, token: j.token };
   } catch (e) {
     console.error('❌ Marketplace login erro:', e?.message);
     return null;
@@ -54,13 +54,19 @@ async function cotarMarketplace(payload: any): Promise<any[]> {
   const auth = await getMarketplaceAuth();
   if (!auth) return [];
   try {
+    const peso = Number(payload.embalagem?.peso ?? 0);
+    const embalagemMarketplace = {
+      ...payload.embalagem,
+      peso: peso > 30 ? peso / 1000 : peso,
+    };
     const r = await fetch(`${MARKETPLACE_BASE}/frete/cotacao`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': auth.apiKey },
+      headers: { 'Content-Type': 'application/json', 'x-api-key': auth.apiKey, 'Authorization': `Bearer ${auth.token}` },
       body: JSON.stringify({
         cepOrigem: payload.cepOrigem,
         cepDestino: payload.cepDestino,
-        embalagem: payload.embalagem,
+        embalagem: embalagemMarketplace,
+        valorDeclarado: payload.valorDeclarado || 0,
       }),
     });
     const j = await r.json();
