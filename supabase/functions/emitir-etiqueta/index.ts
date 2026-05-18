@@ -496,6 +496,45 @@ serve(async (req) => {
 
     if (origemCotacao === 'marketplace') {
       try {
+        // Marketplace não conhece nosso remetenteId interno — precisamos enviar o objeto remetente completo
+        if (!emissaoPayload?.remetente && emissaoPayload?.remetenteId) {
+          try {
+            const sbRem = createClient(
+              Deno.env.get('SUPABASE_URL') ?? '',
+              Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+            );
+            const { data: rem } = await sbRem
+              .from('remetentes')
+              .select('*')
+              .eq('id', emissaoPayload.remetenteId)
+              .maybeSingle();
+            if (rem) {
+              emissaoPayload.remetente = {
+                nome: rem.nome,
+                cpfCnpj: rem.cpf_cnpj,
+                celular: rem.celular || rem.telefone || '',
+                email: rem.email || '',
+                endereco: {
+                  cep: rem.cep,
+                  logradouro: rem.logradouro,
+                  numero: rem.numero,
+                  complemento: rem.complemento || '',
+                  bairro: rem.bairro,
+                  cidade: rem.localidade,
+                  uf: rem.uf,
+                },
+              };
+              // Remove o id interno para a MP não tentar resolvê-lo
+              delete emissaoPayload.remetenteId;
+              console.log('[MP] remetente carregado do Supabase e injetado no payload:', rem.nome);
+            } else {
+              console.error('[MP] remetente não encontrado no Supabase para id:', emissaoPayload.remetenteId);
+            }
+          } catch (remErr: any) {
+            console.error('[MP] erro ao carregar remetente:', remErr?.message);
+          }
+        }
+
         mpEmissao = await emitirEtiquetaMarketplace(emissaoPayload);
 
         // Persistir mapeamento Marketplace
