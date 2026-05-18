@@ -487,69 +487,9 @@ serve(async (req) => {
     console.log('📊 Emitindo com TOKEN DO CLIENTE (não admin)...');
 
     // 🔀 ROTEADOR DE ORIGEM: Marketplace vs BRHUB
-    let origemCotacao = String(emissaoPayload?.cotacao?.origem || 'brhub').toLowerCase();
-
-    // Códigos Correios (SEDEX/PAC) sempre via BRHUB nativo — Marketplace tem bug no campo "pedido/nota"
-    const codigoServicoInicial = String(emissaoPayload?.cotacao?.codigoServico || '').trim();
-    if (origemCotacao === 'marketplace' && /^\d{4,5}$/.test(codigoServicoInicial)) {
-      console.log(`[ROUTER] Forçando ${codigoServicoInicial} para BRHUB nativo (marketplace bug pedido/nota)`);
-      origemCotacao = 'brhub';
-      if (emissaoPayload?.cotacao) {
-        emissaoPayload.cotacao.origem = 'brhub';
-        delete emissaoPayload.cotacao.idLote;
-      }
-    }
-
-    if (origemCotacao === 'brhub' && !emissaoPayload?.cotacao?.idLote) {
-      const codigoServicoCotacao = String(emissaoPayload?.cotacao?.codigoServico || '');
-      console.log(`[BRHUB] serviço ${codigoServicoCotacao} sem idLote; recotando antes da emissão`);
-      const sbQuote = createClient(
-        Deno.env.get('SUPABASE_URL') ?? '',
-        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-      );
-      let cepOrigemRecotacao = digitsOnly(emissaoPayload?.remetente?.endereco?.cep || emissaoPayload?.remetente?.cep);
-      if (!cepOrigemRecotacao && emissaoPayload?.remetenteId) {
-        const { data: remCotacao } = await sbQuote
-          .from('remetentes')
-          .select('cep')
-          .eq('id', emissaoPayload.remetenteId)
-          .maybeSingle();
-        cepOrigemRecotacao = digitsOnly(remCotacao?.cep);
-      }
-      const cepDestinoRecotacao = digitsOnly(emissaoPayload?.destinatario?.endereco?.cep || emissaoPayload?.destinatario?.cep);
-      if (cepOrigemRecotacao && cepDestinoRecotacao) {
-        const recotacaoResponse = await fetch(`${baseUrl}/frete/cotacao`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${userToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            cepOrigem: cepOrigemRecotacao,
-            cepDestino: cepDestinoRecotacao,
-            embalagem: emissaoPayload.embalagem,
-            valorDeclarado: emissaoPayload.valorDeclarado || 0,
-            clienteId,
-          }),
-        });
-        const recotacaoText = await recotacaoResponse.text();
-        const recotacaoJson = (() => { try { return JSON.parse(recotacaoText); } catch { return null; } })();
-        const cotacaoBrhub = Array.isArray(recotacaoJson?.data)
-          ? recotacaoJson.data.find((c: any) => String(c?.codigoServico) === codigoServicoCotacao && c?.idLote)
-          : null;
-        if (cotacaoBrhub) {
-          emissaoPayload.cotacao = { ...cotacaoBrhub, origem: 'brhub', embalagem: emissaoPayload.cotacao?.embalagem || emissaoPayload.embalagem };
-          origemCotacao = 'brhub';
-          console.log(`[BRHUB] idLote recuperado para ${codigoServicoCotacao}: ${cotacaoBrhub.idLote}`);
-        }
-      }
-      if (!emissaoPayload?.cotacao?.idLote) {
-        return new Response(JSON.stringify({ error: 'Cotação BRHUB expirada ou indisponível. Recalcule o frete e selecione SEDEX/PAC novamente.', status: 400 }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400,
-        });
-      }
-    }
+    // v3.1: Marketplace agora cobre todas as transportadoras (Correios + privadas) sem
+    // bugs históricos — não há mais redirect forçado SEDEX/PAC → BRHUB.
+    const origemCotacao = String(emissaoPayload?.cotacao?.origem || 'brhub').toLowerCase();
     console.log(`🔀 Origem da cotação: ${origemCotacao.toUpperCase()}`);
 
     let emissaoResponse: Response | null = null;
@@ -640,13 +580,15 @@ serve(async (req) => {
         responseText = JSON.stringify(fakeBody);
         emissaoResponse = new Response(responseText, { status: 200 });
       } catch (mpErr: any) {
-        console.error('[MP] emissão falhou:', mpErr?.message);
+        console.error('[MP] emissão falhou:', mpErr?.message, mpErr?.details);
+        const status = typeof mpErr?.status === 'number' ? mpErr.status : 502;
         return new Response(
           JSON.stringify({
             error: mpErr?.message || 'Erro na emissão Marketplace',
+            details: Array.isArray(mpErr?.details) ? mpErr.details : undefined,
             origem: 'marketplace',
           }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 502 }
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status }
         );
       }
     } else {

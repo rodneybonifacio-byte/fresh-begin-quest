@@ -128,6 +128,10 @@ async function cotarMarketplace(payload: any): Promise<any[]> {
     return j.cotacoes.map((c: any) => {
       const precoNum = Number(c.preco ?? 0);
       const precoStr = precoNum.toFixed(2);
+      // v3.0: NF obrigatória para todas as transportadoras privadas (não-Correios).
+      // O backend MP marca `requerNotaFiscal: boolean`. Espelha no campo legacy
+      // `isNotaFiscal` consumido pelo FormularioEmissao.
+      const requerNF = c?.requerNotaFiscal === true;
       return {
         // Preserva TODOS os campos originais do marketplace (id, cardpost, etc.) — necessários para POST /emissoes
         ...c,
@@ -140,6 +144,8 @@ async function cotarMarketplace(payload: any): Promise<any[]> {
         transportadora: 'BRHub',
         imagem: c.imagem,
         origem: 'marketplace',
+        requerNotaFiscal: requerNF,
+        isNotaFiscal: requerNF,
       };
     });
   } catch (e) {
