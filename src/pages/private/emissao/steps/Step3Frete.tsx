@@ -34,6 +34,8 @@ export const Step3Frete = ({
   
   // Estado local para valor da nota fiscal
   const [valorNotaFiscal, setValorNotaFiscal] = useState<string>('');
+  const [numeroNotaFiscal, setNumeroNotaFiscal] = useState<string>('');
+  const [chaveNFe, setChaveNFe] = useState<string>('');
   const {
     onGetCotacaoCorreios,
     cotacoes,
