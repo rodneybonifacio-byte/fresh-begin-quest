@@ -256,11 +256,16 @@ export const useEmissao = () => {
             onIsLoadingCadastro(true);
             console.log('📤 onEmissaoCadastro: Iniciando criação da emissão');
             const response = await mutation.mutateAsync(data) as any;
+            const emissaoData = response?.data || response;
+            const normalizedResponse = response?.data
+                ? { ...response, ...response.data, data: response.data }
+                : { ...response, data: emissaoData };
+
             console.log('📦 onEmissaoCadastro: Resposta completa:', response);
-            console.log('🆔 ID retornado:', response?.id);
+            console.log('🆔 ID retornado:', normalizedResponse?.id);
             onIsLoadingCadastro(false);
-            // Backend retorna { id, frete, link_etiqueta } diretamente, não em response.data
-            return response;
+            // Mantém compatibilidade com telas que leem `id` na raiz e com fluxos que leem `data.id`.
+            return normalizedResponse;
         } catch (error) {
             console.error('❌ onEmissaoCadastro: Erro ao criar emissão:', error);
             onIsLoadingCadastro(false);
