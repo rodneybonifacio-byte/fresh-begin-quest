@@ -24,7 +24,54 @@ serve(async (req) => {
       throw new Error('Código do objeto e motivo são obrigatórios');
     }
 
-    // Obter credenciais da API externa
+    // Detectar origem: se a emissão está em emissoes_marketplace, cancelar via MP
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    let isMarketplace = false;
+    let uuidMarketplace: string | null = null;
+    if (supabaseUrl && supabaseServiceKey) {
+      const supa = createClient(supabaseUrl, supabaseServiceKey);
+      const { data: mp } = await supa
+        .from('emissoes_marketplace')
+        .select('uuid_marketplace, codigo_objeto')
+        .eq('codigo_objeto', codigoObjeto)
+        .maybeSingle();
+      if (mp?.uuid_marketplace) {
+        isMarketplace = true;
+        uuidMarketplace = mp.uuid_marketplace;
+      }
+    }
+
+    if (isMarketplace && uuidMarketplace) {
+      console.log('[MP] cancelando via Marketplace, uuid:', uuidMarketplace);
+      const mpResp = await cancelarEmissaoMarketplace(uuidMarketplace, motivo);
+
+      // Estornar crédito bloqueado (mesma lógica BRHUB)
+      if (emissaoId && supabaseUrl && supabaseServiceKey) {
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        const { error: creditError } = await supabase
+          .from('transacoes_credito')
+          .delete()
+          .eq('emissao_id', emissaoId)
+          .eq('tipo', 'consumo')
+          .eq('status', 'bloqueado');
+        if (creditError) {
+          console.error('❌ Erro ao deletar bloqueio (MP):', creditError);
+        }
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          origem: 'marketplace',
+          message: 'Etiqueta Marketplace cancelada e valor estornado',
+          data: mpResp,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
+    }
+
+    // Obter credenciais da API externa (fluxo BRHUB)
     const apiBaseUrl = Deno.env.get('BASE_API_URL');
     const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
     const adminPassword = Deno.env.get('API_ADMIN_PASSWORD');
