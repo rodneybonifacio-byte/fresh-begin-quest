@@ -23,12 +23,16 @@ export const CotacaoCard = ({
 }: CotacaoCardProps) => {
     const nome = cotacao.nomeServico || '';
     const lower = nome.toLowerCase();
+    const imagemLower = (cotacao.imagem || '').toLowerCase();
     const isRodonaves =
-        cotacao.imagem?.toLowerCase().includes('rodonaves') || lower.includes('rodonaves');
+        imagemLower.includes('rodonaves') || lower.includes('rodonaves');
+    const isGrandesVolumesImg =
+        imagemLower.includes('grandes') || imagemLower.includes('grandes-volumes') || imagemLower.includes('grandesvolumes');
     const isCargas =
         lower.includes('carga') ||
         lower.includes('rodonaves') ||
-        lower.includes('braspress');
+        lower.includes('braspress') ||
+        isGrandesVolumesImg;
 
     const prazoLabel =
         cotacao.prazo === 0
