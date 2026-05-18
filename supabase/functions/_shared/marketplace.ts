@@ -148,7 +148,15 @@ async function refreshMarketplaceCotacao(auth: { apiKey: string; token: string }
       temId: Boolean(escolhida?.id),
     });
 
-    return { ...cotacaoAtual, ...escolhida, origem: 'marketplace' };
+    // Trim para evitar campos longos (ex: imagem URL) que a API v2.2 rejeita como "nota inválida"
+    return {
+      id: escolhida?.id ?? cotacaoAtual?.id,
+      codigoServico: escolhida?.codigoServico ?? cotacaoAtual?.codigoServico,
+      cardpost: escolhida?.cardpost ?? cotacaoAtual?.cardpost,
+      customerId: escolhida?.customerId ?? cotacaoAtual?.customerId,
+      preco: escolhida?.preco ?? cotacaoAtual?.preco,
+      prazo: escolhida?.prazo ?? cotacaoAtual?.prazo,
+    };
   } catch (e: any) {
     console.warn('[MP] erro na recotação antes da emissão:', e?.message);
     return cotacaoAtual;
