@@ -23,12 +23,16 @@ export const CotacaoCard = ({
 }: CotacaoCardProps) => {
     const nome = cotacao.nomeServico || '';
     const lower = nome.toLowerCase();
+    const imagemLower = (cotacao.imagem || '').toLowerCase();
     const isRodonaves =
-        cotacao.imagem?.toLowerCase().includes('rodonaves') || lower.includes('rodonaves');
+        imagemLower.includes('rodonaves') || lower.includes('rodonaves');
+    const isGrandesVolumesImg =
+        imagemLower.includes('grandes') || imagemLower.includes('grandes-volumes') || imagemLower.includes('grandesvolumes');
     const isCargas =
         lower.includes('carga') ||
         lower.includes('rodonaves') ||
-        lower.includes('braspress');
+        lower.includes('braspress') ||
+        isGrandesVolumesImg;
 
     const prazoLabel =
         cotacao.prazo === 0
@@ -94,7 +98,7 @@ export const CotacaoCard = ({
                                 Grandes Volumes
                             </span>
                         )}
-                        {(cotacao.isNotaFiscal === true || isRodonaves) && (
+                        {(cotacao.isNotaFiscal === true || isRodonaves || isGrandesVolumesImg) && (
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 text-[10px] font-bold uppercase tracking-wide border border-amber-300 dark:border-amber-700">
                                 <Receipt className="h-3 w-3" />
                                 Exige Nota Fiscal
