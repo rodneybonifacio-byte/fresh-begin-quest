@@ -147,15 +147,16 @@ export async function emitirEtiquetaMarketplace(
 
   // A API MP exige cotacao.codigo (espelha codigoServico). Sem esse campo o backend
   // dispara "cotacao.idLote: O campo codigo é obrigatório."
-  if (!cotacao.codigo && cotacao.codigoServico) {
-    cotacao.codigo = String(cotacao.codigoServico);
+  const codigoCotacao = String(cotacao.codigo || cotacao.codigoServico || cotacao.coProduto || '').trim();
+  if (codigoCotacao) {
+    cotacao.codigo = codigoCotacao;
+    cotacao.codigoServico = cotacao.codigoServico || codigoCotacao;
   }
-  // Se idLote vier como string vazia ou objeto sem codigo, normaliza/remove
-  if (cotacao.idLote && typeof cotacao.idLote === 'object' && !cotacao.idLote.codigo) {
-    cotacao.idLote.codigo = cotacao.codigo;
-  }
-  if (cotacao.idLote === '' || cotacao.idLote == null) {
-    delete cotacao.idLote;
+  // A API valida cotacao.idLote.codigo mesmo quando a cotação retorna apenas `id`.
+  if (!cotacao.idLote || typeof cotacao.idLote !== 'object') {
+    cotacao.idLote = cleanObject({ id: cotacao.id, codigo: codigoCotacao });
+  } else if (!cotacao.idLote.codigo && codigoCotacao) {
+    cotacao.idLote.codigo = codigoCotacao;
   }
 
   const itensDeclaracaoConteudo = Array.isArray(emissaoPayload?.itensDeclaracaoConteudo)
