@@ -23,9 +23,9 @@ Deno.serve(async (req) => {
     });
   }
 
-  const embalagem = { altura: 15, largura: 20, comprimento: 25, peso: 0.5, diametro: 0 };
-  const cepOrigem = '02076040';
-  const cepDestino = '03027000';
+  const embalagem = body?.embalagem || { altura: 15, largura: 20, comprimento: 25, peso: 0.5, diametro: 0 };
+  const cepOrigem = body?.cepOrigem || '02076040';
+  const cepDestino = body?.cepDestino || '03027000';
 
   // 1) Cotar e pegar uma cotacao real
   const rCot = await fetch(`${MARKETPLACE_BASE}/frete/cotacao`, {
