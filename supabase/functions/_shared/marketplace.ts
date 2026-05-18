@@ -107,8 +107,22 @@ const sanitizeMarketplaceCotacao = (cotacao: any, emissaoPayload?: any) => clean
   codigoServico: cotacao?.codigoServico,
   nomeServico: cotacao?.nomeServico,
   preco: Number(cotacao?.preco ?? cotacao?.valorTotal ?? cotacao?.valor ?? 0),
-  valorDeclarado: emissaoPayload?.valorDeclarado ?? cotacao?.valorDeclarado,
 });
+
+const normalizeMarketplaceItem = (item: any) => {
+  const quantidade = Number(item?.quantidade || 1) || 1;
+  const rawValor = Number(String(item?.valor || 0).replace(',', '.')) || 0;
+  // O fluxo BRHUB transforma item.valor em total da linha; Marketplace v2.2 espera valor unitário.
+  const valorUnitario = quantidade > 1 ? rawValor / quantidade : rawValor;
+  const valorTexto = valorUnitario.toFixed(2);
+  const notaSuffix = ` - ${quantidade} - ${valorTexto}`;
+  const maxDescricao = Math.max(1, 20 - notaSuffix.length);
+  return {
+    descricao: truncate(item?.descricao || item?.conteudo || 'Mercadoria', maxDescricao),
+    quantidade,
+    valor: Number(valorTexto),
+  };
+};
 
 async function refreshMarketplaceCotacao(auth: { apiKey: string; token: string }, emissaoPayload: any, remetenteObj: any): Promise<any> {
   const cotacaoAtual = emissaoPayload?.cotacao || {};
@@ -223,11 +237,7 @@ export async function emitirEtiquetaMarketplace(
   const embalagemMarketplace = normalizeMarketplaceEmbalagem(emissaoPayload?.embalagem);
   const cotacaoObj = await refreshMarketplaceCotacao(auth, emissaoPayload, remetenteObj);
   const itensDeclaracaoConteudo = Array.isArray(emissaoPayload?.itensDeclaracaoConteudo)
-    ? emissaoPayload.itensDeclaracaoConteudo.map((item: any) => ({
-        descricao: truncate(item?.descricao || item?.conteudo || 'Mercadoria', 60),
-        quantidade: Number(item?.quantidade || 1),
-        valor: Number(String(item?.valor || 0).replace(',', '.')),
-      }))
+    ? emissaoPayload.itensDeclaracaoConteudo.map(normalizeMarketplaceItem)
     : emissaoPayload?.itensDeclaracaoConteudo;
 
   // Payload conforme doc oficial v2.2 — POST /emissoes
@@ -248,7 +258,16 @@ export async function emitirEtiquetaMarketplace(
   if (numeroNotaFiscal) mpPayload.numeroNotaFiscal = numeroNotaFiscal;
   if (observacao) mpPayload.observacao = observacao;
 
-  console.log('[MP] POST /emissoes, codigoServico:', mpPayload.cotacao?.codigoServico);
+  console.log('[MP] POST /emissoes, payload saneado:', JSON.stringify({
+    codigoServico: mpPayload.cotacao?.codigoServico,
+    cotacaoKeys: Object.keys(mpPayload.cotacao || {}),
+    itensDeclaracaoConteudo: mpPayload.itensDeclaracaoConteudo,
+    opcionais: {
+      temChaveNFe: Boolean(mpPayload.chaveNFe),
+      numeroNotaFiscal: mpPayload.numeroNotaFiscal,
+      observacao: mpPayload.observacao,
+    },
+  }));
 
   const r = await fetch(`${MARKETPLACE_BASE}/emissoes`, {
     method: 'POST',
