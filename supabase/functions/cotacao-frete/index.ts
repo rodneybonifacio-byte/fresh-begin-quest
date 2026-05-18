@@ -9,7 +9,6 @@ const corsHeaders = {
 };
 
 const MARKETPLACE_BASE = 'https://icnwmceefmgavmbzsomo.supabase.co/functions/v1/marketplace-api';
-const BRHUB_NATIVE_MARKETPLACE_CODES = new Set(['03220', '03298']);
 
 // Cache de token Marketplace (in-memory por instância)
 let mpTokenCache: { token: string; apiKey: string; exp: number } | null = null;
@@ -94,7 +93,11 @@ async function cotarMarketplace(payload: any): Promise<any[]> {
     console.log(`✅ Marketplace retornou ${j.cotacoes.length} cotações`);
     // Normaliza para o formato BRHUB
     // Mapa de modalidades BRHub (nome amigável)
-    const mapModalidade = (nome: string): string => {
+    const mapModalidade = (nome: string, codigoServico?: any): string => {
+      const codigo = String(codigoServico || '').trim();
+      if (codigo === '03220') return 'BRHUB SEDEX';
+      if (codigo === '03298') return 'BRHUB PAC';
+      if (codigo === '03662') return 'BRHUB SEDEX HOJE';
       const limpo = (nome || '').replace(/^\+\s*/, '').replace(/^BRHUB\s+/i, '').trim();
       const n = limpo.toUpperCase();
       if (n.includes('SAME DAY')) return 'BRHUB SAME DAY';
@@ -122,7 +125,7 @@ async function cotarMarketplace(payload: any): Promise<any[]> {
         // Preserva TODOS os campos originais do marketplace (id, cardpost, etc.) — necessários para POST /emissoes
         ...c,
         codigoServico: c.codigoServico,
-        nomeServico: mapModalidade(c.nomeServico),
+        nomeServico: mapModalidade(c.nomeServico, c.codigoServico),
         preco: precoStr,
         valorTotal: precoStr,
         valor: precoStr,
@@ -284,17 +287,12 @@ serve(async (req) => {
       cotacaoData.data = [];
     }
 
-    // Mescla com Marketplace
+    // Mescla com Marketplace mantendo os fluxos em paralelo.
+    // Não remover códigos iguais (ex: 03220/03298): BRHUB SEDEX/PAC do Marketplace
+    // são processos independentes do SEDEX/PAC da API envios.brhubb.com.br.
     if (marketplaceCotacoes && marketplaceCotacoes.length > 0) {
-      const codigosBrhub = new Set(cotacaoData.data.map((c: any) => String(c?.codigoServico || '')));
-      const marketplaceFiltradas = marketplaceCotacoes
-        .filter((c: any) => {
-          const codigo = String(c?.codigoServico || '');
-          return !BRHUB_NATIVE_MARKETPLACE_CODES.has(codigo);
-        });
-
-      cotacaoData.data = [...cotacaoData.data, ...marketplaceFiltradas];
-      console.log(`🔀 Mesclado: ${totalBrhub} BRHUB + ${marketplaceFiltradas.length}/${marketplaceCotacoes.length} Marketplace = ${cotacaoData.data.length}`);
+      cotacaoData.data = [...cotacaoData.data, ...marketplaceCotacoes];
+      console.log(`🔀 Mesclado: ${totalBrhub} BRHUB + ${marketplaceCotacoes.length} Marketplace = ${cotacaoData.data.length}`);
     }
 
     // Verificar se o cliente pertence a um grupo de regras
