@@ -171,14 +171,27 @@ export const Step3Frete = ({
   };
 
   const handleNext = async () => {
-    // Validar nota fiscal se Rodonaves
+    // Validar nota fiscal se transportadora exigir
     if (requiresNotaFiscal) {
       const valorAtual = valorNotaFiscal || getValues('valorNotaFiscal') || '';
       const valorNumerico = valorAtual.replace(/[^\d,]/g, '').replace(',', '.');
-      
+
       if (!valorAtual || valorAtual.trim() === '' || parseFloat(valorNumerico) <= 0) {
-        toast.error('Informe o valor da nota fiscal para continuar com Rodonaves.');
+        toast.error(`Informe o valor da nota fiscal para emitir via ${transportadoraNFNome}.`);
         return;
+      }
+
+      if (exigeChaveNFe) {
+        const numero = (numeroNotaFiscal || getValues('numeroNotaFiscal') || '').trim();
+        const chave = (chaveNFe || getValues('chaveNFe') || '').replace(/\D/g, '');
+        if (!numero) {
+          toast.error(`Informe o número da nota fiscal para emitir via ${transportadoraNFNome}.`);
+          return;
+        }
+        if (chave.length !== 44) {
+          toast.error('A chave da NF-e deve ter exatamente 44 dígitos.');
+          return;
+        }
       }
     }
 
@@ -190,7 +203,7 @@ export const Step3Frete = ({
         return;
       }
     }
-    
+
     const isValid = await trigger(['cotacao']);
     if (isValid && cotacaoSelecionado) onNext();
   };
