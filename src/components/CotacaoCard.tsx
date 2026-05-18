@@ -95,6 +95,12 @@ export const CotacaoCard = ({
                                 Grandes Volumes
                             </span>
                         )}
+                        {(cotacao.isNotaFiscal === true || isRodonaves) && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 text-[10px] font-bold uppercase tracking-wide border border-amber-300 dark:border-amber-700">
+                                <Receipt className="h-3 w-3" />
+                                Exige Nota Fiscal
+                            </span>
+                        )}
                         {isSelected && (
                             <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary text-primary-foreground">
                                 <Check className="h-3.5 w-3.5" strokeWidth={3} />
