@@ -574,6 +574,10 @@ serve(async (req) => {
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
           );
+          const dest = emissaoPayload?.destinatario || {};
+          const destEnd = dest?.endereco || {};
+          const emb = emissaoPayload?.embalagem || {};
+          const rem = emissaoPayload?.remetente || {};
           await sbPersist.from('emissoes_marketplace').insert({
             cliente_id: clienteId,
             uuid_marketplace: mpEmissao.uuidMarketplace || mpEmissao.id,
@@ -582,13 +586,41 @@ serve(async (req) => {
             nome_servico: emissaoPayload?.cotacao?.nomeServico ?? null,
             valor_total: mpEmissao.frete?.valorTotal ?? null,
             valor_original: emissaoPayload?.cotacao?.valorOriginalSemGrupo ?? null,
+            valor_custo: emissaoPayload?.cotacao?.valorOriginalSemGrupo ?? mpEmissao.frete?.valorTotal ?? null,
             prazo: emissaoPayload?.cotacao?.prazo ?? null,
-            cep_origem: emissaoPayload?.remetente?.endereco?.cep ?? null,
-            cep_destino: emissaoPayload?.destinatario?.endereco?.cep ?? null,
-            destinatario_nome: emissaoPayload?.destinatario?.nome ?? null,
+            cep_origem: rem?.endereco?.cep ?? null,
+            cep_destino: destEnd?.cep ?? null,
+            // Remetente
+            remetente_id: emissaoPayload?.remetenteId ?? null,
+            remetente_nome: rem?.nome ?? null,
+            remetente_cpf_cnpj: rem?.cpfCnpj ?? null,
+            // Destinatário
+            destinatario_nome: dest?.nome ?? null,
+            destinatario_celular: dest?.celular || dest?.telefone || null,
+            destinatario_cpf_cnpj: dest?.cpfCnpj ?? null,
+            destinatario_cep: destEnd?.cep ?? null,
+            destinatario_logradouro: destEnd?.logradouro ?? null,
+            destinatario_numero: destEnd?.numero ?? null,
+            destinatario_complemento: destEnd?.complemento ?? null,
+            destinatario_bairro: destEnd?.bairro ?? null,
+            destinatario_cidade: destEnd?.cidade ?? null,
+            destinatario_uf: destEnd?.uf ?? null,
+            // Volume
+            peso: emb?.peso ?? null,
+            altura: emb?.altura ?? null,
+            largura: emb?.largura ?? null,
+            comprimento: emb?.comprimento ?? null,
+            // Fiscal
+            valor_declarado: emissaoPayload?.valorDeclarado ?? null,
+            valor_nota_fiscal: emissaoPayload?.valorNotaFiscal ?? null,
+            chave_nfe: emissaoPayload?.chaveNFe ?? null,
+            numero_nota_fiscal: emissaoPayload?.numeroNotaFiscal ?? null,
+            observacao: emissaoPayload?.observacao ?? null,
+            // Estado inicial
+            status: 'emitida',
+            status_rastreio: 'PRE_POSTADO',
             payload_request: emissaoPayload,
             payload_response: mpEmissao.raw,
-            status: 'emitida',
           });
           console.log('[MP] mapeamento persistido em emissoes_marketplace');
         } catch (persistErr: any) {

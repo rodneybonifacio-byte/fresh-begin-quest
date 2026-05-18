@@ -388,7 +388,86 @@ serve(async (req: Request) => {
       }
     }
 
-    console.log(`🏁 Finalizado: ${notificados} notificados, ${erros.length} erros`);
+    console.log(`🏁 BRHUB finalizado: ${notificados} notificados, ${erros.length} erros`);
+
+    // ═══════════════════════════════════════════════════════════
+    // SEGUNDO PASSO: emissões MARKETPLACE (MaisEnvios)
+    // ═══════════════════════════════════════════════════════════
+    let mpNotificados = 0;
+    const mpErros: string[] = [];
+    try {
+      const { data: mpPendentes, error: mpErr } = await supabase
+        .from('emissoes_marketplace')
+        .select('id, codigo_objeto, destinatario_nome, destinatario_celular, remetente_id, remetente_nome, cliente_id, created_at')
+        .eq('notificou_etiqueta_criada', false)
+        .not('codigo_objeto', 'is', null)
+        .order('created_at', { ascending: true })
+        .limit(100);
+
+      if (mpErr) {
+        console.error('❌ [MP] Falha ao buscar pendentes:', mpErr.message);
+      } else if (mpPendentes && mpPendentes.length > 0) {
+        console.log(`📦 [MP] ${mpPendentes.length} emissões marketplace pendentes`);
+
+        for (const mp of mpPendentes) {
+          try {
+            let celular = String(mp.destinatario_celular || '').replace(/\D/g, '');
+            if (!celular) {
+              mpErros.push(`${mp.codigo_objeto}: celular vazio`);
+              // marca para não tentar de novo
+              await supabase.from('emissoes_marketplace')
+                .update({ notificou_etiqueta_criada: true })
+                .eq('id', mp.id);
+              continue;
+            }
+            if (!celular.startsWith('55')) celular = '55' + celular;
+
+            const nomeDestinatario = formatFullName(mp.destinatario_nome || 'Cliente');
+            const nomeRemetente = await resolverNomeRemetente(supabase, {
+              remetenteNome: mp.remetente_nome,
+              remetenteId: mp.remetente_id,
+            });
+
+            console.log(`📲 [MP] Notificando ${mp.codigo_objeto}: ${celular} (${nomeDestinatario} / ${nomeRemetente})`);
+
+            const r = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp-template`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${serviceKey}` },
+              body: JSON.stringify({
+                trigger_key: 'etiqueta_criada',
+                phone: celular,
+                variables: {
+                  nome_destinatario: nomeDestinatario,
+                  nome_remetente: nomeRemetente,
+                  codigo_rastreio: mp.codigo_objeto,
+                },
+              }),
+            });
+
+            if (r.ok) {
+              mpNotificados++;
+              await supabase.from('emissoes_marketplace')
+                .update({ notificou_etiqueta_criada: true })
+                .eq('id', mp.id);
+              console.log(`✅ [MP] ${mp.codigo_objeto}: enviado`);
+            } else {
+              const t = await r.text();
+              mpErros.push(`${mp.codigo_objeto}: template ${r.status}`);
+              console.error(`❌ [MP] ${mp.codigo_objeto}: ${r.status} ${t.substring(0, 200)}`);
+            }
+          } catch (e: any) {
+            mpErros.push(`${mp.codigo_objeto}: ${e?.message || 'erro'}`);
+            console.error(`❌ [MP] ${mp.codigo_objeto}:`, e?.message);
+          }
+        }
+      } else {
+        console.log('📭 [MP] Nenhuma emissão marketplace pendente');
+      }
+    } catch (mpFatal: any) {
+      console.error('❌ [MP] erro fatal:', mpFatal?.message);
+    }
+
+    console.log(`🏁 Total: BRHUB=${notificados}, MP=${mpNotificados}`);
 
     return new Response(
       JSON.stringify({
@@ -397,6 +476,8 @@ serve(async (req: Request) => {
         filtradas_2h: emissoesFiltradas.length,
         ja_notificadas: codigosJaNotificados.size,
         notificados_agora: notificados,
+        marketplace_notificados: mpNotificados,
+        marketplace_erros: mpErros.length > 0 ? mpErros : undefined,
         erros: erros.length > 0 ? erros : undefined,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
