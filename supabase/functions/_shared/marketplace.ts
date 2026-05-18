@@ -92,6 +92,7 @@ const normalizeMarketplacePessoa = (pessoa: any) => {
       complemento: String(endereco?.complemento || pessoa?.complemento || '').trim(),
       bairro: String(endereco?.bairro || pessoa?.bairro || '').trim(),
       localidade: cidade,
+      cidade,
       uf: String(endereco?.uf || pessoa?.uf || '').trim().toUpperCase(),
     },
   };
@@ -103,16 +104,27 @@ const cleanObject = (obj: Record<string, any>) => Object.fromEntries(
 
 const truncate = (value: any, max: number) => String(value || '').trim().slice(0, max);
 
-const sanitizeMarketplaceCotacao = (cotacao: any, emissaoPayload?: any) => cleanObject({
-  // Contrato público v2.2 do POST /emissoes: não enviar campos internos/longos da UI
-  // IMPORTANTE: o `id` é necessário — a API usa para recuperar a cotação salva (com CEPs origem/destino).
-  id: cotacao?.id,
-  codigoServico: cotacao?.codigoServico,
-  nomeServico: cotacao?.nomeServico,
-  preco: Number(cotacao?.preco ?? cotacao?.valorTotal ?? cotacao?.valor ?? 0),
-  prazo: cotacao?.prazo,
-  transportadora: cotacao?.transportadora,
-});
+const sanitizeMarketplaceCotacao = (cotacao: any, emissaoPayload?: any) => {
+  // A emissão Marketplace depende de campos opacos retornados pela própria cotação
+  // (ex.: identificadores internos/cardpost). Não reduzir ao modelo visual da UI.
+  const sanitized = { ...(cotacao || {}) };
+  delete sanitized.origem;
+  delete sanitized.embalagem;
+  delete sanitized.grupoRegraAplicada;
+  delete sanitized.valorOriginalSemGrupo;
+
+  const preco = Number(sanitized.preco ?? sanitized.valorTotal ?? sanitized.valor ?? 0);
+  if (preco > 0) sanitized.preco = preco;
+  if (sanitized.id != null && sanitized.idLote == null) sanitized.idLote = sanitized.id;
+  if (sanitized.idLote != null && sanitized.id == null) sanitized.id = sanitized.idLote;
+
+  const cepOrigem = digits(emissaoPayload?.cepOrigem || emissaoPayload?.remetente?.endereco?.cep);
+  const cepDestino = digits(emissaoPayload?.cepDestino || emissaoPayload?.destinatario?.endereco?.cep);
+  if (cepOrigem && !digits(sanitized.cepOrigem)) sanitized.cepOrigem = cepOrigem;
+  if (cepDestino && !digits(sanitized.cepDestino)) sanitized.cepDestino = cepDestino;
+
+  return cleanObject(sanitized);
+};
 
 const normalizeMarketplaceItem = (item: any, embalagemPesoGramas = 1) => {
   const quantidade = Number(item?.quantidade || 1) || 1;
@@ -168,8 +180,9 @@ async function refreshMarketplaceCotacao(auth: { apiKey: string; token: string }
   const cotacaoAtual = emissaoPayload?.cotacao || {};
   const cepOrigem = digits(remetenteObj?.endereco?.cep || emissaoPayload?.cepOrigem);
   const cepDestino = digits(emissaoPayload?.destinatario?.endereco?.cep || emissaoPayload?.cepDestino);
+  const payloadComCeps = { ...emissaoPayload, cepOrigem, cepDestino, remetente: remetenteObj || emissaoPayload?.remetente };
 
-  if (!cepOrigem || !cepDestino || !emissaoPayload?.embalagem) return sanitizeMarketplaceCotacao(cotacaoAtual, emissaoPayload);
+  if (!cepOrigem || !cepDestino || !emissaoPayload?.embalagem) return sanitizeMarketplaceCotacao(cotacaoAtual, payloadComCeps);
 
   try {
     const r = await fetch(`${MARKETPLACE_BASE}/frete/cotacao`, {
@@ -194,6 +207,7 @@ async function refreshMarketplaceCotacao(auth: { apiKey: string; token: string }
     }
 
     const codigo = String(cotacaoAtual?.codigoServico || '').trim();
+    const idAtual = String(cotacaoAtual?.id ?? cotacaoAtual?.idLote ?? '').trim();
     const nome = normalizeText(cotacaoAtual?.nomeServico);
     const isRapido = nome.includes('RAPIDO') || nome.includes('EXPRESSO');
     const isSameDay = nome.includes('SAME DAY');
@@ -201,12 +215,14 @@ async function refreshMarketplaceCotacao(auth: { apiKey: string; token: string }
     const isEcoMini = nome.includes('ECON') && nome.includes('MINI');
     const isEco = nome.includes('ECON') && !nome.includes('MINI');
 
-    const escolhida = cotacoes.find((c: any) => String(c?.codigoServico || '') === codigo)
+    const escolhida = cotacoes.find((c: any) => idAtual && String(c?.id ?? c?.idLote ?? '') === idAtual)
+      || cotacoes.find((c: any) => nome && normalizeText(c?.nomeServico).includes(nome.replace(/^BRHUB\s+/, '')))
       || cotacoes.find((c: any) => isRapido && (normalizeText(c?.nomeServico).includes('RAPIDO') || normalizeText(c?.nomeServico).includes('EXPRESSO')))
       || cotacoes.find((c: any) => isSameDay && normalizeText(c?.nomeServico).includes('SAME DAY'))
       || cotacoes.find((c: any) => isNextDay && normalizeText(c?.nomeServico).includes('NEXT DAY'))
       || cotacoes.find((c: any) => isEcoMini && normalizeText(c?.nomeServico).includes('MINI'))
       || cotacoes.find((c: any) => isEco && normalizeText(c?.nomeServico).includes('ECON'))
+      || cotacoes.find((c: any) => String(c?.codigoServico || '') === codigo)
       || cotacoes[0];
 
     console.log('[MP] cotação hidratada antes da emissão:', {
@@ -217,10 +233,10 @@ async function refreshMarketplaceCotacao(auth: { apiKey: string; token: string }
     });
 
     // Trim para evitar campos longos/privados (ex: imagem URL, origem, embalagem) que a API v2.2 pode repassar para a pré-postagem.
-    return sanitizeMarketplaceCotacao({ ...cotacaoAtual, ...escolhida }, emissaoPayload);
+    return sanitizeMarketplaceCotacao({ ...cotacaoAtual, ...escolhida }, payloadComCeps);
   } catch (e: any) {
     console.warn('[MP] erro na recotação antes da emissão:', e?.message);
-    return sanitizeMarketplaceCotacao(cotacaoAtual, emissaoPayload);
+    return sanitizeMarketplaceCotacao(cotacaoAtual, payloadComCeps);
   }
 }
 
@@ -282,6 +298,8 @@ export async function emitirEtiquetaMarketplace(
 
   // Payload conforme doc oficial v2.2 — POST /emissoes
   const mpPayload: any = cleanObject({
+    cepOrigem: remetenteMarketplace?.endereco?.cep,
+    cepDestino: destinatarioMarketplace?.endereco?.cep,
     remetente: remetenteMarketplace,
     destinatario: destinatarioMarketplace,
     embalagem: embalagemMarketplace,
@@ -303,6 +321,8 @@ export async function emitirEtiquetaMarketplace(
     codigoServico: mpPayload.cotacao?.codigoServico,
     cotacaoKeys: Object.keys(mpPayload.cotacao || {}),
     itensDeclaracaoConteudo: mpPayload.itensDeclaracaoConteudo,
+    cepOrigem: mpPayload.cepOrigem,
+    cepDestino: mpPayload.cepDestino,
     remetenteCep: mpPayload.remetente?.endereco?.cep,
     destinatarioCep: mpPayload.destinatario?.endereco?.cep,
     opcionais: { temChaveNFe: Boolean(mpPayload.chaveNFe) },
