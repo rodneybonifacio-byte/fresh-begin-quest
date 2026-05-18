@@ -227,9 +227,9 @@ export async function emitirEtiquetaMarketplace(
     );
   }
 
-  // A transportadora limita os campos `nota` e `pedido` a 20 chars.
-  // Quando o usuário não envia, a Marketplace auto-gera com UUID (>20) e rejeita.
-  // Geramos um fallback curto (timestamp base36, ~9 chars) para evitar 400.
+  // A transportadora limita os campos internos `nota` e `pedido` a 20 chars.
+  // A API pública documenta `numeroNotaFiscal`, mas a tradução interna da transportadora
+  // também lê `nota`/`pedido`; se não enviarmos `pedido`, ela auto-gera UUID (>20) e rejeita.
   const shortRef = Date.now().toString(36).toUpperCase().slice(-12);
   const numeroNotaFiscal = (numeroNotaFiscalRaw || shortRef).slice(0, 20);
   const numeroPedido = (numeroPedidoRaw || shortRef).slice(0, 20);
@@ -253,6 +253,8 @@ export async function emitirEtiquetaMarketplace(
     chaveNFe: chaveNFe.length === 44 ? chaveNFe : undefined,
     numeroNotaFiscal,
     numeroPedido,
+    nota: numeroNotaFiscal,
+    pedido: numeroPedido,
     observacao: emissaoPayload?.observacao || undefined,
   });
 
@@ -263,6 +265,8 @@ export async function emitirEtiquetaMarketplace(
     temRemetenteObj: Boolean(remetente),
     cepOrigem: mpPayload.cepOrigem,
     cepDestino: mpPayload.cepDestino,
+    pedidoLen: String(mpPayload.pedido || '').length,
+    notaLen: String(mpPayload.nota || '').length,
   }));
 
   const r = await fetch(`${MARKETPLACE_BASE}/emissoes`, {
