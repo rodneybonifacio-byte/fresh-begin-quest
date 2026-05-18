@@ -6,6 +6,22 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   const auth = await getMarketplaceAuth();
   if (!auth) return new Response('{"error":"no auth"}', { status: 500 });
+  const url = new URL(req.url);
+  let body: any = {};
+  try { body = await req.clone().json(); } catch (_) { /* noop */ }
+  if (url.searchParams.get('mode') === 'docs' || body?.mode === 'docs') {
+    const docs: Record<string, any> = {};
+    for (const path of ['/docs', '/openapi.json', '/swagger.json']) {
+      const resp = await fetch(`${MARKETPLACE_BASE}${path}`, {
+        headers: { 'x-api-key': auth.apiKey, Authorization: `Bearer ${auth.token}` },
+      });
+      const text = await resp.text();
+      docs[path] = { status: resp.status, contentType: resp.headers.get('content-type'), body: text.slice(0, 12000) };
+    }
+    return new Response(JSON.stringify(docs, null, 2), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
 
   const embalagem = { altura: 15, largura: 20, comprimento: 25, peso: 500, diametro: 0 };
   const cepOrigem = '02076040';

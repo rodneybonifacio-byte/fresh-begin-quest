@@ -85,14 +85,15 @@ const normalizeMarketplacePessoa = (pessoa: any) => {
     celular: digits(pessoa?.celular || pessoa?.telefone || ''),
     telefone: digits(pessoa?.telefone || pessoa?.celular || ''),
     email: String(pessoa?.email || '').trim(),
-    cep,
-    logradouro: String(endereco?.logradouro || pessoa?.logradouro || '').trim(),
-    numero: String(endereco?.numero || pessoa?.numero || '').trim(),
-    complemento: String(endereco?.complemento || pessoa?.complemento || '').trim(),
-    bairro: String(endereco?.bairro || pessoa?.bairro || '').trim(),
-    cidade,
-    localidade: cidade,
-    uf: String(endereco?.uf || pessoa?.uf || '').trim().toUpperCase(),
+    endereco: {
+      cep,
+      logradouro: String(endereco?.logradouro || pessoa?.logradouro || '').trim(),
+      numero: String(endereco?.numero || pessoa?.numero || '').trim(),
+      complemento: String(endereco?.complemento || pessoa?.complemento || '').trim(),
+      bairro: String(endereco?.bairro || pessoa?.bairro || '').trim(),
+      localidade: cidade,
+      uf: String(endereco?.uf || pessoa?.uf || '').trim().toUpperCase(),
+    },
   };
 };
 
@@ -148,7 +149,7 @@ const normalizeMarketplaceItens = (items: any[], emissaoPayload: any) => {
   // Consolidar em 1 item curto evita estouro quando há muitas unidades (ex.: 20 camisetas).
   if (!digits(emissaoPayload?.chaveNFe) && (items.length > 1 || Number(items[0]?.quantidade || 1) > 1)) {
     return [normalizeMarketplaceItem({
-      conteudo: 'X',
+      conteudo: 'PRODUT',
       quantidade: 1,
       valor: (totalDeclarado > 0 ? totalDeclarado : totalItens).toFixed(2),
     }, true)];
@@ -279,7 +280,9 @@ export async function emitirEtiquetaMarketplace(
     destinatario: destinatarioMarketplace,
     embalagem: embalagemMarketplace,
     cotacao: cotacaoObj,
+    valorDeclarado: Number(emissaoPayload?.valorDeclarado ?? 0),
     itensDeclaracaoConteudo,
+    nota: 'PRODUTO',
     logisticaReversa: emissaoPayload?.logisticaReversa ?? 'N',
     cienteObjetoNaoProibido: emissaoPayload?.cienteObjetoNaoProibido ?? true,
   });
