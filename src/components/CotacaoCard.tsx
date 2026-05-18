@@ -28,7 +28,6 @@ export const CotacaoCard = ({
     const isCargas =
         lower.includes('carga') ||
         lower.includes('rodonaves') ||
-        lower.includes('jadlog') ||
         lower.includes('braspress');
 
     const prazoLabel =
