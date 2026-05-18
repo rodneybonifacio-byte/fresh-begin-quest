@@ -133,7 +133,7 @@ export async function emitirEtiquetaMarketplace(
   };
 
   // Preserva campos opacos da cotação (id, cardpost, codigoServico, preco, prazo…) intactos.
-  const cotacao = { ...(emissaoPayload?.cotacao || {}) };
+  let cotacao = { ...(emissaoPayload?.cotacao || {}) };
   delete cotacao.origem;
   delete cotacao.embalagem;
   delete cotacao.grupoRegraAplicada;
@@ -144,6 +144,39 @@ export async function emitirEtiquetaMarketplace(
   const cepDestinoFromDest = digits(destinatario?.endereco?.cep);
   if (!cotacao.cepOrigem && cepOrigemFromRem) cotacao.cepOrigem = cepOrigemFromRem;
   if (!cotacao.cepDestino && cepDestinoFromDest) cotacao.cepDestino = cepDestinoFromDest;
+
+  // A MP precisa da cotação recém-gerada para recuperar internamente a rota/CEPs.
+  // Se a UI mandou só o resumo salvo, recota no servidor e substitui pelos campos completos.
+  if (cepOrigemFromRem && cepDestinoFromDest && cotacao?.codigoServico) {
+    try {
+      const rCot = await fetch(`${MARKETPLACE_BASE}/frete/cotacao`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': auth.apiKey,
+          'Authorization': `Bearer ${auth.token}`,
+        },
+        body: JSON.stringify({
+          cepOrigem: cepOrigemFromRem,
+          cepDestino: cepDestinoFromDest,
+          embalagem,
+          valorDeclarado: Number(emissaoPayload?.valorDeclarado ?? 0),
+        }),
+      });
+      const cotJson = await rCot.json().catch(() => null);
+      const fresh = Array.isArray(cotJson?.cotacoes)
+        ? cotJson.cotacoes.find((c: any) => String(c?.codigoServico) === String(cotacao.codigoServico))
+        : null;
+      if (fresh) {
+        cotacao = { ...fresh, ...cotacao, id: fresh.id, cepOrigem: cepOrigemFromRem, cepDestino: cepDestinoFromDest };
+        console.log('[MP] cotação recarregada para emissão:', JSON.stringify({ codigoServico: cotacao.codigoServico, id: cotacao.id, cepOrigem: cotacao.cepOrigem, cepDestino: cotacao.cepDestino }));
+      } else {
+        console.warn('[MP] recotação não encontrou serviço:', cotacao.codigoServico);
+      }
+    } catch (e: any) {
+      console.warn('[MP] falha ao recotar antes da emissão:', e?.message);
+    }
+  }
 
   // A API MP exige cotacao.codigo (espelha codigoServico). Sem esse campo o backend
   // dispara "cotacao.idLote: O campo codigo é obrigatório."
