@@ -2,7 +2,7 @@ import { useSearchParams } from 'react-router-dom';
 import { InputLabel } from '../../../components/input-label';
 import SelectCustom from '../../../components/SelectCustom';
 import { useEffect, useState } from 'react';
-import { getStartOfMonth, getYesterday } from '../../../utils/date-utils';
+import { getStartOfMonth, getToday } from '../../../utils/date-utils';
 import { ClienteService } from '../../../services/ClienteService';
 import { useFetchQuery } from '../../../hooks/useFetchQuery';
 import type { IClienteToFilter } from '../../../types/viewModel/IClienteToFilter';
@@ -41,7 +41,7 @@ export const FiltroEmissao = ({ onFiltrar, isDestinatario, isCodigoObjeto, onCan
         ...(!isDestinatario ? { destinatario: searchParams.get('destinatario') || '' } : {}),
         ...(!isCodigoObjeto ? { codigoObjeto: searchParams.get('codigoObjeto') || '' } : {}),
         dataIni: searchParams.get('dataIni') || getStartOfMonth(),
-        dataFim: searchParams.get('dataFim') || getYesterday(),
+        dataFim: searchParams.get('dataFim') || getToday(),
         clienteId: searchParams.get('clienteId') || '',
         remetenteId: searchParams.get('remetenteId') || '',
         transportadora: searchParams.get('transportadora') || '',
