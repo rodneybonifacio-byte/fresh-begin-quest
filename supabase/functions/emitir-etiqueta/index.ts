@@ -4,6 +4,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 import { emitirEtiquetaMarketplace } from '../_shared/marketplace.ts';
 
+const BRHUB_NATIVE_MARKETPLACE_CODES = new Set(['03220', '03298']);
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -487,7 +489,13 @@ serve(async (req) => {
     console.log('📊 Emitindo com TOKEN DO CLIENTE (não admin)...');
 
     // 🔀 ROTEADOR DE ORIGEM: Marketplace vs BRHUB
-    const origemCotacao = String(emissaoPayload?.cotacao?.origem || 'brhub').toLowerCase();
+    let origemCotacao = String(emissaoPayload?.cotacao?.origem || 'brhub').toLowerCase();
+    const codigoServicoCotacao = String(emissaoPayload?.cotacao?.codigoServico || '');
+    if (origemCotacao === 'marketplace' && BRHUB_NATIVE_MARKETPLACE_CODES.has(codigoServicoCotacao)) {
+      console.log(`[MP] serviço ${codigoServicoCotacao} é nativo BRHUB; roteando emissão pela API principal`);
+      emissaoPayload.cotacao.origem = 'brhub';
+      origemCotacao = 'brhub';
+    }
     console.log(`🔀 Origem da cotação: ${origemCotacao.toUpperCase()}`);
 
     let emissaoResponse: Response | null = null;
