@@ -237,34 +237,37 @@ export async function emitirEtiquetaMarketplace(
     numeroPedido = `BRH${ts}${rnd}`.slice(0, 20);
   }
 
-  // Correios sem NF precisa receber valorDeclarado = 0 explicitamente.
-  // Se o campo fica ausente, a MP aplica fallback de valor declarado e o
-  // upstream pode montar nf.chaveNFe placeholder, gerando PPN-353.
+  // Correios sem NF deve seguir como declaração simples, sem campos fiscais.
+  // Enviar valor/itens para a MP neste cenário pode fazer o upstream montar
+  // bloco `nf` sem chave válida e gerar PPN-353.
   const temNFValida = chaveNFe.length === 44 && Boolean(numeroNotaFiscal);
   const valorDeclaradoRaw = Number(emissaoPayload?.valorDeclarado ?? 0) || 0;
-  const valorDeclaradoMp = temNFValida && valorDeclaradoRaw > 0
-    ? valorDeclaradoRaw
-    : isCorreios
-      ? 0
-      : undefined;
+  const itensDeclaracaoNormalizados = normalizeItens(emissaoPayload?.itensDeclaracaoConteudo);
+  const deveEnviarFiscal = !isCorreios || temNFValida;
+  const valorDeclaradoMp = deveEnviarFiscal && valorDeclaradoRaw > 0 ? valorDeclaradoRaw : undefined;
 
-  const mpPayload = cleanObject({
-    remetenteId: emissaoPayload?.remetenteId,
-    remetente: emissaoPayload?.remetenteId ? undefined : remetente,
-    destinatario,
-    embalagem,
-    cotacao,
-    valorDeclarado: valorDeclaradoMp,
-    itensDeclaracaoConteudo: normalizeItens(emissaoPayload?.itensDeclaracaoConteudo),
-    chaveNFe: temNFValida ? chaveNFe : undefined,
-    numeroNotaFiscal: temNFValida ? numeroNotaFiscal : undefined,
-    numeroPedido: numeroPedido || undefined,
-    logisticaReversa: emissaoPayload?.logisticaReversa === 'S' ? 'S' : undefined,
-    cienteObjetoNaoProibido:
-      emissaoPayload?.cienteObjetoNaoProibido === undefined
-        ? true
-        : Boolean(emissaoPayload.cienteObjetoNaoProibido),
-  });
+  const buildMpPayload = (override?: { valorDeclarado?: number; enviarFiscal?: boolean }) => {
+    const enviarFiscal = override?.enviarFiscal ?? deveEnviarFiscal;
+    return cleanObject({
+      remetenteId: emissaoPayload?.remetenteId,
+      remetente: emissaoPayload?.remetenteId ? undefined : remetente,
+      destinatario,
+      embalagem,
+      cotacao,
+      valorDeclarado: override?.valorDeclarado ?? valorDeclaradoMp,
+      itensDeclaracaoConteudo: enviarFiscal ? itensDeclaracaoNormalizados : undefined,
+      chaveNFe: temNFValida ? chaveNFe : undefined,
+      numeroNotaFiscal: temNFValida ? numeroNotaFiscal : undefined,
+      numeroPedido: numeroPedido || undefined,
+      logisticaReversa: emissaoPayload?.logisticaReversa === 'S' ? 'S' : undefined,
+      cienteObjetoNaoProibido:
+        emissaoPayload?.cienteObjetoNaoProibido === undefined
+          ? true
+          : Boolean(emissaoPayload.cienteObjetoNaoProibido),
+    });
+  };
+
+  let mpPayload = buildMpPayload();
 
   console.log('[MP] POST /emissoes', JSON.stringify({
     codigoServico,
@@ -272,20 +275,31 @@ export async function emitirEtiquetaMarketplace(
     requerNF,
     isCorreios,
     valorDeclarado: valorDeclaradoMp,
+    enviaFiscal: deveEnviarFiscal,
     temRemetenteId: Boolean(mpPayload.remetenteId),
     temRemetenteObj: Boolean(mpPayload.remetente),
     cep_dest: destinatario?.cep,
     peso_kg: embalagem.peso,
   }));
 
-  const r = await fetch(`${MARKETPLACE_BASE}/emissoes`, {
+  const postEmissao = (payload: any) => fetch(`${MARKETPLACE_BASE}/emissoes`, {
     method: 'POST',
     headers: mpHeaders(auth),
-    body: JSON.stringify(mpPayload),
+    body: JSON.stringify(payload),
   });
-  const text = await r.text();
+
+  let r = await postEmissao(mpPayload);
+  let text = await r.text();
   let j: any;
   try { j = JSON.parse(text); } catch { j = { raw: text }; }
+
+  if ((!r.ok || j?.success === false) && isCorreios && !temNFValida && text.includes('PPN-353')) {
+    console.warn('[MP] PPN-353 em Correios sem NF; retentando sem declaração e com valorDeclarado=0');
+    mpPayload = buildMpPayload({ valorDeclarado: 0, enviarFiscal: false });
+    r = await postEmissao(mpPayload);
+    text = await r.text();
+    try { j = JSON.parse(text); } catch { j = { raw: text }; }
+  }
 
   if (!r.ok || j?.success === false) {
     console.error('[MP] emissão falhou:', r.status, text.slice(0, 500));
