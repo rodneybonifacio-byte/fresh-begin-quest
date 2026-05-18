@@ -434,7 +434,12 @@ export async function criarReversaMarketplace(emissaoPayload: any): Promise<any>
 
   const chaveNFe = digits(emissaoPayload?.chaveNFe);
   const numeroNotaFiscal = trim(emissaoPayload?.numeroNotaFiscal);
-  const numeroPedido = trim(emissaoPayload?.numeroPedido || emissaoPayload?.pedido || '');
+  let numeroPedido = trim(emissaoPayload?.numeroPedido || emissaoPayload?.pedido || '').slice(0, 20);
+  if (!numeroPedido) {
+    const ts = Date.now().toString(36).toUpperCase();
+    const rnd = Math.random().toString(36).slice(2, 6).toUpperCase();
+    numeroPedido = `BRR${ts}${rnd}`.slice(0, 20);
+  }
 
   const body = cleanObject({
     remetenteId: emissaoPayload?.remetenteId,
