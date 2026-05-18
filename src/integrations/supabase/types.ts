@@ -787,6 +787,66 @@ export type Database = {
           },
         ]
       }
+      emissoes_marketplace: {
+        Row: {
+          cep_destino: string | null
+          cep_origem: string | null
+          cliente_id: string
+          codigo_objeto: string | null
+          codigo_servico: string | null
+          created_at: string
+          destinatario_nome: string | null
+          id: string
+          nome_servico: string | null
+          payload_request: Json | null
+          payload_response: Json | null
+          prazo: number | null
+          status: string
+          updated_at: string
+          uuid_marketplace: string
+          valor_original: number | null
+          valor_total: number | null
+        }
+        Insert: {
+          cep_destino?: string | null
+          cep_origem?: string | null
+          cliente_id: string
+          codigo_objeto?: string | null
+          codigo_servico?: string | null
+          created_at?: string
+          destinatario_nome?: string | null
+          id?: string
+          nome_servico?: string | null
+          payload_request?: Json | null
+          payload_response?: Json | null
+          prazo?: number | null
+          status?: string
+          updated_at?: string
+          uuid_marketplace: string
+          valor_original?: number | null
+          valor_total?: number | null
+        }
+        Update: {
+          cep_destino?: string | null
+          cep_origem?: string | null
+          cliente_id?: string
+          codigo_objeto?: string | null
+          codigo_servico?: string | null
+          created_at?: string
+          destinatario_nome?: string | null
+          id?: string
+          nome_servico?: string | null
+          payload_request?: Json | null
+          payload_response?: Json | null
+          prazo?: number | null
+          status?: string
+          updated_at?: string
+          uuid_marketplace?: string
+          valor_original?: number | null
+          valor_total?: number | null
+        }
+        Relationships: []
+      }
       etiquetas_pendentes_correcao: {
         Row: {
           altura: number | null
