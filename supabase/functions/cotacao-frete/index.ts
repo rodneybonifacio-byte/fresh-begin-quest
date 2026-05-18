@@ -268,11 +268,14 @@ serve(async (req) => {
     }
 
     // Ordena por preço (mais barato primeiro)
-    cotacaoData.data.sort((a: any, b: any) => {
-      const va = parseFloat(a.valorTotal || a.valor || '0');
-      const vb = parseFloat(b.valorTotal || b.valor || '0');
-      return va - vb;
-    });
+    const parsePreco = (c: any) => {
+      const n = parseFloat(c.valorTotal || c.valor || '0');
+      if (n > 0) return n;
+      // fallback: parse de "R$ 19,70"
+      const s = String(c.preco || '').replace(/[^\d,.-]/g, '').replace(',', '.');
+      return parseFloat(s) || 0;
+    };
+    cotacaoData.data.sort((a: any, b: any) => parsePreco(a) - parsePreco(b));
 
     return new Response(
       JSON.stringify(cotacaoData),
