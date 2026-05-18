@@ -237,17 +237,18 @@ export async function emitirEtiquetaMarketplace(
     numeroPedido = `BRH${ts}${rnd}`.slice(0, 20);
   }
 
-  // Correios sem NF deve seguir como declaração simples, sem campos fiscais.
-  // Enviar valor/itens para a MP neste cenário pode fazer o upstream montar
-  // bloco `nf` sem chave válida e gerar PPN-353.
+  // Correios sem NF deve seguir como declaração de conteúdo, mas sem campos
+  // de NF/valor declarado. Se omitirmos a declaração, o upstream tenta montar
+  // uma NF placeholder e o Correios rejeita com PPN-353.
   const temNFValida = chaveNFe.length === 44 && Boolean(numeroNotaFiscal);
   const valorDeclaradoRaw = Number(emissaoPayload?.valorDeclarado ?? 0) || 0;
   const itensDeclaracaoNormalizados = normalizeItens(emissaoPayload?.itensDeclaracaoConteudo);
-  const deveEnviarFiscal = !isCorreios || temNFValida;
-  const valorDeclaradoMp = deveEnviarFiscal && valorDeclaradoRaw > 0 ? valorDeclaradoRaw : undefined;
+  const deveEnviarNF = !isCorreios || temNFValida;
+  const deveEnviarDeclaracaoConteudo = isCorreios && !temNFValida;
+  const valorDeclaradoMp = deveEnviarNF && valorDeclaradoRaw > 0 ? valorDeclaradoRaw : undefined;
 
-  const buildMpPayload = (override?: { valorDeclarado?: number; enviarFiscal?: boolean }) => {
-    const enviarFiscal = override?.enviarFiscal ?? deveEnviarFiscal;
+  const buildMpPayload = (override?: { valorDeclarado?: number; enviarItens?: boolean }) => {
+    const enviarItens = override?.enviarItens ?? (deveEnviarNF || deveEnviarDeclaracaoConteudo);
     return cleanObject({
       remetenteId: emissaoPayload?.remetenteId,
       remetente: emissaoPayload?.remetenteId ? undefined : remetente,
@@ -255,7 +256,7 @@ export async function emitirEtiquetaMarketplace(
       embalagem,
       cotacao,
       valorDeclarado: override?.valorDeclarado ?? valorDeclaradoMp,
-      itensDeclaracaoConteudo: enviarFiscal ? itensDeclaracaoNormalizados : undefined,
+      itensDeclaracaoConteudo: enviarItens ? itensDeclaracaoNormalizados : undefined,
       chaveNFe: temNFValida ? chaveNFe : undefined,
       numeroNotaFiscal: temNFValida ? numeroNotaFiscal : undefined,
       numeroPedido: numeroPedido || undefined,
@@ -275,7 +276,8 @@ export async function emitirEtiquetaMarketplace(
     requerNF,
     isCorreios,
     valorDeclarado: valorDeclaradoMp,
-    enviaFiscal: deveEnviarFiscal,
+    enviaNF: deveEnviarNF,
+    enviaDeclaracaoConteudo: deveEnviarDeclaracaoConteudo,
     temRemetenteId: Boolean(mpPayload.remetenteId),
     temRemetenteObj: Boolean(mpPayload.remetente),
     cep_dest: destinatario?.cep,
@@ -294,8 +296,11 @@ export async function emitirEtiquetaMarketplace(
   try { j = JSON.parse(text); } catch { j = { raw: text }; }
 
   if ((!r.ok || j?.success === false) && isCorreios && !temNFValida && text.includes('PPN-353')) {
-    console.warn('[MP] PPN-353 em Correios sem NF; retentando sem declaração e com valorDeclarado=0');
-    mpPayload = buildMpPayload({ valorDeclarado: 0, enviarFiscal: false });
+    console.warn('[MP] PPN-353 em Correios sem NF; retentando só com declaração, sem valor declarado/NF');
+    mpPayload = buildMpPayload({ enviarItens: true });
+    delete mpPayload.valorDeclarado;
+    delete mpPayload.chaveNFe;
+    delete mpPayload.numeroNotaFiscal;
     r = await postEmissao(mpPayload);
     text = await r.text();
     try { j = JSON.parse(text); } catch { j = { raw: text }; }
