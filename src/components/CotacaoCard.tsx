@@ -90,8 +90,9 @@ export const CotacaoCard = ({
                             </span>
                         )}
                         {isCargas && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[10px] font-bold uppercase tracking-wide">
-                                Cargas
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-blue-600 to-blue-700 text-white text-[10px] font-bold uppercase tracking-wide shadow-sm">
+                                <Package className="h-3 w-3" />
+                                Grandes Volumes
                             </span>
                         )}
                         {isSelected && (
