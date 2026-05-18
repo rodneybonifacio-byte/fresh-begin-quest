@@ -19,7 +19,7 @@ import { ModalViewDeclaracaoConteudo } from './ModalViewDeclaracaoConteudo';
 import { ModalViewErroPostagem } from './ModalViewErroPostagem';
 import { ModalViewPDF } from './ModalViewPDF';
 import { DashboardEmissoes } from './DashboardEmissoes';
-import { supabase } from '../../../integrations/supabase/client';
+import { getSupabaseWithAuth } from '../../../integrations/supabase/custom-auth';
 import { toast } from 'sonner';
 export const ListaEmissoes = () => {
   const {
