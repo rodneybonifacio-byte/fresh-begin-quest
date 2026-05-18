@@ -127,7 +127,8 @@ export const ListaEmissoes = () => {
     // Mescla emissões marketplace do Supabase (somente na primeira página, para evitar duplicar paginação)
     try {
       if (page === 1) {
-        let q = supabase
+        const sb = getSupabaseWithAuth();
+        let q = sb
           .from('emissoes_marketplace')
           .select('*')
           .order('created_at', { ascending: false })
@@ -141,7 +142,7 @@ export const ListaEmissoes = () => {
           const targetStatus = (statusFromUrl || tab || 'PRE_POSTADO').toUpperCase();
           const mapped = mpRows
             .map(mapMarketplaceToEmissao)
-            .filter((e) => String(e.status).toUpperCase() === targetStatus);
+            .filter((e: any) => String(e.status).toUpperCase() === targetStatus);
           const existingCodes = new Set((result.data || []).map((e: any) => e.codigoObjeto).filter(Boolean));
           const novos = mapped.filter((e: any) => e.codigoObjeto && !existingCodes.has(e.codigoObjeto));
           if (novos.length) {
