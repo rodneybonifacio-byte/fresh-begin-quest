@@ -397,8 +397,55 @@ export async function getPdfEtiquetaMarketplace(
     return { nome: `etiqueta_${uuidMarketplace}.pdf`, dados: btoa(bin) };
   }
   const j = await r.json();
-  const dados = j?.data?.dados || j?.dados || j?.pdf || j?.base64;
+  const findFirst = (obj: any, keys: string[], depth = 0): any => {
+    if (!obj || typeof obj !== 'object' || depth > 6) return null;
+    for (const k of keys) if (obj[k]) return obj[k];
+    for (const v of Object.values(obj)) {
+      const found = findFirst(v, keys, depth + 1);
+      if (found) return found;
+    }
+    return null;
+  };
+  let dados = findFirst(j, ['dados', 'pdf', 'base64', 'pdfBase64']);
+  const url = findFirst(j, ['url', 'pdfUrl', 'urlEtiqueta', 'linkEtiqueta']);
   const nome = j?.data?.nome || j?.nome || `etiqueta_${uuidMarketplace}.pdf`;
+  if (!dados && typeof url === 'string') {
+    const pdfResp = await fetch(url);
+    const buf = new Uint8Array(await pdfResp.arrayBuffer());
+    let bin = '';
+    for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+    dados = btoa(bin);
+  }
+  if (!dados && j?.labelData) {
+    const label = j.labelData;
+    const escapePdf = (v: any) => String(v ?? '').replace(/[\\()]/g, '\\$&');
+    const lines = [
+      'BRHUB ENVIOS - ETIQUETA',
+      `Codigo: ${j?.codigoRastreio || uuidMarketplace}`,
+      `Servico: ${label.service || ''} ${label.serviceCode || ''}`,
+      '',
+      'REMETENTE',
+      label.sender?.nome,
+      `${label.sender?.logradouro || ''}, ${label.sender?.numero || ''} - ${label.sender?.bairro || ''}`,
+      `${label.sender?.cidade || ''}/${label.sender?.uf || ''} CEP ${label.sender?.cep || ''}`,
+      '',
+      'DESTINATARIO',
+      label.recipient?.nome,
+      `${label.recipient?.logradouro || ''}, ${label.recipient?.numero || ''} - ${label.recipient?.bairro || ''}`,
+      `${label.recipient?.cidade || ''}/${label.recipient?.uf || ''} CEP ${label.recipient?.cep || ''}`,
+      `Telefone: ${label.recipient?.celular || ''}`,
+      '',
+      'DECLARACAO DE CONTEUDO',
+      ...(label.declaration?.items || []).map((it: any) => `${it.quantidade}x ${it.conteudo} - R$ ${it.valor}`),
+      '',
+      `Peso: ${label.measures?.weight || ''}kg | ${label.measures?.length || ''}x${label.measures?.width || ''}x${label.measures?.height || ''}cm`,
+      `Valor frete: R$ ${label.value?.price || ''}`,
+    ].filter((line) => line !== undefined && line !== null);
+    const text = lines.map((line, idx) => `${idx === 0 ? 'BT /F1 16 Tf 50 790 Td' : '0 -22 Td'} (${escapePdf(line)}) Tj`).join('\n') + '\nET';
+    const pdf = `%PDF-1.4\n1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj\n4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\n5 0 obj << /Length ${text.length} >> stream\n${text}\nendstream endobj\nxref\n0 6\n0000000000 65535 f \ntrailer << /Root 1 0 R /Size 6 >>\nstartxref\n0\n%%EOF`;
+    dados = btoa(pdf);
+  }
+  if (!dados) console.error('[MP] pdf resposta sem dados — RAW:', JSON.stringify(j).slice(0, 1000));
   if (!dados) throw new MarketplaceApiError('Marketplace PDF: resposta sem dados', 502);
   return { nome, dados };
 }

@@ -246,6 +246,7 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
         console.error('❌ Backend não retornou ID:', backendResponse);
         throw new Error('Erro ao criar emissão: ID não retornado');
       }
+      const isMarketplace = backendResponse?.origem === 'marketplace' || cotacaoEnriquecida?.origem === 'marketplace';
       
       // Aguarda 1 segundo para o backend processar e gerar o código de rastreio
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -254,7 +255,7 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
       console.log('🔍 Buscando dados completos da emissão...');
       const EmissaoServiceClass = (await import('../../../../services/EmissaoService')).EmissaoService;
       const emissaoService = new EmissaoServiceClass();
-      const emissaoCompletaResponse = await emissaoService.getById(backendResponse.id);
+      const emissaoCompletaResponse = isMarketplace ? null : await emissaoService.getById(backendResponse.id);
       
       console.log('📦 Emissão completa recebida:', emissaoCompletaResponse);
       
@@ -285,6 +286,8 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
         ...emissao,
         id: backendResponse.id,
         codigoObjeto: codigoObjeto,
+        origem: backendResponse?.origem,
+        ...(backendResponse?.uuidMarketplace ? { uuidMarketplace: backendResponse.uuidMarketplace } : {}),
       };
       
       console.log('📄 Buscando PDF para emissão ID:', emissaoCriada.id);

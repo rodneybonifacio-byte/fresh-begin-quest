@@ -13,6 +13,8 @@ export interface IEmissao {
     numeroNotaFiscal?: string
     cienteObjetoNaoProibido: boolean
     codigoObjeto?: string
+    uuidMarketplace?: string
+    linkEtiqueta?: string
     codigoServico?: string
     servico?: string
     rfidObjeto?: string
