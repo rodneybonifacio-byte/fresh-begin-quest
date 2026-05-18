@@ -46,6 +46,54 @@ export const ListaEmissoes = () => {
   const {
     onEmissaoImprimir
   } = useImprimirEtiquetaPDF();
+
+  // Mapeia uma linha de emissoes_marketplace para o mesmo shape de IEmissao usado pela lista
+  const mapMarketplaceToEmissao = (m: any): IEmissao => {
+    const statusUI = (() => {
+      const s = String(m.status_rastreio || '').toUpperCase();
+      if (s.includes('ENTREGUE')) return 'ENTREGUE';
+      if (s.includes('SAIU')) return 'SAIU_PARA_ENTREGA';
+      if (s.includes('AGUARDANDO')) return 'AGUARDANDO_RETIRADA';
+      if (s.includes('POSTADO') && !s.includes('PRE')) return 'POSTADO';
+      return 'PRE_POSTADO';
+    })();
+    return {
+      id: m.id,
+      uuidMarketplace: m.uuid_marketplace,
+      origem: 'marketplace',
+      remetenteId: m.remetente_id || '',
+      remetenteNome: m.remetente_nome || '',
+      remetenteCpfCnpj: m.remetente_cpf_cnpj || '',
+      codigoObjeto: m.codigo_objeto,
+      transportadora: 'Correios',
+      servico: m.nome_servico || '',
+      codigoServico: m.codigo_servico || '',
+      status: statusUI,
+      valor: Number(m.valor_total ?? 0).toFixed(2),
+      valorPostagem: m.valor_total,
+      valorDeclarado: m.valor_declarado ?? 0,
+      valorNotaFiscal: m.valor_nota_fiscal ?? 0,
+      criadoEm: m.created_at,
+      cienteObjetoNaoProibido: true,
+      logisticaReversa: 'N',
+      cotacao: {} as any,
+      destinatario: {
+        nome: m.destinatario_nome || '',
+        celular: m.destinatario_celular || '',
+        cpfCnpj: m.destinatario_cpf_cnpj || '',
+        endereco: {
+          cep: m.destinatario_cep || '',
+          logradouro: m.destinatario_logradouro || '',
+          numero: m.destinatario_numero || '',
+          complemento: m.destinatario_complemento || '',
+          bairro: m.destinatario_bairro || '',
+          localidade: m.destinatario_cidade || '',
+          uf: m.destinatario_uf || '',
+        },
+      } as any,
+    } as any;
+  };
+
   const {
     data: emissoes,
     isLoading,
@@ -75,6 +123,36 @@ export const ListaEmissoes = () => {
     if (codigoObjeto) params.codigoObjeto = codigoObjeto;
     params.status = statusFromUrl || tab;
     const result = await service.getAll(params);
+
+    // Mescla emissões marketplace do Supabase (somente na primeira página, para evitar duplicar paginação)
+    try {
+      if (page === 1) {
+        let q = supabase
+          .from('emissoes_marketplace')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(200);
+        if (dataIni) q = q.gte('created_at', dataIni);
+        if (dataFim) q = q.lte('created_at', dataFim);
+        if (codigoObjeto) q = q.ilike('codigo_objeto', `%${codigoObjeto}%`);
+        if (destinatario) q = q.ilike('destinatario_nome', `%${destinatario}%`);
+        const { data: mpRows } = await q;
+        if (mpRows && mpRows.length) {
+          const targetStatus = (statusFromUrl || tab || 'PRE_POSTADO').toUpperCase();
+          const mapped = mpRows
+            .map(mapMarketplaceToEmissao)
+            .filter((e) => String(e.status).toUpperCase() === targetStatus);
+          const existingCodes = new Set((result.data || []).map((e: any) => e.codigoObjeto).filter(Boolean));
+          const novos = mapped.filter((e: any) => e.codigoObjeto && !existingCodes.has(e.codigoObjeto));
+          if (novos.length) {
+            result.data = [...novos, ...(result.data || [])];
+          }
+        }
+      }
+    } catch (mpErr) {
+      console.warn('Falha ao mesclar emissões marketplace:', mpErr);
+    }
+
     return result;
   });
 
