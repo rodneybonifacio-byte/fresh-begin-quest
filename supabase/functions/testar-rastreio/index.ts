@@ -1,5 +1,8 @@
 // @ts-ignore
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// @ts-ignore
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import { rastrearMarketplace } from "../_shared/marketplace.ts";
 
 declare const Deno: {
   env: {
