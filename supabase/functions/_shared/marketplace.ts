@@ -63,6 +63,39 @@ const normalizeText = (s: any) => String(s || '')
   .replace(/[\u0300-\u036f]/g, '')
   .toUpperCase();
 
+const normalizeMarketplaceEmbalagem = (embalagem: any) => {
+  const peso = Number(embalagem?.peso ?? 0);
+  return {
+    peso: peso > 30 ? peso / 1000 : peso,
+    altura: Number(embalagem?.altura ?? 2),
+    largura: Number(embalagem?.largura ?? 11),
+    comprimento: Number(embalagem?.comprimento ?? 16),
+    diametro: Number(embalagem?.diametro ?? 0),
+  };
+};
+
+const normalizeMarketplacePessoa = (pessoa: any) => {
+  const endereco = pessoa?.endereco || pessoa || {};
+  const cep = digits(endereco?.cep || pessoa?.cep);
+  const cidade = String(endereco?.cidade || endereco?.localidade || pessoa?.cidade || pessoa?.localidade || '').trim();
+  return {
+    nome: String(pessoa?.nome || '').trim(),
+    cpfCnpj: digits(pessoa?.cpfCnpj || pessoa?.cpf_cnpj),
+    documentoEstrangeiro: pessoa?.documentoEstrangeiro || pessoa?.documento_estrangeiro || '',
+    celular: digits(pessoa?.celular || pessoa?.telefone || ''),
+    telefone: digits(pessoa?.telefone || pessoa?.celular || ''),
+    email: String(pessoa?.email || '').trim(),
+    cep,
+    logradouro: String(endereco?.logradouro || pessoa?.logradouro || '').trim(),
+    numero: String(endereco?.numero || pessoa?.numero || '').trim(),
+    complemento: String(endereco?.complemento || pessoa?.complemento || '').trim(),
+    bairro: String(endereco?.bairro || pessoa?.bairro || '').trim(),
+    cidade,
+    localidade: cidade,
+    uf: String(endereco?.uf || pessoa?.uf || '').trim().toUpperCase(),
+  };
+};
+
 async function refreshMarketplaceCotacao(auth: { apiKey: string; token: string }, emissaoPayload: any, remetenteObj: any): Promise<any> {
   const cotacaoAtual = emissaoPayload?.cotacao || {};
   const cepOrigem = digits(remetenteObj?.endereco?.cep || emissaoPayload?.cepOrigem);
@@ -81,7 +114,7 @@ async function refreshMarketplaceCotacao(auth: { apiKey: string; token: string }
       body: JSON.stringify({
         cepOrigem,
         cepDestino,
-        embalagem: emissaoPayload.embalagem,
+        embalagem: normalizeMarketplaceEmbalagem(emissaoPayload.embalagem),
         valorDeclarado: emissaoPayload?.valorDeclarado ?? 0,
       }),
     });
@@ -170,17 +203,28 @@ export async function emitirEtiquetaMarketplace(
     }
   }
 
+  const remetenteMarketplace = normalizeMarketplacePessoa(remetenteObj);
+  const destinatarioMarketplace = normalizeMarketplacePessoa(emissaoPayload?.destinatario);
+  const embalagemMarketplace = normalizeMarketplaceEmbalagem(emissaoPayload?.embalagem);
   const cotacaoObj = await refreshMarketplaceCotacao(auth, emissaoPayload, remetenteObj);
+  const itensDeclaracaoConteudo = Array.isArray(emissaoPayload?.itensDeclaracaoConteudo)
+    ? emissaoPayload.itensDeclaracaoConteudo.map((item: any) => ({
+        descricao: String(item?.descricao || item?.conteudo || 'Mercadoria').trim(),
+        conteudo: String(item?.conteudo || item?.descricao || 'Mercadoria').trim(),
+        quantidade: Number(item?.quantidade || 1),
+        valor: Number(String(item?.valor || 0).replace(',', '.')),
+      }))
+    : emissaoPayload?.itensDeclaracaoConteudo;
 
   // Payload conforme doc oficial v2.2 — POST /emissoes
   const mpPayload: any = {
-    remetente: remetenteObj,
-    destinatario: emissaoPayload?.destinatario,
-    embalagem: emissaoPayload?.embalagem,
+    remetente: remetenteMarketplace,
+    destinatario: destinatarioMarketplace,
+    embalagem: embalagemMarketplace,
     cotacao: cotacaoObj,
     valorDeclarado: emissaoPayload?.valorDeclarado ?? 0,
     valorNotaFiscal: emissaoPayload?.valorNotaFiscal ?? 0,
-    itensDeclaracaoConteudo: emissaoPayload?.itensDeclaracaoConteudo,
+    itensDeclaracaoConteudo,
     observacao: emissaoPayload?.observacao,
     chaveNFe: emissaoPayload?.chaveNFe,
     numeroNotaFiscal: emissaoPayload?.numeroNotaFiscal,
