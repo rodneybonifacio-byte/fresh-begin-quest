@@ -35,6 +35,47 @@ serve(async (req: Request) => {
 
     console.log(`🔍 Testando rastreio para: ${codigo}`);
 
+    // Detectar origem: olhar emissoes_marketplace por codigo_objeto
+    try {
+      const supaUrl = Deno.env.get('SUPABASE_URL');
+      const supaKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      if (supaUrl && supaKey) {
+        const supa = createClient(supaUrl, supaKey);
+        const { data: mp } = await supa
+          .from('emissoes_marketplace')
+          .select('codigo_objeto')
+          .eq('codigo_objeto', codigo)
+          .maybeSingle();
+        if (mp) {
+          console.log('[MP] rastreio via Marketplace');
+          const result = await rastrearMarketplace(codigo);
+          const eventos = result.eventos || [];
+          const ultimoEvento = eventos[0] || null;
+          return new Response(
+            JSON.stringify({
+              success: true,
+              codigo,
+              dados: { data: result },
+              origem: 'marketplace',
+              analise: {
+                temEventos: eventos.length > 0,
+                totalEventos: eventos.length,
+                ultimoEvento,
+                ultimaLocalizacao: ultimoEvento?.unidade?.cidadeUf || 'N/A',
+                ultimoStatus: ultimoEvento?.descricao || 'N/A',
+                dataPrevisaoEntrega: result.dataPrevisaoEntrega || 'N/A',
+                servico: result.servico || 'N/A',
+              },
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+    } catch (mpErr) {
+      console.error('[MP] erro ao tentar rastreio marketplace:', mpErr);
+      // cai pro fluxo BRHUB
+    }
+
     // Login admin para obter token
     const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
     const adminPassword = Deno.env.get('API_ADMIN_PASSWORD');
