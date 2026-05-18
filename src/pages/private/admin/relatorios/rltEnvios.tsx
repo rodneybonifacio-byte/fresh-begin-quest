@@ -201,8 +201,15 @@ const RltEnvios = () => {
                     hasMore = false;
                 }
             }
+
+            const marketplace = await buscarEmissoesMarketplace(5000, searchParams.get('status') || undefined);
+            const dedup = new Map<string, IEmissao>();
+            [...marketplace, ...allEmissoes].forEach((emissao) => {
+                const key = String(emissao.codigoObjeto || emissao.id);
+                if (!dedup.has(key)) dedup.set(key, emissao);
+            });
             
-            return allEmissoes;
+            return Array.from(dedup.values());
         },
         { staleTime: 5 * 60 * 1000 } // Cache por 5 minutos
     );
@@ -276,7 +283,31 @@ const RltEnvios = () => {
         if (remetenteId) params.remetenteId = remetenteId;
         if (transportadora) params.transportadora = transportadora;
 
-        return await service.getAll(params, 'admin');
+        const response = await service.getAll(params, 'admin');
+
+        if (page !== 1) return response;
+
+        const marketplace = await buscarEmissoesMarketplace(200, params.status);
+        if (!marketplace.length) return response;
+
+        const existingCodes = new Set((response.data || []).map((e) => e.codigoObjeto).filter(Boolean));
+        const novos = marketplace.filter((e) => e.codigoObjeto && !existingCodes.has(e.codigoObjeto));
+        if (!novos.length) return response;
+
+        const dataMesclada = [...novos, ...(response.data || [])].slice(0, perPage);
+        const totalRecords = (response.meta?.totalRecords || response.total || response.data?.length || 0) + novos.length;
+
+        return {
+            ...response,
+            data: dataMesclada,
+            total: totalRecords,
+            meta: response.meta ? {
+                ...response.meta,
+                totalRecords,
+                totalPages: Math.max(response.meta.totalPages || 1, Math.ceil(totalRecords / perPage)),
+                recordsOnPage: dataMesclada.length,
+            } : response.meta,
+        };
     });
 
     // Filtro client-side para custo zero/positivo
