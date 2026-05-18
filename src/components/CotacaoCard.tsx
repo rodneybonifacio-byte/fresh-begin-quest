@@ -1,6 +1,6 @@
 import type { ICotacaoMinimaResponse } from '../types/ICotacao';
 import { getTransportadoraAltText, getTransportadoraImage } from '../utils/imageHelper';
-import { AlertCircle, Check, Clock, Package, TrendingDown } from 'lucide-react';
+import { AlertCircle, Check, Clock, Package, Receipt, TrendingDown } from 'lucide-react';
 
 interface CotacaoCardProps {
     cotacao: ICotacaoMinimaResponse;
