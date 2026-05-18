@@ -7,7 +7,9 @@ Deno.serve(async (req) => {
   const auth = await getMarketplaceAuth();
   if (!auth) return new Response('{"error":"no auth"}', { status: 500 });
   const url = new URL(req.url);
-  if (url.searchParams.get('mode') === 'docs') {
+  let body: any = {};
+  try { body = await req.clone().json(); } catch (_) { /* noop */ }
+  if (url.searchParams.get('mode') === 'docs' || body?.mode === 'docs') {
     const docs: Record<string, any> = {};
     for (const path of ['/docs', '/openapi.json', '/swagger.json']) {
       const resp = await fetch(`${MARKETPLACE_BASE}${path}`, {
