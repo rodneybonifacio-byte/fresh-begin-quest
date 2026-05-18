@@ -4,6 +4,7 @@ import type { IEmissao } from "../types/IEmissao";
 import type { IResponse } from "../types/IResponse";
 import { CustomHttpClient } from "../utils/http-axios-client";
 import { BaseService } from "./BaseService";
+import { supabase } from "../integrations/supabase/client";
 
 export class EmissaoService extends BaseService<IEmissao> {
 
@@ -15,6 +16,9 @@ export class EmissaoService extends BaseService<IEmissao> {
 
     // imprimir
     public async imprimirEtiquetaCorreios(emissao: IEmissao): Promise<IResponse<{ nome: string, dados: string }>> {
+        if ((emissao as any)?.origem === 'marketplace' || (emissao as any)?.uuidMarketplace) {
+            return await this.imprimirEtiquetaMarketplace(emissao);
+        }
         return await this.httpClient.get<IResponse<{ nome: string, dados: string }>>(`${this.endpoint}/${emissao.id}/imprimir/etiqueta`);
     }
     public async imprimirDeclaracaoConteudoPDF(emissao: IEmissao): Promise<IResponse<{ nome: string, dados: string }>> {
@@ -24,7 +28,29 @@ export class EmissaoService extends BaseService<IEmissao> {
         return await this.httpClient.get<IResponse<{ nome: string, dados: string }>>(`${this.endpoint}/reenviar-prepostagem/${emissao.id}`);
     }
     public async imprimirMergePDF(emissao: IEmissao): Promise<IResponse<{ nome: string, dados: string }>> {
+        if ((emissao as any)?.origem === 'marketplace' || (emissao as any)?.uuidMarketplace) {
+            return await this.imprimirEtiquetaMarketplace(emissao);
+        }
         return await this.httpClient.get<IResponse<{ nome: string, dados: string }>>(`${this.endpoint}/${emissao.id}/imprimir/completa`);
+    }
+
+    private async imprimirEtiquetaMarketplace(emissao: IEmissao): Promise<IResponse<{ nome: string, dados: string }>> {
+        const { data, error } = await supabase.functions.invoke('marketplace-pdf-etiqueta', {
+            body: {
+                uuidMarketplace: (emissao as any)?.uuidMarketplace || (emissao as any)?.uuid_marketplace || emissao.id,
+                codigoObjeto: emissao.codigoObjeto,
+                emissaoId: emissao.id,
+            },
+        });
+
+        if (error) {
+            throw new Error(error.message || 'Erro ao gerar etiqueta marketplace');
+        }
+        if (data?.success === false) {
+            throw new Error(data.error || 'Erro ao gerar etiqueta marketplace');
+        }
+
+        return { data: data?.data };
     }
 
     public async getRemetenteEnderecoById(emissaoId: string): Promise<IResponse<any>> {
