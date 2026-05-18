@@ -69,11 +69,46 @@ export async function emitirEtiquetaMarketplace(
     throw new Error('Marketplace indisponível: credenciais ausentes');
   }
 
+  // Hidratar objeto remetente a partir do remetenteId (Supabase) quando necessário
+  let remetenteObj: any = emissaoPayload?.remetente;
+  if (!remetenteObj && emissaoPayload?.remetenteId) {
+    try {
+      // @ts-ignore - Deno global
+      const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+      // @ts-ignore
+      const sb = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
+      const { data: rem } = await sb.from('remetentes').select('*').eq('id', emissaoPayload.remetenteId).maybeSingle();
+      if (rem) {
+        const digits = (s: string) => String(s || '').replace(/\D/g, '');
+        remetenteObj = {
+          nome: rem.nome?.trim(),
+          cpfCnpj: digits(rem.cpf_cnpj),
+          documentoEstrangeiro: rem.documento_estrangeiro || '',
+          celular: digits(rem.celular || rem.telefone || ''),
+          telefone: digits(rem.telefone || rem.celular || ''),
+          email: rem.email?.trim() || '',
+          endereco: {
+            cep: digits(rem.cep),
+            logradouro: rem.logradouro?.trim() || '',
+            numero: rem.numero?.trim() || '',
+            complemento: rem.complemento?.trim() || '',
+            bairro: rem.bairro?.trim() || '',
+            localidade: rem.localidade?.trim() || '',
+            uf: rem.uf?.trim() || '',
+          },
+        };
+        console.log('[MP] remetente hidratado do Supabase:', rem.nome);
+      } else {
+        console.warn('[MP] remetenteId não encontrado no Supabase:', emissaoPayload.remetenteId);
+      }
+    } catch (e: any) {
+      console.error('[MP] erro hidratando remetente:', e?.message);
+    }
+  }
+
   // Payload conforme doc oficial v2.2 — POST /emissoes
-  // Schema público: { remetente, destinatario, embalagem, cotacao, ... }
-  // O backend Marketplace resolve customerId/cardpost do tenant automaticamente.
   const mpPayload: any = {
-    remetente: emissaoPayload?.remetente,
+    remetente: remetenteObj,
     destinatario: emissaoPayload?.destinatario,
     embalagem: emissaoPayload?.embalagem,
     cotacao: emissaoPayload?.cotacao,
