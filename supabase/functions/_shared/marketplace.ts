@@ -211,15 +211,28 @@ export async function emitirEtiquetaMarketplace(
     : undefined;
 
   const chaveNFe = digits(emissaoPayload?.chaveNFe);
-  const numeroNotaFiscal = String(emissaoPayload?.numeroNotaFiscal || '').trim();
+  const numeroNotaFiscalRaw = String(emissaoPayload?.numeroNotaFiscal || '').trim();
+  const numeroPedidoRaw = String(
+    emissaoPayload?.numeroPedido ||
+    emissaoPayload?.pedido ||
+    emissaoPayload?.codigoPedido ||
+    ''
+  ).trim();
 
   // v2.3: SAME DAY / NEXT DAY / HOT 3HORAS exigem NF (validação local antes de chamar a API)
   const requerNF = cotacao?.requerNotaFiscal === true;
-  if (requerNF && (chaveNFe.length !== 44 || !numeroNotaFiscal)) {
+  if (requerNF && (chaveNFe.length !== 44 || !numeroNotaFiscalRaw)) {
     throw new Error(
       `O serviço ${cotacao?.nomeServico || cotacao?.codigoServico} exige Nota Fiscal: informe numeroNotaFiscal e chaveNFe (44 dígitos).`
     );
   }
+
+  // A transportadora limita os campos `nota` e `pedido` a 20 chars.
+  // Quando o usuário não envia, a Marketplace auto-gera com UUID (>20) e rejeita.
+  // Geramos um fallback curto (timestamp base36, ~9 chars) para evitar 400.
+  const shortRef = Date.now().toString(36).toUpperCase().slice(-12);
+  const numeroNotaFiscal = (numeroNotaFiscalRaw || shortRef).slice(0, 20);
+  const numeroPedido = (numeroPedidoRaw || shortRef).slice(0, 20);
 
   // Payload conforme doc oficial v2.3 — POST /emissoes
 
@@ -238,7 +251,8 @@ export async function emitirEtiquetaMarketplace(
     logisticaReversa: emissaoPayload?.logisticaReversa ?? 'N',
     cienteObjetoNaoProibido: emissaoPayload?.cienteObjetoNaoProibido ?? true,
     chaveNFe: chaveNFe.length === 44 ? chaveNFe : undefined,
-    numeroNotaFiscal: numeroNotaFiscal || undefined,
+    numeroNotaFiscal,
+    numeroPedido,
     observacao: emissaoPayload?.observacao || undefined,
   });
 
