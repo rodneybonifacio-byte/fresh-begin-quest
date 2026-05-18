@@ -6,72 +6,54 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   const auth = await getMarketplaceAuth();
   if (!auth) return new Response('{"error":"no auth"}', { status: 500 });
-  const url = new URL(req.url);
-  let body: any = {};
-  try { body = await req.clone().json(); } catch (_) { /* noop */ }
-  if (url.searchParams.get('mode') === 'docs' || body?.mode === 'docs') {
-    const docs: Record<string, any> = {};
-    for (const path of ['/docs', '/openapi.json', '/swagger.json']) {
-      const resp = await fetch(`${MARKETPLACE_BASE}${path}`, {
-        headers: { 'x-api-key': auth.apiKey, Authorization: `Bearer ${auth.token}` },
-      });
-      const text = await resp.text();
-      docs[path] = { status: resp.status, contentType: resp.headers.get('content-type'), body: text.slice(0, 12000) };
-    }
-    return new Response(JSON.stringify(docs, null, 2), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
+  const body: any = await req.json().catch(() => ({}));
 
-  const embalagem = body?.embalagem || { altura: 15, largura: 20, comprimento: 25, peso: 0.5, diametro: 0 };
+  // 1) Pega cotação real
   const cepOrigem = body?.cepOrigem || '02076040';
   const cepDestino = body?.cepDestino || '03027000';
+  const embalagem = body?.embalagem || { peso: 0.3, altura: 30, largura: 30, comprimento: 30, diametro: 0 };
+  const valorDeclarado = body?.valorDeclarado ?? 50;
 
-  // 1) Cotar e pegar uma cotacao real
   const rCot = await fetch(`${MARKETPLACE_BASE}/frete/cotacao`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': auth.apiKey, Authorization: `Bearer ${auth.token}` },
-    body: JSON.stringify({ cepOrigem, cepDestino, embalagem, valorDeclarado: 50 }),
+    body: JSON.stringify({ cepOrigem, cepDestino, embalagem, valorDeclarado }),
   });
   const cotJson = await rCot.json();
-  if (url.searchParams.get('mode') === 'cotacao' || body?.mode === 'cotacao') {
-    return new Response(JSON.stringify({ status: rCot.status, cotJson }, null, 2), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
-  const cotacaoEscolhida = (cotJson?.cotacoes || []).find((c: any) => c.codigoServico === 'nextdayhub')
-    || (cotJson?.cotacoes || [])[0];
-  if (url.searchParams.get('mode') !== 'emit' && body?.mode !== 'emit') {
-    return new Response(JSON.stringify({ status: rCot.status, cotJson, cotacaoEscolhida }, null, 2), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+  const cotacoes = cotJson?.cotacoes || [];
+  if (body?.mode === 'cotacao') {
+    return new Response(JSON.stringify({ status: rCot.status, cotJson }, null, 2), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 
-  // 2) Payload mínimo conforme doc v2.2
-  const remetente = {
-    nome: 'BRHUB TESTES',
-    cpfCnpj: '11144477735',
-    celular: '11999999999',
-    email: 'teste@brhub.com',
-    endereco: { cep: cepOrigem, logradouro: 'Rua Voluntários da Pátria', numero: '4234', complemento: '', bairro: 'Mandaqui', localidade: 'São Paulo', uf: 'SP' },
+  const wantedCodigo = body?.codigoServico || '03220';
+  const cotacao = cotacoes.find((c: any) => String(c.codigoServico) === String(wantedCodigo)) || cotacoes[0];
+  if (!cotacao) {
+    return new Response(JSON.stringify({ erro: 'sem cotações', cotJson }, null, 2), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
+
+  const remetente = body?.remetente || {
+    nome: 'BRHUB TESTES', cpfCnpj: '11144477735', celular: '11999999999', email: 't@b.com',
+    endereco: { cep: cepOrigem, logradouro: 'Rua A', numero: '1', complemento: '', bairro: 'B', localidade: 'São Paulo', uf: 'SP' },
   };
-  const destinatario = {
-    nome: 'Rodney Bonifacio',
-    cpfCnpj: '22571976826',
-    celular: '11911544095',
-    email: 'rodney@brhub.com',
-    endereco: { cep: cepDestino, logradouro: 'Rua dos Xavantes', numero: '718', complemento: 'Sala 120', bairro: 'Brás', localidade: 'São Paulo', uf: 'SP' },
+  const destinatario = body?.destinatario || {
+    nome: 'Rodney', cpfCnpj: '22571976826', celular: '11911544095', email: 'r@b.com',
+    endereco: { cep: cepDestino, logradouro: 'Rua X', numero: '718', complemento: '', bairro: 'Brás', localidade: 'São Paulo', uf: 'SP' },
   };
+
+  // Permite "variantes" para descobrir o que estoura o campo nota
+  const itens = body?.itensDeclaracaoConteudo || [{ conteudo: 'PROD', quantidade: 1, valor: 50, peso: 300 }];
+  const extra = body?.extra || {};
 
   const payload = {
     remetente,
     destinatario,
     embalagem,
-    cotacao: cotacaoEscolhida,
-    valorDeclarado: 50,
-    itensDeclaracaoConteudo: [{ conteudo: 'Camiseta', quantidade: '1', valor: '50.00' }],
+    cotacao,
+    valorDeclarado,
+    itensDeclaracaoConteudo: itens,
     cienteObjetoNaoProibido: true,
     logisticaReversa: 'N',
+    ...extra,
   };
 
   const r = await fetch(`${MARKETPLACE_BASE}/emissoes`, {
@@ -80,7 +62,7 @@ Deno.serve(async (req) => {
     body: JSON.stringify(payload),
   });
   const text = await r.text();
-  return new Response(JSON.stringify({ status: r.status, body: text.slice(0, 2000), cotacaoUsada: cotacaoEscolhida, payload }, null, 2), {
+  return new Response(JSON.stringify({ status: r.status, body: text, payloadEnviado: payload }, null, 2), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 });
