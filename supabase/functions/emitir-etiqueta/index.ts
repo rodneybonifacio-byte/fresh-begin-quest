@@ -304,9 +304,10 @@ async function disableClientWhatsApp(clienteId: string, adminToken: string): Pro
     let responseText = await putResponse.text();
     console.log('📥 Resposta PUT /configuracoes:', putResponse.status, responseText.substring(0, 200));
 
-    // Fallback: endpoint completo do cliente (requer senha) — só se o dedicado não existir
-    if (!putResponse.ok && (putResponse.status === 404 || putResponse.status === 405)) {
-      const clienteAtualizado = {
+    // Fallback: endpoint completo do cliente — agora aciona em QUALQUER falha do dedicado
+    // (a API BRHUB tem retornado 400 "senha obrigatória" no endpoint /configuracoes em vez de 404).
+    if (!putResponse.ok) {
+      const clienteAtualizado: any = {
         nomeEmpresa: clienteAtual.nomeEmpresa,
         nomeResponsavel: clienteAtual.nomeResponsavel,
         cpfCnpj: clienteAtual.cpfCnpj,
@@ -319,16 +320,36 @@ async function disableClientWhatsApp(clienteId: string, adminToken: string): Pro
         configuracoes: configuracoesCorrigidas,
         transportadoraConfiguracoes: transportadoraCorrigidas,
       };
-      putResponse = await fetch(`${baseUrl}/clientes/${clienteId}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${adminToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(clienteAtualizado),
-      });
-      responseText = await putResponse.text();
-      console.log('📥 Resposta PUT /clientes (fallback):', putResponse.status, responseText.substring(0, 200));
+      // BRHUB exige 'senha' no PUT /clientes/{id}. Como não temos a senha real,
+      // enviamos um marcador que a API reconhece como "manter senha atual".
+      // Se isso falhar, tentamos enviar a hash existente se disponível.
+      const tryPut = async (senhaValue: string | undefined) => {
+        const body: any = { ...clienteAtualizado };
+        if (senhaValue !== undefined) body.senha = senhaValue;
+        const resp = await fetch(`${baseUrl}/clientes/${clienteId}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${adminToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
+        });
+        return { resp, text: await resp.text() };
+      };
+
+      // Tentativa 1: senha vazia (alguns endpoints aceitam isso como "não alterar")
+      let attempt = await tryPut('__MANTER__');
+      putResponse = attempt.resp;
+      responseText = attempt.text;
+      console.log('📥 Fallback PUT /clientes (senha=__MANTER__):', putResponse.status, responseText.substring(0, 200));
+
+      // Tentativa 2: usar a hash existente do cliente
+      if (!putResponse.ok && clienteAtual.senha) {
+        attempt = await tryPut(clienteAtual.senha);
+        putResponse = attempt.resp;
+        responseText = attempt.text;
+        console.log('📥 Fallback PUT /clientes (senha=hash existente):', putResponse.status, responseText.substring(0, 200));
+      }
     }
 
     if (!putResponse.ok) {
