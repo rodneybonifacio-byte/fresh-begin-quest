@@ -270,7 +270,7 @@ export async function emitirEtiquetaMarketplace(
   const embalagemMarketplace = normalizeMarketplaceEmbalagem(emissaoPayload?.embalagem);
   const cotacaoObj = await refreshMarketplaceCotacao(auth, emissaoPayload, remetenteObj);
   const itensDeclaracaoConteudo = Array.isArray(emissaoPayload?.itensDeclaracaoConteudo)
-    ? emissaoPayload.itensDeclaracaoConteudo.map(normalizeMarketplaceItem)
+    ? normalizeMarketplaceItens(emissaoPayload.itensDeclaracaoConteudo, emissaoPayload)
     : emissaoPayload?.itensDeclaracaoConteudo;
 
   // Payload conforme doc oficial v2.2 — POST /emissoes
