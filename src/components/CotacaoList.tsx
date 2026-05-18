@@ -100,7 +100,14 @@ export const CotacaoList = ({
                         key={`${cotacao.codigoServico}-${index}`}
                         cotacao={cotacao}
                         onSelect={isDisabled ? undefined : onSelectCotacao}
-                        isSelected={selectedCotacao?.nomeServico === cotacao.nomeServico}
+                        isSelected={
+                            !!selectedCotacao &&
+                            selectedCotacao.codigoServico === cotacao.codigoServico &&
+                            selectedCotacao.nomeServico === cotacao.nomeServico &&
+                            (selectedCotacao.imagem || '') === (cotacao.imagem || '') &&
+                            (selectedCotacao.origem || '') === (cotacao.origem || '') &&
+                            selectedCotacao.preco === cotacao.preco
+                        }
                         showSelectButton={showSelectButtons}
                         isBestPrice={index === 0 && !isDisabled}
                         isDisabled={isDisabled}
