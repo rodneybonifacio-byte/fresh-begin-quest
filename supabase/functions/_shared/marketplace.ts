@@ -433,14 +433,26 @@ export async function getPdfEtiquetaMarketplace(
       || [label.recipient?.cidade, label.recipient?.uf].filter(Boolean).join('/');
     const recipientCep = label.recipientCep || label.recipient?.cep || '';
     const recipientPhone = label.recipientPhone || label.recipient?.celular || '';
-    const weight = label.weight ?? label.measures?.weight ?? '';
-    const dimensions = label.dimensions
-      || [label.measures?.length, label.measures?.width, label.measures?.height].filter(Boolean).join('x');
+    // Normaliza peso/dimensões: API pode mandar com unidade ("0.3 kg", "20x20x30cm")
+    // ou só números — sempre re-adicionamos a unidade depois.
+    const stripUnit = (v: any) => String(v ?? '').replace(/\s*(kg|g|cm|mm)\s*/gi, '').trim();
+    const weight = stripUnit(label.weight ?? label.measures?.weight);
+    const dimensions = stripUnit(label.dimensions
+      || [label.measures?.length, label.measures?.width, label.measures?.height].filter(Boolean).join('x'));
     const serviceName = label.serviceName || label.service || '';
     const serviceCode = label.serviceCode || '';
     const trackingCode = label.trackingCode || j?.codigoRastreio || uuidMarketplace;
     const declarationItems = label.declaration?.items || [];
-    const totalValue = label.declaration?.totalValue ?? label.value?.price ?? '';
+    const computedTotal = declarationItems.reduce((s: number, it: any) => {
+      const q = Number(it.quantidade ?? it.quantity ?? it.qty ?? 1);
+      const v = Number(it.valor ?? it.value ?? it.unitValue ?? it.price ?? 0);
+      return s + q * v;
+    }, 0);
+    const totalValue = label.declaration?.totalValue ?? (computedTotal > 0 ? computedTotal : '');
+    const fmtMoney = (n: any) => {
+      const num = Number(n);
+      return Number.isFinite(num) ? num.toFixed(2) : String(n ?? '');
+    };
 
     const escapePdf = (v: any) => String(v ?? '').replace(/[\\()]/g, '\\$&');
     const lines = [
@@ -455,18 +467,24 @@ export async function getPdfEtiquetaMarketplace(
       '',
       'DESTINATARIO',
       recipientName,
-      `${recipientAddress} - ${recipientNeighborhood}`,
+      [recipientAddress, recipientNeighborhood].filter(Boolean).join(' - '),
       `${recipientCityState} CEP ${recipientCep}`,
       `Telefone: ${recipientPhone}`,
       '',
       'DECLARACAO DE CONTEUDO',
-      ...declarationItems.map((it: any) => `${it.quantidade}x ${it.conteudo} - R$ ${it.valor}`),
+      ...declarationItems.map((it: any) => {
+        const q = it.quantidade ?? it.quantity ?? it.qty ?? '';
+        const desc = it.conteudo ?? it.descricao ?? it.description ?? it.name ?? it.produto ?? '';
+        const v = it.valor ?? it.value ?? it.unitValue ?? it.price ?? '';
+        return `${q}x ${desc} - R$ ${fmtMoney(v)}`;
+      }),
       '',
-      `Peso: ${weight}kg | ${dimensions}cm`,
-      `Valor declarado: R$ ${totalValue}`,
+      `Peso: ${weight} kg | ${dimensions} cm`,
+      `Valor declarado: R$ ${fmtMoney(totalValue)}`,
     ].filter((line) => line !== undefined && line !== null && line !== '');
-    const text = lines.map((line, idx) => `${idx === 0 ? 'BT /F1 16 Tf 50 790 Td' : '0 -22 Td'} (${escapePdf(line)}) Tj`).join('\n') + '\nET';
-    const pdf = `%PDF-1.4\n1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj\n4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\n5 0 obj << /Length ${text.length} >> stream\n${text}\nendstream endobj\nxref\n0 6\n0000000000 65535 f \ntrailer << /Root 1 0 R /Size 6 >>\nstartxref\n0\n%%EOF`;
+    // Etiqueta 102×153mm (≈ 289×433 pt) — formato térmico padrão.
+    const text = lines.map((line, idx) => `${idx === 0 ? 'BT /F1 11 Tf 18 410 Td' : '0 -14 Td'} (${escapePdf(line)}) Tj`).join('\n') + '\nET';
+    const pdf = `%PDF-1.4\n1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 289 433] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj\n4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\n5 0 obj << /Length ${text.length} >> stream\n${text}\nendstream endobj\nxref\n0 6\n0000000000 65535 f \ntrailer << /Root 1 0 R /Size 6 >>\nstartxref\n0\n%%EOF`;
     dados = btoa(pdf);
   }
   if (!dados) console.error('[MP] pdf resposta sem dados — RAW:', JSON.stringify(j).slice(0, 1000));
