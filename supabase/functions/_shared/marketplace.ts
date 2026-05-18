@@ -110,35 +110,36 @@ const sanitizeMarketplaceCotacao = (cotacao: any, emissaoPayload?: any) => clean
   preco: Number(cotacao?.preco ?? cotacao?.valorTotal ?? cotacao?.valor ?? 0),
 });
 
-const normalizeMarketplaceItem = (item: any, forceSingleLine = false) => {
+const normalizeMarketplaceItem = (item: any, embalagemPesoGramas = 1) => {
   const quantidade = Number(item?.quantidade || 1) || 1;
   const rawValor = Number(String(item?.valor || 0).replace(',', '.')) || 0;
-  // O fluxo BRHUB transforma item.valor em total da linha; Marketplace v2.2 espera valor unitário.
-  const valorUnitario = forceSingleLine ? rawValor : (quantidade > 1 ? rawValor / quantidade : rawValor);
-  const quantidadeMarketplace = forceSingleLine ? 1 : quantidade;
-  const valorTexto = valorUnitario.toFixed(2);
-  // A pré-postagem dos Correios valida o campo final "nota" com no máximo 20 chars.
-  // A API Marketplace pode montar essa nota usando conteudo/descricao + qtd + valor, então enviamos todos
-  // os aliases já curtos e também a nota explícita para evitar fallback longo interno (ex.: "Mercadoria").
-  const qtdFormatadaLen = quantidadeMarketplace.toFixed(2).length; // ex.: 20 -> "20.00" / "20,00"
-  const valLen = valorTexto.length; // ex.: "21.11" / "21,11"
-  const suffixLen = 3 /* " - " */ + qtdFormatadaLen + 3 /* " - " */ + valLen;
-  const maxDescricao = Math.max(1, 20 - suffixLen);
+  // Correios exige descrição clara com mínimo 5 caracteres; a API também monta uma "nota" interna <= 20.
+  // Valor é o TOTAL do item (não unitário), conforme schema público de itensDeclaracaoConteudo.
+  const valorTotal = Number(rawValor.toFixed(2));
+  const valorTexto = valorTotal.toFixed(2);
+  const qtdTexto = String(Math.trunc(quantidade));
+  const valLen = valorTexto.length;
+  const qtdLen = qtdTexto.length;
+  const suffixLen = 3 /* " - " */ + qtdLen + 3 /* " - " */ + valLen;
+  const maxDescricao = Math.max(5, 20 - suffixLen);
   const descricaoCurta = truncate(
-    normalizeText(item?.conteudo || item?.descricao || item?.descric || 'X').replace(/[^A-Z0-9]/g, '') || 'X',
+    normalizeText(item?.conteudo || item?.descricao || item?.descric || 'MERCADORIA').replace(/[^A-Z0-9]/g, '') || 'MERCADORIA',
     maxDescricao,
   );
-  const nota = truncate(`${descricaoCurta}/${String(quantidadeMarketplace)}/${valorTexto}`, 20);
+  const conteudo = descricaoCurta.length >= 5 ? descricaoCurta : 'MERCAD'.slice(0, Math.max(5, maxDescricao));
+  const peso = Number(item?.peso ?? item?.pesoGramas ?? embalagemPesoGramas) || embalagemPesoGramas || 1;
   return {
-    conteudo: descricaoCurta,
-    nota,
-    quantidade: String(quantidadeMarketplace),
-    valor: valorTexto,
+    conteudo,
+    quantidade: Math.trunc(quantidade),
+    valor: valorTotal,
+    peso: Math.max(1, Math.round(peso)),
   };
 };
 
 const normalizeMarketplaceItens = (items: any[], emissaoPayload: any) => {
   const totalDeclarado = Number(emissaoPayload?.valorDeclarado ?? 0);
+  const embalagemPeso = Number(emissaoPayload?.embalagem?.peso ?? 1) || 1;
+  const pesoGramas = embalagemPeso > 30 ? embalagemPeso : embalagemPeso * 1000;
   const totalItens = items.reduce((sum, item) => {
     const qtd = Number(item?.quantidade || 1) || 1;
     const valor = Number(String(item?.valor || 0).replace(',', '.')) || 0;
@@ -152,10 +153,11 @@ const normalizeMarketplaceItens = (items: any[], emissaoPayload: any) => {
       conteudo: 'PRODUT',
       quantidade: 1,
       valor: (totalDeclarado > 0 ? totalDeclarado : totalItens).toFixed(2),
-    }, true)];
+      peso: pesoGramas,
+    }, pesoGramas)];
   }
 
-  return items.map((item) => normalizeMarketplaceItem(item));
+  return items.map((item) => normalizeMarketplaceItem(item, pesoGramas));
 };
 
 async function refreshMarketplaceCotacao(auth: { apiKey: string; token: string }, emissaoPayload: any, remetenteObj: any): Promise<any> {
@@ -282,7 +284,6 @@ export async function emitirEtiquetaMarketplace(
     cotacao: cotacaoObj,
     valorDeclarado: Number(emissaoPayload?.valorDeclarado ?? 0),
     itensDeclaracaoConteudo,
-    nota: 'PRODUTO',
     logisticaReversa: emissaoPayload?.logisticaReversa ?? 'N',
     cienteObjetoNaoProibido: emissaoPayload?.cienteObjetoNaoProibido ?? true,
   });
