@@ -115,6 +115,8 @@ const sanitizeMarketplaceCotacao = (cotacao: any, emissaoPayload?: any) => {
 
   const preco = Number(sanitized.preco ?? sanitized.valorTotal ?? sanitized.valor ?? 0);
   if (preco > 0) sanitized.preco = preco;
+  if (sanitized.id != null && sanitized.idLote == null) sanitized.idLote = sanitized.id;
+  if (sanitized.idLote != null && sanitized.id == null) sanitized.id = sanitized.idLote;
 
   const cepOrigem = digits(emissaoPayload?.cepOrigem || emissaoPayload?.remetente?.endereco?.cep);
   const cepDestino = digits(emissaoPayload?.cepDestino || emissaoPayload?.destinatario?.endereco?.cep);
