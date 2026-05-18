@@ -812,6 +812,8 @@ export type Database = {
           destinatario_nome: string | null
           destinatario_numero: string | null
           destinatario_uf: string | null
+          fonte_status: string | null
+          formato_codigo: string | null
           historico_rastreio: Json | null
           id: string
           largura: number | null
@@ -837,6 +839,7 @@ export type Database = {
           remetente_nome: string | null
           status: string
           status_rastreio: string | null
+          transportadora: string | null
           ultimo_evento_em: string | null
           ultimo_rastreio_em: string | null
           updated_at: string
@@ -871,6 +874,8 @@ export type Database = {
           destinatario_nome?: string | null
           destinatario_numero?: string | null
           destinatario_uf?: string | null
+          fonte_status?: string | null
+          formato_codigo?: string | null
           historico_rastreio?: Json | null
           id?: string
           largura?: number | null
@@ -896,6 +901,7 @@ export type Database = {
           remetente_nome?: string | null
           status?: string
           status_rastreio?: string | null
+          transportadora?: string | null
           ultimo_evento_em?: string | null
           ultimo_rastreio_em?: string | null
           updated_at?: string
@@ -930,6 +936,8 @@ export type Database = {
           destinatario_nome?: string | null
           destinatario_numero?: string | null
           destinatario_uf?: string | null
+          fonte_status?: string | null
+          formato_codigo?: string | null
           historico_rastreio?: Json | null
           id?: string
           largura?: number | null
@@ -955,6 +963,7 @@ export type Database = {
           remetente_nome?: string | null
           status?: string
           status_rastreio?: string | null
+          transportadora?: string | null
           ultimo_evento_em?: string | null
           ultimo_rastreio_em?: string | null
           updated_at?: string
