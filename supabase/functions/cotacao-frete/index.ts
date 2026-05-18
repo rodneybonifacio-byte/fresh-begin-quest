@@ -71,15 +71,17 @@ async function cotarMarketplace(payload: any): Promise<any[]> {
     console.log(`✅ Marketplace retornou ${j.cotacoes.length} cotações`);
     // Normaliza para o formato BRHUB
     return j.cotacoes.map((c: any) => {
-      const preco = Number(c.preco ?? 0);
+      const precoNum = Number(c.preco ?? 0);
+      const precoFmt = `R$ ${precoNum.toFixed(2).replace('.', ',')}`;
       return {
         codigoServico: c.codigoServico,
         nomeServico: c.nomeServico,
-        valorTotal: preco.toFixed(2),
-        valor: preco.toFixed(2),
+        preco: precoFmt,
+        valorTotal: precoNum.toFixed(2),
+        valor: precoNum.toFixed(2),
         prazo: c.prazo,
         transportadora: c.transportadora || 'Marketplace',
-        imagemTransportadora: c.imagem,
+        imagem: c.imagem,
         origem: 'marketplace',
       };
     });
