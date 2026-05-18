@@ -316,6 +316,8 @@ export async function emitirEtiquetaMarketplace(
   const mpPayload: any = cleanObject({
     cepOrigem: remetenteMarketplace?.endereco?.cep,
     cepDestino: destinatarioMarketplace?.endereco?.cep,
+    enderecoOrigem: remetenteMarketplace?.endereco,
+    enderecoDestino: destinatarioMarketplace?.endereco,
     remetente: remetenteMarketplace,
     destinatario: destinatarioMarketplace,
     embalagem: embalagemMarketplace,
@@ -330,8 +332,8 @@ export async function emitirEtiquetaMarketplace(
   const numeroNotaFiscal = truncate(emissaoPayload?.numeroNotaFiscal, 20);
   const observacao = truncate(emissaoPayload?.observacao, 20);
   if (chaveNFe.length === 44) mpPayload.chaveNFe = chaveNFe;
-  if (numeroNotaFiscal) mpPayload.numeroNotaFiscal = numeroNotaFiscal;
-  if (observacao) mpPayload.observacao = observacao;
+  if (numeroNotaFiscal && !isMarketplaceCorreiosService(mpPayload.cotacao)) mpPayload.numeroNotaFiscal = numeroNotaFiscal;
+  if (observacao && !isMarketplaceCorreiosService(mpPayload.cotacao)) mpPayload.observacao = observacao;
 
   console.log('[MP] POST /emissoes, payload saneado:', JSON.stringify({
     codigoServico: mpPayload.cotacao?.codigoServico,
@@ -341,7 +343,7 @@ export async function emitirEtiquetaMarketplace(
     cepDestino: mpPayload.cepDestino,
     remetenteCep: mpPayload.remetente?.endereco?.cep,
     destinatarioCep: mpPayload.destinatario?.endereco?.cep,
-    opcionais: { temChaveNFe: Boolean(mpPayload.chaveNFe) },
+    opcionais: { temChaveNFe: Boolean(mpPayload.chaveNFe), temNumeroNotaFiscal: Boolean(mpPayload.numeroNotaFiscal), temObservacao: Boolean(mpPayload.observacao) },
   }));
   console.log('[MP] FULL PAYLOAD:', JSON.stringify(mpPayload));
 
