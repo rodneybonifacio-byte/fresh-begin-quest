@@ -12,20 +12,20 @@ Deno.serve(async (req) => {
       codigoServico: 'nextdayhub', nomeServico: 'BRHUB NEXT DAY',
       preco: '10.92', valorTotal: '10.92', valor: '10.92', prazo: 1,
     },
-    cepOrigem: '02076040', cepDestino: '03027000',
-    embalagem: { altura: 30, largura: 30, comprimento: 30, peso: 500, diametro: 0 },
-    valorDeclarado: 20,
-    remetente: {
-      nome: 'TESTE EMISSOR', nomeRemetente: 'TESTE EMISSOR',
-      cpfCnpj: '11144477735', cpfCnpjRemetente: '11144477735',
-      celular: '11999999999', celularRemetente: '11999999999',
+    sender: {
+      nome: 'TESTE EMISSOR', cpfCnpj: '11144477735', celular: '11999999999',
       email: 'teste@teste.com',
       endereco: { cep: '02076040', logradouro: 'Rua A', numero: '1', complemento: '', bairro: 'X', localidade: 'São Paulo', uf: 'SP' },
     },
-    destinatario: {
+    delivery: {
+      cepOrigem: '02076040', cepDestino: '03027000',
+      embalagem: { altura: 30, largura: 30, comprimento: 30, peso: 500, diametro: 0 },
+    },
+    contact: {
       nome: 'RODNEY BONIFACIO', cpfCnpj: '22571976826', celular: '11911544095', email: 'r@r.com',
       endereco: { cep: '03027000', logradouro: 'Rua Xavantes', numero: '718', complemento: 'Sala 120', bairro: 'Brás', localidade: 'São Paulo', uf: 'SP' },
     },
+    valorDeclarado: 20,
     itensDeclaracaoConteudo: [{ conteudo: 'calca', quantidade: '1', valor: '20.00' }],
   };
 
