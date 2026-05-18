@@ -17,6 +17,8 @@ export const useCotacao = () => {
     const [isLoadingCotacao, setIsLoading] = useState(false);
     const [cotacaoError, setCotacaoError] = useState<string | null>(null);
     const ultimaReversaRef = useRef<boolean>(false);
+    const inFlightKeyRef = useRef<string | null>(null);
+    const lastRequestIdRef = useRef<number>(0);
 
     const mutation = useMutation({
         mutationFn: async (requestData: any) => {
