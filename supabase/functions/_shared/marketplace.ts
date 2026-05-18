@@ -96,12 +96,24 @@ const normalizeMarketplacePessoa = (pessoa: any) => {
   };
 };
 
+const cleanObject = (obj: Record<string, any>) => Object.fromEntries(
+  Object.entries(obj).filter(([, value]) => value !== undefined && value !== null && value !== '')
+);
+
+const sanitizeMarketplaceCotacao = (cotacao: any, emissaoPayload?: any) => cleanObject({
+  // Contrato público v2.2 do POST /emissoes: não enviar campos internos/longos da UI
+  codigoServico: cotacao?.codigoServico,
+  nomeServico: cotacao?.nomeServico,
+  preco: Number(cotacao?.preco ?? cotacao?.valorTotal ?? cotacao?.valor ?? 0),
+  valorDeclarado: emissaoPayload?.valorDeclarado ?? cotacao?.valorDeclarado,
+});
+
 async function refreshMarketplaceCotacao(auth: { apiKey: string; token: string }, emissaoPayload: any, remetenteObj: any): Promise<any> {
   const cotacaoAtual = emissaoPayload?.cotacao || {};
   const cepOrigem = digits(remetenteObj?.endereco?.cep || emissaoPayload?.cepOrigem);
   const cepDestino = digits(emissaoPayload?.destinatario?.endereco?.cep || emissaoPayload?.cepDestino);
 
-  if (!cepOrigem || !cepDestino || !emissaoPayload?.embalagem) return cotacaoAtual;
+  if (!cepOrigem || !cepDestino || !emissaoPayload?.embalagem) return sanitizeMarketplaceCotacao(cotacaoAtual, emissaoPayload);
 
   try {
     const r = await fetch(`${MARKETPLACE_BASE}/frete/cotacao`, {
@@ -122,7 +134,7 @@ async function refreshMarketplaceCotacao(auth: { apiKey: string; token: string }
     const cotacoes = Array.isArray(j?.cotacoes) ? j.cotacoes : [];
     if (!r.ok || !cotacoes.length) {
       console.warn('[MP] recotação não retornou opções:', r.status, JSON.stringify(j).slice(0, 300));
-      return cotacaoAtual;
+      return sanitizeMarketplaceCotacao(cotacaoAtual, emissaoPayload);
     }
 
     const codigo = String(cotacaoAtual?.codigoServico || '').trim();
@@ -148,18 +160,11 @@ async function refreshMarketplaceCotacao(auth: { apiKey: string; token: string }
       temId: Boolean(escolhida?.id),
     });
 
-    // Trim para evitar campos longos (ex: imagem URL) que a API v2.2 rejeita como "nota inválida"
-    return {
-      id: escolhida?.id ?? cotacaoAtual?.id,
-      codigoServico: escolhida?.codigoServico ?? cotacaoAtual?.codigoServico,
-      cardpost: escolhida?.cardpost ?? cotacaoAtual?.cardpost,
-      customerId: escolhida?.customerId ?? cotacaoAtual?.customerId,
-      preco: escolhida?.preco ?? cotacaoAtual?.preco,
-      prazo: escolhida?.prazo ?? cotacaoAtual?.prazo,
-    };
+    // Trim para evitar campos longos/privados (ex: imagem URL, origem, embalagem) que a API v2.2 pode repassar para a pré-postagem.
+    return sanitizeMarketplaceCotacao({ ...cotacaoAtual, ...escolhida }, emissaoPayload);
   } catch (e: any) {
     console.warn('[MP] erro na recotação antes da emissão:', e?.message);
-    return cotacaoAtual;
+    return sanitizeMarketplaceCotacao(cotacaoAtual, emissaoPayload);
   }
 }
 
