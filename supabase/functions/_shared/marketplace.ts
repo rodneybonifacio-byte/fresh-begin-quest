@@ -105,9 +105,13 @@ const truncate = (value: any, max: number) => String(value || '').trim().slice(0
 
 const sanitizeMarketplaceCotacao = (cotacao: any, emissaoPayload?: any) => cleanObject({
   // Contrato público v2.2 do POST /emissoes: não enviar campos internos/longos da UI
+  // IMPORTANTE: o `id` é necessário — a API usa para recuperar a cotação salva (com CEPs origem/destino).
+  id: cotacao?.id,
   codigoServico: cotacao?.codigoServico,
   nomeServico: cotacao?.nomeServico,
   preco: Number(cotacao?.preco ?? cotacao?.valorTotal ?? cotacao?.valor ?? 0),
+  prazo: cotacao?.prazo,
+  transportadora: cotacao?.transportadora,
 });
 
 const normalizeMarketplaceItem = (item: any, embalagemPesoGramas = 1) => {
