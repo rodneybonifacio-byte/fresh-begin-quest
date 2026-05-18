@@ -41,7 +41,7 @@ export const CotacaoList = ({
     if (isLoading) {
         return (
             <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-                {[...Array(Math.min(5, maxItems))].map((_, index) => (
+                {[...Array(Math.min(5, maxItems ?? 5))].map((_, index) => (
                     <div key={index} className="bg-card rounded-xl shadow-lg p-4 border-2 border-border animate-pulse">
                         <div className="gap-2 mb-2 w-full flex flex-col">
                             <div className="flex items-center justify-between">
