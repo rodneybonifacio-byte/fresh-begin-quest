@@ -7,24 +7,27 @@ Deno.serve(async (req) => {
   const auth = await getMarketplaceAuth();
   if (!auth) return new Response('{"error":"no auth"}', { status: 500 });
 
+  const endereco = (cep: string, log: string, num: string, comp: string, bairro: string) => ({
+    cep, logradouro: log, numero: num, complemento: comp, bairro, localidade: 'São Paulo', uf: 'SP',
+  });
+  const sender = {
+    nome: 'TESTE EMISSOR', cpfCnpj: '11144477735', celular: '11999999999', email: 'teste@teste.com',
+    endereco: endereco('02076040', 'Rua A', '1', '', 'X'),
+  };
+  const destinatario = {
+    nome: 'RODNEY BONIFACIO', cpfCnpj: '22571976826', celular: '11911544095', email: 'r@r.com',
+    endereco: endereco('03027000', 'Rua Xavantes', '718', 'Sala 120', 'Brás'),
+  };
   const base = {
-    cotacao: {
-      codigoServico: 'nextdayhub', nomeServico: 'BRHUB NEXT DAY',
-      preco: '10.92', valorTotal: '10.92', valor: '10.92', prazo: 1,
-    },
-    sender: {
-      nome: 'TESTE EMISSOR', cpfCnpj: '11144477735', celular: '11999999999',
-      email: 'teste@teste.com',
-      endereco: { cep: '02076040', logradouro: 'Rua A', numero: '1', complemento: '', bairro: 'X', localidade: 'São Paulo', uf: 'SP' },
-    },
+    cotacao: { codigoServico: 'nextdayhub', nomeServico: 'BRHUB NEXT DAY', preco: '10.92', valorTotal: '10.92', valor: '10.92', prazo: 1 },
+    sender, remetente: sender,
+    contact: destinatario, destinatario, recipient: destinatario,
     delivery: {
       cepOrigem: '02076040', cepDestino: '03027000',
       embalagem: { altura: 30, largura: 30, comprimento: 30, peso: 500, diametro: 0 },
     },
-    contact: {
-      nome: 'RODNEY BONIFACIO', cpfCnpj: '22571976826', celular: '11911544095', email: 'r@r.com',
-      endereco: { cep: '03027000', logradouro: 'Rua Xavantes', numero: '718', complemento: 'Sala 120', bairro: 'Brás', localidade: 'São Paulo', uf: 'SP' },
-    },
+    embalagem: { altura: 30, largura: 30, comprimento: 30, peso: 500, diametro: 0 },
+    cepOrigem: '02076040', cepDestino: '03027000',
     valorDeclarado: 20,
     itensDeclaracaoConteudo: [{ conteudo: 'calca', quantidade: '1', valor: '20.00' }],
   };
