@@ -488,6 +488,18 @@ serve(async (req) => {
 
     // 🔀 ROTEADOR DE ORIGEM: Marketplace vs BRHUB
     let origemCotacao = String(emissaoPayload?.cotacao?.origem || 'brhub').toLowerCase();
+
+    // Códigos Correios (SEDEX/PAC) sempre via BRHUB nativo — Marketplace tem bug no campo "pedido/nota"
+    const codigoServicoInicial = String(emissaoPayload?.cotacao?.codigoServico || '').trim();
+    if (origemCotacao === 'marketplace' && /^\d{4,5}$/.test(codigoServicoInicial)) {
+      console.log(`[ROUTER] Forçando ${codigoServicoInicial} para BRHUB nativo (marketplace bug pedido/nota)`);
+      origemCotacao = 'brhub';
+      if (emissaoPayload?.cotacao) {
+        emissaoPayload.cotacao.origem = 'brhub';
+        delete emissaoPayload.cotacao.idLote;
+      }
+    }
+
     if (origemCotacao === 'brhub' && !emissaoPayload?.cotacao?.idLote) {
       const codigoServicoCotacao = String(emissaoPayload?.cotacao?.codigoServico || '');
       console.log(`[BRHUB] serviço ${codigoServicoCotacao} sem idLote; recotando antes da emissão`);
