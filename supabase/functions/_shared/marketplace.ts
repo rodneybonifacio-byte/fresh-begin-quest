@@ -233,6 +233,18 @@ export async function emitirEtiquetaMarketplace(
   const shortRef = Date.now().toString(36).toUpperCase().slice(-12);
   const numeroNotaFiscal = (numeroNotaFiscalRaw || shortRef).slice(0, 20);
   const numeroPedido = (numeroPedidoRaw || shortRef).slice(0, 20);
+  const valorDeclaradoNumerico = Number(emissaoPayload?.valorDeclarado ?? 0);
+  const isCorreios = /^\d{4,5}$/.test(codigoCotacao);
+  const pesoTransportadora = isCorreios
+    ? (pesoBruto > 30 ? Math.round(pesoBruto) : Math.round(pesoBruto * 1000))
+    : embalagem.peso;
+  const dcItens = (itensDeclaracaoConteudo?.length ? itensDeclaracaoConteudo : [{ conteudo: 'Mercadoria', quantidade: 1, valor: valorDeclaradoNumerico || 1 }])
+    .map((item: any) => ({
+      id: numeroPedido,
+      content: String(item?.conteudo || 'Mercadoria').slice(0, 50),
+      quantity: Math.max(1, Math.trunc(Number(item?.quantidade || 1) || 1)),
+      value: Number(Number(item?.valor || valorDeclaradoNumerico || 1).toFixed(2)),
+    }));
 
   // Payload conforme doc oficial v2.3 — POST /emissoes
 
@@ -253,9 +265,80 @@ export async function emitirEtiquetaMarketplace(
     chaveNFe: chaveNFe.length === 44 ? chaveNFe : undefined,
     numeroNotaFiscal,
     numeroPedido,
+    numero_nota_fiscal: numeroNotaFiscal,
+    numero_pedido: numeroPedido,
     nota: numeroNotaFiscal,
     pedido: numeroPedido,
+    request: numeroPedido,
+    invoice: numeroNotaFiscal,
+    integratorId: numeroPedido,
     observacao: emissaoPayload?.observacao || undefined,
+    sender: remetente ? cleanObject({
+      contact: remetente.nome,
+      cep: remetente.cep,
+      federalId: remetente.cpfCnpj,
+      address: remetente.logradouro,
+      neighborhood: remetente.bairro,
+      city: remetente.localidade,
+      state: remetente.uf,
+      number: remetente.numero || 'S/N',
+      extent: remetente.complemento,
+    }) : undefined,
+    delivery: destinatario ? cleanObject({
+      delivery: destinatario.nome,
+      name: destinatario.nome,
+      contact: destinatario.celular,
+      cep: destinatario.cep,
+      address: destinatario.logradouro,
+      neighborhood: destinatario.bairro,
+      city: destinatario.localidade,
+      state: destinatario.uf,
+      number: destinatario.numero || 'S/N',
+      extent: destinatario.complemento,
+    }) : undefined,
+    contact: destinatario ? cleanObject({
+      phone: destinatario.celular || remetente?.celular || '0000000000',
+      mail: destinatario.email || remetente?.email || 'sem@email.com',
+      federalid: remetente?.cpfCnpj,
+      invoice: numeroNotaFiscal,
+      care: destinatario.nome,
+      note: emissaoPayload?.observacao || '',
+      request: numeroPedido,
+      save: true,
+      whatsapp: false,
+      observation: emissaoPayload?.observacao || '',
+    }) : undefined,
+    object: cleanObject({
+      object: '',
+      package: '',
+      ar: false,
+      ardigital: false,
+      ownhand: false,
+      ap: false,
+      weight: pesoTransportadora,
+      quantity: Number(emissaoPayload?.quantidadeVolumes || emissaoPayload?.embalagem?.quantidadeVolumes || 1),
+      type: '001',
+    }),
+    complement: cleanObject({
+      height: embalagem.altura,
+      width: embalagem.largura,
+      length: embalagem.comprimento,
+      value: valorDeclaradoNumerico || Number(cotacao?.preco || cotacao?.valorTotal || 1),
+      total: valorDeclaradoNumerico || Number(cotacao?.preco || cotacao?.valorTotal || 1),
+      diameter: embalagem.diametro,
+      type: '001',
+    }),
+    service: codigoCotacao,
+    serviceCode: codigoCotacao,
+    service_code: codigoCotacao,
+    servico: codigoCotacao,
+    dc: dcItens,
+    nf: cleanObject({
+      nfeValue: valorDeclaradoNumerico || Number(cotacao?.preco || cotacao?.valorTotal || 1),
+      nfeNumber: Number(digits(numeroNotaFiscal).slice(-9)) || 0,
+      nfeSerie: 1,
+      nfeKey: chaveNFe.length === 44 ? chaveNFe : undefined,
+    }),
   });
 
   console.log('[MP] POST /emissoes', JSON.stringify({
@@ -267,6 +350,8 @@ export async function emitirEtiquetaMarketplace(
     cepDestino: mpPayload.cepDestino,
     pedidoLen: String(mpPayload.pedido || '').length,
     notaLen: String(mpPayload.nota || '').length,
+    requestLen: String(mpPayload.contact?.request || '').length,
+    dcIdLen: String(mpPayload.dc?.[0]?.id || '').length,
   }));
 
   const r = await fetch(`${MARKETPLACE_BASE}/emissoes`, {
