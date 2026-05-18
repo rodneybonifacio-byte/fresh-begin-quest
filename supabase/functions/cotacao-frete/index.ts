@@ -250,13 +250,14 @@ serve(async (req) => {
       console.log('🎯 Aplicando multiplicador do grupo:', grupoRegras.multiplicador);
 
       cotacaoData.data = cotacaoData.data.map((cotacao: any) => {
-        const valorOriginal = parseFloat(cotacao.valorTotal || cotacao.valor || '0');
+        const valorOriginal = parseFloat(cotacao.valorTotal || cotacao.valor || cotacao.preco || '0');
         const valorComMultiplicador = (valorOriginal * grupoRegras.multiplicador).toFixed(2);
 
         console.log(`  📦 [${cotacao.origem}] ${cotacao.nomeServico}: R$ ${valorOriginal} → R$ ${valorComMultiplicador} (×${grupoRegras.multiplicador})`);
 
         return {
           ...cotacao,
+          preco: valorComMultiplicador,
           valorTotal: valorComMultiplicador,
           valor: valorComMultiplicador,
           valorOriginalSemGrupo: valorOriginal,
