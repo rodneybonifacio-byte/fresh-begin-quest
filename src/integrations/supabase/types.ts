@@ -789,59 +789,170 @@ export type Database = {
       }
       emissoes_marketplace: {
         Row: {
+          altura: number | null
           cep_destino: string | null
           cep_origem: string | null
+          chave_nfe: string | null
           cliente_id: string
+          cobrada: boolean
           codigo_objeto: string | null
           codigo_servico: string | null
+          comprimento: number | null
           created_at: string
+          data_entrega: string | null
+          data_postagem: string | null
+          data_previsao_entrega: string | null
+          destinatario_bairro: string | null
+          destinatario_celular: string | null
+          destinatario_cep: string | null
+          destinatario_cidade: string | null
+          destinatario_complemento: string | null
+          destinatario_cpf_cnpj: string | null
+          destinatario_logradouro: string | null
           destinatario_nome: string | null
+          destinatario_numero: string | null
+          destinatario_uf: string | null
+          historico_rastreio: Json | null
           id: string
+          largura: number | null
           nome_servico: string | null
+          notificou_aguardando_retirada: boolean
+          notificou_atraso: boolean
+          notificou_avaliacao: boolean
+          notificou_entregue: boolean
+          notificou_etiqueta_criada: boolean
+          notificou_postado: boolean
+          notificou_saiu_entrega: boolean
+          numero_nota_fiscal: string | null
+          observacao: string | null
           payload_request: Json | null
           payload_response: Json | null
+          peso: number | null
           prazo: number | null
+          remetente_cpf_cnpj: string | null
+          remetente_id: string | null
+          remetente_nome: string | null
           status: string
+          status_rastreio: string | null
+          ultimo_evento_em: string | null
+          ultimo_rastreio_em: string | null
           updated_at: string
           uuid_marketplace: string
+          valor_custo: number | null
+          valor_declarado: number | null
+          valor_nota_fiscal: number | null
           valor_original: number | null
           valor_total: number | null
         }
         Insert: {
+          altura?: number | null
           cep_destino?: string | null
           cep_origem?: string | null
+          chave_nfe?: string | null
           cliente_id: string
+          cobrada?: boolean
           codigo_objeto?: string | null
           codigo_servico?: string | null
+          comprimento?: number | null
           created_at?: string
+          data_entrega?: string | null
+          data_postagem?: string | null
+          data_previsao_entrega?: string | null
+          destinatario_bairro?: string | null
+          destinatario_celular?: string | null
+          destinatario_cep?: string | null
+          destinatario_cidade?: string | null
+          destinatario_complemento?: string | null
+          destinatario_cpf_cnpj?: string | null
+          destinatario_logradouro?: string | null
           destinatario_nome?: string | null
+          destinatario_numero?: string | null
+          destinatario_uf?: string | null
+          historico_rastreio?: Json | null
           id?: string
+          largura?: number | null
           nome_servico?: string | null
+          notificou_aguardando_retirada?: boolean
+          notificou_atraso?: boolean
+          notificou_avaliacao?: boolean
+          notificou_entregue?: boolean
+          notificou_etiqueta_criada?: boolean
+          notificou_postado?: boolean
+          notificou_saiu_entrega?: boolean
+          numero_nota_fiscal?: string | null
+          observacao?: string | null
           payload_request?: Json | null
           payload_response?: Json | null
+          peso?: number | null
           prazo?: number | null
+          remetente_cpf_cnpj?: string | null
+          remetente_id?: string | null
+          remetente_nome?: string | null
           status?: string
+          status_rastreio?: string | null
+          ultimo_evento_em?: string | null
+          ultimo_rastreio_em?: string | null
           updated_at?: string
           uuid_marketplace: string
+          valor_custo?: number | null
+          valor_declarado?: number | null
+          valor_nota_fiscal?: number | null
           valor_original?: number | null
           valor_total?: number | null
         }
         Update: {
+          altura?: number | null
           cep_destino?: string | null
           cep_origem?: string | null
+          chave_nfe?: string | null
           cliente_id?: string
+          cobrada?: boolean
           codigo_objeto?: string | null
           codigo_servico?: string | null
+          comprimento?: number | null
           created_at?: string
+          data_entrega?: string | null
+          data_postagem?: string | null
+          data_previsao_entrega?: string | null
+          destinatario_bairro?: string | null
+          destinatario_celular?: string | null
+          destinatario_cep?: string | null
+          destinatario_cidade?: string | null
+          destinatario_complemento?: string | null
+          destinatario_cpf_cnpj?: string | null
+          destinatario_logradouro?: string | null
           destinatario_nome?: string | null
+          destinatario_numero?: string | null
+          destinatario_uf?: string | null
+          historico_rastreio?: Json | null
           id?: string
+          largura?: number | null
           nome_servico?: string | null
+          notificou_aguardando_retirada?: boolean
+          notificou_atraso?: boolean
+          notificou_avaliacao?: boolean
+          notificou_entregue?: boolean
+          notificou_etiqueta_criada?: boolean
+          notificou_postado?: boolean
+          notificou_saiu_entrega?: boolean
+          numero_nota_fiscal?: string | null
+          observacao?: string | null
           payload_request?: Json | null
           payload_response?: Json | null
+          peso?: number | null
           prazo?: number | null
+          remetente_cpf_cnpj?: string | null
+          remetente_id?: string | null
+          remetente_nome?: string | null
           status?: string
+          status_rastreio?: string | null
+          ultimo_evento_em?: string | null
+          ultimo_rastreio_em?: string | null
           updated_at?: string
           uuid_marketplace?: string
+          valor_custo?: number | null
+          valor_declarado?: number | null
+          valor_nota_fiscal?: number | null
           valor_original?: number | null
           valor_total?: number | null
         }
