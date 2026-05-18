@@ -116,11 +116,11 @@ const normalizeMarketplaceItem = (item: any, embalagemPesoGramas = 1) => {
   // Correios exige descrição clara com mínimo 5 caracteres; a API também monta uma "nota" interna <= 20.
   // Valor é o TOTAL do item (não unitário), conforme schema público de itensDeclaracaoConteudo.
   const valorTotal = Number(rawValor.toFixed(2));
-  const valorTexto = String(valorTotal);
+  const valorTexto = valorTotal.toFixed(2);
   const qtdTexto = String(Math.trunc(quantidade));
   const valLen = valorTexto.length;
   const qtdLen = qtdTexto.length;
-  const suffixLen = 3 /* " - " */ + qtdFormatadaLen + 3 /* " - " */ + valLen;
+  const suffixLen = 3 /* " - " */ + qtdLen + 3 /* " - " */ + valLen;
   const maxDescricao = Math.max(5, 20 - suffixLen);
   const descricaoCurta = truncate(
     normalizeText(item?.conteudo || item?.descricao || item?.descric || 'MERCADORIA').replace(/[^A-Z0-9]/g, '') || 'MERCADORIA',
@@ -138,6 +138,8 @@ const normalizeMarketplaceItem = (item: any, embalagemPesoGramas = 1) => {
 
 const normalizeMarketplaceItens = (items: any[], emissaoPayload: any) => {
   const totalDeclarado = Number(emissaoPayload?.valorDeclarado ?? 0);
+  const embalagemPeso = Number(emissaoPayload?.embalagem?.peso ?? 1) || 1;
+  const pesoGramas = embalagemPeso > 30 ? embalagemPeso : embalagemPeso * 1000;
   const totalItens = items.reduce((sum, item) => {
     const qtd = Number(item?.quantidade || 1) || 1;
     const valor = Number(String(item?.valor || 0).replace(',', '.')) || 0;
@@ -151,10 +153,11 @@ const normalizeMarketplaceItens = (items: any[], emissaoPayload: any) => {
       conteudo: 'PRODUT',
       quantidade: 1,
       valor: (totalDeclarado > 0 ? totalDeclarado : totalItens).toFixed(2),
-    }, true)];
+      peso: pesoGramas,
+    }, pesoGramas)];
   }
 
-  return items.map((item) => normalizeMarketplaceItem(item));
+  return items.map((item) => normalizeMarketplaceItem(item, pesoGramas));
 };
 
 async function refreshMarketplaceCotacao(auth: { apiKey: string; token: string }, emissaoPayload: any, remetenteObj: any): Promise<any> {
