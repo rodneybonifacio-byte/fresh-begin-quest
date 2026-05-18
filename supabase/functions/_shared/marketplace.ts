@@ -100,6 +100,8 @@ const cleanObject = (obj: Record<string, any>) => Object.fromEntries(
   Object.entries(obj).filter(([, value]) => value !== undefined && value !== null && value !== '')
 );
 
+const truncate = (value: any, max: number) => String(value || '').trim().slice(0, max);
+
 const sanitizeMarketplaceCotacao = (cotacao: any, emissaoPayload?: any) => cleanObject({
   // Contrato público v2.2 do POST /emissoes: não enviar campos internos/longos da UI
   codigoServico: cotacao?.codigoServico,
@@ -222,29 +224,29 @@ export async function emitirEtiquetaMarketplace(
   const cotacaoObj = await refreshMarketplaceCotacao(auth, emissaoPayload, remetenteObj);
   const itensDeclaracaoConteudo = Array.isArray(emissaoPayload?.itensDeclaracaoConteudo)
     ? emissaoPayload.itensDeclaracaoConteudo.map((item: any) => ({
-        descricao: String(item?.descricao || item?.conteudo || 'Mercadoria').trim(),
-        conteudo: String(item?.conteudo || item?.descricao || 'Mercadoria').trim(),
+        descricao: truncate(item?.descricao || item?.conteudo || 'Mercadoria', 60),
         quantidade: Number(item?.quantidade || 1),
         valor: Number(String(item?.valor || 0).replace(',', '.')),
       }))
     : emissaoPayload?.itensDeclaracaoConteudo;
 
   // Payload conforme doc oficial v2.2 — POST /emissoes
-  const mpPayload: any = {
+  const mpPayload: any = cleanObject({
     remetente: remetenteMarketplace,
     destinatario: destinatarioMarketplace,
     embalagem: embalagemMarketplace,
     cotacao: cotacaoObj,
-    valorDeclarado: emissaoPayload?.valorDeclarado ?? 0,
-    valorNotaFiscal: emissaoPayload?.valorNotaFiscal ?? 0,
     itensDeclaracaoConteudo,
-    observacao: emissaoPayload?.observacao,
-    chaveNFe: emissaoPayload?.chaveNFe,
-    numeroNotaFiscal: emissaoPayload?.numeroNotaFiscal,
     logisticaReversa: emissaoPayload?.logisticaReversa ?? 'N',
     cienteObjetoNaoProibido: emissaoPayload?.cienteObjetoNaoProibido ?? true,
-    externoId: emissaoPayload?.externoId,
-  };
+  });
+
+  const chaveNFe = digits(emissaoPayload?.chaveNFe);
+  const numeroNotaFiscal = truncate(emissaoPayload?.numeroNotaFiscal, 20);
+  const observacao = truncate(emissaoPayload?.observacao, 20);
+  if (chaveNFe.length === 44) mpPayload.chaveNFe = chaveNFe;
+  if (numeroNotaFiscal) mpPayload.numeroNotaFiscal = numeroNotaFiscal;
+  if (observacao) mpPayload.observacao = observacao;
 
   console.log('[MP] POST /emissoes, codigoServico:', mpPayload.cotacao?.codigoServico);
 
