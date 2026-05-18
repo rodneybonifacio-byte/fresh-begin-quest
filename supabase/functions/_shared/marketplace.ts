@@ -168,7 +168,7 @@ const normalizeMarketplaceItem = (item: any, embalagemPesoGramas = 1) => {
   };
 };
 
-const normalizeMarketplaceItens = (items: any[], emissaoPayload: any) => {
+const normalizeMarketplaceItens = (items: any[], emissaoPayload: any, forceCompact = false) => {
   const totalDeclarado = Number(emissaoPayload?.valorDeclarado ?? 0);
   const embalagemPeso = Number(emissaoPayload?.embalagem?.peso ?? 1) || 1;
   const pesoGramas = embalagemPeso > 30 ? embalagemPeso : embalagemPeso * 1000;
@@ -178,15 +178,16 @@ const normalizeMarketplaceItens = (items: any[], emissaoPayload: any) => {
     return sum + valor;
   }, 0);
 
-  // Para envios sem NF, a pré-postagem Marketplace monta internamente o campo "nota".
-  // Consolidar em 1 item curto evita estouro quando há muitas unidades (ex.: 20 camisetas).
-  if (!digits(emissaoPayload?.chaveNFe) && (items.length > 1 || Number(items[0]?.quantidade || 1) > 1)) {
-    return [normalizeMarketplaceItem({
-      conteudo: 'PRODUT',
+  // Para serviços Correios sem NF a API monta um campo interno "nota" (<=20 chars).
+  // Consolidamos em 1 item ultra-curto para garantir caber qualquer formatação ("${conteudo} ${qtd}x R$${valor}").
+  if (forceCompact || (!digits(emissaoPayload?.chaveNFe) && (items.length > 1 || Number(items[0]?.quantidade || 1) > 1))) {
+    const valorBruto = Math.max(1, Math.round(totalDeclarado > 0 ? totalDeclarado : totalItens));
+    return [{
+      conteudo: 'PROD',           // 4 chars
       quantidade: 1,
-      valor: (totalDeclarado > 0 ? totalDeclarado : totalItens).toFixed(2),
-      peso: pesoGramas,
-    }, pesoGramas)];
+      valor: valorBruto,          // inteiro evita "." e zeros
+      peso: Math.max(1, Math.round(pesoGramas)),
+    }];
   }
 
   return items.map((item) => normalizeMarketplaceItem(item, pesoGramas));
@@ -308,8 +309,10 @@ export async function emitirEtiquetaMarketplace(
   const destinatarioMarketplace = normalizeMarketplacePessoa(emissaoPayload?.destinatario);
   const embalagemMarketplace = normalizeMarketplaceEmbalagem(emissaoPayload?.embalagem);
   const cotacaoObj = await refreshMarketplaceCotacao(auth, emissaoPayload, remetenteObj);
+  const isCorreios = isMarketplaceCorreiosService(cotacaoObj);
+  const chaveNFe = digits(emissaoPayload?.chaveNFe);
   const itensDeclaracaoConteudo = Array.isArray(emissaoPayload?.itensDeclaracaoConteudo)
-    ? normalizeMarketplaceItens(emissaoPayload.itensDeclaracaoConteudo, emissaoPayload)
+    ? normalizeMarketplaceItens(emissaoPayload.itensDeclaracaoConteudo, emissaoPayload, isCorreios && !chaveNFe)
     : emissaoPayload?.itensDeclaracaoConteudo;
 
   // Payload conforme doc oficial v2.2 — POST /emissoes
@@ -328,12 +331,17 @@ export async function emitirEtiquetaMarketplace(
     cienteObjetoNaoProibido: emissaoPayload?.cienteObjetoNaoProibido ?? true,
   });
 
-  const chaveNFe = digits(emissaoPayload?.chaveNFe);
   const numeroNotaFiscal = truncate(emissaoPayload?.numeroNotaFiscal, 20);
   const observacao = truncate(emissaoPayload?.observacao, 20);
   if (chaveNFe.length === 44) mpPayload.chaveNFe = chaveNFe;
-  if (numeroNotaFiscal && !isMarketplaceCorreiosService(mpPayload.cotacao)) mpPayload.numeroNotaFiscal = numeroNotaFiscal;
-  if (observacao && !isMarketplaceCorreiosService(mpPayload.cotacao)) mpPayload.observacao = observacao;
+  if (isCorreios && !chaveNFe) {
+    // Correios pré-postagem exige campo "nota" curto (<=20). Garantir valor controlado.
+    mpPayload.numeroNotaFiscal = truncate(numeroNotaFiscal || 'S/N', 20);
+    mpPayload.nota = mpPayload.numeroNotaFiscal;
+  } else {
+    if (numeroNotaFiscal) mpPayload.numeroNotaFiscal = numeroNotaFiscal;
+    if (observacao) mpPayload.observacao = observacao;
+  }
 
   console.log('[MP] POST /emissoes, payload saneado:', JSON.stringify({
     codigoServico: mpPayload.cotacao?.codigoServico,
