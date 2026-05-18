@@ -228,7 +228,7 @@ export const ListaEmissoes = () => {
       setIsLoading(true);
       const {
         error
-      } = await supabase.functions.invoke('cancelar-etiqueta-admin', {
+      } = await getSupabaseWithAuth().functions.invoke('cancelar-etiqueta-admin', {
         body: {
           codigoObjeto: emissao.codigoObjeto,
           motivo: 'Cancelado pelo usuário',
