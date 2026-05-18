@@ -69,36 +69,26 @@ export async function emitirEtiquetaMarketplace(
     throw new Error('Marketplace indisponível: credenciais ausentes');
   }
 
-  // Mapeamento BRHUB -> Marketplace (POST /emissoes)
-  // Envia múltiplas variantes (sender/remetente, contact/destinatario, delivery aninhado)
-  // para máxima compatibilidade com o DTO do Marketplace.
-  const remetente = emissaoPayload?.remetente;
-  const destinatario = emissaoPayload?.destinatario;
-  const embalagem = emissaoPayload?.embalagem;
-  const cepOrigem = remetente?.endereco?.cep;
-  const cepDestino = destinatario?.endereco?.cep;
-
+  // Payload conforme doc oficial v2.2 — POST /emissoes
+  // Schema público: { remetente, destinatario, embalagem, cotacao, ... }
+  // O backend Marketplace resolve customerId/cardpost do tenant automaticamente.
   const mpPayload: any = {
+    remetente: emissaoPayload?.remetente,
+    destinatario: emissaoPayload?.destinatario,
+    embalagem: emissaoPayload?.embalagem,
     cotacao: emissaoPayload?.cotacao,
-    codigoServico: emissaoPayload?.cotacao?.codigoServico,
-    sender: remetente,
-    remetente,
-    contact: destinatario,
-    destinatario,
-    recipient: destinatario,
-    delivery: { cepOrigem, cepDestino, embalagem },
-    embalagem,
-    cepOrigem,
-    cepDestino,
     valorDeclarado: emissaoPayload?.valorDeclarado ?? 0,
     valorNotaFiscal: emissaoPayload?.valorNotaFiscal ?? 0,
     itensDeclaracaoConteudo: emissaoPayload?.itensDeclaracaoConteudo,
     observacao: emissaoPayload?.observacao,
+    chaveNFe: emissaoPayload?.chaveNFe,
+    numeroNotaFiscal: emissaoPayload?.numeroNotaFiscal,
     logisticaReversa: emissaoPayload?.logisticaReversa ?? 'N',
     cienteObjetoNaoProibido: emissaoPayload?.cienteObjetoNaoProibido ?? true,
+    externoId: emissaoPayload?.externoId,
   };
 
-  console.log('[MP] POST /emissoes, codigoServico:', mpPayload.codigoServico);
+  console.log('[MP] POST /emissoes, codigoServico:', mpPayload.cotacao?.codigoServico);
 
   const r = await fetch(`${MARKETPLACE_BASE}/emissoes`, {
     method: 'POST',
