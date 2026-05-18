@@ -491,10 +491,11 @@ serve(async (req) => {
     // 🔀 ROTEADOR DE ORIGEM: Marketplace vs BRHUB
     let origemCotacao = String(emissaoPayload?.cotacao?.origem || 'brhub').toLowerCase();
     const codigoServicoCotacao = String(emissaoPayload?.cotacao?.codigoServico || '');
-    if (origemCotacao === 'marketplace' && BRHUB_NATIVE_MARKETPLACE_CODES.has(codigoServicoCotacao)) {
-      console.log(`[MP] serviço ${codigoServicoCotacao} é nativo BRHUB; roteando emissão pela API principal`);
-      emissaoPayload.cotacao.origem = 'brhub';
-      origemCotacao = 'brhub';
+    const cotacaoSemIdLoteBrhub = !emissaoPayload?.cotacao?.idLote && emissaoPayload?.cotacao?.id != null;
+    if (origemCotacao === 'brhub' && BRHUB_NATIVE_MARKETPLACE_CODES.has(codigoServicoCotacao) && cotacaoSemIdLoteBrhub) {
+      console.log(`[MP] serviço ${codigoServicoCotacao} veio sem idLote BRHUB; mantendo emissão pelo Marketplace`);
+      emissaoPayload.cotacao.origem = 'marketplace';
+      origemCotacao = 'marketplace';
     }
     console.log(`🔀 Origem da cotação: ${origemCotacao.toUpperCase()}`);
 
