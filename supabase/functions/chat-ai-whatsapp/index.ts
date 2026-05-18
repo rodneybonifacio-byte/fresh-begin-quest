@@ -1583,20 +1583,40 @@ EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de a
         try {
           const imageAnalysis = await analyzeImageWithGemini(mediaUrl, geminiKey);
           console.log("🖼️ Gemini extraiu:", JSON.stringify(imageAnalysis).substring(0, 200));
-          
+
+          // === CROSS-CHECK: comparar OCR com último código textual no histórico ===
+          // Evita alucinação tipo "li AD111049135BR na foto" quando cliente havia digitado AD442399973BR
+          const TRACKING_RE = /\b([A-Z]{2}\d{9}[A-Z]{2})\b/g;
+          let lastTextualCode: string | null = null;
+          for (let i = history.length - 1; i >= 0; i--) {
+            const m = history[i];
+            if (m.content_type !== "text") continue;
+            const matches = (m.content || "").toUpperCase().match(TRACKING_RE);
+            if (matches && matches.length > 0) { lastTextualCode = matches[matches.length - 1]; break; }
+          }
+          const ocrCode = (imageAnalysis.trackingCode || "").toUpperCase().trim();
+          const codesDiverge = lastTextualCode && ocrCode && lastTextualCode !== ocrCode;
+
           // Compor contexto: dados extraídos da imagem + texto do usuário
           let imageInfo = "";
-          if (imageAnalysis.trackingCode) {
-            imageInfo = `Código de rastreio encontrado na imagem: ${imageAnalysis.trackingCode}. `;
+          if (ocrCode) {
+            imageInfo = `Código de rastreio detectado via OCR na imagem: ${ocrCode}. `;
           }
           if (imageAnalysis.cepOrigem) imageInfo += `CEP origem: ${imageAnalysis.cepOrigem}. `;
           if (imageAnalysis.cepDestino) imageInfo += `CEP destino: ${imageAnalysis.cepDestino}. `;
-          
+
           // Incluir análise completa do Gemini para contexto rico
           const fullDesc = imageAnalysis.fullAnalysis || imageAnalysis.description || "Imagem analisada";
           imageInfo += `Análise visual completa: ${fullDesc}`;
-          
-          userContent = `[O cliente enviou uma imagem. ${imageInfo}]${message ? ` Mensagem do cliente: "${message}"` : " O cliente não escreveu nenhum texto junto à imagem."}`;
+
+          let ocrGuard = "";
+          if (codesDiverge) {
+            ocrGuard = `\n\n⚠️ CONFLITO DE CÓDIGOS DETECTADO: O OCR leu "${ocrCode}" na imagem, mas o cliente já havia mencionado por escrito o código "${lastTextualCode}". OCR de imagem pode estar errado. AÇÃO OBRIGATÓRIA: trate "${lastTextualCode}" como a fonte de verdade. Antes de afirmar QUALQUER dado (endereço, status, destinatário) chame a tool rastrear_objeto com "${lastTextualCode}". NÃO invente endereço a partir da leitura visual da imagem. Se precisar confirmar com o cliente, pergunte: "Confirma que o código é ${lastTextualCode}?"`;
+          } else if (ocrCode) {
+            ocrGuard = `\n\n⚠️ REGRA: o código acima veio de OCR e pode estar errado. Antes de afirmar endereço/status/destinatário, chame OBRIGATORIAMENTE rastrear_objeto com esse código para validar os dados reais do sistema. Nunca extraia endereço de entrega só da leitura visual da imagem — sempre use o retorno do rastrear_objeto como fonte de verdade.`;
+          }
+
+          userContent = `[O cliente enviou uma imagem. ${imageInfo}]${ocrGuard}${message ? `\n\nMensagem do cliente: "${message}"` : "\n\nO cliente não escreveu nenhum texto junto à imagem."}`;
         } catch (e) {
           console.warn("⚠️ Erro Gemini:", e);
           userContent = message || "[imagem não processada]";
