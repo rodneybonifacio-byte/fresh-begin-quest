@@ -78,6 +78,16 @@ const normalizeMarketplacePessoa = (pessoa: any) => {
   const endereco = pessoa?.endereco || pessoa || {};
   const cep = digits(endereco?.cep || pessoa?.cep);
   const cidade = String(endereco?.cidade || endereco?.localidade || pessoa?.cidade || pessoa?.localidade || '').trim();
+  const enderecoNormalizado = {
+    cep,
+    logradouro: String(endereco?.logradouro || pessoa?.logradouro || '').trim(),
+    numero: String(endereco?.numero || pessoa?.numero || '').trim(),
+    complemento: String(endereco?.complemento || pessoa?.complemento || '').trim(),
+    bairro: String(endereco?.bairro || pessoa?.bairro || '').trim(),
+    localidade: cidade,
+    cidade,
+    uf: String(endereco?.uf || pessoa?.uf || '').trim().toUpperCase(),
+  };
   return {
     nome: String(pessoa?.nome || '').trim(),
     cpfCnpj: digits(pessoa?.cpfCnpj || pessoa?.cpf_cnpj),
@@ -85,16 +95,16 @@ const normalizeMarketplacePessoa = (pessoa: any) => {
     celular: digits(pessoa?.celular || pessoa?.telefone || ''),
     telefone: digits(pessoa?.telefone || pessoa?.celular || ''),
     email: String(pessoa?.email || '').trim(),
-    endereco: {
-      cep,
-      logradouro: String(endereco?.logradouro || pessoa?.logradouro || '').trim(),
-      numero: String(endereco?.numero || pessoa?.numero || '').trim(),
-      complemento: String(endereco?.complemento || pessoa?.complemento || '').trim(),
-      bairro: String(endereco?.bairro || pessoa?.bairro || '').trim(),
-      localidade: cidade,
-      cidade,
-      uf: String(endereco?.uf || pessoa?.uf || '').trim().toUpperCase(),
-    },
+    endereco: enderecoNormalizado,
+    enderecoCompleto: `${enderecoNormalizado.logradouro}, ${enderecoNormalizado.numero} - ${enderecoNormalizado.bairro}, ${cidade}/${enderecoNormalizado.uf}`.trim(),
+    cep,
+    logradouro: enderecoNormalizado.logradouro,
+    numero: enderecoNormalizado.numero,
+    complemento: enderecoNormalizado.complemento,
+    bairro: enderecoNormalizado.bairro,
+    localidade: cidade,
+    cidade,
+    uf: enderecoNormalizado.uf,
   };
 };
 
@@ -103,6 +113,12 @@ const cleanObject = (obj: Record<string, any>) => Object.fromEntries(
 );
 
 const truncate = (value: any, max: number) => String(value || '').trim().slice(0, max);
+
+const isMarketplaceCorreiosService = (cotacao: any) => {
+  const codigo = String(cotacao?.codigoServico || '').trim().toLowerCase();
+  const nome = normalizeText(cotacao?.nomeServico);
+  return /^0?\d{4,5}$/.test(codigo) || codigo.includes('hub') || nome.includes('RAPIDO') || nome.includes('ECON') || nome.includes('NEXT DAY') || nome.includes('SAME DAY');
+};
 
 const sanitizeMarketplaceCotacao = (cotacao: any, emissaoPayload?: any) => {
   // A emissão Marketplace depende de campos opacos retornados pela própria cotação
