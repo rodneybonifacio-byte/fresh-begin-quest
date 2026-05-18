@@ -262,27 +262,6 @@ export const Step3Frete = ({
             Nenhum frete disponível para esta rota. Verifique os dados informados.
           </div>}
 
-        {/* Campo de Valor da Nota Fiscal - Apenas para Rodonaves */}
-        {requiresNotaFiscal && cotacaoSelecionado && (
-          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border-2 border-blue-200 dark:border-blue-700 space-y-3 animate-fade-in">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-800/50 rounded-lg">
-                <Receipt className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <p className="font-semibold text-blue-800 dark:text-blue-200">
-                  Rodonaves exige Nota Fiscal
-                </p>
-                <p className="text-sm text-blue-700 dark:text-blue-300">
-                  Informe o valor da nota fiscal para emitir a etiqueta.
-                </p>
-              </div>
-            </div>
-            
-            <div className="relative">
-              <label className="block text-sm font-medium text-blue-700 dark:text-blue-300 mb-1">
-                Valor da Nota Fiscal *
-              </label>
         {/* Campos de Nota Fiscal — Rodonaves, Jadlog, .Package, MaisEnvios */}
         {requiresNotaFiscal && cotacaoSelecionado && (
           <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border-2 border-blue-200 dark:border-blue-700 space-y-4 animate-fade-in">
