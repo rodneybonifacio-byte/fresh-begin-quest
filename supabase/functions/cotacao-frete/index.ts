@@ -51,24 +51,31 @@ async function getMarketplaceAuth(forceRefresh = false): Promise<{ apiKey: strin
 }
 
 async function fetchMarketplaceCotacao(payload: any, auth: { apiKey: string; token: string }) {
-  const peso = Number(payload.embalagem?.peso ?? 0);
+  const pesoRaw = Number(payload.embalagem?.peso ?? 0);
   const embalagemMarketplace = {
-    ...payload.embalagem,
-    peso: peso > 30 ? peso / 1000 : peso,
+    peso: pesoRaw > 30 ? pesoRaw / 1000 : pesoRaw, // kg
+    altura: Number(payload.embalagem?.altura ?? 0),
+    largura: Number(payload.embalagem?.largura ?? 0),
+    comprimento: Number(payload.embalagem?.comprimento ?? 0),
+    diametro: Number(payload.embalagem?.diametro ?? 0),
   };
+
+  const body = {
+    cepOrigem: String(payload.cepOrigem || '').replace(/\D/g, ''),
+    cepDestino: String(payload.cepDestino || '').replace(/\D/g, ''),
+    embalagem: embalagemMarketplace,
+    valorDeclarado: Number(payload.valorDeclarado || 0),
+  };
+  console.log('📤 Marketplace cotacao payload:', JSON.stringify(body));
 
   const response = await fetch(`${MARKETPLACE_BASE}/frete/cotacao`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': auth.apiKey, 'Authorization': `Bearer ${auth.token}` },
-    body: JSON.stringify({
-      cepOrigem: payload.cepOrigem,
-      cepDestino: payload.cepDestino,
-      embalagem: embalagemMarketplace,
-      valorDeclarado: payload.valorDeclarado || 0,
-    }),
+    body: JSON.stringify(body),
   });
 
-  return await response.json();
+  const text = await response.text();
+  try { return JSON.parse(text); } catch { console.error('❌ Marketplace resp não-JSON:', text.slice(0, 300)); return null; }
 }
 
 async function cotarMarketplace(payload: any): Promise<any[]> {
