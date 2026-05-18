@@ -145,6 +145,19 @@ export async function emitirEtiquetaMarketplace(
   if (!cotacao.cepOrigem && cepOrigemFromRem) cotacao.cepOrigem = cepOrigemFromRem;
   if (!cotacao.cepDestino && cepDestinoFromDest) cotacao.cepDestino = cepDestinoFromDest;
 
+  // A API MP exige cotacao.codigo (espelha codigoServico). Sem esse campo o backend
+  // dispara "cotacao.idLote: O campo codigo é obrigatório."
+  if (!cotacao.codigo && cotacao.codigoServico) {
+    cotacao.codigo = String(cotacao.codigoServico);
+  }
+  // Se idLote vier como string vazia ou objeto sem codigo, normaliza/remove
+  if (cotacao.idLote && typeof cotacao.idLote === 'object' && !cotacao.idLote.codigo) {
+    cotacao.idLote.codigo = cotacao.codigo;
+  }
+  if (cotacao.idLote === '' || cotacao.idLote == null) {
+    delete cotacao.idLote;
+  }
+
   const itensDeclaracaoConteudo = Array.isArray(emissaoPayload?.itensDeclaracaoConteudo)
     ? emissaoPayload.itensDeclaracaoConteudo.map(normalizeMarketplaceItem)
     : undefined;
