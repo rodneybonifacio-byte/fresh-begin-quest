@@ -165,30 +165,59 @@ export const ModernHome = () => {
                         </form>
 
                         {/* Resultados */}
-                        {cotacoes && cotacoes.length > 0 && <div className="mt-6 space-y-3 animate-fade-in">
-                                <p className="text-sm font-medium text-muted-foreground">Fretes disponíveis:</p>
-                                {cotacoes.map((cotacao: any, index) => <div key={index} className="p-4 bg-orange-50 dark:bg-orange-950/20 border-2 border-orange-200 dark:border-orange-800 rounded-xl hover:shadow-lg hover:border-primary transition-all cursor-pointer hover:scale-[1.02]" onClick={() => navigate('/app/emissao/adicionar')}>
-                                        <div className="flex justify-between items-center">
-                                            <div>
-                                                <p className="font-bold text-foreground">{cotacao.nomeServico}</p>
-                                                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                                    <p className="text-sm text-muted-foreground">
-                                                        {cotacao.prazo} {cotacao.prazo === 1 ? 'dia útil' : 'dias úteis'}
-                                                    </p>
-                                                    {cotacao.transportadora && (
-                                                        <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
-                                                            {cotacao.transportadora}
-                                                        </span>
-                                                    )}
+                        {cotacoes && cotacoes.length > 0 && <div className="mt-6 animate-fade-in">
+                                <div className="flex items-center justify-between mb-3">
+                                    <p className="text-sm font-semibold text-foreground">Fretes disponíveis</p>
+                                    <span className="text-xs text-muted-foreground">
+                                        {cotacoes.length} {cotacoes.length === 1 ? 'opção' : 'opções'}
+                                    </span>
+                                </div>
+                                <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
+                                    {cotacoes.map((cotacao: any, index) => {
+                                        const isCheapest = index === 0;
+                                        return (
+                                            <div
+                                                key={index}
+                                                onClick={() => navigate('/app/emissao/adicionar')}
+                                                className={`group relative p-4 rounded-xl border transition-all cursor-pointer hover:shadow-lg hover:-translate-y-0.5 ${
+                                                    isCheapest
+                                                        ? 'bg-primary/5 border-primary/40 hover:border-primary'
+                                                        : 'bg-card border-border hover:border-primary/40'
+                                                }`}
+                                            >
+                                                {isCheapest && (
+                                                    <span className="absolute -top-2 left-3 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary text-primary-foreground shadow-sm">
+                                                        Melhor preço
+                                                    </span>
+                                                )}
+                                                <div className="flex justify-between items-center gap-3">
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <p className="font-bold text-foreground truncate">{cotacao.nomeServico}</p>
+                                                            {cotacao.transportadora && (
+                                                                <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
+                                                                    {cotacao.transportadora}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5 mt-1 text-sm text-muted-foreground">
+                                                            <Clock className="h-3.5 w-3.5" />
+                                                            <span>{cotacao.prazo} {cotacao.prazo === 1 ? 'dia útil' : 'dias úteis'}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right shrink-0">
+                                                        <p className={`text-2xl font-bold leading-none ${isCheapest ? 'text-primary' : 'text-foreground'}`}>
+                                                            R$ {parseFloat(cotacao.preco).toFixed(2)}
+                                                        </p>
+                                                        <p className="text-[10px] text-muted-foreground mt-1 group-hover:text-primary transition-colors">
+                                                            Emitir →
+                                                        </p>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div className="text-right">
-                                                <p className="text-2xl font-bold text-foreground">
-                                                    R$ {parseFloat(cotacao.preco).toFixed(2)}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>)}
+                                        );
+                                    })}
+                                </div>
                             </div>}
                     </div>
                 </div>
