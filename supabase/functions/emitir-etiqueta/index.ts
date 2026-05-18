@@ -506,20 +506,22 @@ serve(async (req) => {
 
     console.log('📦 Payload da emissão:', JSON.stringify(emissaoPayload));
 
-    // Obter token admin APENAS para operações administrativas (configurar cliente)
-    const adminToken = await getAdminToken();
-
-    // Desabilitar WhatsApp do cliente para evitar erro de configuração inválida
-    await disableClientWhatsApp(clienteId, adminToken);
-
-    // USAR TOKEN DO CLIENTE para emissão (não admin!)
-    console.log('📊 Emitindo com TOKEN DO CLIENTE (não admin)...');
-
     // 🔀 ROTEADOR DE ORIGEM: Marketplace vs BRHUB
     // v3.1: Marketplace agora cobre todas as transportadoras (Correios + privadas) sem
     // bugs históricos — não há mais redirect forçado SEDEX/PAC → BRHUB.
     const origemCotacao = String(emissaoPayload?.cotacao?.origem || 'brhub').toLowerCase();
     console.log(`🔀 Origem da cotação: ${origemCotacao.toUpperCase()}`);
+
+    // ⚡ OTIMIZAÇÃO: adminToken + disableClientWhatsApp são config da API BRHUB.
+    // Para Marketplace eles não fazem nada útil (~2-3s economizados por emissão).
+    let adminToken: string | null = null;
+    if (origemCotacao !== 'marketplace') {
+      adminToken = await getAdminToken();
+      await disableClientWhatsApp(clienteId, adminToken);
+    }
+
+    // USAR TOKEN DO CLIENTE para emissão (não admin!)
+    console.log('📊 Emitindo com TOKEN DO CLIENTE (não admin)...');
 
     let emissaoResponse: Response | null = null;
     let responseText = '';
