@@ -28,7 +28,6 @@ export const CotacaoCard = ({
     const isCargas =
         lower.includes('carga') ||
         lower.includes('rodonaves') ||
-        lower.includes('jadlog') ||
         lower.includes('braspress');
 
     const prazoLabel =
@@ -72,7 +71,11 @@ export const CotacaoCard = ({
                 {/* Logo transportadora */}
                 <div className="bg-white rounded-xl p-2 border border-border/60 w-20 h-14 flex items-center justify-center flex-shrink-0">
                     <img
-                        src={getTransportadoraImage(cotacao.imagem || '')}
+                        src={
+                            lower.startsWith('brhub') && !isCargas
+                                ? '/assets/images/brhub-logo.png'
+                                : getTransportadoraImage(cotacao.imagem || '')
+                        }
                         alt={getTransportadoraAltText(cotacao.imagem || '')}
                         className="max-w-full max-h-full object-contain"
                     />
