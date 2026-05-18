@@ -80,12 +80,6 @@ export const Step3Frete = ({
     if (s.includes('economico1') || s.includes('econômico1') || s.includes('+economico') || s.includes('+econômico')) return '+Econômico 1';
     return null;
   };
-    if (!cotacao) return false;
-    const nomeServico = cotacao.nomeServico?.toLowerCase() || '';
-    const imagem = cotacao.imagem?.toLowerCase() || '';
-    const transportadora = cotacao.transportadora?.toLowerCase() || '';
-    return nomeServico.includes('rodonaves') || imagem.includes('rodonaves') || transportadora.includes('rodonaves');
-  };
 
   // Handler para seleção com validação de multi-volume
   const handleSelectCotacao = (cotacao: ICotacaoMinimaResponse) => {
