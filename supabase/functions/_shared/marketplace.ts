@@ -284,7 +284,6 @@ export async function emitirEtiquetaMarketplace(
     cotacao: cotacaoObj,
     valorDeclarado: Number(emissaoPayload?.valorDeclarado ?? 0),
     itensDeclaracaoConteudo,
-    nota: 'PRODUTO',
     logisticaReversa: emissaoPayload?.logisticaReversa ?? 'N',
     cienteObjetoNaoProibido: emissaoPayload?.cienteObjetoNaoProibido ?? true,
   });
