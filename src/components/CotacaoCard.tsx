@@ -27,7 +27,7 @@ export const CotacaoCard = ({
     const isRodonaves =
         imagemLower.includes('rodonaves') || lower.includes('rodonaves');
     const isGrandesVolumesImg =
-        imagemLower.includes('grandes') || imagemLower.includes('grandes-volumes') || imagemLower.includes('grandesvolumes');
+        /(?:^|[\/\-_])gv[\/\-_]|grandes[-_]?volumes|grandes/.test(imagemLower);
     const isCargas =
         lower.includes('carga') ||
         lower.includes('rodonaves') ||
