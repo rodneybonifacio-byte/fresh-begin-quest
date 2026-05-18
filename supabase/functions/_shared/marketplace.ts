@@ -309,8 +309,10 @@ export async function emitirEtiquetaMarketplace(
   const destinatarioMarketplace = normalizeMarketplacePessoa(emissaoPayload?.destinatario);
   const embalagemMarketplace = normalizeMarketplaceEmbalagem(emissaoPayload?.embalagem);
   const cotacaoObj = await refreshMarketplaceCotacao(auth, emissaoPayload, remetenteObj);
+  const isCorreios = isMarketplaceCorreiosService(cotacaoObj);
+  const chaveNFe = digits(emissaoPayload?.chaveNFe);
   const itensDeclaracaoConteudo = Array.isArray(emissaoPayload?.itensDeclaracaoConteudo)
-    ? normalizeMarketplaceItens(emissaoPayload.itensDeclaracaoConteudo, emissaoPayload)
+    ? normalizeMarketplaceItens(emissaoPayload.itensDeclaracaoConteudo, emissaoPayload, isCorreios && !chaveNFe)
     : emissaoPayload?.itensDeclaracaoConteudo;
 
   // Payload conforme doc oficial v2.2 — POST /emissoes
@@ -329,12 +331,17 @@ export async function emitirEtiquetaMarketplace(
     cienteObjetoNaoProibido: emissaoPayload?.cienteObjetoNaoProibido ?? true,
   });
 
-  const chaveNFe = digits(emissaoPayload?.chaveNFe);
   const numeroNotaFiscal = truncate(emissaoPayload?.numeroNotaFiscal, 20);
   const observacao = truncate(emissaoPayload?.observacao, 20);
   if (chaveNFe.length === 44) mpPayload.chaveNFe = chaveNFe;
-  if (numeroNotaFiscal && !isMarketplaceCorreiosService(mpPayload.cotacao)) mpPayload.numeroNotaFiscal = numeroNotaFiscal;
-  if (observacao && !isMarketplaceCorreiosService(mpPayload.cotacao)) mpPayload.observacao = observacao;
+  if (isCorreios && !chaveNFe) {
+    // Correios pré-postagem exige campo "nota" curto (<=20). Garantir valor controlado.
+    mpPayload.numeroNotaFiscal = truncate(numeroNotaFiscal || 'S/N', 20);
+    mpPayload.nota = mpPayload.numeroNotaFiscal;
+  } else {
+    if (numeroNotaFiscal) mpPayload.numeroNotaFiscal = numeroNotaFiscal;
+    if (observacao) mpPayload.observacao = observacao;
+  }
 
   console.log('[MP] POST /emissoes, payload saneado:', JSON.stringify({
     codigoServico: mpPayload.cotacao?.codigoServico,
