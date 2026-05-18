@@ -236,16 +236,23 @@ export async function emitirEtiquetaMarketplace(
     numeroPedido = `BRH${ts}${rnd}`.slice(0, 20);
   }
 
+  // valorDeclarado só pode ser enviado quando há NF válida (chaveNFe 44 dígitos).
+  // Sem NF, o Correios devolve PPN-353 ("Chave NFe inválida") porque a MP
+  // tenta preencher o campo nf.chaveNFe com placeholder. Quando omitimos,
+  // a MP usa o preço do frete como fallback (mínimo R$ 1,00) — v2.1.
+  const temNFValida = chaveNFe.length === 44 && Boolean(numeroNotaFiscal);
+  const valorDeclaradoRaw = Number(emissaoPayload?.valorDeclarado ?? 0) || 0;
+
   const mpPayload = cleanObject({
     remetenteId: emissaoPayload?.remetenteId,
     remetente: emissaoPayload?.remetenteId ? undefined : remetente,
     destinatario,
     embalagem,
     cotacao,
-    valorDeclarado: Number(emissaoPayload?.valorDeclarado ?? 0) || 0,
+    valorDeclarado: temNFValida && valorDeclaradoRaw > 0 ? valorDeclaradoRaw : undefined,
     itensDeclaracaoConteudo: normalizeItens(emissaoPayload?.itensDeclaracaoConteudo),
-    chaveNFe: chaveNFe.length === 44 ? chaveNFe : undefined,
-    numeroNotaFiscal: numeroNotaFiscal || undefined,
+    chaveNFe: temNFValida ? chaveNFe : undefined,
+    numeroNotaFiscal: temNFValida ? numeroNotaFiscal : undefined,
     numeroPedido: numeroPedido || undefined,
     logisticaReversa: emissaoPayload?.logisticaReversa === 'S' ? 'S' : undefined,
     cienteObjetoNaoProibido:
