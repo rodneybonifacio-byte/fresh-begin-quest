@@ -299,12 +299,11 @@ export async function emitirEtiquetaMarketplace(
     codigoServico: mpPayload.cotacao?.codigoServico,
     cotacaoKeys: Object.keys(mpPayload.cotacao || {}),
     itensDeclaracaoConteudo: mpPayload.itensDeclaracaoConteudo,
-    opcionais: {
-      temChaveNFe: Boolean(mpPayload.chaveNFe),
-      numeroNotaFiscal: mpPayload.numeroNotaFiscal,
-      observacao: mpPayload.observacao,
-    },
+    remetenteCep: mpPayload.remetente?.endereco?.cep,
+    destinatarioCep: mpPayload.destinatario?.endereco?.cep,
+    opcionais: { temChaveNFe: Boolean(mpPayload.chaveNFe) },
   }));
+  console.log('[MP] FULL PAYLOAD:', JSON.stringify(mpPayload));
 
   const r = await fetch(`${MARKETPLACE_BASE}/emissoes`, {
     method: 'POST',
