@@ -93,7 +93,11 @@ async function cotarMarketplace(payload: any): Promise<any[]> {
     console.log(`✅ Marketplace retornou ${j.cotacoes.length} cotações`);
     // Normaliza para o formato BRHUB
     // Mapa de modalidades BRHub (nome amigável)
-    const mapModalidade = (nome: string): string => {
+    const mapModalidade = (nome: string, codigoServico?: any): string => {
+      const codigo = String(codigoServico || '').trim();
+      if (codigo === '03220') return 'BRHUB SEDEX';
+      if (codigo === '03298') return 'BRHUB PAC';
+      if (codigo === '03662') return 'BRHUB SEDEX HOJE';
       const limpo = (nome || '').replace(/^\+\s*/, '').replace(/^BRHUB\s+/i, '').trim();
       const n = limpo.toUpperCase();
       if (n.includes('SAME DAY')) return 'BRHUB SAME DAY';
@@ -121,7 +125,7 @@ async function cotarMarketplace(payload: any): Promise<any[]> {
         // Preserva TODOS os campos originais do marketplace (id, cardpost, etc.) — necessários para POST /emissoes
         ...c,
         codigoServico: c.codigoServico,
-        nomeServico: mapModalidade(c.nomeServico),
+        nomeServico: mapModalidade(c.nomeServico, c.codigoServico),
         preco: precoStr,
         valorTotal: precoStr,
         valor: precoStr,
