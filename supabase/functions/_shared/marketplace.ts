@@ -167,7 +167,7 @@ export async function emitirEtiquetaMarketplace(
     logisticaReversa: emissaoPayload?.logisticaReversa ?? 'N',
     cienteObjetoNaoProibido: emissaoPayload?.cienteObjetoNaoProibido ?? true,
     chaveNFe: chaveNFe.length === 44 ? chaveNFe : undefined,
-    numeroNotaFiscal: emissaoPayload?.numeroNotaFiscal || undefined,
+    numeroNotaFiscal: numeroNotaFiscal || undefined,
     observacao: emissaoPayload?.observacao || undefined,
   });
 
