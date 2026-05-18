@@ -642,7 +642,40 @@ serve(async (req) => {
 
       const emissaoId = emissaoData?.data?.id || emissaoData?.id;
       const codigoObjeto = emissaoData?.data?.codigoObjeto || emissaoData?.codigoObjeto;
-      const valorFrete = parseFloat(emissaoData?.data?.frete?.valorTotal || emissaoData?.frete?.valorTotal || emissaoPayload?.cotacao?.valorTotal || '0');
+      let valorFrete = parseFloat(emissaoData?.data?.frete?.valorTotal || emissaoData?.frete?.valorTotal || emissaoPayload?.cotacao?.valorTotal || '0');
+
+      // 🎯 Aplicar multiplicador do grupo de regras (primeira etiqueta) também no faturamento
+      try {
+        const { data: regra } = await supabaseClient
+          .from('grupo_regras_clientes')
+          .select(`
+            primeira_etiqueta_emitida,
+            grupos_regras_precificacao (
+              multiplicador_primeira_etiqueta,
+              aplicar_em_simulacao,
+              ativo
+            )
+          `)
+          .eq('cliente_id', clienteId)
+          .limit(1)
+          .maybeSingle();
+
+        const grupo = regra?.grupos_regras_precificacao as any;
+        if (
+          regra &&
+          !regra.primeira_etiqueta_emitida &&
+          grupo?.ativo &&
+          grupo?.aplicar_em_simulacao &&
+          Number(grupo?.multiplicador_primeira_etiqueta) > 0
+        ) {
+          const mult = Number(grupo.multiplicador_primeira_etiqueta);
+          const valorComMult = +(valorFrete * mult).toFixed(2);
+          console.log(`🎯 Aplicando multiplicador na cobrança: R$ ${valorFrete} × ${mult} = R$ ${valorComMult}`);
+          valorFrete = valorComMult;
+        }
+      } catch (regraErr) {
+        console.error('⚠️ Erro ao consultar grupo de regras (segue valor original):', regraErr);
+      }
 
       if (emissaoId && clienteId && valorFrete > 0) {
         console.log('💰 Bloqueando créditos:', { clienteId, emissaoId, valorFrete, codigoObjeto });
@@ -662,6 +695,7 @@ serve(async (req) => {
       } else {
         console.log('⚠️ Dados insuficientes para bloquear créditos:', { emissaoId, clienteId, valorFrete });
       }
+
 
       // Marcar primeira etiqueta emitida no grupo de regras
       const { error: grupoError } = await supabaseClient
