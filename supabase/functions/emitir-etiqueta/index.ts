@@ -290,26 +290,53 @@ async function disableClientWhatsApp(clienteId: string, adminToken: string): Pro
       transportadoraConfiguracoes: transportadoraCorrigidas,
     };
 
-    console.log('📤 Enviando update para desabilitar WhatsApp...');
+    console.log('📤 Enviando update de configurações (sem NF / sem valor declarado)...');
 
-    const putResponse = await fetch(`${baseUrl}/clientes/${clienteId}`, {
+    // Tentar endpoint dedicado /clientes/{id}/configuracoes (não exige senha)
+    let putResponse = await fetch(`${baseUrl}/clientes/${clienteId}/configuracoes`, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${adminToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(clienteAtualizado),
+      body: JSON.stringify(configuracoesCorrigidas),
     });
+    let responseText = await putResponse.text();
+    console.log('📥 Resposta PUT /configuracoes:', putResponse.status, responseText.substring(0, 200));
 
-    const responseText = await putResponse.text();
-    console.log('📥 Resposta do PUT WhatsApp:', putResponse.status, responseText.substring(0, 200));
+    // Fallback: endpoint completo do cliente (requer senha) — só se o dedicado não existir
+    if (!putResponse.ok && (putResponse.status === 404 || putResponse.status === 405)) {
+      const clienteAtualizado = {
+        nomeEmpresa: clienteAtual.nomeEmpresa,
+        nomeResponsavel: clienteAtual.nomeResponsavel,
+        cpfCnpj: clienteAtual.cpfCnpj,
+        email: clienteAtual.email,
+        telefone: clienteAtual.telefone || '',
+        celular: clienteAtual.celular,
+        role: clienteAtual.role || 'CLIENTE',
+        endereco: clienteAtual.endereco,
+        status: clienteAtual.status || 'ATIVO',
+        configuracoes: configuracoesCorrigidas,
+        transportadoraConfiguracoes: transportadoraCorrigidas,
+      };
+      putResponse = await fetch(`${baseUrl}/clientes/${clienteId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(clienteAtualizado),
+      });
+      responseText = await putResponse.text();
+      console.log('📥 Resposta PUT /clientes (fallback):', putResponse.status, responseText.substring(0, 200));
+    }
 
     if (!putResponse.ok) {
-      console.log('⚠️ Falha ao desabilitar WhatsApp:', responseText);
+      console.log('⚠️ Falha ao atualizar configurações:', responseText);
       return false;
     }
 
-    console.log('✅ WhatsApp desabilitado com sucesso!');
+    console.log('✅ Configurações atualizadas (NF/valor declarado desabilitados)!');
     await new Promise((resolve) => setTimeout(resolve, 300));
     return true;
   } catch (error) {
