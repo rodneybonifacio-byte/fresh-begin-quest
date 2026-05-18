@@ -115,16 +115,16 @@ const normalizeMarketplaceItem = (item: any) => {
   // O fluxo BRHUB transforma item.valor em total da linha; Marketplace v2.2 espera valor unitário.
   const valorUnitario = quantidade > 1 ? rawValor / quantidade : rawValor;
   const valorTexto = valorUnitario.toFixed(2);
-  // Correios concatena a "nota" como `${descricao} - ${qtd} - ${valor}` e limita a 20 chars.
-  // Quantidade/valor podem ser reformatados (separadores, vírgula, etc.). Usamos buffer generoso.
+  // Contrato Marketplace v2.2 usa "conteudo"; enviar "descricao" fazia a API montar a nota com fallback longo.
+  // Correios concatena a nota como `${conteudo} - ${qtd} - ${valor}` e limita a 20 chars.
   const qtdLen = String(quantidade).length;
   const valLen = valorTexto.length; // ex.: "50.00"
-  const suffixLen = 3 /* " - " */ + qtdLen + 3 /* " - " */ + valLen + 4 /* buffer formatação */;
+  const suffixLen = 3 /* " - " */ + qtdLen + 3 /* " - " */ + valLen + 6 /* buffer formatação Correios */;
   const maxDescricao = Math.max(1, 20 - suffixLen);
   return {
-    descricao: truncate(item?.descricao || item?.conteudo || 'X', maxDescricao),
-    quantidade,
-    valor: Number(valorTexto),
+    conteudo: truncate(item?.conteudo || item?.descricao || 'X', maxDescricao),
+    quantidade: String(quantidade),
+    valor: valorTexto,
   };
 };
 
