@@ -51,11 +51,35 @@ export const Step3Frete = ({
   const isCorreios = (cotacao: ICotacaoMinimaResponse) => {
     const nomeServico = cotacao.nomeServico?.toLowerCase() || '';
     const imagem = cotacao.imagem?.toLowerCase() || '';
-    return !nomeServico.includes('rodonaves') && !imagem.includes('rodonaves');
+    const transportadora = (cotacao as any).transportadora?.toLowerCase() || '';
+    const isPrivada = ['rodonaves','jadlog','package','sameday','nextday','hot3','expresso','economico','loggi','j&t','jet','total','azul'].some(k =>
+      nomeServico.includes(k) || imagem.includes(k) || transportadora.includes(k)
+    );
+    return !isPrivada;
   };
 
-  // Função para verificar se é Rodonaves (exige nota fiscal)
+  // Transportadoras privadas que exigem Nota Fiscal
   const isRodonaves = (cotacao?: ICotacaoMinimaResponse) => {
+    if (!cotacao) return false;
+    const s = `${cotacao.nomeServico || ''} ${cotacao.imagem || ''} ${(cotacao as any).transportadora || ''}`.toLowerCase();
+    return s.includes('rodonaves');
+  };
+
+  // Detecta transportadora exigente de NF (Jadlog, .Package, MaisEnvios, Rodonaves)
+  const detectCarrierRequiringNF = (cotacao?: ICotacaoMinimaResponse): string | null => {
+    if (!cotacao) return null;
+    if ((cotacao as any).isNotaFiscal === true) return (cotacao as any).transportadora || cotacao.nomeServico || 'Transportadora';
+    const s = `${cotacao.nomeServico || ''} ${cotacao.imagem || ''} ${(cotacao as any).transportadora || ''} ${cotacao.codigoServico || ''}`.toLowerCase();
+    if (s.includes('rodonaves')) return 'Rodonaves';
+    if (s.includes('jadlog')) return 'Jadlog';
+    if (s.includes('package') || s.includes('.package')) return '.Package';
+    if (s.includes('sameday') || s.includes('same_day') || s.includes('same day')) return 'SAME DAY';
+    if (s.includes('nextday') || s.includes('next_day') || s.includes('next day')) return 'NEXT DAY';
+    if (s.includes('hot3') || s.includes('hot_3') || s.includes('hot 3')) return 'HOT 3H';
+    if (s.includes('expresso1') || s.includes('expresso 1') || s.includes('+expresso')) return '+Expresso 1';
+    if (s.includes('economico1') || s.includes('econômico1') || s.includes('+economico') || s.includes('+econômico')) return '+Econômico 1';
+    return null;
+  };
     if (!cotacao) return false;
     const nomeServico = cotacao.nomeServico?.toLowerCase() || '';
     const imagem = cotacao.imagem?.toLowerCase() || '';
