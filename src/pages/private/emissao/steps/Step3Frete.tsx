@@ -141,8 +141,10 @@ export const Step3Frete = ({
     }
   }, [cotacoes]);
 
-  // Verificar se frete selecionado exige nota fiscal (Rodonaves)
-  const requiresNotaFiscal = cotacaoSelecionado?.isNotaFiscal === true || isRodonaves(cotacaoSelecionado);
+  // Verificar se frete selecionado exige nota fiscal (Rodonaves, Jadlog, .Package, MaisEnvios...)
+  const transportadoraNFNome = detectCarrierRequiringNF(cotacaoSelecionado);
+  const requiresNotaFiscal = !!transportadoraNFNome;
+  const exigeChaveNFe = requiresNotaFiscal && !isRodonaves(cotacaoSelecionado);
 
   const handleValorNotaFiscalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Remove tudo que não é número
