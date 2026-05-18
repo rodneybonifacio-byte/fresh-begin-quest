@@ -115,10 +115,14 @@ const normalizeMarketplaceItem = (item: any) => {
   // O fluxo BRHUB transforma item.valor em total da linha; Marketplace v2.2 espera valor unitário.
   const valorUnitario = quantidade > 1 ? rawValor / quantidade : rawValor;
   const valorTexto = valorUnitario.toFixed(2);
-  const notaSuffix = ` - ${quantidade} - ${valorTexto}`;
-  const maxDescricao = Math.max(1, 20 - notaSuffix.length);
+  // Correios pode reformatar quantidade/valor (ex.: "20" -> "20,00") ao montar a nota fiscal.
+  // Reserva 4 chars extras de margem para evitar estourar o limite de 20 do campo "nota".
+  const qtdLen = String(quantidade).length + 2; // margem p/ formatação numérica
+  const valLen = valorTexto.length + 2;
+  const notaSuffixLen = 6 /* dois " - " */ + qtdLen + valLen;
+  const maxDescricao = Math.max(1, 20 - notaSuffixLen);
   return {
-    descricao: truncate(item?.descricao || item?.conteudo || 'Mercadoria', maxDescricao),
+    descricao: truncate(item?.descricao || item?.conteudo || 'Merc', maxDescricao),
     quantidade,
     valor: Number(valorTexto),
   };
