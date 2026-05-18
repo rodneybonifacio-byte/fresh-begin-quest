@@ -1,6 +1,6 @@
 import type { ICotacaoMinimaResponse } from '../types/ICotacao';
 import { getTransportadoraAltText, getTransportadoraImage } from '../utils/imageHelper';
-import { AlertCircle, Check, Clock, Package, TrendingDown } from 'lucide-react';
+import { AlertCircle, Check, Clock, Package, Receipt, TrendingDown } from 'lucide-react';
 
 interface CotacaoCardProps {
     cotacao: ICotacaoMinimaResponse;
@@ -93,6 +93,12 @@ export const CotacaoCard = ({
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-blue-600 to-blue-700 text-white text-[10px] font-bold uppercase tracking-wide shadow-sm">
                                 <Package className="h-3 w-3" />
                                 Grandes Volumes
+                            </span>
+                        )}
+                        {(cotacao.isNotaFiscal === true || isRodonaves) && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 text-[10px] font-bold uppercase tracking-wide border border-amber-300 dark:border-amber-700">
+                                <Receipt className="h-3 w-3" />
+                                Exige Nota Fiscal
                             </span>
                         )}
                         {isSelected && (
