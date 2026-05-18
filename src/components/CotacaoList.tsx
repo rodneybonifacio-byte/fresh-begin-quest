@@ -35,7 +35,7 @@ export const CotacaoList = ({
     showSelectButtons = false,
     emptyStateMessage = "Nenhuma cotação encontrada",
     isLoading = false,
-    maxItems = 5,
+    maxItems,
     disabledServices = []
 }: CotacaoListProps) => {
     if (isLoading) {
