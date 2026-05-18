@@ -17,6 +17,8 @@ export const useCotacao = () => {
     const [isLoadingCotacao, setIsLoading] = useState(false);
     const [cotacaoError, setCotacaoError] = useState<string | null>(null);
     const ultimaReversaRef = useRef<boolean>(false);
+    const inFlightKeyRef = useRef<string | null>(null);
+    const lastRequestIdRef = useRef<number>(0);
 
     const mutation = useMutation({
         mutationFn: async (requestData: any) => {
@@ -148,14 +150,34 @@ export const useCotacao = () => {
                 })
             }
             
+            // Deduplica chamadas idênticas concorrentes (StrictMode/re-renders)
+            const key = JSON.stringify(data);
+            if (inFlightKeyRef.current === key) {
+                console.log('⏭️ Cotação idêntica já em andamento, ignorando duplicada');
+                return;
+            }
+            inFlightKeyRef.current = key;
+            const reqId = ++lastRequestIdRef.current;
+
             console.log('📦 Cotação enviada com CPF/CNPJ loja:', isLogisticaReversa && cpfCnpj ? 'Sim' : 'Não');
             ultimaReversaRef.current = isLogisticaReversa;
-            const response = await mutation.mutateAsync(data);
-            
+            let response: any;
+            try {
+                response = await mutation.mutateAsync(data);
+            } finally {
+                if (inFlightKeyRef.current === key) inFlightKeyRef.current = null;
+            }
+
+            // Se uma requisição mais nova já foi disparada, descarta esta resposta
+            if (reqId !== lastRequestIdRef.current) {
+                console.log('⏭️ Resposta antiga descartada (nova requisição em curso)');
+                return;
+            }
+
             console.log('✅ Resposta da API de cotação:', response);
             console.log('📊 Quantidade de fretes retornados:', response.data?.length || 0);
             console.log('🚚 Fretes disponíveis:', response.data?.map((f: any) => f.nomeServico).join(', '));
-            
+
             setCotacoes(response.data);
         } catch (error) {
             console.error('❌ Erro na cotação:', error);
