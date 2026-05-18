@@ -34,6 +34,8 @@ export const Step3Frete = ({
   
   // Estado local para valor da nota fiscal
   const [valorNotaFiscal, setValorNotaFiscal] = useState<string>('');
+  const [numeroNotaFiscal, setNumeroNotaFiscal] = useState<string>('');
+  const [chaveNFe, setChaveNFe] = useState<string>('');
   const {
     onGetCotacaoCorreios,
     cotacoes,
@@ -49,16 +51,34 @@ export const Step3Frete = ({
   const isCorreios = (cotacao: ICotacaoMinimaResponse) => {
     const nomeServico = cotacao.nomeServico?.toLowerCase() || '';
     const imagem = cotacao.imagem?.toLowerCase() || '';
-    return !nomeServico.includes('rodonaves') && !imagem.includes('rodonaves');
+    const transportadora = (cotacao as any).transportadora?.toLowerCase() || '';
+    const isPrivada = ['rodonaves','jadlog','package','sameday','nextday','hot3','expresso','economico','loggi','j&t','jet','total','azul'].some(k =>
+      nomeServico.includes(k) || imagem.includes(k) || transportadora.includes(k)
+    );
+    return !isPrivada;
   };
 
-  // Função para verificar se é Rodonaves (exige nota fiscal)
+  // Transportadoras privadas que exigem Nota Fiscal
   const isRodonaves = (cotacao?: ICotacaoMinimaResponse) => {
     if (!cotacao) return false;
-    const nomeServico = cotacao.nomeServico?.toLowerCase() || '';
-    const imagem = cotacao.imagem?.toLowerCase() || '';
-    const transportadora = cotacao.transportadora?.toLowerCase() || '';
-    return nomeServico.includes('rodonaves') || imagem.includes('rodonaves') || transportadora.includes('rodonaves');
+    const s = `${cotacao.nomeServico || ''} ${cotacao.imagem || ''} ${(cotacao as any).transportadora || ''}`.toLowerCase();
+    return s.includes('rodonaves');
+  };
+
+  // Detecta transportadora exigente de NF (Jadlog, .Package, MaisEnvios, Rodonaves)
+  const detectCarrierRequiringNF = (cotacao?: ICotacaoMinimaResponse): string | null => {
+    if (!cotacao) return null;
+    if ((cotacao as any).isNotaFiscal === true) return (cotacao as any).transportadora || cotacao.nomeServico || 'Transportadora';
+    const s = `${cotacao.nomeServico || ''} ${cotacao.imagem || ''} ${(cotacao as any).transportadora || ''} ${cotacao.codigoServico || ''}`.toLowerCase();
+    if (s.includes('rodonaves')) return 'Rodonaves';
+    if (s.includes('jadlog')) return 'Jadlog';
+    if (s.includes('package') || s.includes('.package')) return '.Package';
+    if (s.includes('sameday') || s.includes('same_day') || s.includes('same day')) return 'SAME DAY';
+    if (s.includes('nextday') || s.includes('next_day') || s.includes('next day')) return 'NEXT DAY';
+    if (s.includes('hot3') || s.includes('hot_3') || s.includes('hot 3')) return 'HOT 3H';
+    if (s.includes('expresso1') || s.includes('expresso 1') || s.includes('+expresso')) return '+Expresso 1';
+    if (s.includes('economico1') || s.includes('econômico1') || s.includes('+economico') || s.includes('+econômico')) return '+Econômico 1';
+    return null;
   };
 
   // Handler para seleção com validação de multi-volume
@@ -121,8 +141,10 @@ export const Step3Frete = ({
     }
   }, [cotacoes]);
 
-  // Verificar se frete selecionado exige nota fiscal (Rodonaves)
-  const requiresNotaFiscal = cotacaoSelecionado?.isNotaFiscal === true || isRodonaves(cotacaoSelecionado);
+  // Verificar se frete selecionado exige nota fiscal (Rodonaves, Jadlog, .Package, MaisEnvios...)
+  const transportadoraNFNome = detectCarrierRequiringNF(cotacaoSelecionado);
+  const requiresNotaFiscal = !!transportadoraNFNome;
+  const exigeChaveNFe = requiresNotaFiscal && !isRodonaves(cotacaoSelecionado);
 
   const handleValorNotaFiscalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Remove tudo que não é número
@@ -149,14 +171,27 @@ export const Step3Frete = ({
   };
 
   const handleNext = async () => {
-    // Validar nota fiscal se Rodonaves
+    // Validar nota fiscal se transportadora exigir
     if (requiresNotaFiscal) {
       const valorAtual = valorNotaFiscal || getValues('valorNotaFiscal') || '';
       const valorNumerico = valorAtual.replace(/[^\d,]/g, '').replace(',', '.');
-      
+
       if (!valorAtual || valorAtual.trim() === '' || parseFloat(valorNumerico) <= 0) {
-        toast.error('Informe o valor da nota fiscal para continuar com Rodonaves.');
+        toast.error(`Informe o valor da nota fiscal para emitir via ${transportadoraNFNome}.`);
         return;
+      }
+
+      if (exigeChaveNFe) {
+        const numero = (numeroNotaFiscal || getValues('numeroNotaFiscal') || '').trim();
+        const chave = (chaveNFe || getValues('chaveNFe') || '').replace(/\D/g, '');
+        if (!numero) {
+          toast.error(`Informe o número da nota fiscal para emitir via ${transportadoraNFNome}.`);
+          return;
+        }
+        if (chave.length !== 44) {
+          toast.error('A chave da NF-e deve ter exatamente 44 dígitos.');
+          return;
+        }
       }
     }
 
@@ -168,7 +203,7 @@ export const Step3Frete = ({
         return;
       }
     }
-    
+
     const isValid = await trigger(['cotacao']);
     if (isValid && cotacaoSelecionado) onNext();
   };
@@ -227,35 +262,80 @@ export const Step3Frete = ({
             Nenhum frete disponível para esta rota. Verifique os dados informados.
           </div>}
 
-        {/* Campo de Valor da Nota Fiscal - Apenas para Rodonaves */}
+        {/* Campos de Nota Fiscal — Rodonaves, Jadlog, .Package, MaisEnvios */}
         {requiresNotaFiscal && cotacaoSelecionado && (
-          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border-2 border-blue-200 dark:border-blue-700 space-y-3 animate-fade-in">
+          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border-2 border-blue-200 dark:border-blue-700 space-y-4 animate-fade-in">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-100 dark:bg-blue-800/50 rounded-lg">
                 <Receipt className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
                 <p className="font-semibold text-blue-800 dark:text-blue-200">
-                  Rodonaves exige Nota Fiscal
+                  {transportadoraNFNome} exige Nota Fiscal
                 </p>
                 <p className="text-sm text-blue-700 dark:text-blue-300">
-                  Informe o valor da nota fiscal para emitir a etiqueta.
+                  {exigeChaveNFe
+                    ? 'Informe o valor, número e chave da NF-e para emitir a etiqueta.'
+                    : 'Informe o valor da nota fiscal para emitir a etiqueta.'}
                 </p>
               </div>
             </div>
-            
-            <div className="relative">
-              <label className="block text-sm font-medium text-blue-700 dark:text-blue-300 mb-1">
-                Valor da Nota Fiscal *
-              </label>
-              <input
-                type="text"
-                value={valorNotaFiscal}
-                onChange={handleValorNotaFiscalChange}
-                placeholder="R$ 0,00"
-                className="w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-800 border-2 border-blue-300 dark:border-blue-600 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-4 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-500 transition-all duration-300"
-              />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-blue-700 dark:text-blue-300 mb-1">
+                  Valor da Nota Fiscal *
+                </label>
+                <input
+                  type="text"
+                  value={valorNotaFiscal}
+                  onChange={handleValorNotaFiscalChange}
+                  placeholder="R$ 0,00"
+                  className="w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-800 border-2 border-blue-300 dark:border-blue-600 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-4 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-500 transition-all duration-300"
+                />
+              </div>
+
+              {exigeChaveNFe && (
+                <div>
+                  <label className="block text-sm font-medium text-blue-700 dark:text-blue-300 mb-1">
+                    Número da NF-e *
+                  </label>
+                  <input
+                    type="text"
+                    value={numeroNotaFiscal}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, '').slice(0, 9);
+                      setNumeroNotaFiscal(v);
+                      setValue('numeroNotaFiscal', v);
+                    }}
+                    placeholder="Ex.: 123456"
+                    className="w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-800 border-2 border-blue-300 dark:border-blue-600 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-4 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-500 transition-all duration-300"
+                  />
+                </div>
+              )}
             </div>
+
+            {exigeChaveNFe && (
+              <div>
+                <label className="block text-sm font-medium text-blue-700 dark:text-blue-300 mb-1">
+                  Chave de Acesso da NF-e * <span className="text-xs font-normal opacity-70">(44 dígitos)</span>
+                </label>
+                <input
+                  type="text"
+                  value={chaveNFe}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\D/g, '').slice(0, 44);
+                    setChaveNFe(v);
+                    setValue('chaveNFe', v);
+                  }}
+                  placeholder="0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000"
+                  className="w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-800 border-2 border-blue-300 dark:border-blue-600 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-4 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-500 transition-all duration-300 font-mono text-sm"
+                />
+                <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                  {chaveNFe.length}/44 dígitos
+                </p>
+              </div>
+            )}
           </div>
         )}
 
