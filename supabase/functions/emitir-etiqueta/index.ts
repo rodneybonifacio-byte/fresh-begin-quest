@@ -491,11 +491,55 @@ serve(async (req) => {
     // 🔀 ROTEADOR DE ORIGEM: Marketplace vs BRHUB
     let origemCotacao = String(emissaoPayload?.cotacao?.origem || 'brhub').toLowerCase();
     const codigoServicoCotacao = String(emissaoPayload?.cotacao?.codigoServico || '');
-    const cotacaoSemIdLoteBrhub = !emissaoPayload?.cotacao?.idLote && emissaoPayload?.cotacao?.id != null;
-    if (origemCotacao === 'brhub' && BRHUB_NATIVE_MARKETPLACE_CODES.has(codigoServicoCotacao) && cotacaoSemIdLoteBrhub) {
-      console.log(`[MP] serviço ${codigoServicoCotacao} veio sem idLote BRHUB; mantendo emissão pelo Marketplace`);
-      emissaoPayload.cotacao.origem = 'marketplace';
-      origemCotacao = 'marketplace';
+    const isCorreiosNativoBrhub = BRHUB_NATIVE_MARKETPLACE_CODES.has(codigoServicoCotacao);
+    if (isCorreiosNativoBrhub && (!emissaoPayload?.cotacao?.idLote || origemCotacao === 'marketplace')) {
+      console.log(`[BRHUB] serviço ${codigoServicoCotacao} precisa de idLote BRHUB; recotando antes da emissão`);
+      const sbQuote = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      );
+      let cepOrigemRecotacao = digitsOnly(emissaoPayload?.remetente?.endereco?.cep || emissaoPayload?.remetente?.cep);
+      if (!cepOrigemRecotacao && emissaoPayload?.remetenteId) {
+        const { data: remCotacao } = await sbQuote
+          .from('remetentes')
+          .select('cep')
+          .eq('id', emissaoPayload.remetenteId)
+          .maybeSingle();
+        cepOrigemRecotacao = digitsOnly(remCotacao?.cep);
+      }
+      const cepDestinoRecotacao = digitsOnly(emissaoPayload?.destinatario?.endereco?.cep || emissaoPayload?.destinatario?.cep);
+      if (cepOrigemRecotacao && cepDestinoRecotacao) {
+        const recotacaoResponse = await fetch(`${baseUrl}/frete/cotacao`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${userToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            cepOrigem: cepOrigemRecotacao,
+            cepDestino: cepDestinoRecotacao,
+            embalagem: emissaoPayload.embalagem,
+            valorDeclarado: emissaoPayload.valorDeclarado || 0,
+            clienteId,
+          }),
+        });
+        const recotacaoText = await recotacaoResponse.text();
+        const recotacaoJson = (() => { try { return JSON.parse(recotacaoText); } catch { return null; } })();
+        const cotacaoBrhub = Array.isArray(recotacaoJson?.data)
+          ? recotacaoJson.data.find((c: any) => String(c?.codigoServico) === codigoServicoCotacao && c?.idLote)
+          : null;
+        if (cotacaoBrhub) {
+          emissaoPayload.cotacao = { ...cotacaoBrhub, origem: 'brhub', embalagem: emissaoPayload.cotacao?.embalagem || emissaoPayload.embalagem };
+          origemCotacao = 'brhub';
+          console.log(`[BRHUB] idLote recuperado para ${codigoServicoCotacao}: ${cotacaoBrhub.idLote}`);
+        }
+      }
+      if (!emissaoPayload?.cotacao?.idLote) {
+        return new Response(JSON.stringify({ error: 'Cotação BRHUB expirada ou indisponível. Recalcule o frete e selecione SEDEX/PAC novamente.', status: 400 }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        });
+      }
     }
     console.log(`🔀 Origem da cotação: ${origemCotacao.toUpperCase()}`);
 

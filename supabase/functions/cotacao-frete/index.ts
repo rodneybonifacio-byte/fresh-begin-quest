@@ -290,7 +290,7 @@ serve(async (req) => {
       const marketplaceFiltradas = marketplaceCotacoes
         .filter((c: any) => {
           const codigo = String(c?.codigoServico || '');
-          return !(BRHUB_NATIVE_MARKETPLACE_CODES.has(codigo) && codigosBrhub.has(codigo));
+          return !BRHUB_NATIVE_MARKETPLACE_CODES.has(codigo);
         });
 
       cotacaoData.data = [...cotacaoData.data, ...marketplaceFiltradas];
