@@ -43,11 +43,13 @@ Migration:
 ### 5. Cobrança/multiplicador (já implementado)
 - O bloco de bloqueio de crédito já está com multiplicador. Vale para ambos — fica fora desse roteador, executa após sucesso da emissão (qualquer origem).
 
-### 6. Fora deste escopo (próximas etapas, em sequência)
-1. **Rastreio**: detectar `origem` da emissão e chamar `/emissoes/status/:cod` do Marketplace quando aplicável.
-2. **PDF**: idem, `/emissoes/etiqueta/pdf/:uuid`.
-3. **Cancelamento** + estorno de crédito: roteador por `origem`.
-4. **Reversa**: endpoint dedicado `/emissoes/reversa` do Marketplace.
+### 6. Etapas seguintes (status atual)
+1. ✅ **Rastreio**: `testar-rastreio` detecta `codigo_objeto` em `emissoes_marketplace` e roteia para `/emissoes/status/:cod` do Marketplace; resposta normalizada no mesmo shape do BRHUB.
+2. ✅ **PDF**: nova edge function `marketplace-pdf-etiqueta` (`{uuidMarketplace|codigoObjeto|emissaoId}` → `{nome, dados base64}`). Frontend deve invocar essa quando `origem === 'marketplace'`.
+3. ✅ **Cancelamento + estorno**: `cancelar-etiqueta-admin` detecta MP via `emissoes_marketplace`, chama `DELETE /emissoes/:uuid/cancelar` do Marketplace e deleta o bloqueio em `transacoes_credito`.
+4. ✅ **Reversa**: nova edge function `marketplace-reversa` que faz POST em `/emissoes/reversa`.
+
+Pendente no frontend: nos serviços/componentes de imprimir etiqueta e reversa, checar `emissao.origem` (vindo do banco/listagem) e invocar `marketplace-pdf-etiqueta` / `marketplace-reversa` quando for MP, mantendo a chamada atual da API BRHUB caso contrário.
 
 ## Detalhes técnicos
 
