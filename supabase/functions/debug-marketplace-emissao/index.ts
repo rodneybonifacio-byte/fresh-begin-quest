@@ -1,4 +1,4 @@
-import { getMarketplaceAuth, MARKETPLACE_BASE } from '../_shared/marketplace.ts';
+import { emitirEtiquetaMarketplace, getMarketplaceAuth, MARKETPLACE_BASE } from '../_shared/marketplace.ts';
 
 const corsHeaders = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*' };
 
@@ -55,6 +55,20 @@ Deno.serve(async (req) => {
     logisticaReversa: 'N',
     ...extra,
   };
+
+  if (body?.mode === 'helper') {
+    try {
+      const result = await emitirEtiquetaMarketplace(payload);
+      return new Response(JSON.stringify({ ok: true, result, payloadBase: payload }, null, 2), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    } catch (e: any) {
+      return new Response(JSON.stringify({ ok: false, error: e?.message, payloadBase: payload }, null, 2), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500,
+      });
+    }
+  }
 
   const r = await fetch(`${MARKETPLACE_BASE}/emissoes`, {
     method: 'POST',
