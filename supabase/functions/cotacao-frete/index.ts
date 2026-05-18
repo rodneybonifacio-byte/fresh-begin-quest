@@ -295,11 +295,17 @@ serve(async (req) => {
     }
 
     // Mescla com Marketplace mantendo os fluxos em paralelo.
-    // Não remover códigos iguais (ex: 03220/03298): BRHUB SEDEX/PAC do Marketplace
-    // são processos independentes do SEDEX/PAC da API envios.brhubb.com.br.
+    // Correios (03220/03298/03662 e demais códigos numéricos) fica no fluxo BRHUB nativo.
+    // A rota Marketplace usa tradução interna de pré-postagem que ainda gera `pedido` inválido para Correios.
+    const marketplaceNovosFretes = (marketplaceCotacoes || []).filter((c: any) => {
+      const codigo = String(c?.codigoServico || c?.codigo || '').trim();
+      return !/^\d{4,5}$/.test(codigo);
+    });
+
     if (marketplaceCotacoes && marketplaceCotacoes.length > 0) {
-      cotacaoData.data = [...cotacaoData.data, ...marketplaceCotacoes];
-      console.log(`🔀 Mesclado: ${totalBrhub} BRHUB + ${marketplaceCotacoes.length} Marketplace = ${cotacaoData.data.length}`);
+      const removidosCorreios = marketplaceCotacoes.length - marketplaceNovosFretes.length;
+      cotacaoData.data = [...cotacaoData.data, ...marketplaceNovosFretes];
+      console.log(`🔀 Mesclado: ${totalBrhub} BRHUB + ${marketplaceNovosFretes.length} Marketplace novos (${removidosCorreios} Correios removidos do Marketplace) = ${cotacaoData.data.length}`);
     }
 
     // Verificar se o cliente pertence a um grupo de regras

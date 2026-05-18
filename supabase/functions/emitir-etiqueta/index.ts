@@ -488,6 +488,13 @@ serve(async (req) => {
 
     // 🔀 ROTEADOR DE ORIGEM: Marketplace vs BRHUB
     let origemCotacao = String(emissaoPayload?.cotacao?.origem || 'brhub').toLowerCase();
+    const codigoServicoInicial = String(emissaoPayload?.cotacao?.codigoServico || emissaoPayload?.cotacao?.codigo || '');
+    if (origemCotacao === 'marketplace' && /^\d{4,5}$/.test(codigoServicoInicial)) {
+      console.log(`[BRHUB] serviço Correios ${codigoServicoInicial} recebido como Marketplace; redirecionando para fluxo BRHUB nativo`);
+      origemCotacao = 'brhub';
+      emissaoPayload.cotacao.origem = 'brhub';
+      delete emissaoPayload.cotacao.idLote;
+    }
     if (origemCotacao === 'brhub' && !emissaoPayload?.cotacao?.idLote) {
       const codigoServicoCotacao = String(emissaoPayload?.cotacao?.codigoServico || '');
       console.log(`[BRHUB] serviço ${codigoServicoCotacao} sem idLote; recotando antes da emissão`);
