@@ -75,36 +75,24 @@ const normalizeMarketplaceEmbalagem = (embalagem: any) => {
 };
 
 const normalizeMarketplacePessoa = (pessoa: any) => {
-  const endereco = pessoa?.endereco || pessoa || {};
+  if (!pessoa) return undefined;
+  const endereco = pessoa?.endereco || {};
   const cep = digits(endereco?.cep || pessoa?.cep);
   const cidade = String(endereco?.cidade || endereco?.localidade || pessoa?.cidade || pessoa?.localidade || '').trim();
-  const enderecoNormalizado = {
-    cep,
-    logradouro: String(endereco?.logradouro || pessoa?.logradouro || '').trim(),
-    numero: String(endereco?.numero || pessoa?.numero || '').trim(),
-    complemento: String(endereco?.complemento || pessoa?.complemento || '').trim(),
-    bairro: String(endereco?.bairro || pessoa?.bairro || '').trim(),
-    localidade: cidade,
-    cidade,
-    uf: String(endereco?.uf || pessoa?.uf || '').trim().toUpperCase(),
-  };
   return {
     nome: String(pessoa?.nome || '').trim(),
     cpfCnpj: digits(pessoa?.cpfCnpj || pessoa?.cpf_cnpj),
-    documentoEstrangeiro: pessoa?.documentoEstrangeiro || pessoa?.documento_estrangeiro || '',
     celular: digits(pessoa?.celular || pessoa?.telefone || ''),
-    telefone: digits(pessoa?.telefone || pessoa?.celular || ''),
     email: String(pessoa?.email || '').trim(),
-    endereco: enderecoNormalizado,
-    enderecoCompleto: `${enderecoNormalizado.logradouro}, ${enderecoNormalizado.numero} - ${enderecoNormalizado.bairro}, ${cidade}/${enderecoNormalizado.uf}`.trim(),
-    cep,
-    logradouro: enderecoNormalizado.logradouro,
-    numero: enderecoNormalizado.numero,
-    complemento: enderecoNormalizado.complemento,
-    bairro: enderecoNormalizado.bairro,
-    localidade: cidade,
-    cidade,
-    uf: enderecoNormalizado.uf,
+    endereco: {
+      cep,
+      logradouro: String(endereco?.logradouro || pessoa?.logradouro || '').trim(),
+      numero: String(endereco?.numero || pessoa?.numero || '').trim(),
+      complemento: String(endereco?.complemento || pessoa?.complemento || '').trim(),
+      bairro: String(endereco?.bairro || pessoa?.bairro || '').trim(),
+      cidade,
+      uf: String(endereco?.uf || pessoa?.uf || '').trim().toUpperCase(),
+    },
   };
 };
 
@@ -112,154 +100,17 @@ const cleanObject = (obj: Record<string, any>) => Object.fromEntries(
   Object.entries(obj).filter(([, value]) => value !== undefined && value !== null && value !== '')
 );
 
-const truncate = (value: any, max: number) => String(value || '').trim().slice(0, max);
-
-const isMarketplaceCorreiosService = (cotacao: any) => {
-  const codigo = String(cotacao?.codigoServico || '').trim().toLowerCase();
-  const nome = normalizeText(cotacao?.nomeServico);
-  return /^0?\d{4,5}$/.test(codigo) || codigo.includes('hub') || nome.includes('RAPIDO') || nome.includes('ECON') || nome.includes('NEXT DAY') || nome.includes('SAME DAY');
+const normalizeMarketplaceItem = (item: any) => {
+  const quantidade = Math.max(1, Math.trunc(Number(item?.quantidade || 1) || 1));
+  const valor = Number(String(item?.valor ?? 0).replace(',', '.')) || 0;
+  const conteudo = String(item?.conteudo || item?.descricao || 'Mercadoria').trim().slice(0, 50);
+  return { conteudo, quantidade, valor: Number(valor.toFixed(2)) };
 };
-
-const sanitizeMarketplaceCotacao = (cotacao: any, emissaoPayload?: any) => {
-  // A emissão Marketplace depende de campos opacos retornados pela própria cotação
-  // (ex.: identificadores internos/cardpost). Não reduzir ao modelo visual da UI.
-  const sanitized = { ...(cotacao || {}) };
-  delete sanitized.origem;
-  delete sanitized.embalagem;
-  delete sanitized.grupoRegraAplicada;
-  delete sanitized.valorOriginalSemGrupo;
-
-  const preco = Number(sanitized.preco ?? sanitized.valorTotal ?? sanitized.valor ?? 0);
-  if (preco > 0) sanitized.preco = preco;
-  if (sanitized.id != null && sanitized.idLote == null) sanitized.idLote = sanitized.id;
-  if (sanitized.idLote != null && sanitized.id == null) sanitized.id = sanitized.idLote;
-
-  const cepOrigem = digits(emissaoPayload?.cepOrigem || emissaoPayload?.remetente?.endereco?.cep);
-  const cepDestino = digits(emissaoPayload?.cepDestino || emissaoPayload?.destinatario?.endereco?.cep);
-  if (cepOrigem && !digits(sanitized.cepOrigem)) sanitized.cepOrigem = cepOrigem;
-  if (cepDestino && !digits(sanitized.cepDestino)) sanitized.cepDestino = cepDestino;
-
-  return cleanObject(sanitized);
-};
-
-const normalizeMarketplaceItem = (item: any, embalagemPesoGramas = 1) => {
-  const quantidade = Number(item?.quantidade || 1) || 1;
-  const rawValor = Number(String(item?.valor || 0).replace(',', '.')) || 0;
-  // Correios exige descrição clara com mínimo 5 caracteres; a API também monta uma "nota" interna <= 20.
-  // Valor é o TOTAL do item (não unitário), conforme schema público de itensDeclaracaoConteudo.
-  const valorTotal = Number(rawValor.toFixed(2));
-  const valorTexto = valorTotal.toFixed(2);
-  const qtdTexto = String(Math.trunc(quantidade));
-  const valLen = valorTexto.length;
-  const qtdLen = qtdTexto.length;
-  const suffixLen = 3 /* " - " */ + qtdLen + 3 /* " - " */ + valLen;
-  const maxDescricao = Math.max(5, 20 - suffixLen);
-  const descricaoCurta = truncate(
-    normalizeText(item?.conteudo || item?.descricao || item?.descric || 'MERCADORIA').replace(/[^A-Z0-9]/g, '') || 'MERCADORIA',
-    maxDescricao,
-  );
-  const conteudo = descricaoCurta.length >= 5 ? descricaoCurta : 'MERCAD'.slice(0, Math.max(5, maxDescricao));
-  const peso = Number(item?.peso ?? item?.pesoGramas ?? embalagemPesoGramas) || embalagemPesoGramas || 1;
-  return {
-    conteudo,
-    quantidade: Math.trunc(quantidade),
-    valor: valorTotal,
-    peso: Math.max(1, Math.round(peso)),
-  };
-};
-
-const normalizeMarketplaceItens = (items: any[], emissaoPayload: any, forceCompact = false) => {
-  const totalDeclarado = Number(emissaoPayload?.valorDeclarado ?? 0);
-  const embalagemPeso = Number(emissaoPayload?.embalagem?.peso ?? 1) || 1;
-  const pesoGramas = embalagemPeso > 30 ? embalagemPeso : embalagemPeso * 1000;
-  const totalItens = items.reduce((sum, item) => {
-    const qtd = Number(item?.quantidade || 1) || 1;
-    const valor = Number(String(item?.valor || 0).replace(',', '.')) || 0;
-    return sum + valor;
-  }, 0);
-
-  // Para serviços Correios sem NF a API monta um campo interno "nota" (<=20 chars).
-  // Consolidamos em 1 item ultra-curto para garantir caber qualquer formatação ("${conteudo} ${qtd}x R$${valor}").
-  if (forceCompact || (!digits(emissaoPayload?.chaveNFe) && (items.length > 1 || Number(items[0]?.quantidade || 1) > 1))) {
-    const valorBruto = Math.max(1, Math.round(totalDeclarado > 0 ? totalDeclarado : totalItens));
-    return [{
-      conteudo: 'PROD',           // 4 chars
-      quantidade: 1,
-      valor: valorBruto,          // inteiro evita "." e zeros
-      peso: Math.max(1, Math.round(pesoGramas)),
-    }];
-  }
-
-  return items.map((item) => normalizeMarketplaceItem(item, pesoGramas));
-};
-
-async function refreshMarketplaceCotacao(auth: { apiKey: string; token: string }, emissaoPayload: any, remetenteObj: any): Promise<any> {
-  const cotacaoAtual = emissaoPayload?.cotacao || {};
-  const cepOrigem = digits(remetenteObj?.endereco?.cep || emissaoPayload?.cepOrigem);
-  const cepDestino = digits(emissaoPayload?.destinatario?.endereco?.cep || emissaoPayload?.cepDestino);
-  const payloadComCeps = { ...emissaoPayload, cepOrigem, cepDestino, remetente: remetenteObj || emissaoPayload?.remetente };
-
-  if (!cepOrigem || !cepDestino || !emissaoPayload?.embalagem) return sanitizeMarketplaceCotacao(cotacaoAtual, payloadComCeps);
-
-  try {
-    const r = await fetch(`${MARKETPLACE_BASE}/frete/cotacao`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': auth.apiKey,
-        'Authorization': `Bearer ${auth.token}`,
-      },
-      body: JSON.stringify({
-        cepOrigem,
-        cepDestino,
-        embalagem: normalizeMarketplaceEmbalagem(emissaoPayload.embalagem),
-        valorDeclarado: emissaoPayload?.valorDeclarado ?? 0,
-      }),
-    });
-    const j = await r.json();
-    const cotacoes = Array.isArray(j?.cotacoes) ? j.cotacoes : [];
-    if (!r.ok || !cotacoes.length) {
-      console.warn('[MP] recotação não retornou opções:', r.status, JSON.stringify(j).slice(0, 300));
-      return sanitizeMarketplaceCotacao(cotacaoAtual, emissaoPayload);
-    }
-
-    const codigo = String(cotacaoAtual?.codigoServico || '').trim();
-    const idAtual = String(cotacaoAtual?.id ?? cotacaoAtual?.idLote ?? '').trim();
-    const nome = normalizeText(cotacaoAtual?.nomeServico);
-    const isRapido = nome.includes('RAPIDO') || nome.includes('EXPRESSO');
-    const isSameDay = nome.includes('SAME DAY');
-    const isNextDay = nome.includes('NEXT DAY');
-    const isEcoMini = nome.includes('ECON') && nome.includes('MINI');
-    const isEco = nome.includes('ECON') && !nome.includes('MINI');
-
-    const escolhida = cotacoes.find((c: any) => String(c?.codigoServico || '').trim() === codigo)
-      || cotacoes.find((c: any) => nome && normalizeText(c?.nomeServico) === nome)
-      || cotacoes.find((c: any) => isSameDay && normalizeText(c?.nomeServico).includes('SAME DAY'))
-      || cotacoes.find((c: any) => isNextDay && normalizeText(c?.nomeServico).includes('NEXT DAY'))
-      || cotacoes.find((c: any) => isRapido && normalizeText(c?.nomeServico).includes('RAPIDO'))
-      || cotacoes.find((c: any) => isEcoMini && normalizeText(c?.nomeServico).includes('MINI'))
-      || cotacoes.find((c: any) => isEco && normalizeText(c?.nomeServico).includes('ECON'))
-      || cotacoes.find((c: any) => idAtual && String(c?.id ?? c?.idLote ?? '') === idAtual)
-      || cotacoes[0];
-
-    console.log('[MP] cotação hidratada antes da emissão:', {
-      codigoAtual: codigo,
-      codigoEscolhido: escolhida?.codigoServico,
-      temCardpost: Boolean(escolhida?.cardpost),
-      temId: Boolean(escolhida?.id),
-    });
-
-    // Trim para evitar campos longos/privados (ex: imagem URL, origem, embalagem) que a API v2.2 pode repassar para a pré-postagem.
-    return sanitizeMarketplaceCotacao({ ...cotacaoAtual, ...escolhida }, payloadComCeps);
-  } catch (e: any) {
-    console.warn('[MP] erro na recotação antes da emissão:', e?.message);
-    return sanitizeMarketplaceCotacao(cotacaoAtual, payloadComCeps);
-  }
-}
 
 /**
- * Emite uma etiqueta via API Marketplace.
- * Recebe um payload no formato BRHUB e adapta para o contrato Marketplace.
+ * Emite uma etiqueta via API Marketplace (POST /emissoes).
+ * Contrato oficial v2.2: remetenteId|remetente, destinatario, embalagem, cotacao.
+ * O servidor resolve customerId/cardpost e CEP de origem internamente.
  */
 export async function emitirEtiquetaMarketplace(
   emissaoPayload: any
@@ -269,91 +120,54 @@ export async function emitirEtiquetaMarketplace(
     throw new Error('Marketplace indisponível: credenciais ausentes');
   }
 
-  // Hidratar objeto remetente a partir do remetenteId (Supabase) quando necessário
-  let remetenteObj: any = emissaoPayload?.remetente;
-  if (!remetenteObj && emissaoPayload?.remetenteId) {
-    try {
-      // @ts-ignore - Deno global
-      const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
-      // @ts-ignore
-      const sb = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
-      const { data: rem } = await sb.from('remetentes').select('*').eq('id', emissaoPayload.remetenteId).maybeSingle();
-      if (rem) {
-        remetenteObj = {
-          nome: rem.nome?.trim(),
-          cpfCnpj: digits(rem.cpf_cnpj),
-          documentoEstrangeiro: rem.documento_estrangeiro || '',
-          celular: digits(rem.celular || rem.telefone || ''),
-          telefone: digits(rem.telefone || rem.celular || ''),
-          email: rem.email?.trim() || '',
-          endereco: {
-            cep: digits(rem.cep),
-            logradouro: rem.logradouro?.trim() || '',
-            numero: rem.numero?.trim() || '',
-            complemento: rem.complemento?.trim() || '',
-            bairro: rem.bairro?.trim() || '',
-            localidade: rem.localidade?.trim() || '',
-            uf: rem.uf?.trim() || '',
-          },
-        };
-        console.log('[MP] remetente hidratado do Supabase:', rem.nome);
-      } else {
-        console.warn('[MP] remetenteId não encontrado no Supabase:', emissaoPayload.remetenteId);
-      }
-    } catch (e: any) {
-      console.error('[MP] erro hidratando remetente:', e?.message);
-    }
-  }
+  const destinatario = normalizeMarketplacePessoa(emissaoPayload?.destinatario);
+  const remetente = normalizeMarketplacePessoa(emissaoPayload?.remetente);
 
-  const remetenteMarketplace = normalizeMarketplacePessoa(remetenteObj);
-  const destinatarioMarketplace = normalizeMarketplacePessoa(emissaoPayload?.destinatario);
-  const embalagemMarketplace = normalizeMarketplaceEmbalagem(emissaoPayload?.embalagem);
-  const cotacaoObj = await refreshMarketplaceCotacao(auth, emissaoPayload, remetenteObj);
-  const isCorreios = isMarketplaceCorreiosService(cotacaoObj);
-  const chaveNFe = digits(emissaoPayload?.chaveNFe);
+  const pesoBruto = Number(emissaoPayload?.embalagem?.peso ?? 0);
+  const embalagem = {
+    peso: pesoBruto > 30 ? pesoBruto / 1000 : pesoBruto,
+    altura: Number(emissaoPayload?.embalagem?.altura ?? 2),
+    largura: Number(emissaoPayload?.embalagem?.largura ?? 11),
+    comprimento: Number(emissaoPayload?.embalagem?.comprimento ?? 16),
+    diametro: Number(emissaoPayload?.embalagem?.diametro ?? 0),
+  };
+
+  // Preserva campos opacos da cotação (id, cardpost, codigoServico, preco, prazo…) intactos.
+  const cotacao = { ...(emissaoPayload?.cotacao || {}) };
+  delete cotacao.origem;
+  delete cotacao.embalagem;
+  delete cotacao.grupoRegraAplicada;
+  delete cotacao.valorOriginalSemGrupo;
+
   const itensDeclaracaoConteudo = Array.isArray(emissaoPayload?.itensDeclaracaoConteudo)
-    ? normalizeMarketplaceItens(emissaoPayload.itensDeclaracaoConteudo, emissaoPayload, isCorreios && !chaveNFe)
-    : emissaoPayload?.itensDeclaracaoConteudo;
+    ? emissaoPayload.itensDeclaracaoConteudo.map(normalizeMarketplaceItem)
+    : undefined;
+
+  const chaveNFe = digits(emissaoPayload?.chaveNFe);
 
   // Payload conforme doc oficial v2.2 — POST /emissoes
   const mpPayload: any = cleanObject({
-    cepOrigem: remetenteMarketplace?.endereco?.cep,
-    cepDestino: destinatarioMarketplace?.endereco?.cep,
-    enderecoOrigem: remetenteMarketplace?.endereco,
-    enderecoDestino: destinatarioMarketplace?.endereco,
-    remetente: remetenteMarketplace,
-    destinatario: destinatarioMarketplace,
-    embalagem: embalagemMarketplace,
-    cotacao: cotacaoObj,
+    remetenteId: emissaoPayload?.remetenteId,
+    remetente,
+    destinatario,
+    embalagem,
+    cotacao,
     valorDeclarado: Number(emissaoPayload?.valorDeclarado ?? 0),
     itensDeclaracaoConteudo,
     logisticaReversa: emissaoPayload?.logisticaReversa ?? 'N',
     cienteObjetoNaoProibido: emissaoPayload?.cienteObjetoNaoProibido ?? true,
+    chaveNFe: chaveNFe.length === 44 ? chaveNFe : undefined,
+    numeroNotaFiscal: emissaoPayload?.numeroNotaFiscal || undefined,
+    observacao: emissaoPayload?.observacao || undefined,
   });
 
-  const numeroNotaFiscal = truncate(emissaoPayload?.numeroNotaFiscal, 20);
-  const observacao = truncate(emissaoPayload?.observacao, 20);
-  if (chaveNFe.length === 44) mpPayload.chaveNFe = chaveNFe;
-  if (isCorreios && !chaveNFe) {
-    // Correios pré-postagem exige campo "nota" curto (<=20). Garantir valor controlado.
-    mpPayload.numeroNotaFiscal = truncate(numeroNotaFiscal || 'S/N', 20);
-    mpPayload.nota = mpPayload.numeroNotaFiscal;
-  } else {
-    if (numeroNotaFiscal) mpPayload.numeroNotaFiscal = numeroNotaFiscal;
-    if (observacao) mpPayload.observacao = observacao;
-  }
-
-  console.log('[MP] POST /emissoes, payload saneado:', JSON.stringify({
-    codigoServico: mpPayload.cotacao?.codigoServico,
-    cotacaoKeys: Object.keys(mpPayload.cotacao || {}),
-    itensDeclaracaoConteudo: mpPayload.itensDeclaracaoConteudo,
-    cepOrigem: mpPayload.cepOrigem,
-    cepDestino: mpPayload.cepDestino,
-    remetenteCep: mpPayload.remetente?.endereco?.cep,
-    destinatarioCep: mpPayload.destinatario?.endereco?.cep,
-    opcionais: { temChaveNFe: Boolean(mpPayload.chaveNFe), temNumeroNotaFiscal: Boolean(mpPayload.numeroNotaFiscal), temObservacao: Boolean(mpPayload.observacao) },
+  console.log('[MP] POST /emissoes', JSON.stringify({
+    codigoServico: cotacao?.codigoServico,
+    nomeServico: cotacao?.nomeServico,
+    usandoRemetenteId: Boolean(mpPayload.remetenteId),
+    temRemetenteObj: Boolean(remetente),
+    cepDestino: destinatario?.endereco?.cep,
   }));
-  console.log('[MP] FULL PAYLOAD:', JSON.stringify(mpPayload));
 
   const r = await fetch(`${MARKETPLACE_BASE}/emissoes`, {
     method: 'POST',
@@ -376,7 +190,6 @@ export async function emitirEtiquetaMarketplace(
     );
   }
 
-  // Resposta esperada do Marketplace (campos podem variar — parsing resiliente)
   const data = j?.data || j;
   const result: NormalizedEmissaoResult = {
     id: data?.id || data?.uuid || data?.uuidEmissao || null,
@@ -389,6 +202,7 @@ export async function emitirEtiquetaMarketplace(
           data?.valorTotal ??
           data?.preco ??
           emissaoPayload?.cotacao?.valorTotal ??
+          emissaoPayload?.cotacao?.preco ??
           0
       ),
     },
