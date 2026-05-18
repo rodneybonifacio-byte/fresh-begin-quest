@@ -9,6 +9,7 @@ const corsHeaders = {
 };
 
 const MARKETPLACE_BASE = 'https://icnwmceefmgavmbzsomo.supabase.co/functions/v1/marketplace-api';
+const BRHUB_NATIVE_MARKETPLACE_CODES = new Set(['03220', '03298']);
 
 // Cache de token Marketplace (in-memory por instância)
 let mpTokenCache: { token: string; apiKey: string; exp: number } | null = null;
@@ -285,8 +286,19 @@ serve(async (req) => {
 
     // Mescla com Marketplace
     if (marketplaceCotacoes && marketplaceCotacoes.length > 0) {
-      cotacaoData.data = [...cotacaoData.data, ...marketplaceCotacoes];
-      console.log(`🔀 Mesclado: ${totalBrhub} BRHUB + ${marketplaceCotacoes.length} Marketplace = ${cotacaoData.data.length}`);
+      const codigosBrhub = new Set(cotacaoData.data.map((c: any) => String(c?.codigoServico || '')));
+      const marketplaceFiltradas = marketplaceCotacoes
+        .filter((c: any) => {
+          const codigo = String(c?.codigoServico || '');
+          return !(BRHUB_NATIVE_MARKETPLACE_CODES.has(codigo) && codigosBrhub.has(codigo));
+        })
+        .map((c: any) => BRHUB_NATIVE_MARKETPLACE_CODES.has(String(c?.codigoServico || ''))
+          ? { ...c, origem: 'brhub' }
+          : c
+        );
+
+      cotacaoData.data = [...cotacaoData.data, ...marketplaceFiltradas];
+      console.log(`🔀 Mesclado: ${totalBrhub} BRHUB + ${marketplaceFiltradas.length}/${marketplaceCotacoes.length} Marketplace = ${cotacaoData.data.length}`);
     }
 
     // Verificar se o cliente pertence a um grupo de regras
