@@ -228,6 +228,12 @@ export const TabelaFaturasComSubtabela: React.FC<TabelaFaturasComSubtabelaProps>
                     show: (row) => !verificarFechamentoExistente(row.id) && (!row.faturas || row.faturas.length === 0) && (row.status === 'PENDENTE' || row.status === 'PAGO_PARCIAL'),
                 },
                 {
+                    label: 'Fechar Consolidado (1 boleto)',
+                    icon: <FileCheck size={16} />,
+                    onClick: (row) => realizarFechamento(row),
+                    show: (row) => !verificarFechamentoExistente(row.id) && !!row.faturas && row.faturas.length > 0 && (row.status === 'PENDENTE' || row.status === 'PAGO_PARCIAL'),
+                },
+                {
                     label: '🧪 Testar PDF',
                     icon: <FileText size={16} />,
                     onClick: (row) => testarPDF?.(row),
