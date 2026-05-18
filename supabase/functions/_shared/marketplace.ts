@@ -418,29 +418,53 @@ export async function getPdfEtiquetaMarketplace(
   }
   if (!dados && j?.labelData) {
     const label = j.labelData;
+    // v3.2: prefere shape FLAT (senderName/recipientName/…); fallback p/ nested
+    const senderName = label.senderName || label.sender?.nome || '';
+    const senderAddress = label.senderAddress
+      || [label.sender?.logradouro, label.sender?.numero, label.sender?.bairro].filter(Boolean).join(', ');
+    const senderCityState = label.senderCityState
+      || [label.sender?.cidade, label.sender?.uf].filter(Boolean).join('/');
+    const senderCep = label.senderCep || label.sender?.cep || '';
+    const recipientName = label.recipientName || label.recipient?.nome || '';
+    const recipientAddress = label.recipientAddress
+      || [label.recipient?.logradouro, label.recipient?.numero].filter(Boolean).join(', ');
+    const recipientNeighborhood = label.recipientNeighborhood || label.recipient?.bairro || '';
+    const recipientCityState = label.recipientCityState
+      || [label.recipient?.cidade, label.recipient?.uf].filter(Boolean).join('/');
+    const recipientCep = label.recipientCep || label.recipient?.cep || '';
+    const recipientPhone = label.recipientPhone || label.recipient?.celular || '';
+    const weight = label.weight ?? label.measures?.weight ?? '';
+    const dimensions = label.dimensions
+      || [label.measures?.length, label.measures?.width, label.measures?.height].filter(Boolean).join('x');
+    const serviceName = label.serviceName || label.service || '';
+    const serviceCode = label.serviceCode || '';
+    const trackingCode = label.trackingCode || j?.codigoRastreio || uuidMarketplace;
+    const declarationItems = label.declaration?.items || [];
+    const totalValue = label.declaration?.totalValue ?? label.value?.price ?? '';
+
     const escapePdf = (v: any) => String(v ?? '').replace(/[\\()]/g, '\\$&');
     const lines = [
       'BRHUB ENVIOS - ETIQUETA',
-      `Codigo: ${j?.codigoRastreio || uuidMarketplace}`,
-      `Servico: ${label.service || ''} ${label.serviceCode || ''}`,
+      `Codigo: ${trackingCode}`,
+      `Servico: ${serviceName} ${serviceCode}`.trim(),
       '',
       'REMETENTE',
-      label.sender?.nome,
-      `${label.sender?.logradouro || ''}, ${label.sender?.numero || ''} - ${label.sender?.bairro || ''}`,
-      `${label.sender?.cidade || ''}/${label.sender?.uf || ''} CEP ${label.sender?.cep || ''}`,
+      senderName,
+      senderAddress,
+      `${senderCityState} CEP ${senderCep}`,
       '',
       'DESTINATARIO',
-      label.recipient?.nome,
-      `${label.recipient?.logradouro || ''}, ${label.recipient?.numero || ''} - ${label.recipient?.bairro || ''}`,
-      `${label.recipient?.cidade || ''}/${label.recipient?.uf || ''} CEP ${label.recipient?.cep || ''}`,
-      `Telefone: ${label.recipient?.celular || ''}`,
+      recipientName,
+      `${recipientAddress} - ${recipientNeighborhood}`,
+      `${recipientCityState} CEP ${recipientCep}`,
+      `Telefone: ${recipientPhone}`,
       '',
       'DECLARACAO DE CONTEUDO',
-      ...(label.declaration?.items || []).map((it: any) => `${it.quantidade}x ${it.conteudo} - R$ ${it.valor}`),
+      ...declarationItems.map((it: any) => `${it.quantidade}x ${it.conteudo} - R$ ${it.valor}`),
       '',
-      `Peso: ${label.measures?.weight || ''}kg | ${label.measures?.length || ''}x${label.measures?.width || ''}x${label.measures?.height || ''}cm`,
-      `Valor frete: R$ ${label.value?.price || ''}`,
-    ].filter((line) => line !== undefined && line !== null);
+      `Peso: ${weight}kg | ${dimensions}cm`,
+      `Valor declarado: R$ ${totalValue}`,
+    ].filter((line) => line !== undefined && line !== null && line !== '');
     const text = lines.map((line, idx) => `${idx === 0 ? 'BT /F1 16 Tf 50 790 Td' : '0 -22 Td'} (${escapePdf(line)}) Tj`).join('\n') + '\nET';
     const pdf = `%PDF-1.4\n1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj\n4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\n5 0 obj << /Length ${text.length} >> stream\n${text}\nendstream endobj\nxref\n0 6\n0000000000 65535 f \ntrailer << /Root 1 0 R /Size 6 >>\nstartxref\n0\n%%EOF`;
     dados = btoa(pdf);
