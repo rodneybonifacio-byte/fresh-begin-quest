@@ -621,6 +621,8 @@ serve(async (req) => {
             // Estado inicial
             status: 'emitida',
             status_rastreio: 'PRE_POSTADO',
+            transportadora: mpEmissao.raw?.data?.transportadora || mpEmissao.raw?.transportadora || null,
+            formato_codigo: mpEmissao.raw?.data?.formatoCodigo || mpEmissao.raw?.formatoCodigo || null,
             payload_request: emissaoPayload,
             payload_response: mpEmissao.raw,
           });
