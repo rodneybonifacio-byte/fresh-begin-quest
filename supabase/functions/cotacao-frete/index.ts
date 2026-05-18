@@ -13,7 +13,7 @@ const MARKETPLACE_BASE = 'https://icnwmceefmgavmbzsomo.supabase.co/functions/v1/
 // Cache de token Marketplace (in-memory por instância)
 let mpTokenCache: { token: string; apiKey: string; exp: number } | null = null;
 
-async function getMarketplaceAuth(): Promise<{ apiKey: string; token: string } | null> {
+async function getMarketplaceAuth(forceRefresh = false): Promise<{ apiKey: string; token: string } | null> {
   const email = Deno.env.get('MARKETPLACE_EMAIL');
   const password = Deno.env.get('MARKETPLACE_PASSWORD');
   if (!email || !password) {
@@ -21,7 +21,7 @@ async function getMarketplaceAuth(): Promise<{ apiKey: string; token: string } |
     return null;
   }
   const now = Math.floor(Date.now() / 1000);
-  if (mpTokenCache && mpTokenCache.exp - 300 > now) {
+  if (!forceRefresh && mpTokenCache && mpTokenCache.exp - 300 > now) {
     return { apiKey: mpTokenCache.apiKey, token: mpTokenCache.token };
   }
   try {
@@ -50,26 +50,42 @@ async function getMarketplaceAuth(): Promise<{ apiKey: string; token: string } |
   }
 }
 
+async function fetchMarketplaceCotacao(payload: any, auth: { apiKey: string; token: string }) {
+  const peso = Number(payload.embalagem?.peso ?? 0);
+  const embalagemMarketplace = {
+    ...payload.embalagem,
+    peso: peso > 30 ? peso / 1000 : peso,
+  };
+
+  const response = await fetch(`${MARKETPLACE_BASE}/frete/cotacao`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': auth.apiKey, 'Authorization': `Bearer ${auth.token}` },
+    body: JSON.stringify({
+      cepOrigem: payload.cepOrigem,
+      cepDestino: payload.cepDestino,
+      embalagem: embalagemMarketplace,
+      valorDeclarado: payload.valorDeclarado || 0,
+    }),
+  });
+
+  return await response.json();
+}
+
 async function cotarMarketplace(payload: any): Promise<any[]> {
   const auth = await getMarketplaceAuth();
   if (!auth) return [];
   try {
-    const peso = Number(payload.embalagem?.peso ?? 0);
-    const embalagemMarketplace = {
-      ...payload.embalagem,
-      peso: peso > 30 ? peso / 1000 : peso,
-    };
-    const r = await fetch(`${MARKETPLACE_BASE}/frete/cotacao`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': auth.apiKey, 'Authorization': `Bearer ${auth.token}` },
-      body: JSON.stringify({
-        cepOrigem: payload.cepOrigem,
-        cepDestino: payload.cepDestino,
-        embalagem: embalagemMarketplace,
-        valorDeclarado: payload.valorDeclarado || 0,
-      }),
-    });
-    const j = await r.json();
+    let j = await fetchMarketplaceCotacao(payload, auth);
+
+    if (!j?.success && String(j?.error || '').toLowerCase().includes('autenticação')) {
+      console.warn('⚠️ Marketplace cotação rejeitou token; renovando e tentando novamente');
+      mpTokenCache = null;
+      const freshAuth = await getMarketplaceAuth(true);
+      if (freshAuth) {
+        j = await fetchMarketplaceCotacao(payload, freshAuth);
+      }
+    }
+
     if (!j?.success || !Array.isArray(j.cotacoes)) {
       console.error('❌ Marketplace cotação falhou:', JSON.stringify(j).slice(0, 300));
       return [];
