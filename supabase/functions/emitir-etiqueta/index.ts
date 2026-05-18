@@ -251,13 +251,15 @@ async function disableClientWhatsApp(clienteId: string, adminToken: string): Pro
     const cfg = clienteAtual.configuracoes || {};
     console.log('📋 Config atual WhatsApp:', JSON.stringify(cfg));
 
-    // Forçar desativação de WhatsApp para evitar erros de emissão
+    // Forçar desativação de WhatsApp E de NF/valor declarado para evitar PPN-353.
+    // Política da plataforma: emitir SEMPRE usando declaração de conteúdo,
+    // sem NF e sem valor declarado (Correios rejeita NF placeholder).
     const configuracoesCorrigidas = {
       periodo_faturamento: cfg.periodo_faturamento || 'SEMANAL',
       horario_coleta: cfg.horario_coleta || '08:00',
       link_whatsapp: String(cfg.link_whatsapp || ''),
-      incluir_valor_declarado_na_nota: toBoolean(cfg.incluir_valor_declarado_na_nota),
-      aplicar_valor_declarado: toBoolean(cfg.aplicar_valor_declarado),
+      incluir_valor_declarado_na_nota: false,
+      aplicar_valor_declarado: false,
       rastreio_via_whatsapp: false,
       fatura_via_whatsapp: false,
       valor_disparo_evento_rastreio_whatsapp: String(cfg.valor_disparo_evento_rastreio_whatsapp || '0'),
