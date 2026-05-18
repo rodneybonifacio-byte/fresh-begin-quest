@@ -78,6 +78,16 @@ const normalizeMarketplacePessoa = (pessoa: any) => {
   const endereco = pessoa?.endereco || pessoa || {};
   const cep = digits(endereco?.cep || pessoa?.cep);
   const cidade = String(endereco?.cidade || endereco?.localidade || pessoa?.cidade || pessoa?.localidade || '').trim();
+  const enderecoNormalizado = {
+    cep,
+    logradouro: String(endereco?.logradouro || pessoa?.logradouro || '').trim(),
+    numero: String(endereco?.numero || pessoa?.numero || '').trim(),
+    complemento: String(endereco?.complemento || pessoa?.complemento || '').trim(),
+    bairro: String(endereco?.bairro || pessoa?.bairro || '').trim(),
+    localidade: cidade,
+    cidade,
+    uf: String(endereco?.uf || pessoa?.uf || '').trim().toUpperCase(),
+  };
   return {
     nome: String(pessoa?.nome || '').trim(),
     cpfCnpj: digits(pessoa?.cpfCnpj || pessoa?.cpf_cnpj),
@@ -85,16 +95,16 @@ const normalizeMarketplacePessoa = (pessoa: any) => {
     celular: digits(pessoa?.celular || pessoa?.telefone || ''),
     telefone: digits(pessoa?.telefone || pessoa?.celular || ''),
     email: String(pessoa?.email || '').trim(),
-    endereco: {
-      cep,
-      logradouro: String(endereco?.logradouro || pessoa?.logradouro || '').trim(),
-      numero: String(endereco?.numero || pessoa?.numero || '').trim(),
-      complemento: String(endereco?.complemento || pessoa?.complemento || '').trim(),
-      bairro: String(endereco?.bairro || pessoa?.bairro || '').trim(),
-      localidade: cidade,
-      cidade,
-      uf: String(endereco?.uf || pessoa?.uf || '').trim().toUpperCase(),
-    },
+    endereco: enderecoNormalizado,
+    enderecoCompleto: `${enderecoNormalizado.logradouro}, ${enderecoNormalizado.numero} - ${enderecoNormalizado.bairro}, ${cidade}/${enderecoNormalizado.uf}`.trim(),
+    cep,
+    logradouro: enderecoNormalizado.logradouro,
+    numero: enderecoNormalizado.numero,
+    complemento: enderecoNormalizado.complemento,
+    bairro: enderecoNormalizado.bairro,
+    localidade: cidade,
+    cidade,
+    uf: enderecoNormalizado.uf,
   };
 };
 
@@ -103,6 +113,12 @@ const cleanObject = (obj: Record<string, any>) => Object.fromEntries(
 );
 
 const truncate = (value: any, max: number) => String(value || '').trim().slice(0, max);
+
+const isMarketplaceCorreiosService = (cotacao: any) => {
+  const codigo = String(cotacao?.codigoServico || '').trim().toLowerCase();
+  const nome = normalizeText(cotacao?.nomeServico);
+  return /^0?\d{4,5}$/.test(codigo) || codigo.includes('hub') || nome.includes('RAPIDO') || nome.includes('ECON') || nome.includes('NEXT DAY') || nome.includes('SAME DAY');
+};
 
 const sanitizeMarketplaceCotacao = (cotacao: any, emissaoPayload?: any) => {
   // A emissão Marketplace depende de campos opacos retornados pela própria cotação
@@ -215,14 +231,14 @@ async function refreshMarketplaceCotacao(auth: { apiKey: string; token: string }
     const isEcoMini = nome.includes('ECON') && nome.includes('MINI');
     const isEco = nome.includes('ECON') && !nome.includes('MINI');
 
-    const escolhida = cotacoes.find((c: any) => idAtual && String(c?.id ?? c?.idLote ?? '') === idAtual)
-      || cotacoes.find((c: any) => nome && normalizeText(c?.nomeServico).includes(nome.replace(/^BRHUB\s+/, '')))
-      || cotacoes.find((c: any) => isRapido && (normalizeText(c?.nomeServico).includes('RAPIDO') || normalizeText(c?.nomeServico).includes('EXPRESSO')))
+    const escolhida = cotacoes.find((c: any) => String(c?.codigoServico || '').trim() === codigo)
+      || cotacoes.find((c: any) => nome && normalizeText(c?.nomeServico) === nome)
       || cotacoes.find((c: any) => isSameDay && normalizeText(c?.nomeServico).includes('SAME DAY'))
       || cotacoes.find((c: any) => isNextDay && normalizeText(c?.nomeServico).includes('NEXT DAY'))
+      || cotacoes.find((c: any) => isRapido && normalizeText(c?.nomeServico).includes('RAPIDO'))
       || cotacoes.find((c: any) => isEcoMini && normalizeText(c?.nomeServico).includes('MINI'))
       || cotacoes.find((c: any) => isEco && normalizeText(c?.nomeServico).includes('ECON'))
-      || cotacoes.find((c: any) => String(c?.codigoServico || '') === codigo)
+      || cotacoes.find((c: any) => idAtual && String(c?.id ?? c?.idLote ?? '') === idAtual)
       || cotacoes[0];
 
     console.log('[MP] cotação hidratada antes da emissão:', {
@@ -300,6 +316,8 @@ export async function emitirEtiquetaMarketplace(
   const mpPayload: any = cleanObject({
     cepOrigem: remetenteMarketplace?.endereco?.cep,
     cepDestino: destinatarioMarketplace?.endereco?.cep,
+    enderecoOrigem: remetenteMarketplace?.endereco,
+    enderecoDestino: destinatarioMarketplace?.endereco,
     remetente: remetenteMarketplace,
     destinatario: destinatarioMarketplace,
     embalagem: embalagemMarketplace,
@@ -314,8 +332,8 @@ export async function emitirEtiquetaMarketplace(
   const numeroNotaFiscal = truncate(emissaoPayload?.numeroNotaFiscal, 20);
   const observacao = truncate(emissaoPayload?.observacao, 20);
   if (chaveNFe.length === 44) mpPayload.chaveNFe = chaveNFe;
-  if (numeroNotaFiscal) mpPayload.numeroNotaFiscal = numeroNotaFiscal;
-  if (observacao) mpPayload.observacao = observacao;
+  if (numeroNotaFiscal && !isMarketplaceCorreiosService(mpPayload.cotacao)) mpPayload.numeroNotaFiscal = numeroNotaFiscal;
+  if (observacao && !isMarketplaceCorreiosService(mpPayload.cotacao)) mpPayload.observacao = observacao;
 
   console.log('[MP] POST /emissoes, payload saneado:', JSON.stringify({
     codigoServico: mpPayload.cotacao?.codigoServico,
@@ -325,7 +343,7 @@ export async function emitirEtiquetaMarketplace(
     cepDestino: mpPayload.cepDestino,
     remetenteCep: mpPayload.remetente?.endereco?.cep,
     destinatarioCep: mpPayload.destinatario?.endereco?.cep,
-    opcionais: { temChaveNFe: Boolean(mpPayload.chaveNFe) },
+    opcionais: { temChaveNFe: Boolean(mpPayload.chaveNFe), temNumeroNotaFiscal: Boolean(mpPayload.numeroNotaFiscal), temObservacao: Boolean(mpPayload.observacao) },
   }));
   console.log('[MP] FULL PAYLOAD:', JSON.stringify(mpPayload));
 

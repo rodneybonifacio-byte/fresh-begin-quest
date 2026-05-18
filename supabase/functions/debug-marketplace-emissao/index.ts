@@ -23,9 +23,9 @@ Deno.serve(async (req) => {
     });
   }
 
-  const embalagem = { altura: 15, largura: 20, comprimento: 25, peso: 500, diametro: 0 };
-  const cepOrigem = '02076040';
-  const cepDestino = '03027000';
+  const embalagem = body?.embalagem || { altura: 15, largura: 20, comprimento: 25, peso: 0.5, diametro: 0 };
+  const cepOrigem = body?.cepOrigem || '02076040';
+  const cepDestino = body?.cepDestino || '03027000';
 
   // 1) Cotar e pegar uma cotacao real
   const rCot = await fetch(`${MARKETPLACE_BASE}/frete/cotacao`, {
@@ -34,8 +34,18 @@ Deno.serve(async (req) => {
     body: JSON.stringify({ cepOrigem, cepDestino, embalagem, valorDeclarado: 50 }),
   });
   const cotJson = await rCot.json();
+  if (url.searchParams.get('mode') === 'cotacao' || body?.mode === 'cotacao') {
+    return new Response(JSON.stringify({ status: rCot.status, cotJson }, null, 2), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
   const cotacaoEscolhida = (cotJson?.cotacoes || []).find((c: any) => c.codigoServico === 'nextdayhub')
     || (cotJson?.cotacoes || [])[0];
+  if (url.searchParams.get('mode') !== 'emit' && body?.mode !== 'emit') {
+    return new Response(JSON.stringify({ status: rCot.status, cotJson, cotacaoEscolhida }, null, 2), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
 
   // 2) Payload mínimo conforme doc v2.2
   const remetente = {
