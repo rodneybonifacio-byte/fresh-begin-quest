@@ -623,6 +623,27 @@ serve(async (req) => {
             payload_response: mpEmissao.raw,
           });
           console.log('[MP] mapeamento persistido em emissoes_marketplace');
+
+          // Best-effort: já baixa e armazena o PDF para reimpressão offline
+          const uuidParaPdf = mpEmissao.uuidMarketplace || mpEmissao.id;
+          if (uuidParaPdf) {
+            try {
+              const pdf = await getPdfEtiquetaMarketplace(uuidParaPdf);
+              if (pdf?.dados) {
+                await sbPersist
+                  .from('emissoes_marketplace')
+                  .update({
+                    pdf_base64: pdf.dados,
+                    pdf_nome: pdf.nome,
+                    pdf_armazenado_em: new Date().toISOString(),
+                  })
+                  .eq('uuid_marketplace', uuidParaPdf);
+                console.log('[MP] PDF da etiqueta cacheado localmente');
+              }
+            } catch (pdfErr: any) {
+              console.error('[MP] falha ao cachear PDF (será buscado on-demand):', pdfErr?.message);
+            }
+          }
         } catch (persistErr: any) {
           console.error('[MP] falha ao persistir mapeamento (não impede emissão):', persistErr?.message);
         }
