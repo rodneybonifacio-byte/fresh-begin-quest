@@ -72,14 +72,14 @@ async function cotarMarketplace(payload: any): Promise<any[]> {
     // Normaliza para o formato BRHUB
     // Mapa de modalidades BRHub (nome amigável)
     const mapModalidade = (nome: string): string => {
-      const n = (nome || '').toUpperCase();
+      const limpo = (nome || '').replace(/^\+\s*/, '').replace(/^BRHUB\s+/i, '').trim();
+      const n = limpo.toUpperCase();
       if (n.includes('SAME DAY')) return 'BRHUB SAME DAY';
       if (n.includes('NEXT DAY')) return 'BRHUB NEXT DAY';
-      if (n.includes('EXPRESSO')) return 'BRHUB RÁPIDO';
-      if (n.includes('ECONÔMICO MINI') || n.includes('ECONOMICO MINI')) return 'BRHUB ECONÔMICO MINI';
+      if (n.includes('EXPRESSO') || n.includes('RÁPIDO') || n.includes('RAPIDO')) return 'BRHUB RÁPIDO';
+      if (n.includes('ECONÔMICO MINI') || n.includes('ECONOMICO MINI')) return 'BRHUB ECON. MINI';
       if (n.includes('ECONÔMICO') || n.includes('ECONOMICO')) return 'BRHUB ECONÔMICO';
-      // fallback: remove o "+" inicial e prefixa
-      return `BRHUB ${nome.replace(/^\+\s*/, '').trim()}`.toUpperCase();
+      return `BRHUB ${limpo}`.toUpperCase();
     };
     return j.cotacoes.map((c: any) => {
       const precoNum = Number(c.preco ?? 0);
