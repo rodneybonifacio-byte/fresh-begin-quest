@@ -76,8 +76,10 @@ async function cotarMarketplace(payload: any): Promise<any[]> {
       if (n.includes('SAME DAY')) return 'BRHUB SAME DAY';
       if (n.includes('NEXT DAY')) return 'BRHUB NEXT DAY';
       if (n.includes('EXPRESSO')) return 'BRHUB RÁPIDO';
+      if (n.includes('ECONÔMICO MINI') || n.includes('ECONOMICO MINI')) return 'BRHUB ECONÔMICO MINI';
       if (n.includes('ECONÔMICO') || n.includes('ECONOMICO')) return 'BRHUB ECONÔMICO';
-      return `BRHUB ${nome.replace(/^\+\s*/, '')}`.toUpperCase();
+      // fallback: remove o "+" inicial e prefixa
+      return `BRHUB ${nome.replace(/^\+\s*/, '').trim()}`.toUpperCase();
     };
     return j.cotacoes.map((c: any) => {
       const precoNum = Number(c.preco ?? 0);
