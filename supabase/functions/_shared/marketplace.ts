@@ -198,6 +198,7 @@ export async function emitirEtiquetaMarketplace(
   delete cotacao.isNotaFiscal;
 
   const codigoServico = trim(cotacao?.codigoServico || cotacao?.codigo);
+  const isCorreios = /^0\d{4}$/.test(codigoServico);
 
   // Validação celular destinatário (v2.8)
   if (!destinatario?.celular) {
@@ -236,12 +237,16 @@ export async function emitirEtiquetaMarketplace(
     numeroPedido = `BRH${ts}${rnd}`.slice(0, 20);
   }
 
-  // valorDeclarado só pode ser enviado quando há NF válida (chaveNFe 44 dígitos).
-  // Sem NF, o Correios devolve PPN-353 ("Chave NFe inválida") porque a MP
-  // tenta preencher o campo nf.chaveNFe com placeholder. Quando omitimos,
-  // a MP usa o preço do frete como fallback (mínimo R$ 1,00) — v2.1.
+  // Correios sem NF precisa receber valorDeclarado = 0 explicitamente.
+  // Se o campo fica ausente, a MP aplica fallback de valor declarado e o
+  // upstream pode montar nf.chaveNFe placeholder, gerando PPN-353.
   const temNFValida = chaveNFe.length === 44 && Boolean(numeroNotaFiscal);
   const valorDeclaradoRaw = Number(emissaoPayload?.valorDeclarado ?? 0) || 0;
+  const valorDeclaradoMp = temNFValida && valorDeclaradoRaw > 0
+    ? valorDeclaradoRaw
+    : isCorreios
+      ? 0
+      : undefined;
 
   const mpPayload = cleanObject({
     remetenteId: emissaoPayload?.remetenteId,
@@ -249,7 +254,7 @@ export async function emitirEtiquetaMarketplace(
     destinatario,
     embalagem,
     cotacao,
-    valorDeclarado: temNFValida && valorDeclaradoRaw > 0 ? valorDeclaradoRaw : undefined,
+    valorDeclarado: valorDeclaradoMp,
     itensDeclaracaoConteudo: normalizeItens(emissaoPayload?.itensDeclaracaoConteudo),
     chaveNFe: temNFValida ? chaveNFe : undefined,
     numeroNotaFiscal: temNFValida ? numeroNotaFiscal : undefined,
@@ -265,6 +270,8 @@ export async function emitirEtiquetaMarketplace(
     codigoServico,
     nomeServico: cotacao?.nomeServico,
     requerNF,
+    isCorreios,
+    valorDeclarado: valorDeclaradoMp,
     temRemetenteId: Boolean(mpPayload.remetenteId),
     temRemetenteObj: Boolean(mpPayload.remetente),
     cep_dest: destinatario?.cep,
