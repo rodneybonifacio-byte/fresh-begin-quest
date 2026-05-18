@@ -231,14 +231,14 @@ async function refreshMarketplaceCotacao(auth: { apiKey: string; token: string }
     const isEcoMini = nome.includes('ECON') && nome.includes('MINI');
     const isEco = nome.includes('ECON') && !nome.includes('MINI');
 
-    const escolhida = cotacoes.find((c: any) => idAtual && String(c?.id ?? c?.idLote ?? '') === idAtual)
-      || cotacoes.find((c: any) => nome && normalizeText(c?.nomeServico).includes(nome.replace(/^BRHUB\s+/, '')))
-      || cotacoes.find((c: any) => isRapido && (normalizeText(c?.nomeServico).includes('RAPIDO') || normalizeText(c?.nomeServico).includes('EXPRESSO')))
+    const escolhida = cotacoes.find((c: any) => String(c?.codigoServico || '').trim() === codigo)
+      || cotacoes.find((c: any) => nome && normalizeText(c?.nomeServico) === nome)
       || cotacoes.find((c: any) => isSameDay && normalizeText(c?.nomeServico).includes('SAME DAY'))
       || cotacoes.find((c: any) => isNextDay && normalizeText(c?.nomeServico).includes('NEXT DAY'))
+      || cotacoes.find((c: any) => isRapido && normalizeText(c?.nomeServico).includes('RAPIDO'))
       || cotacoes.find((c: any) => isEcoMini && normalizeText(c?.nomeServico).includes('MINI'))
       || cotacoes.find((c: any) => isEco && normalizeText(c?.nomeServico).includes('ECON'))
-      || cotacoes.find((c: any) => String(c?.codigoServico || '') === codigo)
+      || cotacoes.find((c: any) => idAtual && String(c?.id ?? c?.idLote ?? '') === idAtual)
       || cotacoes[0];
 
     console.log('[MP] cotação hidratada antes da emissão:', {
