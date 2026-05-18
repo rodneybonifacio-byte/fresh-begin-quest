@@ -57,6 +57,71 @@ export interface NormalizedEmissaoResult {
   raw: any;
 }
 
+const digits = (s: any) => String(s || '').replace(/\D/g, '');
+const normalizeText = (s: any) => String(s || '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toUpperCase();
+
+async function refreshMarketplaceCotacao(auth: { apiKey: string; token: string }, emissaoPayload: any, remetenteObj: any): Promise<any> {
+  const cotacaoAtual = emissaoPayload?.cotacao || {};
+  const cepOrigem = digits(remetenteObj?.endereco?.cep || emissaoPayload?.cepOrigem);
+  const cepDestino = digits(emissaoPayload?.destinatario?.endereco?.cep || emissaoPayload?.cepDestino);
+
+  if (!cepOrigem || !cepDestino || !emissaoPayload?.embalagem) return cotacaoAtual;
+
+  try {
+    const r = await fetch(`${MARKETPLACE_BASE}/frete/cotacao`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': auth.apiKey,
+        'Authorization': `Bearer ${auth.token}`,
+      },
+      body: JSON.stringify({
+        cepOrigem,
+        cepDestino,
+        embalagem: emissaoPayload.embalagem,
+        valorDeclarado: emissaoPayload?.valorDeclarado ?? 0,
+      }),
+    });
+    const j = await r.json();
+    const cotacoes = Array.isArray(j?.cotacoes) ? j.cotacoes : [];
+    if (!r.ok || !cotacoes.length) {
+      console.warn('[MP] recotação não retornou opções:', r.status, JSON.stringify(j).slice(0, 300));
+      return cotacaoAtual;
+    }
+
+    const codigo = String(cotacaoAtual?.codigoServico || '').trim();
+    const nome = normalizeText(cotacaoAtual?.nomeServico);
+    const isRapido = nome.includes('RAPIDO') || nome.includes('EXPRESSO');
+    const isSameDay = nome.includes('SAME DAY');
+    const isNextDay = nome.includes('NEXT DAY');
+    const isEcoMini = nome.includes('ECON') && nome.includes('MINI');
+    const isEco = nome.includes('ECON') && !nome.includes('MINI');
+
+    const escolhida = cotacoes.find((c: any) => String(c?.codigoServico || '') === codigo)
+      || cotacoes.find((c: any) => isRapido && (normalizeText(c?.nomeServico).includes('RAPIDO') || normalizeText(c?.nomeServico).includes('EXPRESSO')))
+      || cotacoes.find((c: any) => isSameDay && normalizeText(c?.nomeServico).includes('SAME DAY'))
+      || cotacoes.find((c: any) => isNextDay && normalizeText(c?.nomeServico).includes('NEXT DAY'))
+      || cotacoes.find((c: any) => isEcoMini && normalizeText(c?.nomeServico).includes('MINI'))
+      || cotacoes.find((c: any) => isEco && normalizeText(c?.nomeServico).includes('ECON'))
+      || cotacoes[0];
+
+    console.log('[MP] cotação hidratada antes da emissão:', {
+      codigoAtual: codigo,
+      codigoEscolhido: escolhida?.codigoServico,
+      temCardpost: Boolean(escolhida?.cardpost),
+      temId: Boolean(escolhida?.id),
+    });
+
+    return { ...cotacaoAtual, ...escolhida, origem: 'marketplace' };
+  } catch (e: any) {
+    console.warn('[MP] erro na recotação antes da emissão:', e?.message);
+    return cotacaoAtual;
+  }
+}
+
 /**
  * Emite uma etiqueta via API Marketplace.
  * Recebe um payload no formato BRHUB e adapta para o contrato Marketplace.
@@ -79,7 +144,6 @@ export async function emitirEtiquetaMarketplace(
       const sb = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
       const { data: rem } = await sb.from('remetentes').select('*').eq('id', emissaoPayload.remetenteId).maybeSingle();
       if (rem) {
-        const digits = (s: string) => String(s || '').replace(/\D/g, '');
         remetenteObj = {
           nome: rem.nome?.trim(),
           cpfCnpj: digits(rem.cpf_cnpj),
@@ -106,12 +170,14 @@ export async function emitirEtiquetaMarketplace(
     }
   }
 
+  const cotacaoObj = await refreshMarketplaceCotacao(auth, emissaoPayload, remetenteObj);
+
   // Payload conforme doc oficial v2.2 — POST /emissoes
   const mpPayload: any = {
     remetente: remetenteObj,
     destinatario: emissaoPayload?.destinatario,
     embalagem: emissaoPayload?.embalagem,
-    cotacao: emissaoPayload?.cotacao,
+    cotacao: cotacaoObj,
     valorDeclarado: emissaoPayload?.valorDeclarado ?? 0,
     valorNotaFiscal: emissaoPayload?.valorNotaFiscal ?? 0,
     itensDeclaracaoConteudo: emissaoPayload?.itensDeclaracaoConteudo,
