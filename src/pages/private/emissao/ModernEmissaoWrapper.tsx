@@ -130,6 +130,8 @@ export const ModernEmissaoWrapper = () => {
                 codigoServico: '',
             },
             valorNotaFiscal: '',
+            numeroNotaFiscal: '',
+            chaveNFe: '',
             itensDeclaracaoConteudo: [],
         },
     });
