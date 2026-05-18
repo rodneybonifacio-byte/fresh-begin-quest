@@ -92,6 +92,7 @@ const normalizeMarketplacePessoa = (pessoa: any) => {
       complemento: String(endereco?.complemento || pessoa?.complemento || '').trim(),
       bairro: String(endereco?.bairro || pessoa?.bairro || '').trim(),
       localidade: cidade,
+      cidade,
       uf: String(endereco?.uf || pessoa?.uf || '').trim().toUpperCase(),
     },
   };
@@ -282,6 +283,8 @@ export async function emitirEtiquetaMarketplace(
 
   // Payload conforme doc oficial v2.2 — POST /emissoes
   const mpPayload: any = cleanObject({
+    cepOrigem: remetenteMarketplace?.endereco?.cep,
+    cepDestino: destinatarioMarketplace?.endereco?.cep,
     remetente: remetenteMarketplace,
     destinatario: destinatarioMarketplace,
     embalagem: embalagemMarketplace,
@@ -303,6 +306,8 @@ export async function emitirEtiquetaMarketplace(
     codigoServico: mpPayload.cotacao?.codigoServico,
     cotacaoKeys: Object.keys(mpPayload.cotacao || {}),
     itensDeclaracaoConteudo: mpPayload.itensDeclaracaoConteudo,
+    cepOrigem: mpPayload.cepOrigem,
+    cepDestino: mpPayload.cepDestino,
     remetenteCep: mpPayload.remetente?.endereco?.cep,
     destinatarioCep: mpPayload.destinatario?.endereco?.cep,
     opcionais: { temChaveNFe: Boolean(mpPayload.chaveNFe) },
