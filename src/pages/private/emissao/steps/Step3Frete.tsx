@@ -283,14 +283,80 @@ export const Step3Frete = ({
               <label className="block text-sm font-medium text-blue-700 dark:text-blue-300 mb-1">
                 Valor da Nota Fiscal *
               </label>
-              <input
-                type="text"
-                value={valorNotaFiscal}
-                onChange={handleValorNotaFiscalChange}
-                placeholder="R$ 0,00"
-                className="w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-800 border-2 border-blue-300 dark:border-blue-600 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-4 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-500 transition-all duration-300"
-              />
+        {/* Campos de Nota Fiscal — Rodonaves, Jadlog, .Package, MaisEnvios */}
+        {requiresNotaFiscal && cotacaoSelecionado && (
+          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border-2 border-blue-200 dark:border-blue-700 space-y-4 animate-fade-in">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-800/50 rounded-lg">
+                <Receipt className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="font-semibold text-blue-800 dark:text-blue-200">
+                  {transportadoraNFNome} exige Nota Fiscal
+                </p>
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  {exigeChaveNFe
+                    ? 'Informe o valor, número e chave da NF-e para emitir a etiqueta.'
+                    : 'Informe o valor da nota fiscal para emitir a etiqueta.'}
+                </p>
+              </div>
             </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-blue-700 dark:text-blue-300 mb-1">
+                  Valor da Nota Fiscal *
+                </label>
+                <input
+                  type="text"
+                  value={valorNotaFiscal}
+                  onChange={handleValorNotaFiscalChange}
+                  placeholder="R$ 0,00"
+                  className="w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-800 border-2 border-blue-300 dark:border-blue-600 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-4 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-500 transition-all duration-300"
+                />
+              </div>
+
+              {exigeChaveNFe && (
+                <div>
+                  <label className="block text-sm font-medium text-blue-700 dark:text-blue-300 mb-1">
+                    Número da NF-e *
+                  </label>
+                  <input
+                    type="text"
+                    value={numeroNotaFiscal}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, '').slice(0, 9);
+                      setNumeroNotaFiscal(v);
+                      setValue('numeroNotaFiscal', v);
+                    }}
+                    placeholder="Ex.: 123456"
+                    className="w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-800 border-2 border-blue-300 dark:border-blue-600 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-4 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-500 transition-all duration-300"
+                  />
+                </div>
+              )}
+            </div>
+
+            {exigeChaveNFe && (
+              <div>
+                <label className="block text-sm font-medium text-blue-700 dark:text-blue-300 mb-1">
+                  Chave de Acesso da NF-e * <span className="text-xs font-normal opacity-70">(44 dígitos)</span>
+                </label>
+                <input
+                  type="text"
+                  value={chaveNFe}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\D/g, '').slice(0, 44);
+                    setChaveNFe(v);
+                    setValue('chaveNFe', v);
+                  }}
+                  placeholder="0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000"
+                  className="w-full px-4 py-3 rounded-xl bg-white dark:bg-slate-800 border-2 border-blue-300 dark:border-blue-600 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-4 focus:ring-blue-200 dark:focus:ring-blue-800 focus:border-blue-500 transition-all duration-300 font-mono text-sm"
+                />
+                <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                  {chaveNFe.length}/44 dígitos
+                </p>
+              </div>
+            )}
           </div>
         )}
 
