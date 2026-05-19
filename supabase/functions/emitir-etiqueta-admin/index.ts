@@ -60,10 +60,10 @@ serve(async (req) => {
       link_whatsapp: String(cfg.link_whatsapp || ''),
       incluir_valor_declarado_na_nota: toBoolean(cfg.incluir_valor_declarado_na_nota),
       aplicar_valor_declarado: toBoolean(cfg.aplicar_valor_declarado),
-      rastreio_via_whatsapp: false,
+      rastreio_via_whatsapp: true,
       fatura_via_whatsapp: false,
       valor_disparo_evento_rastreio_whatsapp: '0',
-      eventos_rastreio_habilitados_via_whatsapp: [],
+      eventos_rastreio_habilitados_via_whatsapp: cfg.eventos_rastreio_habilitados_via_whatsapp || [],
     };
     const transportadoraCorrigidas = (cliente.transportadoraConfiguracoes || []).map((t: any) => ({
       ...t,
