@@ -22,8 +22,8 @@ serve(async (req) => {
       throw new Error('Configuração incompleta');
     }
 
-    // 1. Autenticar com a conta widget (financeiro@brhubb.com.br)
-    console.log('🔐 Autenticando com conta de demonstração...', widgetEmail);
+    // 1. Autenticar com a conta widget (credenciais via secret)
+    console.log('🔐 Autenticando com conta de demonstração (widget)');
     const loginResponse = await fetch(`${baseUrl}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
