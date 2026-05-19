@@ -571,10 +571,12 @@ export const ContactIntelligencePanel = ({
           .replace(/\b\w/g, c => c.toUpperCase())
           .replace(/\b(De|Da|Do|Dos|Das)\b/g, m => m.toLowerCase());
 
-        await supabase
-          .from('whatsapp_conversations')
-          .update({ contact_name: formattedName })
-          .eq('id', conversationId);
+        await aiManagementQuery({
+          action: 'update',
+          table: 'whatsapp_conversations',
+          id: conversationId,
+          data: { contact_name: formattedName },
+        }).catch(() => {});
         
         setProfile(prev => prev ? { ...prev, nome: formattedName } : prev);
       }
