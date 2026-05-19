@@ -124,7 +124,12 @@ Deno.serve(async (req) => {
             codigo_objeto: mpRow.codigo_objeto || null,
           }
         } else {
-          // Fluxo BRHUB tradicional: buscar status na API externa
+          // Fluxo BRHUB tradicional: precisa de token admin
+          if (!authToken) {
+            console.warn(`⏭️ Etiqueta ${etiqueta.emissao_id} é BRHUB legada e não há token admin — pulando`)
+            continue
+          }
+          // buscar status na API externa
           const emissaoResponse = await fetch(
             `${baseApiUrl}/emissoes/${etiqueta.emissao_id}`,
             {
