@@ -102,8 +102,9 @@ serve(async (req) => {
     if (!loginResponse.ok) {
       // Fallback: tentar com credenciais admin
       console.log('⚠️ Login widget falhou, tentando fallback admin...');
-      const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
-      const adminPassword = Deno.env.get('API_ADMIN_PASSWORD');
+      const adminEmail = cleanSecret(Deno.env.get('API_ADMIN_EMAIL'));
+      const adminPassword = cleanSecret(Deno.env.get('API_ADMIN_PASSWORD'));
+
 
       if (!adminEmail || !adminPassword) {
         console.error('❌ Credenciais admin não configuradas para fallback');
