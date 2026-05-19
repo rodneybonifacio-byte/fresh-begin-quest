@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { getSupabaseWithAuth } from '@/integrations/supabase/custom-auth';
-const supabase = getSupabaseWithAuth();
+import { aiManagementQuery } from '@/services/aiManagementApi';
 import { useQuery } from '@tanstack/react-query';
 import { Ticket, Clock, CheckCircle2, Bot, MessageSquare, X, ArrowRight, Timer, Tag, Shield } from 'lucide-react';
 import { format, formatDistanceStrict } from 'date-fns';
@@ -59,13 +58,12 @@ const TicketHistory = ({ conversationId, currentTicketId }: Props) => {
   const { data: tickets } = useQuery({
     queryKey: ['ticket-history', conversationId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('whatsapp_tickets')
-        .select('*')
-        .eq('conversation_id', conversationId)
-        .order('opened_at', { ascending: false });
-      if (error) throw error;
-      return (data || []) as TicketRecord[];
+      return aiManagementQuery<TicketRecord>({
+        action: 'select',
+        table: 'whatsapp_tickets',
+        filters: [{ column: 'conversation_id', op: 'eq', value: conversationId }],
+        orderBy: { column: 'opened_at', ascending: false },
+      });
     },
     enabled: !!conversationId,
   });
@@ -77,15 +75,19 @@ const TicketHistory = ({ conversationId, currentTicketId }: Props) => {
     if (ticketMessages[ticket.id]) return;
     setLoadingMessages(ticket.id);
 
-    const { data } = await supabase
-      .from('whatsapp_messages')
-      .select('id, direction, content, content_type, ai_generated, sent_by, created_at')
-      .eq('conversation_id', ticket.conversation_id)
-      .gte('created_at', ticket.opened_at)
-      .lte('created_at', ticket.closed_at || new Date().toISOString())
-      .order('created_at', { ascending: true });
+    const data = await aiManagementQuery<TicketMessage>({
+      action: 'select',
+      table: 'whatsapp_messages',
+      select: 'id, direction, content, content_type, ai_generated, sent_by, created_at',
+      filters: [
+        { column: 'conversation_id', op: 'eq', value: ticket.conversation_id },
+        { column: 'created_at', op: 'gte', value: ticket.opened_at },
+        { column: 'created_at', op: 'lte', value: ticket.closed_at || new Date().toISOString() },
+      ],
+      orderBy: { column: 'created_at', ascending: true },
+    });
 
-    setTicketMessages(prev => ({ ...prev, [ticket.id]: (data || []) as TicketMessage[] }));
+    setTicketMessages(prev => ({ ...prev, [ticket.id]: data || [] }));
     setLoadingMessages(null);
   };
 

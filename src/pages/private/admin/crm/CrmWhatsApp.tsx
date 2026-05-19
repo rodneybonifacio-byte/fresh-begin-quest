@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { getSupabaseWithAuth } from '../../../../integrations/supabase/custom-auth';
-const supabase = getSupabaseWithAuth();
+import { supabase } from '@/integrations/supabase/client';
+import { aiManagementQuery, aiManagementUpdate } from '@/services/aiManagementApi';
 import { MessageSquare, Send, Search, Phone, User, Bot, Clock, ChevronLeft, ToggleLeft, ToggleRight, Smile, Check, CheckCheck, Ticket, Mic, Paperclip, X, FileText, UserCircle, AlertTriangle } from 'lucide-react';
 import { differenceInHours } from 'date-fns';
 import { format } from 'date-fns';
@@ -124,10 +124,12 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
   // Load template bodies for HSM rendering
   useEffect(() => {
     const loadTemplateBodies = async () => {
-      const { data } = await supabase
-        .from('whatsapp_notification_templates')
-        .select('template_name, template_body, variables')
-        .not('template_body', 'is', null);
+      const data = await aiManagementQuery<any>({
+        action: 'select',
+        table: 'whatsapp_notification_templates',
+        select: 'template_name, template_body, variables',
+        filters: [{ column: 'template_body', op: 'not', value: 'is.null' }],
+      });
       if (data) {
         const map: typeof templateBodies = {};
         data.forEach((t: any) => {
@@ -145,10 +147,12 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
   // Load pipeline data for tracking code search
   useEffect(() => {
     const loadPipelineSearch = async () => {
-      const { data } = await supabase
-        .from('ai_support_pipeline')
-        .select('conversation_id, subject, description')
-        .not('conversation_id', 'is', null);
+      const data = await aiManagementQuery<any>({
+        action: 'select',
+        table: 'ai_support_pipeline',
+        select: 'conversation_id, subject, description',
+        filters: [{ column: 'conversation_id', op: 'not', value: 'is.null' }],
+      });
       if (data) {
         const map: Record<string, string> = {};
         data.forEach((t: any) => {
@@ -194,42 +198,55 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
 
   // Load closed ticket conversation IDs
   const loadClosedConversationIds = useCallback(async () => {
-    const { data } = await supabase
-      .from('whatsapp_tickets')
-      .select('conversation_id')
-      .in('status', ['closed', 'resolved']);
-    if (data) {
-      setClosedConversationIds(new Set(data.map((t: any) => t.conversation_id)));
+    try {
+      const data = await aiManagementQuery<{ conversation_id: string | null }>({
+        action: 'select',
+        table: 'whatsapp_tickets',
+        select: 'conversation_id',
+        filters: [{ column: 'status', op: 'in', value: ['closed', 'resolved'] }],
+      });
+      setClosedConversationIds(new Set(data.map((t) => t.conversation_id).filter(Boolean) as string[]));
+    } catch (error) {
+      console.error('Erro ao carregar tickets fechados:', error);
     }
   }, []);
 
   const loadConversations = useCallback(async () => {
     setLoadingConversations(true);
 
-    const [conversationsResult, ticketsResult, pipelineResult] = await Promise.all([
-      supabase
-        .from('whatsapp_conversations')
-        .select('*')
-        .order('last_message_at', { ascending: false }),
-      supabase
-        .from('whatsapp_tickets')
-        .select('conversation_id, contact_name')
-        .not('conversation_id', 'is', null)
-        .not('contact_name', 'is', null)
-        .order('updated_at', { ascending: false }),
-      supabase
-        .from('ai_support_pipeline')
-        .select('conversation_id, contact_name')
-        .not('conversation_id', 'is', null)
-        .not('contact_name', 'is', null)
-        .order('updated_at', { ascending: false }),
-    ]);
+    try {
+      const [conversationRows, ticketRows, pipelineRows] = await Promise.all([
+        aiManagementQuery<Conversation>({
+          action: 'select',
+          table: 'whatsapp_conversations',
+          orderBy: { column: 'last_message_at', ascending: false },
+        }),
+        aiManagementQuery<ConversationNameCandidate>({
+          action: 'select',
+          table: 'whatsapp_tickets',
+          select: 'conversation_id, contact_name',
+          filters: [
+            { column: 'conversation_id', op: 'not', value: 'is.null' },
+            { column: 'contact_name', op: 'not', value: 'is.null' },
+          ],
+          orderBy: { column: 'updated_at', ascending: false },
+        }),
+        aiManagementQuery<ConversationNameCandidate>({
+          action: 'select',
+          table: 'ai_support_pipeline',
+          select: 'conversation_id, contact_name',
+          filters: [
+            { column: 'conversation_id', op: 'not', value: 'is.null' },
+            { column: 'contact_name', op: 'not', value: 'is.null' },
+          ],
+          orderBy: { column: 'updated_at', ascending: false },
+        }),
+      ]);
 
-    if (!conversationsResult.error && conversationsResult.data) {
-      const ticketNameMap = buildLatestConversationNameMap((ticketsResult.data as ConversationNameCandidate[]) || []);
-      const pipelineNameMap = buildLatestConversationNameMap((pipelineResult.data as ConversationNameCandidate[]) || []);
+      const ticketNameMap = buildLatestConversationNameMap(ticketRows);
+      const pipelineNameMap = buildLatestConversationNameMap(pipelineRows);
 
-      const filtered = (conversationsResult.data as Conversation[])
+      const filtered = conversationRows
         .filter((conversation) => !conversation.contact_phone.startsWith('web-panel-'))
         .map((conversation) => {
           const trustedName = ticketNameMap.get(conversation.id) || pipelineNameMap.get(conversation.id) || null;
@@ -242,6 +259,9 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
         });
 
       setConversations(filtered);
+    } catch (error) {
+      console.error('Erro ao carregar conversas:', error);
+      setConversations([]);
     }
 
     setLoadingConversations(false);
@@ -250,22 +270,21 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
   // Carregar mensagens de uma conversa
   const loadMessages = useCallback(async (conversationId: string) => {
     setLoadingMessages(true);
-    const { data, error } = await supabase
-      .from('whatsapp_messages')
-      .select('*')
-      .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true });
-
-    if (!error && data) {
-      setMessages(data as Message[]);
+    try {
+      const data = await aiManagementQuery<Message>({
+        action: 'select',
+        table: 'whatsapp_messages',
+        filters: [{ column: 'conversation_id', op: 'eq', value: conversationId }],
+        orderBy: { column: 'created_at', ascending: true },
+      });
+      setMessages(data);
+    } catch (error) {
+      console.error('Erro ao carregar mensagens:', error);
     }
     setLoadingMessages(false);
 
     // Zerar unread
-    await supabase
-      .from('whatsapp_conversations')
-      .update({ unread_count: 0 })
-      .eq('id', conversationId);
+    await aiManagementUpdate('whatsapp_conversations', conversationId, { unread_count: 0 });
   }, []);
 
   useEffect(() => {
@@ -376,10 +395,7 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
   };
 
   const toggleAI = async (conv: Conversation) => {
-    await supabase
-      .from('whatsapp_conversations')
-      .update({ ai_enabled: !conv.ai_enabled })
-      .eq('id', conv.id);
+    await aiManagementUpdate('whatsapp_conversations', conv.id, { ai_enabled: !conv.ai_enabled });
     loadConversations();
     if (selectedConversation?.id === conv.id) {
       setSelectedConversation({ ...conv, ai_enabled: !conv.ai_enabled });
@@ -387,19 +403,23 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
   };
 
   const closeTicketManually = async (conversationId: string) => {
-    const { data: openTicket } = await supabase
-      .from('whatsapp_tickets')
-      .select('id')
-      .eq('conversation_id', conversationId)
-      .eq('status', 'open')
-      .limit(1)
-      .single();
+    const [openTicket] = await aiManagementQuery<{ id: string }>({
+      action: 'select',
+      table: 'whatsapp_tickets',
+      select: 'id',
+      filters: [
+        { column: 'conversation_id', op: 'eq', value: conversationId },
+        { column: 'status', op: 'eq', value: 'open' },
+      ],
+      limit: 1,
+    });
 
     if (openTicket) {
-      await supabase
-        .from('whatsapp_tickets')
-        .update({ status: 'closed', closed_by: 'human', closed_at: new Date().toISOString() })
-        .eq('id', openTicket.id);
+      await aiManagementUpdate('whatsapp_tickets', openTicket.id, {
+        status: 'closed',
+        closed_by: 'human',
+        closed_at: new Date().toISOString(),
+      });
     }
   };
 

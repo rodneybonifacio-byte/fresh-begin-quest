@@ -2,8 +2,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface Filter {
   column: string;
-  op: "eq" | "gte" | "neq";
-  value: string | number | boolean;
+  op: "eq" | "gte" | "lte" | "neq" | "in" | "like" | "ilike" | "not" | "is" | "or";
+  value: string | number | boolean | null | Array<string | number | boolean>;
 }
 
 interface OrderBy {
@@ -14,6 +14,7 @@ interface OrderBy {
 interface AiManagementRequest {
   action: "select" | "update" | "insert" | "delete";
   table: string;
+  select?: string;
   data?: Record<string, any>;
   id?: string;
   filters?: Filter[];

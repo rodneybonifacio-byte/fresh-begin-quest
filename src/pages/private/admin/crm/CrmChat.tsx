@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { getSupabaseWithAuth } from '@/integrations/supabase/custom-auth';
-const supabase = getSupabaseWithAuth();
+import { supabase } from '@/integrations/supabase/client';
+import { aiManagementQuery, aiManagementUpdate } from '@/services/aiManagementApi';
 import { MessageCircle, Search, User, Bot, Clock, ChevronLeft, Send } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -44,14 +44,16 @@ const CrmChat = () => {
   const [sending, setSending] = useState(false);
 
   const loadConversations = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('whatsapp_conversations')
-      .select('*')
-      .like('contact_phone', 'web-panel-%')
-      .order('last_message_at', { ascending: false });
-
-    if (!error && data) {
-      setConversations(data as ChatConversation[]);
+    try {
+      const data = await aiManagementQuery<ChatConversation>({
+        action: 'select',
+        table: 'whatsapp_conversations',
+        filters: [{ column: 'contact_phone', op: 'like', value: 'web-panel-%' }],
+        orderBy: { column: 'last_message_at', ascending: false },
+      });
+      setConversations(data);
+    } catch (error) {
+      console.error('Erro ao carregar conversas do chat:', error);
     }
     setLoading(false);
   }, []);
@@ -64,13 +66,14 @@ const CrmChat = () => {
 
   const loadMessages = useCallback(async (convId: string) => {
     setLoadingMessages(true);
-    const { data } = await supabase
-      .from('whatsapp_messages')
-      .select('*')
-      .eq('conversation_id', convId)
-      .order('created_at', { ascending: true });
+    const data = await aiManagementQuery<ChatMessage>({
+      action: 'select',
+      table: 'whatsapp_messages',
+      filters: [{ column: 'conversation_id', op: 'eq', value: convId }],
+      orderBy: { column: 'created_at', ascending: true },
+    });
 
-    if (data) setMessages(data as ChatMessage[]);
+    setMessages(data);
     setLoadingMessages(false);
   }, []);
 
@@ -287,7 +290,10 @@ const CrmChat = () => {
                   if (!replyText.trim() || !selected || sending) return;
                   setSending(true);
                   try {
-                    await supabase.from('whatsapp_messages').insert({
+                    await aiManagementQuery({
+                      action: 'insert',
+                      table: 'whatsapp_messages',
+                      data: {
                       conversation_id: selected.id,
                       direction: 'outbound',
                       content: replyText.trim(),
@@ -296,11 +302,12 @@ const CrmChat = () => {
                       sent_by: 'admin-crm',
                       ai_generated: false,
                       metadata: { source: 'crm-chat-admin' },
+                      },
                     });
-                    await supabase.from('whatsapp_conversations').update({
+                    await aiManagementUpdate('whatsapp_conversations', selected.id, {
                       last_message_preview: replyText.trim().slice(0, 100),
                       last_message_at: new Date().toISOString(),
-                    }).eq('id', selected.id);
+                    });
                     setReplyText('');
                   } catch (err) {
                     console.error('Erro ao enviar:', err);
