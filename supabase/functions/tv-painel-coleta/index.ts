@@ -15,14 +15,18 @@ function cleanSecret(v: string | undefined): string {
 
 async function getAdminToken(): Promise<string> {
   const baseUrl = cleanSecret(Deno.env.get('BASE_API_URL'));
-  const adminEmail = cleanSecret(Deno.env.get('API_ADMIN_EMAIL'));
-  const adminPassword = cleanSecret(Deno.env.get('API_ADMIN_PASSWORD'));
+  // Prioriza credencial dedicada da TV; cai para admin geral se não houver
+  const tvEmail = cleanSecret(Deno.env.get('TV_COLETA_EMAIL'));
+  const tvPassword = cleanSecret(Deno.env.get('TV_COLETA_PASSWORD'));
+  const adminEmail = tvEmail || cleanSecret(Deno.env.get('API_ADMIN_EMAIL'));
+  const adminPassword = tvPassword || cleanSecret(Deno.env.get('API_ADMIN_PASSWORD'));
+  const usingDedicated = !!(tvEmail && tvPassword);
 
   if (!adminEmail || !adminPassword || !baseUrl) {
-    throw new Error(`Credenciais admin ausentes (baseUrl=${!!baseUrl}, email=${!!adminEmail}, pwd=${!!adminPassword})`);
+    throw new Error(`Credenciais ausentes (baseUrl=${!!baseUrl}, email=${!!adminEmail}, pwd=${!!adminPassword})`);
   }
 
-  console.log(`🔐 Login admin: baseUrl=${baseUrl} emailLen=${adminEmail.length} pwdLen=${adminPassword.length}`);
+  console.log(`🔐 Login TV (${usingDedicated ? 'dedicada' : 'admin-fallback'}): baseUrl=${baseUrl} emailLen=${adminEmail.length} pwdLen=${adminPassword.length}`);
 
 
   const loginResponse = await fetch(`${baseUrl}/login`, {
