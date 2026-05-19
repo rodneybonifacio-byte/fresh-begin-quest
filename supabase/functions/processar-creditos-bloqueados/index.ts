@@ -44,36 +44,34 @@ Deno.serve(async (req) => {
     // @ts-ignore: Deno types
     const adminPassword = Deno.env.get('API_ADMIN_PASSWORD')
     
-    if (!baseApiUrl || !adminEmail || !adminPassword) {
-      throw new Error('Variáveis de ambiente não configuradas')
+    if (!baseApiUrl) {
+      throw new Error('BASE_API_URL não configurada')
     }
 
-    // 1. Fazer login com credenciais admin
-    console.log('🔐 Fazendo login com credenciais de admin...')
-    
-    const loginResponse = await fetch(`${baseApiUrl}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: adminEmail,
-        password: adminPassword,
-      }),
-    })
-
-    if (!loginResponse.ok) {
-      const loginError = await loginResponse.text()
-      console.error('❌ Erro no login:', loginError)
-      throw new Error('Falha na autenticação com a API externa')
+    // 1. Login admin BRHUB é OPCIONAL — só é necessário para etiquetas do fluxo legado.
+    // Para etiquetas Marketplace o status vem do Supabase, então toleramos falha no login.
+    let authToken: string | null = null
+    try {
+      if (adminEmail && adminPassword) {
+        console.log('🔐 Tentando login admin BRHUB (legado)...')
+        const loginResponse = await fetch(`${baseApiUrl}/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: adminEmail, password: adminPassword }),
+        })
+        if (loginResponse.ok) {
+          const loginData = await loginResponse.json()
+          authToken = loginData.token || null
+          if (authToken) console.log('✅ Login admin BRHUB realizado')
+        } else {
+          console.warn(`⚠️ Login admin BRHUB falhou (${loginResponse.status}) — seguindo sem token; etiquetas legadas serão puladas`)
+        }
+      } else {
+        console.warn('⚠️ Credenciais admin BRHUB ausentes — seguindo sem token')
+      }
+    } catch (loginErr) {
+      console.warn('⚠️ Erro no login admin BRHUB (seguindo sem token):', loginErr)
     }
-
-    const loginData = await loginResponse.json()
-    const authToken = loginData.token
-
-    if (!authToken) {
-      throw new Error('Token de autenticação não recebido')
-    }
-
-    console.log('✅ Login admin realizado com sucesso')
 
     // 2. Buscar todas as etiquetas com créditos bloqueados
     const { data: etiquetas, error: etiquetasError } = await supabaseClient
@@ -107,29 +105,53 @@ Deno.serve(async (req) => {
     for (const etiqueta of etiquetas as EtiquetaBloqueada[]) {
       try {
         console.log(`\n🔍 Processando etiqueta ${etiqueta.emissao_id}`)
-        
-        // Buscar status da etiqueta na API externa usando token admin
-        const emissaoResponse = await fetch(
-          `${baseApiUrl}/emissoes/${etiqueta.emissao_id}`,
-          {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${authToken}`,
-            }
+
+        let statusEtiqueta: StatusEtiqueta | null = null
+
+        // 🛒 Primeiro: verificar se é uma emissão MARKETPLACE (não vive na API BRHUB legada)
+        const { data: mpRow } = await supabaseClient
+          .from('emissoes_marketplace')
+          .select('id, uuid_marketplace, codigo_objeto, status, status_rastreio')
+          .or(`uuid_marketplace.eq.${etiqueta.emissao_id},id.eq.${etiqueta.emissao_id}`)
+          .maybeSingle()
+
+        if (mpRow) {
+          console.log(`🛒 Etiqueta MARKETPLACE detectada (${mpRow.codigo_objeto || mpRow.uuid_marketplace})`)
+          statusEtiqueta = {
+            // Marketplace: a partir do momento em que a etiqueta foi emitida com sucesso,
+            // ela conta para fechamento. Só permanece bloqueada enquanto status_rastreio = PRE_POSTADO.
+            status: (mpRow.status_rastreio || 'POSTADO').toString(),
+            codigo_objeto: mpRow.codigo_objeto || null,
           }
-        )
+        } else {
+          // Fluxo BRHUB tradicional: precisa de token admin
+          if (!authToken) {
+            console.warn(`⏭️ Etiqueta ${etiqueta.emissao_id} é BRHUB legada e não há token admin — pulando`)
+            continue
+          }
+          // buscar status na API externa
+          const emissaoResponse = await fetch(
+            `${baseApiUrl}/emissoes/${etiqueta.emissao_id}`,
+            {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`,
+              }
+            }
+          )
 
-        if (!emissaoResponse.ok) {
-          console.warn(`⚠️ Não foi possível buscar status da etiqueta ${etiqueta.emissao_id}`)
-          erros.push(`Etiqueta ${etiqueta.emissao_id}: erro ao buscar status`)
-          continue
-        }
+          if (!emissaoResponse.ok) {
+            console.warn(`⚠️ Não foi possível buscar status da etiqueta ${etiqueta.emissao_id}`)
+            erros.push(`Etiqueta ${etiqueta.emissao_id}: erro ao buscar status`)
+            continue
+          }
 
-        const emissaoData = await emissaoResponse.json()
-        const statusEtiqueta: StatusEtiqueta = {
-          status: emissaoData.data?.status || 'desconhecido',
-          codigo_objeto: emissaoData.data?.codigoObjeto || null
+          const emissaoData = await emissaoResponse.json()
+          statusEtiqueta = {
+            status: emissaoData.data?.status || 'desconhecido',
+            codigo_objeto: emissaoData.data?.codigoObjeto || null
+          }
         }
 
         console.log(`📊 Status: ${statusEtiqueta.status}`)
