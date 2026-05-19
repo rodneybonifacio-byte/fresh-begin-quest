@@ -52,9 +52,18 @@ serve(async (req) => {
       );
     }
 
+    // Sanitiza secrets: remove BOM, zero-width chars e controles invisíveis
+    const cleanSecret = (v: string | undefined) =>
+      (v || '')
+        .replace(/^\uFEFF/, '')
+        .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '')
+        .replace(/[\x00-\x1F\x7F]/g, '')
+        .trim();
+
     // Usar credenciais do secret (seguro no backend)
-    const clienteEmail = Deno.env.get('WIDGET_CLIENT_EMAIL');
-    const clienteSenha = Deno.env.get('WIDGET_CLIENT_PASSWORD');
+    const clienteEmail = cleanSecret(Deno.env.get('WIDGET_CLIENT_EMAIL'));
+    const clienteSenha = cleanSecret(Deno.env.get('WIDGET_CLIENT_PASSWORD'));
+
 
     if (!clienteEmail || !clienteSenha) {
       console.error('❌ Credenciais do widget não configuradas');
@@ -93,8 +102,9 @@ serve(async (req) => {
     if (!loginResponse.ok) {
       // Fallback: tentar com credenciais admin
       console.log('⚠️ Login widget falhou, tentando fallback admin...');
-      const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
-      const adminPassword = Deno.env.get('API_ADMIN_PASSWORD');
+      const adminEmail = cleanSecret(Deno.env.get('API_ADMIN_EMAIL'));
+      const adminPassword = cleanSecret(Deno.env.get('API_ADMIN_PASSWORD'));
+
 
       if (!adminEmail || !adminPassword) {
         console.error('❌ Credenciais admin não configuradas para fallback');
