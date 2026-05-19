@@ -48,11 +48,42 @@ async function getAdminToken(): Promise<string | null> {
 }
 
 async function fetchTrackingData(codigo: string): Promise<any> {
+  const code = String(codigo || "").trim();
+  if (!code) return null;
+
+  // 1) Tentar primeiro a API Marketplace
+  try {
+    const sb = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    );
+    const { data: mpRow } = await sb
+      .from("emissoes_marketplace")
+      .select("codigo_objeto, uuid_marketplace")
+      .or(`codigo_objeto.eq.${code},uuid_marketplace.eq.${code}`)
+      .maybeSingle();
+
+    if (mpRow?.codigo_objeto) {
+      try {
+        const mp = await rastrearMarketplace(mpRow.codigo_objeto);
+        if (mp) {
+          console.log(`[veronica fetchTrackingData] origem=marketplace codigo=${mpRow.codigo_objeto}`);
+          return { data: mp };
+        }
+      } catch (mpErr: any) {
+        console.warn("[veronica fetchTrackingData] marketplace falhou, fallback BRHUB:", mpErr?.message);
+      }
+    }
+  } catch (e: any) {
+    console.warn("[veronica fetchTrackingData] lookup falhou:", e?.message);
+  }
+
+  // 2) Fallback BRHUB legado
   const BASE_API_URL = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br/api";
   const token = await getAdminToken();
   if (!token) return null;
   try {
-    const resp = await fetch(`${BASE_API_URL}/rastrear?codigo=${codigo}`, {
+    const resp = await fetch(`${BASE_API_URL}/rastrear?codigo=${code}`, {
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     });
     if (!resp.ok) return null;
