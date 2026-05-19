@@ -71,24 +71,44 @@ serve(async (req) => {
       sobrepreco: typeof t.sobrepreco === 'string' ? parseFloat(t.sobrepreco) || 0 : (t.sobrepreco ?? 0),
     }));
 
-    await fetch(`${baseUrl}/clientes/${clienteId}`, {
+    // Tentar endpoint dedicado /configuracoes (sem exigir senha)
+    let putRes = await fetch(`${baseUrl}/clientes/${clienteId}/configuracoes`, {
       method: 'PUT',
       headers: { 'Authorization': `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        nomeEmpresa: cliente.nomeEmpresa,
-        nomeResponsavel: cliente.nomeResponsavel,
-        cpfCnpj: cliente.cpfCnpj,
-        email: cliente.email,
-        telefone: cliente.telefone || '',
-        celular: cliente.celular,
-        role: cliente.role || 'CLIENTE',
-        endereco: cliente.endereco,
-        status: cliente.status || 'ATIVO',
-        configuracoes: configCorrigidas,
-        transportadoraConfiguracoes: transportadoraCorrigidas,
-      }),
+      body: JSON.stringify(configCorrigidas),
     });
-    console.log('✅ WhatsApp desabilitado');
+    let putText = await putRes.text();
+    console.log('📥 PUT /configuracoes:', putRes.status, putText.substring(0, 200));
+
+    if (!putRes.ok) {
+      // Fallback: PUT /clientes/{id} com senha=__MANTER__
+      putRes = await fetch(`${baseUrl}/clientes/${clienteId}`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nomeEmpresa: cliente.nomeEmpresa,
+          nomeResponsavel: cliente.nomeResponsavel,
+          cpfCnpj: cliente.cpfCnpj,
+          email: cliente.email,
+          telefone: cliente.telefone || '',
+          celular: cliente.celular,
+          role: cliente.role || 'CLIENTE',
+          endereco: cliente.endereco,
+          status: cliente.status || 'ATIVO',
+          configuracoes: configCorrigidas,
+          transportadoraConfiguracoes: transportadoraCorrigidas,
+          senha: '__MANTER__',
+        }),
+      });
+      putText = await putRes.text();
+      console.log('📥 PUT /clientes fallback:', putRes.status, putText.substring(0, 200));
+    }
+
+    if (!putRes.ok) {
+      throw new Error(`Falha ao desabilitar WhatsApp: ${putText.substring(0, 300)}`);
+    }
+    console.log('✅ Config atualizada');
+    await new Promise((r) => setTimeout(r, 300));
 
     // 4. Preparar payload de emissão
     const digitsOnly = (v: any) => String(v ?? '').replace(/\D/g, '');
