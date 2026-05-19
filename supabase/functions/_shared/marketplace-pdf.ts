@@ -270,7 +270,7 @@ export async function buildMarketplaceLabelPdf(input: LabelInput): Promise<Uint8
   for (let x = M; x < W - M; x += dashLen * 2) {
     L(p1, x, dashY, Math.min(x + dashLen, W - M), dashY, 0.6);
   }
-  y = dashY - 6;
+  y = dashY - 12;
 
   // ── REMETENTE ────────────────────────────────────────────────────
   T(p1, `REMETENTE: ${input.sender.name || ""}`, M + 4, y, 8, true);
