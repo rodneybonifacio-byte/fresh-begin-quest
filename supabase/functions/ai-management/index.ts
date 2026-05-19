@@ -80,52 +80,49 @@ Deno.serve(async (req) => {
 
     switch (action) {
       case "select": {
-        let query = supabase.from(table).select(select || "*");
-        
-        if (filters) {
-          for (const f of filters) {
-            if (f.op === "eq") query = query.eq(f.column, f.value);
-            else if (f.op === "gte") query = query.gte(f.column, f.value);
-            else if (f.op === "lte") query = query.lte(f.column, f.value);
-            else if (f.op === "neq") query = query.neq(f.column, f.value);
-            else if (f.op === "in") query = query.in(f.column, f.value);
-            else if (f.op === "like") query = query.like(f.column, f.value);
-            else if (f.op === "ilike") query = query.ilike(f.column, f.value);
-            else if (f.op === "not") {
-              const [operator, rawValue] = String(f.value).split(".");
-              query = query.not(f.column, operator, rawValue === "null" ? null : rawValue);
+        const buildQuery = () => {
+          let q = supabase.from(table).select(select || "*");
+          if (filters) {
+            for (const f of filters) {
+              if (f.op === "eq") q = q.eq(f.column, f.value);
+              else if (f.op === "gte") q = q.gte(f.column, f.value);
+              else if (f.op === "lte") q = q.lte(f.column, f.value);
+              else if (f.op === "neq") q = q.neq(f.column, f.value);
+              else if (f.op === "in") q = q.in(f.column, f.value);
+              else if (f.op === "like") q = q.like(f.column, f.value);
+              else if (f.op === "ilike") q = q.ilike(f.column, f.value);
+              else if (f.op === "not") {
+                const [operator, rawValue] = String(f.value).split(".");
+                q = q.not(f.column, operator, rawValue === "null" ? null : rawValue);
+              }
+              else if (f.op === "is") q = q.is(f.column, f.value);
+              else if (f.op === "or") q = q.or(String(f.value));
             }
-            else if (f.op === "is") query = query.is(f.column, f.value);
-            else if (f.op === "or") query = query.or(String(f.value));
           }
-        }
-        
-        if (orderBy) {
-          query = query.order(orderBy.column, { ascending: orderBy.ascending ?? true });
-        }
-        
+          if (orderBy) {
+            q = q.order(orderBy.column, { ascending: orderBy.ascending ?? true });
+          }
+          return q;
+        };
+
         if (limit) {
-          query = query.limit(limit);
-          result = await query;
+          result = await buildQuery().limit(limit);
         } else {
           // Auto-paginate to bypass Supabase 1000-row default limit
           const pageSize = 1000;
           const maxRows = 100000;
           const all: any[] = [];
           let from = 0;
+          let pageErr: any = null;
           while (from < maxRows) {
-            const pageQuery = query.range(from, from + pageSize - 1);
-            const { data: pageData, error: pageErr } = await pageQuery;
-            if (pageErr) {
-              result = { data: null, error: pageErr };
-              break;
-            }
+            const { data: pageData, error } = await buildQuery().range(from, from + pageSize - 1);
+            if (error) { pageErr = error; break; }
             if (!pageData || pageData.length === 0) break;
             all.push(...pageData);
             if (pageData.length < pageSize) break;
             from += pageSize;
           }
-          if (!result) result = { data: all, error: null } as any;
+          result = pageErr ? { data: null, error: pageErr } as any : { data: all, error: null } as any;
         }
         break;
       }
