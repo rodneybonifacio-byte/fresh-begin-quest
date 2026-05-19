@@ -106,9 +106,27 @@ Deno.serve(async (req) => {
         
         if (limit) {
           query = query.limit(limit);
+          result = await query;
+        } else {
+          // Auto-paginate to bypass Supabase 1000-row default limit
+          const pageSize = 1000;
+          const maxRows = 100000;
+          const all: any[] = [];
+          let from = 0;
+          while (from < maxRows) {
+            const pageQuery = query.range(from, from + pageSize - 1);
+            const { data: pageData, error: pageErr } = await pageQuery;
+            if (pageErr) {
+              result = { data: null, error: pageErr };
+              break;
+            }
+            if (!pageData || pageData.length === 0) break;
+            all.push(...pageData);
+            if (pageData.length < pageSize) break;
+            from += pageSize;
+          }
+          if (!result) result = { data: all, error: null } as any;
         }
-
-        result = await query;
         break;
       }
 
