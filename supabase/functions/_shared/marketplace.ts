@@ -474,7 +474,7 @@ export async function getPdfEtiquetaMarketplace(
       const v = Number(it.valor ?? it.value ?? it.unitValue ?? it.price ?? 0);
       return s + v;
     }, 0);
-    const totalValue = label.declaration?.totalValue ?? (computedTotal > 0 ? computedTotal : '');
+    const totalValue = computedTotal > 0 ? computedTotal : (label.declaration?.totalValue ?? '');
     const fmtMoney = (n: any) => {
       const num = Number(n);
       return Number.isFinite(num) ? num.toFixed(2) : String(n ?? '');
