@@ -3,17 +3,27 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+function cleanSecret(v: string | undefined): string {
+  if (!v) return '';
+  // Remove espaços, BOM, zero-width chars e qualquer caractere de controle/invisível
+  return v
+    .replace(/^\uFEFF/, '')
+    .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '')
+    .replace(/[\x00-\x1F\x7F]/g, '')
+    .trim();
+}
+
 async function getAdminToken(): Promise<string> {
-  const baseUrl = (Deno.env.get('BASE_API_URL') || '').trim();
-  // .trim() remove espaços/CR/LF acidentais que podem ter sido colados junto do secret
-  const adminEmail = (Deno.env.get('API_ADMIN_EMAIL') || '').trim();
-  const adminPassword = (Deno.env.get('API_ADMIN_PASSWORD') || '').trim();
+  const baseUrl = cleanSecret(Deno.env.get('BASE_API_URL'));
+  const adminEmail = cleanSecret(Deno.env.get('API_ADMIN_EMAIL'));
+  const adminPassword = cleanSecret(Deno.env.get('API_ADMIN_PASSWORD'));
 
   if (!adminEmail || !adminPassword || !baseUrl) {
     throw new Error(`Credenciais admin ausentes (baseUrl=${!!baseUrl}, email=${!!adminEmail}, pwd=${!!adminPassword})`);
   }
 
   console.log(`🔐 Login admin: baseUrl=${baseUrl} emailLen=${adminEmail.length} pwdLen=${adminPassword.length}`);
+
 
   const loginResponse = await fetch(`${baseUrl}/login`, {
     method: 'POST',
