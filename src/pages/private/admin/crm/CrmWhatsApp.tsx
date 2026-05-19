@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '../../../../integrations/supabase/client';
+import { getSupabaseWithAuth } from '../../../../integrations/supabase/custom-auth';
+const supabase = getSupabaseWithAuth();
 import { MessageSquare, Send, Search, Phone, User, Bot, Clock, ChevronLeft, ToggleLeft, ToggleRight, Smile, Check, CheckCheck, Ticket, Mic, Paperclip, X, FileText, UserCircle, AlertTriangle } from 'lucide-react';
 import { differenceInHours } from 'date-fns';
 import { format } from 'date-fns';

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { getSupabaseWithAuth } from '@/integrations/supabase/custom-auth';
+const supabase = getSupabaseWithAuth();
 import {
   User, Package, CreditCard, MapPin, Phone, Mail,
   Clock, AlertTriangle, MessageSquare,

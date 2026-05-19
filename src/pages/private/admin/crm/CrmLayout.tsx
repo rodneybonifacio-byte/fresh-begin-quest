@@ -6,7 +6,8 @@ import CrmNotificationTemplates from './CrmNotificationTemplates';
 import CrmChat from './CrmChat';
 import MobileCrmLayout from './MobileCrmLayout';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
-import { supabase } from '@/integrations/supabase/client';
+import { getSupabaseWithAuth } from '@/integrations/supabase/custom-auth';
+const supabase = getSupabaseWithAuth();
 
 const CrmLayout = () => {
   const isDesktop = useBreakpoint('lg');
