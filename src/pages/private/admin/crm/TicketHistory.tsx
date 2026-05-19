@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { getSupabaseWithAuth } from '@/integrations/supabase/custom-auth';
+const supabase = getSupabaseWithAuth();
 import { useQuery } from '@tanstack/react-query';
 import { Ticket, Clock, CheckCircle2, Bot, MessageSquare, X, ArrowRight, Timer, Tag, Shield } from 'lucide-react';
 import { format, formatDistanceStrict } from 'date-fns';

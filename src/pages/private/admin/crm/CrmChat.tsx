@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { getSupabaseWithAuth } from '@/integrations/supabase/custom-auth';
+const supabase = getSupabaseWithAuth();
 import { MessageCircle, Search, User, Bot, Clock, ChevronLeft, Send } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
