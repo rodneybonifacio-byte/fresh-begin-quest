@@ -70,6 +70,22 @@ function mpHeaders(auth: { apiKey: string; token: string }) {
 const digits = (s: any) => String(s ?? '').replace(/\D/g, '');
 const trim = (s: any) => String(s ?? '').trim();
 
+function isValidNFeAccessKey(raw: any): boolean {
+  const chave = digits(raw);
+  if (chave.length !== 44) return false;
+  if (/^(\d)\1{43}$/.test(chave)) return false;
+
+  let sum = 0;
+  let weight = 2;
+  for (let i = 42; i >= 0; i--) {
+    sum += Number(chave[i]) * weight;
+    weight = weight === 9 ? 2 : weight + 1;
+  }
+  const mod = sum % 11;
+  const checkDigit = mod < 2 ? 0 : 11 - mod;
+  return checkDigit === Number(chave[43]);
+}
+
 const cleanObject = <T extends Record<string, any>>(obj: T): T =>
   Object.fromEntries(
     Object.entries(obj).filter(([, v]) => v !== undefined && v !== null && v !== ''),
@@ -213,11 +229,15 @@ export async function emitirEtiquetaMarketplace(
   const chaveNFe = digits(emissaoPayload?.chaveNFe);
   const numeroNotaFiscal = trim(emissaoPayload?.numeroNotaFiscal);
   const requerNF = carrierRequiresNF(codigoServico, cotacao?.requerNotaFiscal);
-  if (requerNF && (chaveNFe.length !== 44 || !numeroNotaFiscal)) {
+  const chaveNFeValida = isValidNFeAccessKey(chaveNFe);
+  if (chaveNFe && chaveNFe.length === 44 && !chaveNFeValida) {
+    console.warn('[MP] chaveNFe com 44 dígitos, mas DV inválido; emitindo como declaração quando permitido');
+  }
+  if (requerNF && (!chaveNFeValida || !numeroNotaFiscal)) {
     throw new MarketplaceApiError(
       `O serviço ${cotacao?.nomeServico || codigoServico} é operado por transportadora privada e exige Nota Fiscal.`,
       400,
-      ['numeroNotaFiscal obrigatório', 'chaveNFe (44 dígitos) obrigatória'],
+      ['numeroNotaFiscal obrigatório', 'chaveNFe válida (44 dígitos com DV correto) obrigatória'],
     );
   }
 
@@ -240,7 +260,7 @@ export async function emitirEtiquetaMarketplace(
   // Correios sem NF deve seguir como declaração de conteúdo, mas sem campos
   // de NF/valor declarado. Se omitirmos a declaração, o upstream tenta montar
   // uma NF placeholder e o Correios rejeita com PPN-353.
-  const temNFValida = chaveNFe.length === 44 && Boolean(numeroNotaFiscal);
+  const temNFValida = chaveNFeValida && Boolean(numeroNotaFiscal);
   const valorDeclaradoRaw = Number(emissaoPayload?.valorDeclarado ?? 0) || 0;
   const itensDeclaracaoNormalizados = normalizeItens(emissaoPayload?.itensDeclaracaoConteudo);
   const deveEnviarNF = !isCorreios || temNFValida;
