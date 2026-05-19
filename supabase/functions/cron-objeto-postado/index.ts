@@ -98,18 +98,9 @@ Deno.serve(async (req: Request) => {
 
     console.log("🔄 [CronObjetoPostado] Iniciando verificação...");
 
-    // Login admin
-    const adminEmail = Deno.env.get("API_ADMIN_EMAIL");
-    const adminPassword = Deno.env.get("API_ADMIN_PASSWORD");
-    if (!adminEmail || !adminPassword) throw new Error("Credenciais admin não configuradas");
-
-    const loginRes = await fetch(`${BASE_API_URL}/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: adminEmail, password: adminPassword }),
-    });
-    if (!loginRes.ok) throw new Error(`Login falhou: ${loginRes.status}`);
-    const { token } = await loginRes.json();
+    // Login admin (cacheado)
+    const { getAdminTokenCached } = await import("../_shared/adminTokenCache.ts");
+    const token = await getAdminTokenCached();
 
     // Buscar emissões com status POSTADO
     const res = await fetch(

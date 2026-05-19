@@ -73,17 +73,8 @@ Deno.serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const adminEmail = Deno.env.get("API_ADMIN_EMAIL");
-    const adminPassword = Deno.env.get("API_ADMIN_PASSWORD");
-    if (!adminEmail || !adminPassword) throw new Error("Credenciais de admin não configuradas");
-
-    const loginResponse = await fetch(`${BASE_API_URL}/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: adminEmail, password: adminPassword }),
-    });
-    if (!loginResponse.ok) throw new Error(`Falha no login admin: ${loginResponse.status}`);
-    const { token } = await loginResponse.json();
+    const { getAdminTokenCached } = await import("../_shared/adminTokenCache.ts");
+    const token = await getAdminTokenCached();
 
     // Buscar envios AGUARDANDO_RETIRADA
     const enviosResponse = await fetch(

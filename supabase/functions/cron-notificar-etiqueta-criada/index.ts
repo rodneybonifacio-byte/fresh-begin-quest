@@ -117,22 +117,10 @@ serve(async (req: Request) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Login admin na API externa
-    const adminEmail = Deno.env.get("API_ADMIN_EMAIL");
-    const adminPassword = Deno.env.get("API_ADMIN_PASSWORD");
-    if (!adminEmail || !adminPassword) {
-      throw new Error("Credenciais admin não configuradas");
-    }
-
+    // Login admin na API externa (cacheado)
     console.log("🔄 [CronEtiquetaCriada] Iniciando verificação...");
-
-    const loginRes = await fetch(`${BASE_API_URL}/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: adminEmail, password: adminPassword }),
-    });
-    if (!loginRes.ok) throw new Error(`Login falhou: ${loginRes.status}`);
-    const { token } = await loginRes.json();
+    const { getAdminTokenCached } = await import("../_shared/adminTokenCache.ts");
+    const token = await getAdminTokenCached();
 
     // Buscar emissões recentes com status PRE_POSTADO (últimas criadas)
     // A API retorna as mais recentes primeiro

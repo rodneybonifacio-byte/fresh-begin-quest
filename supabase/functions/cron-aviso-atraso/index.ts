@@ -92,26 +92,8 @@ async function resolverNomeRemetente(emissao: any): Promise<string> {
 }
 
 async function loginAdmin(): Promise<string> {
-  const baseApiUrl = Deno.env.get('BASE_API_URL');
-  const email = Deno.env.get('API_ADMIN_EMAIL');
-  const password = Deno.env.get('API_ADMIN_PASSWORD');
-
-  if (!email || !password || !baseApiUrl) {
-    throw new Error('Credenciais de admin não configuradas');
-  }
-
-  const response = await fetch(`${baseApiUrl}/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  });
-
-  if (!response.ok) {
-    throw new Error('Falha no login admin');
-  }
-
-  const data = await response.json();
-  return data.token;
+  const { getAdminTokenCached } = await import('../_shared/adminTokenCache.ts');
+  return await getAdminTokenCached();
 }
 
 async function fetchEmissoesEmTransito(token: string): Promise<any[]> {
