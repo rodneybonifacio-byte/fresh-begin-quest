@@ -545,8 +545,15 @@ serve(async (req) => {
     const isCorreios = /^0\d{4}$/.test(codigoServicoEmissao);
     const precisaNormalizarCliente = origemCotacao !== 'marketplace' || isCorreios;
     if (precisaNormalizarCliente) {
-      adminToken = await getAdminToken();
-      await disableClientWhatsApp(clienteId, adminToken);
+      // Best-effort: API legada BRHUB pode estar fora do ar (HTTP 500 em /login).
+      // Não bloquear a emissão — apenas registrar e prosseguir.
+      try {
+        adminToken = await getAdminToken();
+        await disableClientWhatsApp(clienteId, adminToken);
+      } catch (e: any) {
+        console.warn('⚠️ Normalização de cliente via API legada falhou (seguindo sem):', e?.message || e);
+        adminToken = null;
+      }
     }
 
     // USAR TOKEN DO CLIENTE para emissão (não admin!)
