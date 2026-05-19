@@ -1,16 +1,15 @@
 // Gerador de PDF da etiqueta Marketplace (modelo Correios SEDEX BRHUB).
-// 2 páginas: (1) etiqueta com código de barras Code128, (2) Declaração de Conteúdo.
-// Sem dependências nativas: usa pdf-lib + Code128 implementado localmente.
+// Formato 10x15cm (283.46 x 425.2 pts). 2 páginas: (1) etiqueta com Code128,
+// (2) Declaração de Conteúdo. Sem dependências nativas (pdf-lib + Code128 local).
 
 // @ts-nocheck
 import {
   PDFDocument,
   StandardFonts,
   rgb,
-  PageSizes,
 } from "https://esm.sh/pdf-lib@1.17.1";
 
-// ─── Code128 encoder (subsets B/C automático) ───────────────────────────
+// ─── Code128 encoder ────────────────────────────────────────────────────
 const C128_PATTERNS = [
   "11011001100","11001101100","11001100110","10010011000","10010001100",
   "10001001100","10011001000","10011000100","10001100100","11001001000",
@@ -35,33 +34,25 @@ const C128_PATTERNS = [
   "10111101110","11101011110","11110101110","11010000100","11010010000",
   "11010011100","1100011101011",
 ];
-// 103 StartB, 105 StartC, 106 Stop
 
 function code128Encode(text: string): string {
-  // Heurística: se for só dígitos pares, usa C. Caso contrário B.
-  // Para SRO Correios (ex: AD465405677BR) usamos B (uppercase + dígitos).
   const codes: number[] = [];
   const useC = /^\d+$/.test(text) && text.length % 2 === 0;
-  let checksum: number;
   if (useC) {
     codes.push(105);
     for (let i = 0; i < text.length; i += 2) codes.push(parseInt(text.substr(i, 2), 10));
   } else {
-    codes.push(104); // Start B
+    codes.push(104);
     for (const ch of text) codes.push(ch.charCodeAt(0) - 32);
   }
   let sum = codes[0];
   for (let i = 1; i < codes.length; i++) sum += codes[i] * i;
-  checksum = sum % 103;
-  codes.push(checksum);
+  codes.push(sum % 103);
   codes.push(106);
   return codes.map((c) => C128_PATTERNS[c]).join("");
 }
 
-// ─── Helpers de layout ──────────────────────────────────────────────────
-const A4 = PageSizes.A4; // [595.28, 841.89]
-
-// WinAnsi (Helvetica) suporta acentos latinos; mantemos como está.
+// ─── Helpers ────────────────────────────────────────────────────────────
 const sanitize = (s: any) => String(s ?? "");
 
 function fmtCep(cep: string) {
@@ -92,9 +83,9 @@ export interface LabelInput {
   serviceCode?: string;
   contract?: string;
   orderId?: string;
-  volume?: string; // "1/1"
-  weight?: string; // kg
-  dimensions?: string; // "20x20x30"
+  volume?: string;
+  weight?: string;
+  dimensions?: string;
   sender: {
     name: string; cpfCnpj?: string; address?: string; neighborhood?: string;
     cityState?: string; cep?: string; phone?: string;
@@ -106,246 +97,343 @@ export interface LabelInput {
   items?: Array<{ descricao: string; quantidade: number; valor: number }>;
 }
 
+// 10 x 15 cm em pontos (1cm = 28.3465pt)
+const LABEL_W = 283.46;
+const LABEL_H = 425.20;
+
 // ────────────────────────────────────────────────────────────────────────
 export async function buildMarketplaceLabelPdf(input: LabelInput): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const fontB = await doc.embedFont(StandardFonts.HelveticaBold);
-
-  // ═══════════════════════════ PÁGINA 1 — ETIQUETA ═════════════════════════
-  const p1 = doc.addPage(A4);
-  const W = A4[0], H = A4[1];
-  const M = 28; // margem
-  let y = H - M;
-
   const black = rgb(0, 0, 0);
-  const drawText = (t: string, x: number, yy: number, size = 9, bold = false) =>
-    p1.drawText(sanitize(t), { x, y: yy, size, font: bold ? fontB : font, color: black });
-  const line = (x1: number, y1: number, x2: number, y2: number, w = 0.7) =>
-    p1.drawLine({ start: { x: x1, y: y1 }, end: { x: x2, y: y2 }, thickness: w, color: black });
-  const rect = (x: number, yy: number, w: number, h: number, lw = 0.7) =>
-    p1.drawRectangle({ x, y: yy, width: w, height: h, borderColor: black, borderWidth: lw });
+  const gray = rgb(0.55, 0.55, 0.55);
 
-  // Header: Correios + Contrato/Serviço/Volume
-  drawText("Correios", M, y - 18, 22, true);
-  drawText(`Contrato: ${input.contract ?? ""}`, W - M - 230, y - 10, 8);
-  drawText(input.serviceName || "BRHUB SEDEX", W - M - 230, y - 22, 11, true);
-  drawText(`Volume: ${input.volume || "1/1"}`, W - M - 230, y - 34, 9);
-  y -= 50;
-  line(M, y, W - M, y);
-
-  // Bloco código de barras
-  const tracking = input.trackingCode;
-  const pattern = code128Encode(tracking);
-  const barH = 70;
-  const totalW = W - 2 * M;
-  const moduleW = totalW / pattern.length;
-  const barY = y - barH - 10;
-  for (let i = 0; i < pattern.length; i++) {
-    if (pattern[i] === "1") {
-      p1.drawRectangle({
-        x: M + i * moduleW, y: barY, width: moduleW, height: barH, color: black,
-      });
-    }
-  }
-  // Texto do tracking sob o barcode (centralizado)
-  const trackTxt = formatTracking(tracking);
-  const tw = fontB.widthOfTextAtSize(trackTxt, 18);
-  drawText(trackTxt, (W - tw) / 2, barY - 22, 18, true);
-  y = barY - 36;
-  line(M, y, W - M, y);
-
-  // Linha de info: Peso | Pedido | Dim
-  y -= 18;
-  drawText(`Peso: ${input.weight ?? "-"} kg`, M, y, 10, true);
-  drawText(`Pedido: ${input.orderId ?? "-"}`, M + 170, y, 10, true);
-  drawText(`Dim: ${input.dimensions ?? "-"}cm`, M + 380, y, 10, true);
-  y -= 10;
-  line(M, y, W - M, y);
-
-  // Boxes Recebedor / Assinatura / Documento
-  y -= 60;
-  const colW = (W - 2 * M) / 3;
-  rect(M, y, colW, 60);
-  rect(M + colW, y, colW, 60);
-  rect(M + 2 * colW, y, colW, 60);
-  drawText("Recebedor:", M + 4, y + 50, 8);
-  drawText("Assinatura:", M + colW + 4, y + 50, 8);
-  drawText("Documento:", M + 2 * colW + 4, y + 50, 8);
-  y -= 12;
-
-  // DESTINATÁRIO
-  y -= 12;
-  drawText("DESTINATÁRIO", M, y, 11, true);
-  y -= 16;
-  drawText(input.recipient.name || "", M, y, 12, true);
-  y -= 14;
-  drawText(`CPF/CNPJ: ${fmtCpfCnpj(input.recipient.cpfCnpj || "")}`, M, y, 9);
-  y -= 14;
-  const recAddr = [input.recipient.address, input.recipient.neighborhood].filter(Boolean).join(" - ");
-  drawText(recAddr, M, y, 10);
-  y -= 14;
-  if (input.recipient.phone) {
-    drawText(`Tel: ${input.recipient.phone}`, M, y, 10);
-    y -= 14;
-  }
-  drawText(`${fmtCep(input.recipient.cep || "")} ${input.recipient.cityState || ""}`, M, y, 11, true);
-  y -= 18;
-  line(M, y, W - M, y);
-
-  // REMETENTE
-  y -= 14;
-  drawText(`REMETENTE: ${input.sender.name || ""}`, M, y, 10, true);
-  y -= 13;
-  drawText(`CPF/CNPJ: ${fmtCpfCnpj(input.sender.cpfCnpj || "")}`, M, y, 9);
-  y -= 13;
-  const sAddr = [input.sender.address, input.sender.neighborhood].filter(Boolean).join(" - ");
-  drawText(sAddr, M, y, 9);
-  y -= 13;
-  drawText(`${fmtCep(input.sender.cep || "")} ${input.sender.cityState || ""}`, M, y, 9);
-
-  // ═══════════════════════════ PÁGINA 2 — DECLARAÇÃO ════════════════════════
-  const p2 = doc.addPage(A4);
-  const dT = (t: string, x: number, yy: number, size = 9, bold = false) =>
-    p2.drawText(sanitize(t), { x, y: yy, size, font: bold ? fontB : font, color: black });
-  const dRect = (x: number, yy: number, w: number, h: number, lw = 0.7) =>
-    p2.drawRectangle({ x, y: yy, width: w, height: h, borderColor: black, borderWidth: lw });
-  const dLine = (x1: number, y1: number, x2: number, y2: number, w = 0.7) =>
-    p2.drawLine({ start: { x: x1, y: y1 }, end: { x: x2, y: y2 }, thickness: w, color: black });
-
-  let yy = H - M;
-
-  // Título
-  const title = "DECLARAÇÃO DE CONTEÚDO";
-  const titleW = fontB.widthOfTextAtSize(title, 16);
-  dT(title, (W - titleW) / 2, yy - 16, 16, true);
-  yy -= 36;
-
-  // Seção: REMETENTE | DESTINATÁRIO
-  const sectionH = 110;
-  const halfW = (W - 2 * M) / 2;
-  dRect(M, yy - sectionH, halfW, sectionH);
-  dRect(M + halfW, yy - sectionH, halfW, sectionH);
-
-  const drawPessoa = (x: number, p: LabelInput["sender"]) => {
-    let py = yy - 14;
-    dT("Nome: ", x + 4, py, 8, true); dT(p.name || "", x + 32, py, 8);
-    py -= 12;
-    const addr = [p.address, p.neighborhood].filter(Boolean).join(" - ");
-    dT("Endereço: ", x + 4, py, 8, true); dT(addr, x + 50, py, 8);
-    py -= 12;
-    const [cidade, uf] = String(p.cityState || "").split("/");
-    dT("Cidade: ", x + 4, py, 8, true); dT(cidade || "", x + 38, py, 8);
-    dT("UF: ", x + 140, py, 8, true); dT(uf || "", x + 158, py, 8);
-    py -= 12;
-    dT("CEP: ", x + 4, py, 8, true); dT(fmtCep(p.cep || ""), x + 28, py, 8);
-    py -= 12;
-    dT("CPF/CNPJ: ", x + 4, py, 8, true); dT(fmtCpfCnpj(p.cpfCnpj || ""), x + 52, py, 8);
-    if (p.phone) {
-      py -= 12;
-      dT("Telefone: ", x + 4, py, 8, true); dT(p.phone, x + 46, py, 8);
-    }
-  };
-  // Header das colunas
-  dT("REMETENTE", M + 6, yy - 4, 9, true);
-  dT("DESTINATÁRIO", M + halfW + 6, yy - 4, 9, true);
-  drawPessoa(M, input.sender);
-  drawPessoa(M + halfW, input.recipient as any);
-  yy -= sectionH + 18;
-
-  // IDENTIFICAÇÃO DOS BENS — tabela
-  dT("IDENTIFICAÇÃO DOS BENS", M, yy, 11, true);
-  yy -= 14;
-  const cols = [
-    { label: "ITEM", w: 50 },
-    { label: "CONTEÚDO", w: W - 2 * M - 50 - 80 - 90 },
-    { label: "QUANT.", w: 80 },
-    { label: "VALOR (R$)", w: 90 },
-  ];
-  const rowH = 18;
-  // Header da tabela
-  let cx = M;
-  dRect(M, yy - rowH, W - 2 * M, rowH);
-  for (const c of cols) {
-    dT(c.label, cx + 4, yy - 13, 9, true);
-    cx += c.w;
-    if (cx < W - M) dLine(cx, yy - rowH, cx, yy);
-  }
-  yy -= rowH;
-
-  const items = input.items || [];
-  let totalValor = 0;
-  items.forEach((it, idx) => {
-    dRect(M, yy - rowH, W - 2 * M, rowH);
-    let xx = M;
-    dT(String(idx + 1), xx + 4, yy - 13, 9); xx += cols[0].w; dLine(xx, yy - rowH, xx, yy);
-    dT(it.descricao || "Mercadoria", xx + 4, yy - 13, 9); xx += cols[1].w; dLine(xx, yy - rowH, xx, yy);
-    dT(String(it.quantidade ?? 1), xx + 4, yy - 13, 9); xx += cols[2].w; dLine(xx, yy - rowH, xx, yy);
-    dT(fmtMoney(it.valor), xx + 4, yy - 13, 9);
-    totalValor += Number(it.valor || 0);
-    yy -= rowH;
-  });
-
-  // Linha TOTAIS
-  dRect(M, yy - rowH, W - 2 * M, rowH);
-  dT("TOTAIS", M + cols[0].w + cols[1].w + 4, yy - 13, 9, true);
-  dT(fmtMoney(totalValor), M + cols[0].w + cols[1].w + cols[2].w + 4, yy - 13, 9, true);
-  yy -= rowH;
-
-  // PESO TOTAL
-  dRect(M, yy - rowH, W - 2 * M, rowH);
-  dT("PESO TOTAL (KG)", M + cols[0].w + cols[1].w + 4, yy - 13, 9, true);
-  dT(String(input.weight ?? "-"), M + cols[0].w + cols[1].w + cols[2].w + 4, yy - 13, 9, true);
-  yy -= rowH + 20;
-
-  // DECLARAÇÃO — texto
-  dT("DECLARAÇÃO", M, yy, 11, true);
-  yy -= 14;
-  const paragrafos = [
-    "Declaro que não me enquadro no conceito de contribuinte previsto no art. 4º da Lei Complementar nº 87/1996, uma vez que não realizo, com habitualidade ou em volume que caracterize intuito comercial, operações de circulação de mercadoria, ainda que se iniciem no exterior, ou estou dispensado da emissão da nota fiscal por força da legislação tributária vigente, responsabilizando-me, nos termos da lei e a quem de direito, por informações inverídicas.",
-    "Declaro que não envio objeto que ponha em risco o transporte aéreo, nem objeto proibido no fluxo postal, assumindo responsabilidade pela informação prestada, e ciente de que o descumprimento pode configurar crime, conforme artigo 261 do Código Penal Brasileiro. Declaro, ainda, estar ciente da lista de proibições e restrições, disponível no site dos Correios: correios.com.br/enviar/proibicoes-e-restricoes.",
-  ];
-  const wrap = (text: string, size: number, maxW: number) => {
-    const words = text.split(/\s+/);
+  const wrap = (text: string, size: number, maxW: number, f = font) => {
+    const words = String(text || "").split(/\s+/);
     const out: string[] = [];
     let cur = "";
     for (const w of words) {
       const test = cur ? cur + " " + w : w;
-      if (font.widthOfTextAtSize(test, size) > maxW) {
+      if (f.widthOfTextAtSize(test, size) > maxW) {
         if (cur) out.push(cur);
         cur = w;
-      } else {
-        cur = test;
-      }
+      } else cur = test;
     }
     if (cur) out.push(cur);
     return out;
   };
-  for (const par of paragrafos) {
-    const lines = wrap(par, 9, W - 2 * M);
-    for (const ln of lines) {
-      dT(ln, M, yy, 9);
-      yy -= 11;
+
+  // ═══════════════════════════ PÁGINA 1 — ETIQUETA 10x15 ════════════════════
+  const p1 = doc.addPage([LABEL_W, LABEL_H]);
+  const W = LABEL_W, H = LABEL_H;
+  const M = 8; // margem interna
+
+  const T = (page, t: string, x: number, y: number, size = 7, bold = false, color = black) =>
+    page.drawText(sanitize(t), { x, y, size, font: bold ? fontB : font, color });
+  const L = (page, x1: number, y1: number, x2: number, y2: number, w = 0.5) =>
+    page.drawLine({ start: { x: x1, y: y1 }, end: { x: x2, y: y2 }, thickness: w, color: black });
+  const R = (page, x: number, y: number, w: number, h: number, lw = 0.5) =>
+    page.drawRectangle({ x, y, width: w, height: h, borderColor: black, borderWidth: lw });
+
+  // Borda externa
+  R(p1, M, M, W - 2 * M, H - 2 * M, 0.8);
+
+  let y = H - M;
+
+  // ── Header: Correios (centralizado, sem logo gráfico) ────────────
+  const headerH = 36;
+  const correios = "Correios";
+  const cw = fontB.widthOfTextAtSize(correios, 18);
+  T(p1, correios, (W - cw) / 2, y - 24, 18, true);
+  y -= headerH;
+  L(p1, M, y, W - M, y, 0.8);
+
+  // ── Linha Contrato | Serviço | Volume ────────────────────────────
+  const lineH = 14;
+  const contratoRaw = input.contract || "";
+  const contratoTxt = `Contrato: ${contratoRaw}`;
+  T(p1, contratoTxt, M + 4, y - 10, 5.2, true);
+  const svc = input.serviceName || "BRHUB SEDEX";
+  const svcW = fontB.widthOfTextAtSize(svc, 8);
+  T(p1, svc, (W - svcW) / 2 + 30, y - 10, 8, true);
+  const vol = `Volume: ${input.volume || "1/1"}`;
+  const volW = fontB.widthOfTextAtSize(vol, 6);
+  T(p1, vol, W - M - 4 - volW, y - 10, 6, true);
+  y -= lineH;
+  L(p1, M, y, W - M, y);
+
+  // ── Tracking code (grande) ───────────────────────────────────────
+  const trackTxt = formatTracking(input.trackingCode);
+  let trackSize = 16;
+  while (fontB.widthOfTextAtSize(trackTxt, trackSize) > W - 2 * M - 8 && trackSize > 9) trackSize -= 0.5;
+  const trackW = fontB.widthOfTextAtSize(trackTxt, trackSize);
+  T(p1, trackTxt, (W - trackW) / 2, y - trackSize - 3, trackSize, true);
+  y -= trackSize + 8;
+  L(p1, M, y, W - M, y);
+
+  // ── Code128 ──────────────────────────────────────────────────────
+  const pattern = code128Encode(input.trackingCode);
+  const barH = 50;
+  const usableW = W - 2 * M - 8;
+  const moduleW = usableW / pattern.length;
+  const barX = M + 4;
+  const barY = y - barH - 4;
+  for (let i = 0; i < pattern.length; i++) {
+    if (pattern[i] === "1") {
+      p1.drawRectangle({
+        x: barX + i * moduleW, y: barY, width: moduleW, height: barH, color: black,
+      });
     }
-    yy -= 6;
+  }
+  y = barY - 4;
+  L(p1, M, y, W - M, y);
+
+  // ── Peso | Pedido | Dim ──────────────────────────────────────────
+  const infoH = 14;
+  T(p1, "Peso: ", M + 4, y - 10, 6.5, true);
+  T(p1, `${input.weight ?? "-"} kg`, M + 4 + fontB.widthOfTextAtSize("Peso: ", 6.5), y - 10, 6.5);
+  const pedX = M + 78;
+  T(p1, "Pedido: ", pedX, y - 10, 6.5, true);
+  T(p1, sanitize(input.orderId ?? "-"), pedX + fontB.widthOfTextAtSize("Pedido: ", 6.5), y - 10, 6.5);
+  const dimLbl = "Dim: ";
+  const dimVal = `${input.dimensions ?? "-"}cm`;
+  const dimTotalW = fontB.widthOfTextAtSize(dimLbl, 6.5) + font.widthOfTextAtSize(dimVal, 6.5);
+  const dimX = W - M - 4 - dimTotalW;
+  T(p1, dimLbl, dimX, y - 10, 6.5, true);
+  T(p1, dimVal, dimX + fontB.widthOfTextAtSize(dimLbl, 6.5), y - 10, 6.5);
+  y -= infoH;
+  L(p1, M, y, W - M, y);
+
+  // ── Recebedor / Assinatura / Documento (3 linhas empilhadas) ────
+  const recH = 42;
+  const lineGap = recH / 3;
+  ["Recebedor:", "Assinatura:", "Documento:"].forEach((lbl, i) => {
+    const ly = y - lineGap * (i + 1) + 4;
+    T(p1, lbl, M + 4, ly, 6.5);
+    const lblW = font.widthOfTextAtSize(lbl, 6.5);
+    L(p1, M + 4 + lblW + 4, ly - 2, W - M - 4, ly - 2, 0.4);
+  });
+  y -= recH;
+  L(p1, M, y, W - M, y);
+
+  // ── DESTINATÁRIO ─────────────────────────────────────────────────
+  y -= 14;
+  T(p1, "DESTINATÁRIO", M + 4, y, 10, true, gray);
+  y -= 14;
+  // Nome
+  const nameSize = 11;
+  T(p1, input.recipient.name || "", M + 4, y, nameSize, true);
+  y -= 11;
+  T(p1, `CPF/CNPJ: ${fmtCpfCnpj(input.recipient.cpfCnpj || "")}`, M + 4, y, 7);
+  y -= 10;
+  const recAddrLines = wrap(input.recipient.address || "", 7.5, W - 2 * M - 8);
+  for (const ln of recAddrLines.slice(0, 2)) {
+    T(p1, ln, M + 4, y, 7.5);
+    y -= 9;
+  }
+  if (input.recipient.neighborhood) {
+    T(p1, input.recipient.neighborhood, M + 4, y, 7.5);
+    y -= 9;
+  }
+  if (input.recipient.phone) {
+    T(p1, `Tel: ${input.recipient.phone}`, M + 4, y, 7.5);
+    y -= 9;
+  }
+  y -= 2;
+  const cepCity = `${fmtCep(input.recipient.cep || "")} ${input.recipient.cityState || ""}`;
+  T(p1, cepCity, M + 4, y, 10, true);
+  y -= 12;
+
+  // CEP barcode pequeno
+  const cepDigits = String(input.recipient.cep || "").replace(/\D/g, "");
+  if (cepDigits.length === 8) {
+    const cepPattern = code128Encode(cepDigits);
+    const cepBarH = 26;
+    const cepBarW = Math.min(140, W - 2 * M - 8);
+    const cepModW = cepBarW / cepPattern.length;
+    const cepX = M + 4;
+    const cepY = y - cepBarH - 2;
+    for (let i = 0; i < cepPattern.length; i++) {
+      if (cepPattern[i] === "1") {
+        p1.drawRectangle({
+          x: cepX + i * cepModW, y: cepY, width: cepModW, height: cepBarH, color: black,
+        });
+      }
+    }
+    y = cepY - 4;
   }
 
-  // Linha de data + assinatura
-  yy -= 16;
-  dT("_______________________, ____ de __________________ de ___________", M, yy, 9);
-  yy -= 24;
-  const sigW = 200;
-  dLine((W - sigW) / 2, yy, (W + sigW) / 2, yy);
-  yy -= 12;
-  const sigLbl = "Assinatura do Declarante/Remetente";
-  const sw = font.widthOfTextAtSize(sigLbl, 9);
-  dT(sigLbl, (W - sw) / 2, yy, 9);
-  yy -= 24;
-  dT("OBSERVAÇÃO: ", M, yy, 8, true);
-  dT(
-    "Constitui crime contra a ordem tributária suprimir ou reduzir tributo, ou contribuição social e qualquer acessório (Lei 8.137/90 Art. 1º, V).",
-    M + 70, yy, 8,
+  // ── Separador tracejado ──────────────────────────────────────────
+  const dashY = y - 2;
+  const dashLen = 3;
+  for (let x = M; x < W - M; x += dashLen * 2) {
+    L(p1, x, dashY, Math.min(x + dashLen, W - M), dashY, 0.6);
+  }
+  y = dashY - 12;
+
+  // ── REMETENTE ────────────────────────────────────────────────────
+  T(p1, `REMETENTE: ${input.sender.name || ""}`, M + 4, y, 8, true);
+  y -= 9;
+  T(p1, `CPF/CNPJ: ${fmtCpfCnpj(input.sender.cpfCnpj || "")}`, M + 4, y, 6.5);
+  y -= 9;
+  const sAddrLines = wrap(
+    [input.sender.address, input.sender.neighborhood].filter(Boolean).join(" - "),
+    6.5, W - 2 * M - 8
   );
+  for (const ln of sAddrLines.slice(0, 2)) {
+    T(p1, ln, M + 4, y, 6.5);
+    y -= 8;
+  }
+  T(p1, `${fmtCep(input.sender.cep || "")} ${input.sender.cityState || ""}`, M + 4, y, 7, true);
+
+  // ═══════════════════════════ PÁGINA 2 — DECLARAÇÃO 10x15 ═════════════════
+  const p2 = doc.addPage([LABEL_W, LABEL_H]);
+  R(p2, M, M, W - 2 * M, H - 2 * M, 0.8);
+  let yy = H - M;
+
+  // Título
+  const title = "DECLARAÇÃO DE CONTEÚDO";
+  const titleW = fontB.widthOfTextAtSize(title, 12);
+  T(p2, title, (W - titleW) / 2, yy - 14, 12, true);
+  yy -= 22;
+  L(p2, M, yy, W - M, yy, 0.8);
+
+  // Cabeçalho REMETENTE | DESTINATÁRIO
+  const colHdrH = 12;
+  const colW = (W - 2 * M) / 2;
+  const remLbl = "REMETENTE", destLbl = "DESTINATÁRIO";
+  T(p2, remLbl, M + (colW - fontB.widthOfTextAtSize(remLbl, 8)) / 2, yy - 9, 8, true);
+  T(p2, destLbl, M + colW + (colW - fontB.widthOfTextAtSize(destLbl, 8)) / 2, yy - 9, 8, true);
+  yy -= colHdrH;
+  L(p2, M, yy, W - M, yy, 0.5);
+  L(p2, M + colW, yy + colHdrH, M + colW, yy, 0.5);
+
+  // Bloco pessoa
+  const pessoaH = 68;
+  const drawPessoa = (x: number, p: LabelInput["sender"]) => {
+    let py = yy - 9;
+    const wMax = colW - 6;
+    T(p2, "Nome: ", x + 3, py, 5.5, true);
+    T(p2, p.name || "", x + 3 + fontB.widthOfTextAtSize("Nome: ", 5.5), py, 5.5);
+    py -= 9;
+    const addr = [p.address, p.neighborhood].filter(Boolean).join(" - ");
+    T(p2, "Endereço: ", x + 3, py, 5.5, true);
+    const addrLines = wrap(addr, 5.5, wMax - fontB.widthOfTextAtSize("Endereço: ", 5.5));
+    let firstY = py;
+    addrLines.slice(0, 2).forEach((ln, i) => {
+      T(p2, ln, x + 3 + (i === 0 ? fontB.widthOfTextAtSize("Endereço: ", 5.5) : 0), firstY - i * 8, 5.5);
+    });
+    py -= 8 * Math.min(addrLines.length, 2);
+    const [cidade, uf] = String(p.cityState || "").split("/");
+    T(p2, "Cidade: ", x + 3, py, 5.5, true);
+    T(p2, cidade || "", x + 3 + fontB.widthOfTextAtSize("Cidade: ", 5.5), py, 5.5);
+    T(p2, "UF: ", x + colW - 30, py, 5.5, true);
+    T(p2, uf || "", x + colW - 30 + fontB.widthOfTextAtSize("UF: ", 5.5), py, 5.5);
+    py -= 9;
+    T(p2, "CEP: ", x + 3, py, 5.5, true);
+    T(p2, fmtCep(p.cep || ""), x + 3 + fontB.widthOfTextAtSize("CEP: ", 5.5), py, 5.5);
+    py -= 9;
+    T(p2, "CPF/CNPJ: ", x + 3, py, 5.5, true);
+    T(p2, fmtCpfCnpj(p.cpfCnpj || ""), x + 3 + fontB.widthOfTextAtSize("CPF/CNPJ: ", 5.5), py, 5.5);
+  };
+  drawPessoa(M, input.sender);
+  drawPessoa(M + colW, input.recipient as any);
+  yy -= pessoaH;
+  L(p2, M, yy, W - M, yy, 0.5);
+
+  // IDENTIFICAÇÃO DOS BENS
+  const bensTitle = "IDENTIFICAÇÃO DOS BENS";
+  const btW = fontB.widthOfTextAtSize(bensTitle, 9);
+  T(p2, bensTitle, (W - btW) / 2, yy - 10, 9, true);
+  yy -= 14;
+  L(p2, M, yy, W - M, yy, 0.5);
+
+  // Tabela
+  const cols = [
+    { label: "ITEM", w: 32 },
+    { label: "CONTEÚDO", w: W - 2 * M - 32 - 50 - 50 },
+    { label: "QUANT.", w: 50 },
+    { label: "VALOR", w: 50 },
+  ];
+  const rowH = 12;
+  // Header
+  let cx = M;
+  for (const c of cols) {
+    T(p2, c.label, cx + 3, yy - 9, 6.5, true);
+    cx += c.w;
+    if (cx < W - M) L(p2, cx, yy - rowH, cx, yy, 0.4);
+  }
+  yy -= rowH;
+  L(p2, M, yy, W - M, yy, 0.4);
+
+  // Rows
+  const items = input.items || [];
+  let totalValor = 0;
+  items.forEach((it, idx) => {
+    let xx = M;
+    T(p2, String(idx + 1), xx + 3, yy - 9, 6.5);
+    xx += cols[0].w; L(p2, xx, yy - rowH, xx, yy, 0.4);
+    T(p2, it.descricao || "Mercadoria", xx + 3, yy - 9, 6.5);
+    xx += cols[1].w; L(p2, xx, yy - rowH, xx, yy, 0.4);
+    T(p2, String(it.quantidade ?? 1), xx + 3, yy - 9, 6.5);
+    xx += cols[2].w; L(p2, xx, yy - rowH, xx, yy, 0.4);
+    T(p2, fmtMoney(it.valor), xx + 3, yy - 9, 6.5);
+    totalValor += Number(it.valor || 0);
+    yy -= rowH;
+    L(p2, M, yy, W - M, yy, 0.3);
+  });
+
+  // TOTAIS
+  const totLbl = "TOTAIS";
+  T(p2, totLbl, M + cols[0].w + cols[1].w + cols[2].w - fontB.widthOfTextAtSize(totLbl, 6.5) - 3, yy - 9, 6.5, true);
+  T(p2, fmtMoney(totalValor), M + cols[0].w + cols[1].w + cols[2].w + 3, yy - 9, 6.5, true);
+  yy -= rowH;
+  L(p2, M, yy, W - M, yy, 0.4);
+
+  // PESO
+  const pesoLbl = "PESO TOTAL (KG)";
+  T(p2, pesoLbl, M + cols[0].w + cols[1].w + cols[2].w - fontB.widthOfTextAtSize(pesoLbl, 6.5) - 3, yy - 9, 6.5, true);
+  T(p2, String(input.weight ?? "-"), M + cols[0].w + cols[1].w + cols[2].w + 3, yy - 9, 6.5);
+  yy -= rowH;
+  L(p2, M, yy, W - M, yy, 0.5);
+
+  // DECLARAÇÃO
+  yy -= 4;
+  const decTitle = "DECLARAÇÃO";
+  const dtW = fontB.widthOfTextAtSize(decTitle, 9);
+  T(p2, decTitle, (W - dtW) / 2, yy - 8, 9, true);
+  yy -= 14;
+  const paragrafos = [
+    "Declaro que não me enquadro no conceito de contribuinte previsto no art. 4º da Lei Complementar nº 87/1996, uma vez que não realizo, com habitualidade ou em volume que caracterize intuito comercial, operações de circulação de mercadoria, responsabilizando-me, nos termos da lei, por informações inverídicas.",
+    "Declaro que não envio objeto que ponha em risco o transporte aéreo, nem objeto proibido no fluxo postal, ciente de que o descumprimento pode configurar crime, conforme artigo 261 do Código Penal Brasileiro.",
+  ];
+  for (const par of paragrafos) {
+    const lines = wrap(par, 5.5, W - 2 * M - 8);
+    for (const ln of lines) {
+      T(p2, ln, M + 4, yy, 5.5);
+      yy -= 7;
+    }
+    yy -= 3;
+  }
+
+  yy -= 4;
+  T(p2, "_______________, ____ de ___________ de ______", M + 4, yy, 6);
+  yy -= 12;
+  const sigW = 120;
+  L(p2, (W - sigW) / 2, yy, (W + sigW) / 2, yy, 0.5);
+  yy -= 8;
+  const sigLbl = "Assinatura do Declarante/Remetente";
+  T(p2, sigLbl, (W - font.widthOfTextAtSize(sigLbl, 6)) / 2, yy, 6);
+  yy -= 12;
+  T(p2, "OBSERVAÇÃO: ", M + 4, yy, 5.5, true);
+  const obsLines = wrap(
+    "Constitui crime contra a ordem tributária suprimir ou reduzir tributo, ou contribuição social (Lei 8.137/90 Art. 1º, V).",
+    5.5, W - 2 * M - 8 - fontB.widthOfTextAtSize("OBSERVAÇÃO: ", 5.5)
+  );
+  obsLines.forEach((ln, i) => {
+    T(p2, ln, M + 4 + (i === 0 ? fontB.widthOfTextAtSize("OBSERVAÇÃO: ", 5.5) : 0), yy - i * 7, 5.5);
+  });
 
   return await doc.save();
 }
