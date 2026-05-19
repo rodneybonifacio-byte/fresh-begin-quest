@@ -20,6 +20,7 @@ import { ModalViewErroPostagem } from './ModalViewErroPostagem';
 import { ModalViewPDF } from './ModalViewPDF';
 import { DashboardEmissoes } from './DashboardEmissoes';
 import { getSupabaseWithAuth } from '../../../integrations/supabase/custom-auth';
+import { supabase } from '../../../integrations/supabase/client';
 import { toast } from 'sonner';
 export const ListaEmissoes = () => {
   const {
@@ -127,17 +128,12 @@ export const ListaEmissoes = () => {
     // Mescla emissões marketplace do Supabase (somente na primeira página, para evitar duplicar paginação)
     try {
       if (page === 1) {
-        const sb = getSupabaseWithAuth();
-        let q = sb
-          .from('emissoes_marketplace')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(200);
-        if (dataIni) q = q.gte('created_at', dataIni);
-        if (dataFim) q = q.lte('created_at', dataFim);
-        if (codigoObjeto) q = q.ilike('codigo_objeto', `%${codigoObjeto}%`);
-        if (destinatario) q = q.ilike('destinatario_nome', `%${destinatario}%`);
-        const { data: mpRows } = await q;
+        const userToken = localStorage.getItem('token') || localStorage.getItem('accessToken');
+        const { data: mpResponse, error: mpError } = await supabase.functions.invoke('listar-emissoes-marketplace', {
+          body: { userToken, limit: 200, dataIni, dataFim, codigoObjeto, destinatario },
+        });
+        if (mpError) throw mpError;
+        const mpRows = mpResponse?.emissoes || [];
         if (mpRows && mpRows.length) {
           const targetStatus = (statusFromUrl || tab || 'PRE_POSTADO').toUpperCase();
           const mapped = mpRows
