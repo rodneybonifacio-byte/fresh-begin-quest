@@ -50,15 +50,36 @@ interface ClienteHorario {
 const TV_PIN = '7890';
 const REFRESH_INTERVAL = 120_000;
 
-const BRHUB_CLIENTS = ['TG GRIFFES', '7 DAYS', 'CAIRO', 'NEXX', 'ERONIA', 'ATENDENCIA', 'LIVENCE', 'IMPERIAL ESSENCE'];
 const BRHUB_HORARIO = '16:00 – 17:00';
 
 // Clientes que devem ser ocultados do painel
 const HIDDEN_CLIENTS = ['OPERA KIDS', 'OPERAKIDS', 'ÓPERA KIDS', 'OPERA KIDS VAREJO', 'ÓPERA KIDS VAREJO'];
 
-const isBrhubClient = (nome: string): boolean => {
-  const upper = nome.toUpperCase().trim();
-  return BRHUB_CLIENTS.some(c => upper.includes(c));
+const normalizeName = (value: string): string => value
+  .toUpperCase()
+  .trim()
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/[^A-Z0-9]+/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+const ruleAliases = (nomeCliente: string): string[] => nomeCliente
+  .split('/')
+  .map(normalizeName)
+  .filter(Boolean);
+
+const hasNameMatch = (nome: string, regra: string): boolean => {
+  const normalizedNome = ` ${normalizeName(nome)} `;
+  return ruleAliases(regra).some(alias => normalizedNome.includes(` ${alias} `));
+};
+
+const findHorario = (nome: string, horariosDb: ClienteHorario[]): ClienteHorario | undefined => {
+  return horariosDb.find(h => hasNameMatch(nome, h.nome_cliente));
+};
+
+const isBrhubClient = (nome: string, horariosDb: ClienteHorario[]): boolean => {
+  return findHorario(nome, horariosDb)?.grupo?.toUpperCase().trim() === 'BRHUB';
 };
 
 // ─── Audio Alert ─────────────────────────────────────────────────────────────
