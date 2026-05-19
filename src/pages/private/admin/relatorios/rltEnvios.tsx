@@ -30,7 +30,6 @@ import { supabase } from '../../../../integrations/supabase/client';
 import { toast } from 'sonner';
 import { ShipmentTrackingMap } from '../../../../components/maps/ShipmentTrackingMap';
 import { ModalGerarManifestoSaida } from './ModalGerarManifestoSaida';
-import { getSupabaseWithAuth } from '../../../../integrations/supabase/custom-auth';
 
 const mapMarketplaceStatus = (status?: string | null) => {
     const s = String(status || '').toUpperCase();
@@ -122,31 +121,23 @@ const RltEnvios = () => {
     const filtros = Object.fromEntries(searchParams.entries());
 
     const buscarEmissoesMarketplace = async (limit = 200, statusFiltro?: string): Promise<IEmissao[]> => {
-        const sb = getSupabaseWithAuth();
         const dataIni = searchParams.get('dataIni') || undefined;
         const dataFim = searchParams.get('dataFim') || undefined;
         const codigoObjeto = searchParams.get('codigoObjeto') || undefined;
+        const destinatario = searchParams.get('destinatario') || undefined;
         const clienteId = searchParams.get('clienteId') || undefined;
         const remetenteId = searchParams.get('remetenteId') || undefined;
         const transportadora = searchParams.get('transportadora') || undefined;
-
-        let query = sb
-            .from('emissoes_marketplace')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(limit);
-
-        if (dataIni) query = query.gte('created_at', `${dataIni}T00:00:00`);
-        if (dataFim) query = query.lte('created_at', `${dataFim}T23:59:59.999`);
-        if (codigoObjeto) query = query.ilike('codigo_objeto', `%${codigoObjeto}%`);
-        if (clienteId) query = query.eq('cliente_id', clienteId);
-        if (remetenteId) query = query.eq('remetente_id', remetenteId);
-
-        const { data: rows, error } = await query;
+        const userToken = localStorage.getItem('token') || localStorage.getItem('accessToken');
+        const { data: response, error } = await supabase.functions.invoke('listar-emissoes-marketplace', {
+            body: { userToken, limit, dataIni, dataFim, codigoObjeto, destinatario, clienteId, remetenteId },
+        });
         if (error) {
             console.warn('Falha ao buscar emissões marketplace no admin:', error.message);
             return [];
         }
+
+        const rows = response?.emissoes || [];
 
         const statusPermitidos = (statusFiltro || tab || '')
             .split(',')
