@@ -124,10 +124,12 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
   // Load template bodies for HSM rendering
   useEffect(() => {
     const loadTemplateBodies = async () => {
-      const { data } = await supabase
-        .from('whatsapp_notification_templates')
-        .select('template_name, template_body, variables')
-        .not('template_body', 'is', null);
+      const data = await aiManagementQuery<any>({
+        action: 'select',
+        table: 'whatsapp_notification_templates',
+        select: 'template_name, template_body, variables',
+        filters: [{ column: 'template_body', op: 'not', value: 'is.null' }],
+      });
       if (data) {
         const map: typeof templateBodies = {};
         data.forEach((t: any) => {
@@ -145,10 +147,12 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
   // Load pipeline data for tracking code search
   useEffect(() => {
     const loadPipelineSearch = async () => {
-      const { data } = await supabase
-        .from('ai_support_pipeline')
-        .select('conversation_id, subject, description')
-        .not('conversation_id', 'is', null);
+      const data = await aiManagementQuery<any>({
+        action: 'select',
+        table: 'ai_support_pipeline',
+        select: 'conversation_id, subject, description',
+        filters: [{ column: 'conversation_id', op: 'not', value: 'is.null' }],
+      });
       if (data) {
         const map: Record<string, string> = {};
         data.forEach((t: any) => {
