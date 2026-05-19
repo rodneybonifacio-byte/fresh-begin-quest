@@ -4,13 +4,16 @@ const corsHeaders = {
 };
 
 async function getAdminToken(): Promise<string> {
-  const baseUrl = Deno.env.get('BASE_API_URL');
-  const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
-  const adminPassword = Deno.env.get('API_ADMIN_PASSWORD');
+  const baseUrl = (Deno.env.get('BASE_API_URL') || '').trim();
+  // .trim() remove espaços/CR/LF acidentais que podem ter sido colados junto do secret
+  const adminEmail = (Deno.env.get('API_ADMIN_EMAIL') || '').trim();
+  const adminPassword = (Deno.env.get('API_ADMIN_PASSWORD') || '').trim();
 
   if (!adminEmail || !adminPassword || !baseUrl) {
-    throw new Error('Credenciais de admin não configuradas');
+    throw new Error(`Credenciais admin ausentes (baseUrl=${!!baseUrl}, email=${!!adminEmail}, pwd=${!!adminPassword})`);
   }
+
+  console.log(`🔐 Login admin: baseUrl=${baseUrl} emailLen=${adminEmail.length} pwdLen=${adminPassword.length}`);
 
   const loginResponse = await fetch(`${baseUrl}/login`, {
     method: 'POST',
