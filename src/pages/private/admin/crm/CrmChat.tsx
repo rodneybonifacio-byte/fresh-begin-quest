@@ -290,7 +290,10 @@ const CrmChat = () => {
                   if (!replyText.trim() || !selected || sending) return;
                   setSending(true);
                   try {
-                    await supabase.from('whatsapp_messages').insert({
+                    await aiManagementQuery({
+                      action: 'insert',
+                      table: 'whatsapp_messages',
+                      data: {
                       conversation_id: selected.id,
                       direction: 'outbound',
                       content: replyText.trim(),
@@ -299,11 +302,12 @@ const CrmChat = () => {
                       sent_by: 'admin-crm',
                       ai_generated: false,
                       metadata: { source: 'crm-chat-admin' },
+                      },
                     });
-                    await supabase.from('whatsapp_conversations').update({
+                    await aiManagementUpdate('whatsapp_conversations', selected.id, {
                       last_message_preview: replyText.trim().slice(0, 100),
                       last_message_at: new Date().toISOString(),
-                    }).eq('id', selected.id);
+                    });
                     setReplyText('');
                   } catch (err) {
                     console.error('Erro ao enviar:', err);
