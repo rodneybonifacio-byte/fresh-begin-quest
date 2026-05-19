@@ -1,8 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { aiManagementQuery, aiManagementUpdate } from '@/services/aiManagementApi';
-import { getSupabaseWithAuth } from '@/integrations/supabase/custom-auth';
-const supabase = getSupabaseWithAuth();
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
   Tag, Truck, PackageCheck, Star, AlertTriangle, Building2,
