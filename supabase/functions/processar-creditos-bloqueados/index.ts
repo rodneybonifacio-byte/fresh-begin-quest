@@ -107,29 +107,48 @@ Deno.serve(async (req) => {
     for (const etiqueta of etiquetas as EtiquetaBloqueada[]) {
       try {
         console.log(`\n🔍 Processando etiqueta ${etiqueta.emissao_id}`)
-        
-        // Buscar status da etiqueta na API externa usando token admin
-        const emissaoResponse = await fetch(
-          `${baseApiUrl}/emissoes/${etiqueta.emissao_id}`,
-          {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${authToken}`,
-            }
+
+        let statusEtiqueta: StatusEtiqueta | null = null
+
+        // 🛒 Primeiro: verificar se é uma emissão MARKETPLACE (não vive na API BRHUB legada)
+        const { data: mpRow } = await supabaseClient
+          .from('emissoes_marketplace')
+          .select('id, uuid_marketplace, codigo_objeto, status, status_rastreio')
+          .or(`uuid_marketplace.eq.${etiqueta.emissao_id},id.eq.${etiqueta.emissao_id}`)
+          .maybeSingle()
+
+        if (mpRow) {
+          console.log(`🛒 Etiqueta MARKETPLACE detectada (${mpRow.codigo_objeto || mpRow.uuid_marketplace})`)
+          statusEtiqueta = {
+            // Marketplace: a partir do momento em que a etiqueta foi emitida com sucesso,
+            // ela conta para fechamento. Só permanece bloqueada enquanto status_rastreio = PRE_POSTADO.
+            status: (mpRow.status_rastreio || 'POSTADO').toString(),
+            codigo_objeto: mpRow.codigo_objeto || null,
           }
-        )
+        } else {
+          // Fluxo BRHUB tradicional: buscar status na API externa
+          const emissaoResponse = await fetch(
+            `${baseApiUrl}/emissoes/${etiqueta.emissao_id}`,
+            {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`,
+              }
+            }
+          )
 
-        if (!emissaoResponse.ok) {
-          console.warn(`⚠️ Não foi possível buscar status da etiqueta ${etiqueta.emissao_id}`)
-          erros.push(`Etiqueta ${etiqueta.emissao_id}: erro ao buscar status`)
-          continue
-        }
+          if (!emissaoResponse.ok) {
+            console.warn(`⚠️ Não foi possível buscar status da etiqueta ${etiqueta.emissao_id}`)
+            erros.push(`Etiqueta ${etiqueta.emissao_id}: erro ao buscar status`)
+            continue
+          }
 
-        const emissaoData = await emissaoResponse.json()
-        const statusEtiqueta: StatusEtiqueta = {
-          status: emissaoData.data?.status || 'desconhecido',
-          codigo_objeto: emissaoData.data?.codigoObjeto || null
+          const emissaoData = await emissaoResponse.json()
+          statusEtiqueta = {
+            status: emissaoData.data?.status || 'desconhecido',
+            codigo_objeto: emissaoData.data?.codigoObjeto || null
+          }
         }
 
         console.log(`📊 Status: ${statusEtiqueta.status}`)
