@@ -25,6 +25,8 @@ async function loginFresh(): Promise<{ token: string; expiresAt: number }> {
   const password = Deno.env.get("API_ADMIN_PASSWORD");
   if (!email || !password) throw new Error("API_ADMIN_EMAIL/PASSWORD não configurados");
 
+  console.log(`[adminTokenCache] login attempt email=${email}`);
+
   const r = await fetch(`${BASE_API_URL}/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
