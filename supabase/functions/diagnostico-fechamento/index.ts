@@ -21,23 +21,11 @@ serve(async (req) => {
     if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.replace('Bearer ', '');
     } else {
-      // Tentar login admin
-      const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
-      const adminPassword = Deno.env.get('API_ADMIN_PASSWORD');
-      
-      if (adminEmail && adminPassword) {
-        try {
-          const loginResp = await fetch(`https://envios.brhubb.com.br/api/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: adminEmail, password: adminPassword }),
-          });
-          if (loginResp.ok) {
-            const loginData = await loginResp.json();
-            token = loginData.token;
-          }
-        } catch (e) { /* fallback abaixo */ }
-      }
+      // Tentar token admin cacheado
+      try {
+        const { getAdminTokenCached } = await import('../_shared/adminTokenCache.ts');
+        token = await getAdminTokenCached();
+      } catch (e) { /* fallback abaixo */ }
       
       if (!token) {
         // Fallback: usar FATURAMENTO_API_TOKEN com x-internal-token
