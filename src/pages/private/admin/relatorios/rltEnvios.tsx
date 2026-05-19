@@ -144,10 +144,10 @@ const RltEnvios = () => {
             .map((s) => s.trim().toUpperCase())
             .filter(Boolean);
 
-        return (rows || [])
+        return ((rows || []) as any[])
             .map(mapMarketplaceToEmissao)
-            .filter((e) => !statusPermitidos.length || statusPermitidos.includes(String(e.status || '').toUpperCase()))
-            .filter((e) => !transportadora || String(e.transportadora || e.servico || '').toUpperCase().includes(transportadora.toUpperCase()));
+            .filter((e: IEmissao) => !statusPermitidos.length || statusPermitidos.includes(String(e.status || '').toUpperCase()))
+            .filter((e: IEmissao) => !transportadora || String(e.transportadora || e.servico || '').toUpperCase().includes(transportadora.toUpperCase()));
     };
 
     //Dashboard estatisticas
