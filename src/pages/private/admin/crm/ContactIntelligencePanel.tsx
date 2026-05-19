@@ -155,21 +155,23 @@ export const ContactIntelligencePanel = ({
         .or(`destinatario_telefone.ilike.%${phoneSuffix}%`)
         .order('criado_em', { ascending: false })
         .limit(50),
-      supabase
-        .from('whatsapp_tickets' as any)
-        .select('id, status, created_at')
-        .eq('contact_phone', normalized)
-        .order('created_at', { ascending: false })
-        .limit(50)
-        .then(() => ({ data: [] as any[] })), // placeholder, overridden below
-      supabase
-        .from('ai_support_pipeline' as any)
-        .select('id, status, category, created_at, description, subject')
-        .eq('contact_phone', normalized)
-        .order('created_at', { ascending: false })
-        .limit(20)
-        .then(() => ({ data: [] as any[] })),
-      // Get messages from conversation to extract tracking codes
+      aiManagementQuery<any>({
+        action: 'select',
+        table: 'whatsapp_tickets',
+        select: 'id, status, created_at',
+        filters: [{ column: 'contact_phone', op: 'eq', value: normalized }],
+        orderBy: { column: 'created_at', ascending: false },
+        limit: 50,
+      }).then((data) => ({ data })).catch(() => ({ data: [] as any[] })),
+      aiManagementQuery<any>({
+        action: 'select',
+        table: 'ai_support_pipeline',
+        select: 'id, status, category, created_at, description, subject',
+        filters: [{ column: 'contact_phone', op: 'eq', value: normalized }],
+        orderBy: { column: 'created_at', ascending: false },
+        limit: 20,
+      }).then((data) => ({ data })).catch(() => ({ data: [] as any[] })),
+      // Get messages from conversation to extract tracking codes via proxy
       conversationId
         ? aiManagementQuery<any>({
             action: 'select',
@@ -183,30 +185,6 @@ export const ContactIntelligencePanel = ({
           }).then((data) => ({ data })).catch(() => ({ data: [] as any[] }))
         : Promise.resolve({ data: [] as any[] }),
     ]);
-
-    // Override tickets/pipeline using proxy (RLS via service role)
-    try {
-      const [proxTickets, proxPipeline] = await Promise.all([
-        aiManagementQuery<any>({
-          action: 'select',
-          table: 'whatsapp_tickets',
-          select: 'id, status, created_at',
-          filters: [{ column: 'contact_phone', op: 'eq', value: normalized }],
-          orderBy: { column: 'created_at', ascending: false },
-          limit: 50,
-        }).catch(() => []),
-        aiManagementQuery<any>({
-          action: 'select',
-          table: 'ai_support_pipeline',
-          select: 'id, status, category, created_at, description, subject',
-          filters: [{ column: 'contact_phone', op: 'eq', value: normalized }],
-          orderBy: { column: 'created_at', ascending: false },
-          limit: 20,
-        }).catch(() => []),
-      ]);
-      (ticketsRes as any).data = proxTickets;
-      (pipelineRes as any).data = proxPipeline;
-    } catch {/* noop */}
 
     // Extract tracking codes and shipment info from messages metadata and pipeline
     const trackingCodes = new Set<string>();
