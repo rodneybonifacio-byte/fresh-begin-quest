@@ -497,22 +497,21 @@ serve(async (req) => {
       });
     }
 
-    // Garantir que itensDeclaracaoConteudo seja enviado corretamente
-    // Se existirem itens, garantir formato correto; se não, usar valorDeclarado como fallback
+    // Garantir que itensDeclaracaoConteudo seja enviado corretamente.
+    // O campo `valor` é o valor total da mercadoria naquela linha; a quantidade é apenas informativa.
     if (Array.isArray(emissaoPayload.itensDeclaracaoConteudo) && emissaoPayload.itensDeclaracaoConteudo.length > 0) {
       // Sanitizar itens: garantir que conteudo, quantidade e valor estejam presentes
       // A API espera 'valor' como o TOTAL da linha (quantidade × valor unitário)
       emissaoPayload.itensDeclaracaoConteudo = emissaoPayload.itensDeclaracaoConteudo.map((item: any) => {
         const qty = parseInt(String(item.quantidade || '1')) || 1;
-        const unitValue = parseFloat(String(item.valor || '0').replace(',', '.')) || 0;
-        const totalValue = qty * unitValue;
+        const merchandiseValue = parseFloat(String(item.valor || '0').replace(/\./g, '').replace(',', '.')) || 0;
         return {
           conteudo: String(item.conteudo || 'Mercadoria').trim(),
           quantidade: String(qty),
-          valor: totalValue.toFixed(2),
+          valor: merchandiseValue.toFixed(2),
         };
       });
-      console.log('📋 Itens declaração de conteúdo (valor = qty × unit):', JSON.stringify(emissaoPayload.itensDeclaracaoConteudo));
+      console.log('📋 Itens declaração de conteúdo (valor = mercadoria):', JSON.stringify(emissaoPayload.itensDeclaracaoConteudo));
     } else if (emissaoPayload.valorDeclarado && emissaoPayload.valorDeclarado > 0) {
       // Se não tem itens mas tem valorDeclarado, criar item genérico com o valor real
       emissaoPayload.itensDeclaracaoConteudo = [{
@@ -593,8 +592,7 @@ serve(async (req) => {
                   uf: rem.uf,
                 },
               };
-              // Remove o id interno para a MP não tentar resolvê-lo
-              delete emissaoPayload.remetenteId;
+              // Mantém o id interno apenas para persistência local; ele será removido do payload da MP no shared.
               console.log('[MP] remetente carregado do Supabase e injetado no payload:', rem.nome);
             } else {
               console.error('[MP] remetente não encontrado no Supabase para id:', emissaoPayload.remetenteId);

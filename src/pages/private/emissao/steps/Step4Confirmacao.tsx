@@ -17,6 +17,17 @@ import { RecargaPixService } from '../../../../services/RecargaPixService';
 import { ICreatePixChargeResponse } from '../../../../types/IRecargaPix';
 import { EmissaoErrorAlert } from '../../../../components/EmissaoErrorAlert';
 
+const parseCurrencyValue = (value: any): number => {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  const raw = String(value ?? '').trim();
+  if (!raw) return 0;
+  const normalized = raw.includes(',')
+    ? raw.replace(/\./g, '').replace(',', '.')
+    : raw;
+  const parsed = Number(normalized.replace(/[^0-9.-]/g, ''));
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
 interface EmissaoErrorDetails {
   error: string;
   code?: string;
@@ -173,7 +184,7 @@ export const Step4Confirmacao = ({ onBack, onSuccess, cotacaoSelecionado, select
       // Calcular valorDeclarado a partir dos itens da declaração de conteúdo
       const itensDeclaracao = data.itensDeclaracaoConteudo || [];
       const valorDeclaradoCalculado = itensDeclaracao.reduce(
-        (acc: number, item: any) => acc + (parseFloat(item.valor) || 0) * (parseInt(item.quantidade) || 1),
+        (acc: number, item: any) => acc + parseCurrencyValue(item.valor),
         0
       );
 

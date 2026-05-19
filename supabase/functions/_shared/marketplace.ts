@@ -250,8 +250,8 @@ export async function emitirEtiquetaMarketplace(
   const buildMpPayload = (override?: { valorDeclarado?: number; enviarItens?: boolean }) => {
     const enviarItens = override?.enviarItens ?? (deveEnviarNF || deveEnviarDeclaracaoConteudo);
     return cleanObject({
-      remetenteId: emissaoPayload?.remetenteId,
-      remetente: emissaoPayload?.remetenteId ? undefined : remetente,
+      remetenteId: emissaoPayload?.remetente ? undefined : emissaoPayload?.remetenteId,
+      remetente: emissaoPayload?.remetente ? remetente : undefined,
       destinatario,
       embalagem,
       cotacao,
@@ -472,9 +472,9 @@ export async function getPdfEtiquetaMarketplace(
     const computedTotal = declarationItems.reduce((s: number, it: any) => {
       const q = Number(it.quantidade ?? it.quantity ?? it.qty ?? 1);
       const v = Number(it.valor ?? it.value ?? it.unitValue ?? it.price ?? 0);
-      return s + q * v;
+      return s + v;
     }, 0);
-    const totalValue = label.declaration?.totalValue ?? (computedTotal > 0 ? computedTotal : '');
+    const totalValue = computedTotal > 0 ? computedTotal : (label.declaration?.totalValue ?? '');
     const fmtMoney = (n: any) => {
       const num = Number(n);
       return Number.isFinite(num) ? num.toFixed(2) : String(n ?? '');
