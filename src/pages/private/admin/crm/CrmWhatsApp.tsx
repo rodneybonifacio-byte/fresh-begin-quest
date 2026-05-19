@@ -266,22 +266,21 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
   // Carregar mensagens de uma conversa
   const loadMessages = useCallback(async (conversationId: string) => {
     setLoadingMessages(true);
-    const { data, error } = await supabase
-      .from('whatsapp_messages')
-      .select('*')
-      .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true });
-
-    if (!error && data) {
-      setMessages(data as Message[]);
+    try {
+      const data = await aiManagementQuery<Message>({
+        action: 'select',
+        table: 'whatsapp_messages',
+        filters: [{ column: 'conversation_id', op: 'eq', value: conversationId }],
+        orderBy: { column: 'created_at', ascending: true },
+      });
+      setMessages(data);
+    } catch (error) {
+      console.error('Erro ao carregar mensagens:', error);
     }
     setLoadingMessages(false);
 
     // Zerar unread
-    await supabase
-      .from('whatsapp_conversations')
-      .update({ unread_count: 0 })
-      .eq('id', conversationId);
+    await aiManagementUpdate('whatsapp_conversations', conversationId, { unread_count: 0 });
   }, []);
 
   useEffect(() => {
@@ -392,10 +391,7 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
   };
 
   const toggleAI = async (conv: Conversation) => {
-    await supabase
-      .from('whatsapp_conversations')
-      .update({ ai_enabled: !conv.ai_enabled })
-      .eq('id', conv.id);
+    await aiManagementUpdate('whatsapp_conversations', conv.id, { ai_enabled: !conv.ai_enabled });
     loadConversations();
     if (selectedConversation?.id === conv.id) {
       setSelectedConversation({ ...conv, ai_enabled: !conv.ai_enabled });
@@ -403,19 +399,23 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
   };
 
   const closeTicketManually = async (conversationId: string) => {
-    const { data: openTicket } = await supabase
-      .from('whatsapp_tickets')
-      .select('id')
-      .eq('conversation_id', conversationId)
-      .eq('status', 'open')
-      .limit(1)
-      .single();
+    const [openTicket] = await aiManagementQuery<{ id: string }>({
+      action: 'select',
+      table: 'whatsapp_tickets',
+      select: 'id',
+      filters: [
+        { column: 'conversation_id', op: 'eq', value: conversationId },
+        { column: 'status', op: 'eq', value: 'open' },
+      ],
+      limit: 1,
+    });
 
     if (openTicket) {
-      await supabase
-        .from('whatsapp_tickets')
-        .update({ status: 'closed', closed_by: 'human', closed_at: new Date().toISOString() })
-        .eq('id', openTicket.id);
+      await aiManagementUpdate('whatsapp_tickets', openTicket.id, {
+        status: 'closed',
+        closed_by: 'human',
+        closed_at: new Date().toISOString(),
+      });
     }
   };
 
