@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { getAdminTokenCached } from "../_shared/adminTokenCache.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,20 +14,9 @@ serve(async (req) => {
 
   try {
     const baseUrl = Deno.env.get('BASE_API_URL');
-    const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
-    const adminPassword = Deno.env.get('API_ADMIN_PASSWORD');
+    if (!baseUrl) throw new Error('Configuração incompleta');
 
-    if (!baseUrl || !adminEmail || !adminPassword) {
-      throw new Error('Configuração incompleta');
-    }
-
-    const loginRes = await fetch(`${baseUrl}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: adminEmail, password: adminPassword }),
-    });
-    const loginData = await loginRes.json();
-    const token = loginData?.token || loginData?.data?.token;
+    const token = await getAdminTokenCached();
     if (!token) throw new Error('Falha no login');
 
     const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };

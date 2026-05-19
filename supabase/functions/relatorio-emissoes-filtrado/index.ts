@@ -1,20 +1,12 @@
 // Relatório de emissões filtrado por cliente/remetente/transportadora/período
 // Uso pontual de geração de relatórios.
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { getAdminTokenCached } from '../_shared/adminTokenCache.ts';
 
 const BASE_API_URL = Deno.env.get('BASE_API_URL') || 'https://envios.brhubb.com.br/api';
 
 async function getAdminToken(): Promise<string> {
-  const email = Deno.env.get('API_ADMIN_EMAIL');
-  const password = Deno.env.get('API_ADMIN_PASSWORD');
-  const r = await fetch(`${BASE_API_URL}/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  });
-  if (!r.ok) throw new Error(`Login admin falhou: ${r.status}`);
-  const d = await r.json();
-  return d.token || d.accessToken;
+  return await getAdminTokenCached();
 }
 
 Deno.serve(async (req) => {

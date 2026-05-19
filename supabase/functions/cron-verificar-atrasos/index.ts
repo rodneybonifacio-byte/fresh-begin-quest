@@ -38,25 +38,11 @@ const corsHeaders = {
 }
 
 async function loginAdmin(): Promise<string> {
-  const baseApiUrl = Deno.env.get('BASE_API_URL')
-  const email = Deno.env.get('API_ADMIN_EMAIL')
-  const password = Deno.env.get('API_ADMIN_PASSWORD')
-
-  console.log('[CRON-ATRASOS] Iniciando login admin...')
-
-  const response = await fetch(`${baseApiUrl}/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  })
-
-  if (!response.ok) {
-    throw new Error(`Falha no login admin: ${response.status}`)
-  }
-
-  const data = await response.json()
-  console.log('[CRON-ATRASOS] Login admin bem-sucedido')
-  return data.token
+  const { getAdminTokenCached } = await import('../_shared/adminTokenCache.ts');
+  console.log('[CRON-ATRASOS] Obtendo token admin (cache)...');
+  const token = await getAdminTokenCached();
+  console.log('[CRON-ATRASOS] Token admin OK');
+  return token;
 }
 
 async function fetchEmissoesEmTransito(token: string): Promise<EmissaoResponse[]> {
