@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getSupabaseWithAuth } from '@/integrations/supabase/custom-auth';
+import { aiManagementQuery, aiManagementUpdate } from '@/services/aiManagementApi';
 const supabase = getSupabaseWithAuth();
 import {
   User, Package, CreditCard, MapPin, Phone, Mail,
