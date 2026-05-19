@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getSupabaseWithAuth } from '@/integrations/supabase/custom-auth';
+import { aiManagementQuery } from '@/services/aiManagementApi';
 const supabase = getSupabaseWithAuth();
 import {
   User, Package, CreditCard, MapPin, Phone, Mail,
@@ -154,25 +155,35 @@ export const ContactIntelligencePanel = ({
         .or(`destinatario_telefone.ilike.%${phoneSuffix}%`)
         .order('criado_em', { ascending: false })
         .limit(50),
-      supabase
-        .from('whatsapp_tickets')
-        .select('id, status, created_at')
-        .eq('contact_phone', normalized)
-        .order('created_at', { ascending: false })
-        .limit(50),
-      supabase
-        .from('ai_support_pipeline')
-        .select('id, status, category, created_at, description, subject')
-        .eq('contact_phone', normalized)
-        .order('created_at', { ascending: false })
-        .limit(20),
-      // Get messages from conversation to extract tracking codes
-      conversationId ? supabase
-        .from('whatsapp_messages')
-        .select('metadata')
-        .eq('conversation_id', conversationId)
-        .not('metadata', 'is', null)
-        .limit(50) : Promise.resolve({ data: [] as any[] }),
+      aiManagementQuery<any>({
+        action: 'select',
+        table: 'whatsapp_tickets',
+        select: 'id, status, created_at',
+        filters: [{ column: 'contact_phone', op: 'eq', value: normalized }],
+        orderBy: { column: 'created_at', ascending: false },
+        limit: 50,
+      }).then((data) => ({ data })).catch(() => ({ data: [] as any[] })),
+      aiManagementQuery<any>({
+        action: 'select',
+        table: 'ai_support_pipeline',
+        select: 'id, status, category, created_at, description, subject',
+        filters: [{ column: 'contact_phone', op: 'eq', value: normalized }],
+        orderBy: { column: 'created_at', ascending: false },
+        limit: 20,
+      }).then((data) => ({ data })).catch(() => ({ data: [] as any[] })),
+      // Get messages from conversation to extract tracking codes via proxy
+      conversationId
+        ? aiManagementQuery<any>({
+            action: 'select',
+            table: 'whatsapp_messages',
+            select: 'metadata',
+            filters: [
+              { column: 'conversation_id', op: 'eq', value: conversationId },
+              { column: 'metadata', op: 'not', value: 'is.null' },
+            ],
+            limit: 50,
+          }).then((data) => ({ data })).catch(() => ({ data: [] as any[] }))
+        : Promise.resolve({ data: [] as any[] }),
     ]);
 
     // Extract tracking codes and shipment info from messages metadata and pipeline
@@ -560,10 +571,12 @@ export const ContactIntelligencePanel = ({
           .replace(/\b\w/g, c => c.toUpperCase())
           .replace(/\b(De|Da|Do|Dos|Das)\b/g, m => m.toLowerCase());
 
-        await supabase
-          .from('whatsapp_conversations')
-          .update({ contact_name: formattedName })
-          .eq('id', conversationId);
+        await aiManagementQuery({
+          action: 'update',
+          table: 'whatsapp_conversations',
+          id: conversationId,
+          data: { contact_name: formattedName },
+        }).catch(() => {});
         
         setProfile(prev => prev ? { ...prev, nome: formattedName } : prev);
       }
