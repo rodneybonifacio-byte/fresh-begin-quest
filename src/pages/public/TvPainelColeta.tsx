@@ -131,15 +131,12 @@ const formatDataHora = (dateStr: string): string => {
 };
 
 const resolverHorario = (nome: string, horariosDb: ClienteHorario[]): string => {
-  if (isBrhubClient(nome)) return '16:00';
-  const upper = nome.toUpperCase().trim();
-  const match = horariosDb.find(h => upper.includes(h.nome_cliente.toUpperCase().trim()));
+  const match = findHorario(nome, horariosDb);
   return match?.horario_inicio || '14:00';
 };
 
 const resolverLabel = (nome: string, horariosDb: ClienteHorario[]): string => {
-  const upper = nome.toUpperCase().trim();
-  const match = horariosDb.find(h => upper.includes(h.nome_cliente.toUpperCase().trim()));
+  const match = findHorario(nome, horariosDb);
   if (match?.horario_fim) return `${match.horario_inicio} – ${match.horario_fim}`;
   if (match) return match.horario_inicio;
   return '14:00';
@@ -189,8 +186,7 @@ const agruparPorRemetente = (etiquetas: Etiqueta[], horariosDb: ClienteHorario[]
         ? [et.remetente.logradouro, et.remetente.numero, et.remetente.bairro, et.remetente.localidade, et.remetente.uf]
             .filter(Boolean).join(', ')
         : '';
-      const upper = key;
-      const matchDb = horariosDb.find(h => upper.includes(h.nome_cliente.toUpperCase().trim()));
+      const matchDb = findHorario(key, horariosDb);
       clienteMap.set(key, {
         nome,
         endereco: matchDb?.endereco || endereco || 'Endereço não informado',
@@ -208,7 +204,7 @@ const agruparPorRemetente = (etiquetas: Etiqueta[], horariosDb: ClienteHorario[]
   const outrosClientes: ClienteAgrupado[] = [];
 
   for (const cliente of clienteMap.values()) {
-    if (isBrhubClient(cliente.nome)) {
+    if (isBrhubClient(cliente.nome, horariosDb)) {
       brhubClientes.push(cliente);
     } else {
       outrosClientes.push(cliente);
