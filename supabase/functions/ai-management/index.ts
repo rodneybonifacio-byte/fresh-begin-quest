@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { action, table, data, id, filters, orderBy, limit } = await req.json();
+    const { action, table, select, data, id, filters, orderBy, limit } = await req.json();
 
     const allowedTables = [
       "ai_agents",
@@ -64,6 +64,9 @@ Deno.serve(async (req) => {
       "ai_tool_phone_rules",
       "whatsapp_notification_templates",
       "whatsapp_channels",
+      "whatsapp_conversations",
+      "whatsapp_messages",
+      "whatsapp_tickets",
     ];
 
     if (!allowedTables.includes(table)) {
@@ -77,13 +80,20 @@ Deno.serve(async (req) => {
 
     switch (action) {
       case "select": {
-        let query = supabase.from(table).select("*");
+        let query = supabase.from(table).select(select || "*");
         
         if (filters) {
           for (const f of filters) {
             if (f.op === "eq") query = query.eq(f.column, f.value);
             else if (f.op === "gte") query = query.gte(f.column, f.value);
+            else if (f.op === "lte") query = query.lte(f.column, f.value);
             else if (f.op === "neq") query = query.neq(f.column, f.value);
+            else if (f.op === "in") query = query.in(f.column, f.value);
+            else if (f.op === "like") query = query.like(f.column, f.value);
+            else if (f.op === "ilike") query = query.ilike(f.column, f.value);
+            else if (f.op === "not") query = query.not(f.column, f.value, null);
+            else if (f.op === "is") query = query.is(f.column, f.value);
+            else if (f.op === "or") query = query.or(String(f.value));
           }
         }
         
