@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateBrhubToken } from "../_shared/brhubAuth.ts";
+import { rastrearMarketplace } from "../_shared/marketplace.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
