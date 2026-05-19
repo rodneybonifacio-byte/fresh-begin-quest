@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { resolveChannelForConversation } from "../_shared/channel-resolver.ts";
+import { rastrearMarketplace } from "../_shared/marketplace.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -3095,6 +3096,38 @@ async function generateTTSAudio(text: string, apiKey: string, voiceConfig?: Voic
 // ═══════════════════════════════════════════════════════════
 
 async function fetchTrackingData(codigo: string): Promise<any> {
+  const code = String(codigo || "").trim();
+  if (!code) return null;
+
+  // 1) Tentar primeiro a API Marketplace (etiquetas emitidas via Marketplace)
+  try {
+    const sb = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    );
+    const { data: mpRow } = await sb
+      .from("emissoes_marketplace")
+      .select("codigo_objeto, uuid_marketplace")
+      .or(`codigo_objeto.eq.${code},uuid_marketplace.eq.${code}`)
+      .maybeSingle();
+
+    if (mpRow?.codigo_objeto) {
+      try {
+        const mp = await rastrearMarketplace(mpRow.codigo_objeto);
+        if (mp) {
+          console.log(`[fetchTrackingData] origem=marketplace codigo=${mpRow.codigo_objeto} eventos=${mp?.eventos?.length || 0}`);
+          // Envelopa como { data } para compatibilidade com formatTrackingForAI
+          return { data: mp };
+        }
+      } catch (mpErr: any) {
+        console.warn("[fetchTrackingData] rastreio marketplace falhou, caindo no BRHUB:", mpErr?.message);
+      }
+    }
+  } catch (lookupErr: any) {
+    console.warn("[fetchTrackingData] lookup marketplace falhou:", lookupErr?.message);
+  }
+
+  // 2) Fallback: API BRHUB legada
   const BASE_API_URL = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br";
   const adminEmail = Deno.env.get("API_ADMIN_EMAIL");
   const adminPassword = Deno.env.get("API_ADMIN_PASSWORD");
@@ -3108,7 +3141,7 @@ async function fetchTrackingData(codigo: string): Promise<any> {
   if (!loginResponse.ok) return null;
   const loginData = await loginResponse.json();
 
-  const rastreioResponse = await fetch(`${BASE_API_URL}/rastrear?codigo=${codigo}`, {
+  const rastreioResponse = await fetch(`${BASE_API_URL}/rastrear?codigo=${code}`, {
     method: "GET",
     headers: { Authorization: `Bearer ${loginData.token}`, "Content-Type": "application/json" },
   });
