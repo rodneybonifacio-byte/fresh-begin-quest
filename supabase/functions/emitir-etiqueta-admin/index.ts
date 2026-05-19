@@ -12,11 +12,17 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const cleanSecret = (v: string | undefined): string =>
+    (v ?? '')
+      .replace(/[\uFEFF\u200B-\u200D\u2060]/g, '')
+      .replace(/[\x00-\x1F\x7F]/g, '')
+      .trim();
+
   try {
     const requestData = await req.json();
-    const baseUrl = Deno.env.get('BASE_API_URL');
-    const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
-    const adminPassword = Deno.env.get('API_ADMIN_PASSWORD');
+    const baseUrl = cleanSecret(Deno.env.get('BASE_API_URL'));
+    const adminEmail = cleanSecret(Deno.env.get('API_ADMIN_EMAIL'));
+    const adminPassword = cleanSecret(Deno.env.get('API_ADMIN_PASSWORD'));
 
     if (!baseUrl || !adminEmail || !adminPassword) {
       throw new Error('Configuração incompleta');
