@@ -91,7 +91,10 @@ Deno.serve(async (req) => {
             else if (f.op === "in") query = query.in(f.column, f.value);
             else if (f.op === "like") query = query.like(f.column, f.value);
             else if (f.op === "ilike") query = query.ilike(f.column, f.value);
-            else if (f.op === "not") query = query.not(f.column, f.value, null);
+            else if (f.op === "not") {
+              const [operator, rawValue] = String(f.value).split(".");
+              query = query.not(f.column, operator, rawValue === "null" ? null : rawValue);
+            }
             else if (f.op === "is") query = query.is(f.column, f.value);
             else if (f.op === "or") query = query.or(String(f.value));
           }
