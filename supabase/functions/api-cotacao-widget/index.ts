@@ -52,9 +52,18 @@ serve(async (req) => {
       );
     }
 
+    // Sanitiza secrets: remove BOM, zero-width chars e controles invisíveis
+    const cleanSecret = (v: string | undefined) =>
+      (v || '')
+        .replace(/^\uFEFF/, '')
+        .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '')
+        .replace(/[\x00-\x1F\x7F]/g, '')
+        .trim();
+
     // Usar credenciais do secret (seguro no backend)
-    const clienteEmail = Deno.env.get('WIDGET_CLIENT_EMAIL');
-    const clienteSenha = Deno.env.get('WIDGET_CLIENT_PASSWORD');
+    const clienteEmail = cleanSecret(Deno.env.get('WIDGET_CLIENT_EMAIL'));
+    const clienteSenha = cleanSecret(Deno.env.get('WIDGET_CLIENT_PASSWORD'));
+
 
     if (!clienteEmail || !clienteSenha) {
       console.error('❌ Credenciais do widget não configuradas');
