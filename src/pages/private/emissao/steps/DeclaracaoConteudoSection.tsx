@@ -61,7 +61,7 @@ export const DeclaracaoConteudoSection = () => {
          <div>
           <h4 className="font-semibold text-foreground">Declaração de Conteúdo</h4>
           <p className="text-xs text-muted-foreground">
-            Informe os itens que serão enviados
+            Informe os itens e o valor total de cada mercadoria
           </p>
         </div>
       </div>
@@ -134,7 +134,7 @@ export const DeclaracaoConteudoSection = () => {
                     Qtd
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">
-                    Valor Unit.
+                    Valor mercadoria
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">
                     Subtotal
@@ -144,7 +144,7 @@ export const DeclaracaoConteudoSection = () => {
               </thead>
               <tbody className="divide-y divide-border">
                 {itens.map((item, index) => {
-                  const subtotal = (parseFloat(item.valor) || 0) * (parseInt(item.quantidade) || 1);
+                  const subtotal = parseFloat(item.valor) || 0;
                   return (
                     <tr key={index} className="hover:bg-muted/20 transition-colors">
                       <td className="px-4 py-3 text-sm text-foreground">{item.conteudo}</td>
@@ -171,7 +171,7 @@ export const DeclaracaoConteudoSection = () => {
               {itens.length} {itens.length === 1 ? 'item' : 'itens'} adicionados
             </span>
             <span className="text-sm font-semibold text-foreground">
-              Total: R$ {itens.reduce((acc, item) => acc + (parseFloat(item.valor) || 0) * (parseInt(item.quantidade) || 1), 0).toFixed(2)}
+              Total: R$ {itens.reduce((acc, item) => acc + (parseFloat(item.valor) || 0), 0).toFixed(2)}
             </span>
           </div>
         </div>
