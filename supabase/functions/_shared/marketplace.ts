@@ -444,74 +444,54 @@ export async function getPdfEtiquetaMarketplace(
   }
   if (!dados && j?.labelData) {
     const label = j.labelData;
-    // v3.2: prefere shape FLAT (senderName/recipientName/…); fallback p/ nested
-    const senderName = label.senderName || label.sender?.nome || '';
-    const senderAddress = label.senderAddress
-      || [label.sender?.logradouro, label.sender?.numero, label.sender?.bairro].filter(Boolean).join(', ');
-    const senderCityState = label.senderCityState
-      || [label.sender?.cidade, label.sender?.uf].filter(Boolean).join('/');
-    const senderCep = label.senderCep || label.sender?.cep || '';
-    const recipientName = label.recipientName || label.recipient?.nome || '';
-    const recipientAddress = label.recipientAddress
-      || [label.recipient?.logradouro, label.recipient?.numero].filter(Boolean).join(', ');
-    const recipientNeighborhood = label.recipientNeighborhood || label.recipient?.bairro || '';
-    const recipientCityState = label.recipientCityState
-      || [label.recipient?.cidade, label.recipient?.uf].filter(Boolean).join('/');
-    const recipientCep = label.recipientCep || label.recipient?.cep || '';
-    const recipientPhone = label.recipientPhone || label.recipient?.celular || '';
-    // Normaliza peso/dimensões: API pode mandar com unidade ("0.3 kg", "20x20x30cm")
-    // ou só números — sempre re-adicionamos a unidade depois.
     const stripUnit = (v: any) => String(v ?? '').replace(/\s*(kg|g|cm|mm)\s*/gi, '').trim();
     const weight = stripUnit(label.weight ?? label.measures?.weight);
     const dimensions = stripUnit(label.dimensions
       || [label.measures?.length, label.measures?.width, label.measures?.height].filter(Boolean).join('x'));
-    const serviceName = label.serviceName || label.service || '';
-    const serviceCode = label.serviceCode || '';
     const trackingCode = label.trackingCode || j?.codigoRastreio || uuidMarketplace;
-    const declarationItems = label.declaration?.items || [];
-    const computedTotal = declarationItems.reduce((s: number, it: any) => {
-      const q = Number(it.quantidade ?? it.quantity ?? it.qty ?? 1);
-      const v = Number(it.valor ?? it.value ?? it.unitValue ?? it.price ?? 0);
-      return s + v;
-    }, 0);
-    const totalValue = computedTotal > 0 ? computedTotal : (label.declaration?.totalValue ?? '');
-    const fmtMoney = (n: any) => {
-      const num = Number(n);
-      return Number.isFinite(num) ? num.toFixed(2) : String(n ?? '');
-    };
+    const declarationItems = (label.declaration?.items || []).map((it: any) => ({
+      descricao: it.conteudo ?? it.descricao ?? it.description ?? it.name ?? it.produto ?? 'Mercadoria',
+      quantidade: Number(it.quantidade ?? it.quantity ?? it.qty ?? 1),
+      valor: Number(it.valor ?? it.value ?? it.unitValue ?? it.price ?? 0),
+    }));
+    const senderCityState = label.senderCityState
+      || [label.sender?.cidade, label.sender?.uf].filter(Boolean).join('/');
+    const recipientCityState = label.recipientCityState
+      || [label.recipient?.cidade, label.recipient?.uf].filter(Boolean).join('/');
 
-    const escapePdf = (v: any) => String(v ?? '').replace(/[\\()]/g, '\\$&');
-    const lines = [
-      'BRHUB ENVIOS - ETIQUETA',
-      `Codigo: ${trackingCode}`,
-      `Servico: ${serviceName} ${serviceCode}`.trim(),
-      '',
-      'REMETENTE',
-      senderName,
-      senderAddress,
-      `${senderCityState} CEP ${senderCep}`,
-      '',
-      'DESTINATARIO',
-      recipientName,
-      [recipientAddress, recipientNeighborhood].filter(Boolean).join(' - '),
-      `${recipientCityState} CEP ${recipientCep}`,
-      `Telefone: ${recipientPhone}`,
-      '',
-      'DECLARACAO DE CONTEUDO',
-      ...declarationItems.map((it: any) => {
-        const q = it.quantidade ?? it.quantity ?? it.qty ?? '';
-        const desc = it.conteudo ?? it.descricao ?? it.description ?? it.name ?? it.produto ?? '';
-        const v = it.valor ?? it.value ?? it.unitValue ?? it.price ?? '';
-        return `${q}x ${desc} - R$ ${fmtMoney(v)}`;
-      }),
-      '',
-      `Peso: ${weight} kg | ${dimensions} cm`,
-      `Valor declarado: R$ ${fmtMoney(totalValue)}`,
-    ].filter((line) => line !== undefined && line !== null && line !== '');
-    // Etiqueta 102×153mm (≈ 289×433 pt) — formato térmico padrão.
-    const text = lines.map((line, idx) => `${idx === 0 ? 'BT /F1 11 Tf 18 410 Td' : '0 -14 Td'} (${escapePdf(line)}) Tj`).join('\n') + '\nET';
-    const pdf = `%PDF-1.4\n1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 289 433] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj\n4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\n5 0 obj << /Length ${text.length} >> stream\n${text}\nendstream endobj\nxref\n0 6\n0000000000 65535 f \ntrailer << /Root 1 0 R /Size 6 >>\nstartxref\n0\n%%EOF`;
-    dados = btoa(pdf);
+    const { buildMarketplaceLabelPdf, uint8ToBase64 } = await import('./marketplace-pdf.ts');
+    const bytes = await buildMarketplaceLabelPdf({
+      trackingCode,
+      serviceName: label.serviceName || label.service || 'BRHUB SEDEX',
+      serviceCode: label.serviceCode || '',
+      contract: label.contract || label.contrato || j?.contrato || j?.contractId || '',
+      orderId: label.orderId || label.pedido || j?.pedido || '',
+      volume: label.volume || '1/1',
+      weight,
+      dimensions,
+      sender: {
+        name: label.senderName || label.sender?.nome || '',
+        cpfCnpj: label.senderCpfCnpj || label.sender?.cpfCnpj || '',
+        address: label.senderAddress
+          || [label.sender?.logradouro, label.sender?.numero].filter(Boolean).join(', '),
+        neighborhood: label.senderNeighborhood || label.sender?.bairro || '',
+        cityState: senderCityState,
+        cep: label.senderCep || label.sender?.cep || '',
+        phone: label.senderPhone || label.sender?.celular || '',
+      },
+      recipient: {
+        name: label.recipientName || label.recipient?.nome || '',
+        cpfCnpj: label.recipientCpfCnpj || label.recipient?.cpfCnpj || '',
+        address: label.recipientAddress
+          || [label.recipient?.logradouro, label.recipient?.numero].filter(Boolean).join(', '),
+        neighborhood: label.recipientNeighborhood || label.recipient?.bairro || '',
+        cityState: recipientCityState,
+        cep: label.recipientCep || label.recipient?.cep || '',
+        phone: label.recipientPhone || label.recipient?.celular || '',
+      },
+      items: declarationItems,
+    });
+    dados = uint8ToBase64(bytes);
   }
   if (!dados) console.error('[MP] pdf resposta sem dados — RAW:', JSON.stringify(j).slice(0, 1000));
   if (!dados) throw new MarketplaceApiError('Marketplace PDF: resposta sem dados', 502);
