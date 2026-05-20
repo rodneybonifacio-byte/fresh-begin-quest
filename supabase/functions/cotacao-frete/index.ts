@@ -218,10 +218,12 @@ serve(async (req) => {
     }
 
     let clienteId = null;
+    let userEmail: string | null = null;
     try {
       const tokenPayload = JSON.parse(atob(userToken.split('.')[1]));
       clienteId = tokenPayload.clienteId;
-      console.log('👤 ClienteId do usuário:', clienteId);
+      userEmail = (tokenPayload.email || '').toString().toLowerCase() || null;
+      console.log('👤 ClienteId do usuário:', clienteId, '| email:', userEmail);
     } catch (e) {
       console.error('❌ Erro ao extrair clienteId do token:', e.message);
       throw new Error('Token inválido - não foi possível identificar o cliente');
@@ -229,6 +231,16 @@ serve(async (req) => {
 
     if (!clienteId) {
       throw new Error('ClienteId não encontrado no token');
+    }
+
+    // 🔒 Marketplace cotação restrita: apenas e-mails autorizados
+    const MARKETPLACE_ALLOWED_EMAILS = new Set([
+      'financeiro@brhubb.com.br',
+      'admin@brhubb.com.br',
+    ]);
+    const marketplaceHabilitado = !!userEmail && MARKETPLACE_ALLOWED_EMAILS.has(userEmail);
+    if (!marketplaceHabilitado) {
+      console.log('🚫 Marketplace cotação desabilitada para este usuário');
     }
 
     const isLogisticaReversa = requestData.logisticaReversa === 'S';
