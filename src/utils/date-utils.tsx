@@ -172,32 +172,20 @@ export const formatDateLocalSystem = (date: Date): string => {
 export const formatDateTime = (input: string | null | undefined, formatStr = 'dd/MM/yyyy HH:mm') => {
     if (!input) return '';
 
-    let date: Date;
-
-    if (input.includes('T')) {
-        // Remove timezone offset (Z, +00:00, -03:00, etc.) e milissegundos
-        const cleanInput = input
-            .replace(/Z$/, '')
-            .replace(/[+-]\d{2}:\d{2}$/, '')
-            .replace(/\.\d+/, '');
-        const [datePart, timePart = '00:00:00'] = cleanInput.split('T');
-        const [year, month, day] = datePart.split('-').map(Number);
-        const [hour, minute, second = '0'] = timePart.split(':').map(Number);
-        date = new Date(year, month - 1, day, hour, minute, +second);
-    } else {
-        const [datePart, timePart = '00:00:00'] = input.split(' ');
-        const [year, month, day] = datePart.split('-').map(Number);
-        const [hour, minute, second = '0'] = timePart.split(':').map(Number);
-        date = new Date(year, month - 1, day, hour, minute, +second);
-    }
-
-    if (isNaN(date.getTime())) {
+    // Interpreta a data respeitando o timezone de origem (Z, +00:00, etc.)
+    // e exibe sempre em horário de Brasília (America/Sao_Paulo).
+    const m = moment.tz(input, 'America/Sao_Paulo');
+    if (!m.isValid()) {
         console.warn(`Data inválida recebida: ${input}`);
-        return input; // Retorna o input original em vez de lançar erro
+        return input;
     }
 
+    // Constrói um Date com os componentes "wall-clock" de Brasília para que
+    // o date-fns format use exatamente esses valores, independente do TZ do browser.
+    const date = new Date(m.year(), m.month(), m.date(), m.hour(), m.minute(), m.second());
     return format(date, formatStr);
 };
+
 
 
 export function formatarDataVencimento(inptutData: string, dataPagamento?: string | null): JSX.Element {
