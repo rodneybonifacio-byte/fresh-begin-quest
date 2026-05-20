@@ -108,7 +108,7 @@ serve(async (req: Request) => {
           historico_rastreio: eventos,
           data_previsao_entrega: tracking?.dataPrevisaoEntrega || null,
           ultimo_rastreio_em: new Date().toISOString(),
-          transportadora: tracking?.transportadora || null,
+          transportadora: 'BRHUB Envios',
           formato_codigo: tracking?.formatoCodigo || null,
           fonte_status: tracking?.fonteStatus || null,
         };
