@@ -170,11 +170,9 @@ serve(async (req: Request) => {
 
     // Conectar à API externa BRHUB
     const BASE_API_URL = Deno.env.get('BASE_API_URL');
-    const API_ADMIN_EMAIL = Deno.env.get('API_ADMIN_EMAIL');
-    const API_ADMIN_PASSWORD = Deno.env.get('API_ADMIN_PASSWORD');
 
-    if (!BASE_API_URL || !API_ADMIN_EMAIL || !API_ADMIN_PASSWORD) {
-      console.error('❌ Credenciais da API externa não configuradas');
+    if (!BASE_API_URL) {
+      console.error('❌ BASE_API_URL não configurada');
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -188,15 +186,12 @@ serve(async (req: Request) => {
       );
     }
 
-    // Login admin na API BRHUB
-    const loginResponse = await fetch(`${BASE_API_URL}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: API_ADMIN_EMAIL, password: API_ADMIN_PASSWORD }),
-    });
-
-    if (!loginResponse.ok) {
-      console.error('❌ Erro ao autenticar na API externa');
+    // Token admin via cache compartilhado
+    let adminToken: string;
+    try {
+      adminToken = await getAdminTokenCached();
+    } catch (e) {
+      console.error('❌ Erro ao obter token admin:', (e as Error).message);
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -209,9 +204,6 @@ serve(async (req: Request) => {
         }
       );
     }
-
-    const loginData = await loginResponse.json();
-    const adminToken = loginData.token;
 
     // Buscar cliente
     const searchParam = cpfCnpj ? cleanCpfCnpj(cpfCnpj) : email;
