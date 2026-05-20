@@ -162,6 +162,7 @@ export interface NormalizedEmissaoResult {
   pdfUrl?: string | null;
   pdfBase64?: string | null;
   frete: { valorTotal: number };
+  precoCusto?: number | null;
   origem: 'brhub' | 'marketplace';
   raw: any;
 }
