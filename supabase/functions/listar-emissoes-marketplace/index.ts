@@ -67,8 +67,11 @@ serve(async (req) => {
     let query = supabase
       .from("emissoes_marketplace")
       .select("*")
+      .neq("status", "cancelada")
       .order("created_at", { ascending: false })
       .limit(limit);
+
+
 
     query = isAdmin
       ? (clienteIdFiltro ? query.eq("cliente_id", clienteIdFiltro) : query)
