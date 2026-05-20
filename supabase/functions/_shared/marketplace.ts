@@ -353,6 +353,7 @@ export async function emitirEtiquetaMarketplace(
   const uuid = findFirst(j, ['uuidEmissao', 'uuid', 'id', 'uuidMarketplace']);
   const codigoRastreio = findFirst(j, ['codigoRastreio', 'codigoObjeto', 'tracking', 'codigoEtiqueta']);
   const pdfUrl = findFirst(j, ['pdfUrl', 'urlEtiqueta', 'linkEtiqueta', 'url']);
+  const pdfBase64 = findFirst(j, ['pdfBase64', 'pdf_base64']);
   const valor = findFirst(j, ['valorTotal', 'preco', 'valor']);
 
   const result: NormalizedEmissaoResult = {
@@ -360,6 +361,7 @@ export async function emitirEtiquetaMarketplace(
     codigoObjeto: codigoRastreio || null,
     uuidMarketplace: uuid || null,
     pdfUrl: pdfUrl || null,
+    pdfBase64: typeof pdfBase64 === 'string' && pdfBase64.length > 100 ? pdfBase64 : null,
     frete: {
       valorTotal: Number(valor ?? cotacao?.valorTotal ?? cotacao?.preco ?? 0),
     },
