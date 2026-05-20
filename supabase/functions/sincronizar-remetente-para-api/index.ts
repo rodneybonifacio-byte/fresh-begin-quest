@@ -57,35 +57,14 @@ serve(async (req) => {
 
     // Obter credenciais da API externa
     const apiBaseUrl = Deno.env.get('BASE_API_URL');
-    const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
-    const adminPassword = Deno.env.get('API_ADMIN_PASSWORD');
 
-    if (!apiBaseUrl || !adminEmail || !adminPassword) {
+    if (!apiBaseUrl) {
       throw new Error('Configuração do servidor incompleta');
     }
 
-    console.log('🔐 Fazendo login com credenciais de admin...');
-    
-    // Login admin para obter token com permissões
-    const loginResponse = await fetch(`${apiBaseUrl}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: adminEmail,
-        password: adminPassword,
-      }),
-    });
-
-    if (!loginResponse.ok) {
-      const loginError = await loginResponse.text();
-      console.error('❌ Erro no login:', loginError);
-      throw new Error('Falha na autenticação com a API externa');
-    }
-
-    const loginData = await loginResponse.json();
-    const authToken = loginData.token;
-
-    console.log('✅ Login admin realizado com sucesso');
+    console.log('🔐 Obtendo token admin (cache)...');
+    const authToken = await getAdminTokenCached();
+    console.log('✅ Token admin pronto');
 
     // Preparar dados do remetente para a API
     const remetenteData = {
