@@ -97,10 +97,9 @@ const FormularioCliente = () => {
                 return service.create(requestData);
             }
 
-            // UPDATE: parte do baseline do backend e sobrepõe SÓ o que o admin alterou
+            // UPDATE: parte do baseline do backend e sobrepõe SÓ o que de fato mudou
             const baseline = cliente?.data ?? {};
-            const dirty = methods.formState.dirtyFields as any;
-            const requestData: any = pickDirty(baseline, data, dirty);
+            const requestData: any = buildDiffPayload(baseline, data);
 
             // Garante identificação e nunca sobrescreve criadoEm em edições
             requestData.id = data.id;
