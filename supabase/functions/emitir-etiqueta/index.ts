@@ -663,7 +663,7 @@ serve(async (req) => {
             status: 'aberto',
             status_rastreio: 'PRE_POSTADO',
 
-            transportadora: mpEmissao.raw?.data?.transportadora || mpEmissao.raw?.transportadora || null,
+            transportadora: 'BRHUB Envios',
             formato_codigo: mpEmissao.raw?.data?.formatoCodigo || mpEmissao.raw?.formatoCodigo || null,
             payload_request: emissaoPayload,
             payload_response: mpEmissao.raw,
