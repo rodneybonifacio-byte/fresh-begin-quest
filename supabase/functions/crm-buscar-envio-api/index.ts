@@ -46,22 +46,10 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
   }
 }
 
+import { getAdminTokenCached } from '../_shared/adminTokenCache.ts';
+
 async function loginAdmin(): Promise<string> {
-  if (!API_ADMIN_EMAIL || !API_ADMIN_PASSWORD) {
-    throw new Error("Credenciais admin não configuradas");
-  }
-  const response = await fetchWithTimeout(`${BASE_API_URL}/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: API_ADMIN_EMAIL, password: API_ADMIN_PASSWORD }),
-  });
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Falha login API externa [${response.status}]: ${text}`);
-  }
-  const json = await response.json();
-  if (!json?.token) throw new Error("Token não retornado pela API externa");
-  return json.token;
+  return await getAdminTokenCached();
 }
 
 function extractDataArray(payload: any): any[] {
