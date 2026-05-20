@@ -51,35 +51,9 @@ async function validateAdminAccess(req: Request): Promise<{ isAdmin: boolean; er
 }
 
 async function getAdminToken(): Promise<string> {
-  const baseUrl = Deno.env.get('BASE_API_URL');
-  const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
-  const adminPassword = Deno.env.get('API_ADMIN_PASSWORD');
-
-  console.log('🔐 Obtendo token admin...');
-
-  if (!adminEmail || !adminPassword) {
-    throw new Error('Credenciais de admin não configuradas');
-  }
-
-  const loginResponse = await fetch(`${baseUrl}/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      email: adminEmail,
-      password: adminPassword,
-    }),
-  });
-
-  if (!loginResponse.ok) {
-    const errorText = await loginResponse.text();
-    console.error('❌ Erro no login admin:', errorText);
-    throw new Error(`Falha no login admin: ${loginResponse.status}`);
-  }
-
-  const loginData = await loginResponse.json();
-  console.log('✅ Token admin obtido com sucesso');
-  return loginData.data?.token || loginData.token;
+  return await getAdminTokenCached();
 }
+
 
 serve(async (req) => {
   // Handle CORS preflight requests
