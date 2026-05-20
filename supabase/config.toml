@@ -203,3 +203,6 @@ verify_jwt = false
 
 [functions.tv-painel-coleta]
 verify_jwt = false
+
+[functions.transferir-etiqueta-cliente]
+verify_jwt = false
