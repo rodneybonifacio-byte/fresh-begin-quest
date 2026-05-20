@@ -67,7 +67,11 @@ const mapMarketplaceToEmissao = (m: any): IEmissao => ({
     cotacao: {} as any,
     cliente: {
         id: m.cliente_id,
-        nome: m.payload_request?.cliente?.nome || m.payload_request?.clienteNome || m.cliente_id || '',
+        nome: m.payload_request?.cliente?.nome
+            || m.payload_request?.clienteNome
+            || m.payload_request?.remetente?.nome
+            || m.remetente_nome
+            || 'Cliente sem nome',
         cpfCnpj: m.payload_request?.cliente?.cpfCnpj || '',
         telefone: '',
         email: '',
