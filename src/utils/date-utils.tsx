@@ -172,9 +172,14 @@ export const formatDateLocalSystem = (date: Date): string => {
 export const formatDateTime = (input: string | null | undefined, formatStr = 'dd/MM/yyyy HH:mm') => {
     if (!input) return '';
 
-    // Interpreta a data respeitando o timezone de origem (Z, +00:00, etc.)
-    // e exibe sempre em horário de Brasília (America/Sao_Paulo).
-    const m = moment.tz(input, 'America/Sao_Paulo');
+    // Interpreta a data respeitando o timezone de origem (Z, +00:00, sem offset, etc.)
+    // e CONVERTE para horário de Brasília (America/Sao_Paulo).
+    // Importante: moment.tz(input, 'America/Sao_Paulo') trata a string como se já
+    // estivesse em SP — o correto é parsear preservando o offset e depois .tz().
+    const hasOffset = typeof input === 'string' && /(Z|[+-]\d{2}:?\d{2})$/.test(input);
+    const m = hasOffset
+        ? moment.parseZone(input).tz('America/Sao_Paulo')
+        : moment.tz(input, 'America/Sao_Paulo');
     if (!m.isValid()) {
         console.warn(`Data inválida recebida: ${input}`);
         return input;
