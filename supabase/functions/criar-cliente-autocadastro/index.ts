@@ -125,31 +125,15 @@ serve(async (req: Request) => {
     }
 
     // ============================================
-    // PASSO 1: Login admin para criar cliente
+    // PASSO 1: Obter token admin (cache)
     // ============================================
-    console.log('🔐 Fazendo login com credenciais de admin...')
-    const adminLoginResponse = await fetch(`${baseApiUrl}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: API_ADMIN_EMAIL,
-        password: API_ADMIN_PASSWORD,
-      }),
-    })
-
-    if (!adminLoginResponse.ok) {
-      const loginError = await adminLoginResponse.text()
-      console.error('❌ Erro ao fazer login admin:', loginError)
-      throw new Error(`Erro ao autenticar: ${loginError}`)
-    }
-
-    const adminLoginData = await adminLoginResponse.json()
-    const adminToken = adminLoginData.token
-    
+    console.log('🔐 Obtendo token admin (cache)...')
+    const adminToken = await getAdminTokenCached();
     if (!adminToken) {
-      throw new Error('Token admin não retornado no login')
+      throw new Error('Token admin não retornado')
     }
-    console.log('✅ Login admin realizado com sucesso')
+    console.log('✅ Token admin pronto')
+
 
     // ============================================
     // PASSO 1.5: Buscar IDs das transportadoras
