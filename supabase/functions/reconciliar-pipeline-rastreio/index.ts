@@ -65,23 +65,10 @@ Deno.serve(async (req) => {
 
     console.log(`📋 ${cards.length} cards de rastreio para reconciliar`);
 
-    // Login na API externa uma vez
+    // Obter token admin (cache)
     const BASE_API_URL = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br";
-    const adminEmail = Deno.env.get("API_ADMIN_EMAIL");
-    const adminPassword = Deno.env.get("API_ADMIN_PASSWORD");
+    const token = await getAdminTokenCached();
 
-    if (!adminEmail || !adminPassword) {
-      throw new Error("Credenciais da API não configuradas");
-    }
-
-    const loginResponse = await fetch(`${BASE_API_URL}/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: adminEmail, password: adminPassword }),
-    });
-    if (!loginResponse.ok) throw new Error("Falha no login da API");
-    const loginData = await loginResponse.json();
-    const token = loginData.token;
 
     let updated = 0;
     let skipped = 0;
