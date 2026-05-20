@@ -9,31 +9,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+import { getAdminTokenCached } from '../_shared/adminTokenCache.ts';
+
 async function getAdminToken(): Promise<string> {
-  const baseUrl = Deno.env.get('BASE_API_URL');
-  const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
-  const adminPassword = Deno.env.get('API_ADMIN_PASSWORD');
-
-  console.log('🔐 Obtendo token admin...');
-
-  if (!adminEmail || !adminPassword) {
-    throw new Error('Credenciais de admin não configuradas');
-  }
-
-  const loginResponse = await fetch(`${baseUrl}/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: adminEmail, password: adminPassword }),
-  });
-
-  if (!loginResponse.ok) {
-    const errorText = await loginResponse.text();
-    throw new Error(`Falha ao autenticar: ${loginResponse.status} - ${errorText}`);
-  }
-
-  const loginData = await loginResponse.json();
-  console.log('✅ Token admin obtido');
-  return loginData.data?.token || loginData.token;
+  return await getAdminTokenCached();
 }
 
 async function syncRemetenteToApi(remetenteId: string, clienteId: string, adminToken: string): Promise<{ success: boolean; newId?: string }> {

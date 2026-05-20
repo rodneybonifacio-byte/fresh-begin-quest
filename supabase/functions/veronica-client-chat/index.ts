@@ -2,6 +2,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateBrhubToken } from "../_shared/brhubAuth.ts";
 import { rastrearMarketplace } from "../_shared/marketplace.ts";
+import { getAdminTokenCached } from "../_shared/adminTokenCache.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,19 +30,8 @@ function getAIEndpoint(provider: string): { url: string; apiKey: string; provide
 // ═══════════════════════════════════════════════════════════
 
 async function getAdminToken(): Promise<string | null> {
-  const BASE_API_URL = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br/api";
-  const email = Deno.env.get("API_ADMIN_EMAIL");
-  const password = Deno.env.get("API_ADMIN_PASSWORD");
-  if (!email || !password) return null;
   try {
-    const resp = await fetch(`${BASE_API_URL}/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-    if (!resp.ok) return null;
-    const data = await resp.json();
-    return data.token || null;
+    return await getAdminTokenCached();
   } catch {
     return null;
   }

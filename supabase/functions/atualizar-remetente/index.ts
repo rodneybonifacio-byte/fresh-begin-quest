@@ -2,6 +2,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { getAdminTokenCached } from '../_shared/adminTokenCache.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -88,27 +89,16 @@ serve(async (req) => {
 
     // Tentar sincronizar com a API externa
     const apiBaseUrl = Deno.env.get('BASE_API_URL');
-    const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
-    const adminPassword = Deno.env.get('API_ADMIN_PASSWORD');
 
-    if (apiBaseUrl && adminEmail && adminPassword) {
+    if (apiBaseUrl) {
       try {
-        console.log('🔐 Fazendo login com credenciais de admin...');
-        
-        const loginResponse = await fetch(`${apiBaseUrl}/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: adminEmail,
-            password: adminPassword,
-          }),
-        });
+        console.log('🔐 Obtendo token admin (cache)...');
+        const authToken = await getAdminTokenCached();
 
-        if (loginResponse.ok) {
-          const loginData = await loginResponse.json();
-          const authToken = loginData.token;
+        if (authToken) {
+          console.log('✅ Token admin obtido');
 
-          console.log('✅ Login admin realizado com sucesso');
+
 
           // Preparar dados para a API externa
           const remetenteApiData = {

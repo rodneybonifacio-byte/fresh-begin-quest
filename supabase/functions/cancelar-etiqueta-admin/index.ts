@@ -3,6 +3,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 import { cancelarEmissaoMarketplace } from "../_shared/marketplace.ts";
+import { getAdminTokenCached } from '../_shared/adminTokenCache.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -73,40 +74,20 @@ serve(async (req) => {
 
     // Obter credenciais da API externa (fluxo BRHUB)
     const apiBaseUrl = Deno.env.get('BASE_API_URL');
-    const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
-    const adminPassword = Deno.env.get('API_ADMIN_PASSWORD');
 
-    if (!apiBaseUrl || !adminEmail || !adminPassword) {
-      console.error('❌ Variáveis de ambiente não configuradas');
+    if (!apiBaseUrl) {
+      console.error('❌ BASE_API_URL não configurada');
       throw new Error('Configuração do servidor incompleta');
     }
 
-    console.log('🔐 Fazendo login com credenciais de admin...');
-    
-    // 1. Fazer login com credenciais de admin
-    const loginResponse = await fetch(`${apiBaseUrl}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: adminEmail,
-        password: adminPassword,
-      }),
-    });
-
-    if (!loginResponse.ok) {
-      const loginError = await loginResponse.text();
-      console.error('❌ Erro no login:', loginError);
-      throw new Error('Falha na autenticação com a API externa');
-    }
-
-    const loginData = await loginResponse.json();
-    const authToken = loginData.token;
+    console.log('🔐 Obtendo token admin (cache)...');
+    const authToken = await getAdminTokenCached();
 
     if (!authToken) {
       throw new Error('Token de autenticação não recebido');
     }
 
-    console.log('✅ Login admin realizado com sucesso');
+    console.log('✅ Token admin pronto');
 
     // 2. Cancelar etiqueta usando token admin
     console.log('📤 Cancelando etiqueta na API externa...', { codigoObjeto, motivo });

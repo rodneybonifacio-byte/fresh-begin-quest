@@ -1,6 +1,7 @@
 // @ts-nocheck
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { getAdminTokenCached } from '../_shared/adminTokenCache.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -32,33 +33,11 @@ serve(async (req) => {
 
     console.log('🔍 Buscando remetentes para clienteId:', clienteId);
 
-    // Fazer login como admin no backend externo
+    // Token admin via cache compartilhado (evita login em /login a cada chamada)
     const baseUrl = Deno.env.get('BASE_API_URL');
-    const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
-    const adminPassword = Deno.env.get('API_ADMIN_PASSWORD');
-
-    console.log('🔐 Fazendo login como admin...');
-
-    const loginResponse = await fetch(`${baseUrl}/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        email: adminEmail,
-        senha: adminPassword,
-      }),
-    });
-
-    if (!loginResponse.ok) {
-      console.error('❌ Erro no login admin:', await loginResponse.text());
-      throw new Error('Falha ao autenticar como admin');
-    }
-
-    const loginData = await loginResponse.json();
-    const adminToken = loginData.data.token;
-
-    console.log('✅ Login admin realizado com sucesso');
+    console.log('🔐 Obtendo token admin (cache)...');
+    const adminToken = await getAdminTokenCached();
+    console.log('✅ Token admin pronto');
 
     // Buscar remetentes do cliente usando o token de admin
     const remetentesResponse = await fetch(`${baseUrl}/remetentes?clienteId=${clienteId}`, {
