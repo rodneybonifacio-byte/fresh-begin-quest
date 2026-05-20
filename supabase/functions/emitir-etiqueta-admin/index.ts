@@ -22,22 +22,14 @@ serve(async (req) => {
   try {
     const requestData = await req.json();
     const baseUrl = cleanSecret(Deno.env.get('BASE_API_URL'));
-    const adminEmail = cleanSecret(Deno.env.get('API_ADMIN_EMAIL'));
-    const adminPassword = cleanSecret(Deno.env.get('API_ADMIN_PASSWORD'));
 
-    if (!baseUrl || !adminEmail || !adminPassword) {
+    if (!baseUrl) {
       throw new Error('Configuração incompleta');
     }
 
-    // 1. Login admin
-    console.log('🔐 Login admin...');
-    const loginRes = await fetch(`${baseUrl}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: adminEmail, password: adminPassword }),
-    });
-    const loginData = await loginRes.json();
-    const adminToken = loginData.data?.token || loginData.token;
+    // 1. Token admin via cache compartilhado
+    console.log('🔐 Token admin (cache)...');
+    const adminToken = await getAdminTokenCached();
     if (!adminToken) throw new Error('Falha ao obter token admin');
 
     // 2. Login como cliente para obter token do cliente
