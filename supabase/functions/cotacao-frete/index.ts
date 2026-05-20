@@ -277,8 +277,8 @@ serve(async (req) => {
         },
         body: JSON.stringify(cotacaoPayload),
       }),
-      // Marketplace apenas se não for reversa (endpoint não suporta CPF loja)
-      isLogisticaReversa ? Promise.resolve([]) : cotarMarketplace(cotacaoPayload),
+      // Marketplace apenas se não for reversa e usuário autorizado
+      (isLogisticaReversa || !marketplaceHabilitado) ? Promise.resolve([]) : cotarMarketplace(cotacaoPayload),
     ]);
 
     const responseText = await brhubRes.text();
