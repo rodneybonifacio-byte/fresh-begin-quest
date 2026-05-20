@@ -1,0 +1,1 @@
+UPDATE public.emissoes_marketplace SET status = 'aberto' WHERE status = 'emitida' AND status_rastreio = 'PRE_POSTADO' AND cobrada IS NOT TRUE;

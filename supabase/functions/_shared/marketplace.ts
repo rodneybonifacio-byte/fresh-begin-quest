@@ -162,6 +162,7 @@ export interface NormalizedEmissaoResult {
   pdfUrl?: string | null;
   pdfBase64?: string | null;
   frete: { valorTotal: number };
+  precoCusto?: number | null;
   origem: 'brhub' | 'marketplace';
   raw: any;
 }
@@ -355,6 +356,7 @@ export async function emitirEtiquetaMarketplace(
   const pdfUrl = findFirst(j, ['pdfUrl', 'urlEtiqueta', 'linkEtiqueta', 'url']);
   const pdfBase64 = findFirst(j, ['pdfBase64', 'pdf_base64']);
   const valor = findFirst(j, ['valorTotal', 'preco', 'valor']);
+  const precoCusto = findFirst(j, ['precoCusto', 'preco_custo', 'precoCustoMaisEnvios']);
 
   const result: NormalizedEmissaoResult = {
     id: uuid || codigoRastreio || null,
@@ -365,6 +367,7 @@ export async function emitirEtiquetaMarketplace(
     frete: {
       valorTotal: Number(valor ?? cotacao?.valorTotal ?? cotacao?.preco ?? 0),
     },
+    precoCusto: precoCusto != null ? Number(precoCusto) : null,
     origem: 'marketplace',
     raw: j,
   };
