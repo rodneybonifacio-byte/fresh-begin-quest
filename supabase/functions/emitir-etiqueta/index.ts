@@ -659,14 +659,19 @@ serve(async (req) => {
             formato_codigo: mpEmissao.raw?.data?.formatoCodigo || mpEmissao.raw?.formatoCodigo || null,
             payload_request: emissaoPayload,
             payload_response: mpEmissao.raw,
+            // v3.3: API agora devolve etiqueta.pdfBase64 já no /emissoes — cacheia sincronamente
+            pdf_base64: mpEmissao.pdfBase64 || null,
+            pdf_nome: mpEmissao.pdfBase64 ? `etiqueta_${mpEmissao.uuidMarketplace || mpEmissao.id}.pdf` : null,
+            pdf_armazenado_em: mpEmissao.pdfBase64 ? new Date().toISOString() : null,
           });
-          console.log('[MP] mapeamento persistido em emissoes_marketplace');
+          console.log('[MP] mapeamento persistido em emissoes_marketplace', {
+            pdfInline: Boolean(mpEmissao.pdfBase64),
+          });
 
-          // ⚡ Fire-and-forget: cacheia PDF em background, não bloqueia o retorno.
-          // Se o usuário clicar em "imprimir" antes do cache, a função marketplace-pdf-etiqueta
-          // baixa sob demanda e popula. Próximas impressões serão instantâneas.
+          // Fallback: se a MP não devolveu pdfBase64 inline (versão antiga da API),
+          // dispara cache em background via GET /emissoes/etiqueta/pdf/{uuid}.
           const uuidParaPdf = mpEmissao.uuidMarketplace || mpEmissao.id;
-          if (uuidParaPdf) {
+          if (uuidParaPdf && !mpEmissao.pdfBase64) {
             const cachePdfTask = (async () => {
               try {
                 const pdf = await getPdfEtiquetaMarketplace(uuidParaPdf);
@@ -679,7 +684,7 @@ serve(async (req) => {
                       pdf_armazenado_em: new Date().toISOString(),
                     })
                     .eq('uuid_marketplace', uuidParaPdf);
-                  console.log('[MP] PDF cacheado em background');
+                  console.log('[MP] PDF cacheado em background (fallback)');
                 }
               } catch (pdfErr: any) {
                 console.error('[MP] cache PDF background falhou:', pdfErr?.message);
