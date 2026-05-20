@@ -25,27 +25,9 @@ serve(async (req: Request) => {
     console.log('🧪 TESTE: Enviando dados de AGUARDANDO_RETIRADA para webhook...');
 
     // Login admin na API
-    const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
-    const adminPassword = Deno.env.get('API_ADMIN_PASSWORD');
+    console.log('🔐 Obtendo token admin (cache)...');
+    const token = await getAdminTokenCached();
 
-    if (!adminEmail || !adminPassword) {
-      throw new Error('Credenciais de admin não configuradas');
-    }
-
-    console.log('🔐 Fazendo login admin...');
-    const loginResponse = await fetch(`${BASE_API_URL}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: adminEmail, password: adminPassword }),
-    });
-
-    if (!loginResponse.ok) {
-      const errText = await loginResponse.text();
-      throw new Error(`Falha no login admin: ${loginResponse.status} - ${errText}`);
-    }
-
-    const loginData = await loginResponse.json();
-    const token = loginData.token;
 
     // Buscar envios com status AGUARDANDO_RETIRADA - pegar apenas 1 para teste
     console.log('📦 Buscando 1 envio AGUARDANDO_RETIRADA para teste...');
