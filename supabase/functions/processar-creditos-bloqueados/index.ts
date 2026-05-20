@@ -1,5 +1,6 @@
 // @ts-ignore: Deno types
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1';
+import { getAdminTokenCached } from "../_shared/adminTokenCache.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
