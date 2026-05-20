@@ -86,19 +86,20 @@ const mapMarketplaceToEmissao = (m: any): IEmissao => ({
         },
     } as any,
     destinatario: {
-        nome: m.destinatario_nome || '',
-        celular: m.destinatario_celular || '',
-        cpfCnpj: m.destinatario_cpf_cnpj || '',
+        nome: m.destinatario_nome || m.payload_request?.destinatario?.nome || '',
+        celular: m.destinatario_celular || m.payload_request?.destinatario?.celular || '',
+        cpfCnpj: m.destinatario_cpf_cnpj || m.payload_request?.destinatario?.cpfCnpj || '',
         endereco: {
-            cep: m.destinatario_cep || '',
-            logradouro: m.destinatario_logradouro || '',
-            numero: m.destinatario_numero || '',
-            complemento: m.destinatario_complemento || '',
-            bairro: m.destinatario_bairro || '',
-            localidade: m.destinatario_cidade || '',
-            uf: m.destinatario_uf || '',
+            cep: m.destinatario_cep || m.payload_request?.destinatario?.endereco?.cep || '',
+            logradouro: m.destinatario_logradouro || m.payload_request?.destinatario?.endereco?.logradouro || '',
+            numero: m.destinatario_numero || m.payload_request?.destinatario?.endereco?.numero || '',
+            complemento: m.destinatario_complemento || m.payload_request?.destinatario?.endereco?.complemento || '',
+            bairro: m.destinatario_bairro || m.payload_request?.destinatario?.endereco?.bairro || '',
+            localidade: m.destinatario_cidade || m.payload_request?.destinatario?.endereco?.localidade || '',
+            uf: m.destinatario_uf || m.payload_request?.destinatario?.endereco?.uf || '',
         },
     } as any,
+
 });
 
 const RltEnvios = () => {
