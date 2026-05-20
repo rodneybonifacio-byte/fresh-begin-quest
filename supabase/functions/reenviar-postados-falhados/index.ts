@@ -57,15 +57,9 @@ Deno.serve(async (req: Request) => {
     }
 
     // Login admin para buscar rastreio
-    const adminEmail = Deno.env.get("API_ADMIN_EMAIL");
-    const adminPassword = Deno.env.get("API_ADMIN_PASSWORD");
-    const loginRes = await fetch(`${BASE_API_URL}/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: adminEmail, password: adminPassword }),
-    });
-    if (!loginRes.ok) throw new Error(`Login falhou: ${loginRes.status}`);
-    const { token } = await loginRes.json();
+    // Obter token admin (cache)
+    const token = await getAdminTokenCached();
+
 
     let reenviados = 0;
     let erros: string[] = [];
