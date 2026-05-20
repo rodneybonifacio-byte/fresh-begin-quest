@@ -47,24 +47,39 @@ const FormularioCliente = () => {
 
     const { handleSubmit, reset, formState: { errors } } = methods;
 
-    // 🛡️ Mescla baseline (estado atual no backend) com APENAS os campos que o admin realmente alterou.
-    // Evita que checkboxes/configurações não tocadas sejam sobrescritas por defaults do yup ou por
-    // campos que a API GET não devolve.
-    const pickDirty = (baseline: any, data: any, dirty: any): any => {
-        if (!dirty || typeof dirty !== 'object') return baseline;
-        const result: any = Array.isArray(baseline) ? [...(baseline ?? [])] : { ...(baseline ?? {}) };
-        for (const key of Object.keys(dirty)) {
-            const dv = (dirty as any)[key];
-            if (dv === true) {
-                result[key] = data?.[key];
-            } else if (typeof dv === 'object' && dv !== null) {
-                // Arrays: react-hook-form marca itens individualmente; se qualquer item é dirty,
-                // substitui o array inteiro pelo enviado pelo form.
-                if (Array.isArray(data?.[key])) {
-                    result[key] = data[key];
-                } else {
-                    result[key] = pickDirty(baseline?.[key] ?? {}, data?.[key] ?? {}, dv);
-                }
+    // 🛡️ Diff real entre baseline (estado carregado do backend) e o valor submetido.
+    // Só inclui no payload os campos que de fato MUDARAM. Independe de dirtyFields
+    // (que é pouco confiável porque várias abas usam setValue sem shouldDirty:true).
+    const isPlainObject = (v: any) => v !== null && typeof v === 'object' && !Array.isArray(v);
+
+    const deepEqual = (a: any, b: any): boolean => {
+        if (a === b) return true;
+        if (a == null || b == null) return a == b; // trata null/undefined como equivalentes
+        if (Array.isArray(a) && Array.isArray(b)) {
+            if (a.length !== b.length) return false;
+            return a.every((v, i) => deepEqual(v, b[i]));
+        }
+        if (isPlainObject(a) && isPlainObject(b)) {
+            const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+            for (const k of keys) if (!deepEqual(a[k], b[k])) return false;
+            return true;
+        }
+        return false;
+    };
+
+    const buildDiffPayload = (baseline: any, data: any): any => {
+        const result: any = { ...(baseline ?? {}) };
+        if (!isPlainObject(data)) return result;
+        for (const key of Object.keys(data)) {
+            const baseVal = baseline?.[key];
+            const newVal = data[key];
+            if (deepEqual(baseVal, newVal)) continue;
+            // Para objetos aninhados (ex: configuracoes), faz merge profundo do que mudou
+            if (isPlainObject(baseVal) && isPlainObject(newVal)) {
+                result[key] = buildDiffPayload(baseVal, newVal);
+            } else {
+                // Arrays e primitivos: substitui inteiro pelo novo valor
+                result[key] = newVal;
             }
         }
         return result;
