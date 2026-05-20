@@ -45,40 +45,21 @@ serve(async (req) => {
 
     // Obter credenciais da API externa
     const apiBaseUrl = Deno.env.get('BASE_API_URL');
-    const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
-    const adminPassword = Deno.env.get('API_ADMIN_PASSWORD');
 
-    if (!apiBaseUrl || !adminEmail || !adminPassword) {
-      console.error('❌ Variáveis de ambiente não configuradas');
+    if (!apiBaseUrl) {
+      console.error('❌ BASE_API_URL não configurado');
       throw new Error('Configuração do servidor incompleta');
     }
 
-    console.log('🔐 Fazendo login com credenciais de admin na API externa...');
-    
-    // 1. Fazer login com credenciais de admin para obter token com permissões
-    const loginResponse = await fetch(`${apiBaseUrl}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: adminEmail,
-        password: adminPassword,
-      }),
-    });
-
-    if (!loginResponse.ok) {
-      const loginError = await loginResponse.text();
-      console.error('❌ Erro no login:', loginError);
-      throw new Error('Falha na autenticação com a API externa');
-    }
-
-    const loginData = await loginResponse.json();
-    const authToken = loginData.token;
+    console.log('🔐 Obtendo token admin (cache)...');
+    const authToken = await getAdminTokenCached();
 
     if (!authToken) {
       throw new Error('Token de autenticação não recebido');
     }
 
-    console.log('✅ Login admin realizado com sucesso');
+    console.log('✅ Token admin pronto');
+
 
     // 2. Criar remetente na API externa com clienteId do usuário
     const remetenteData = {
