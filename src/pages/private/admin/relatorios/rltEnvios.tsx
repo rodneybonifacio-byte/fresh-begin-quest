@@ -53,7 +53,7 @@ const mapMarketplaceToEmissao = (m: any): IEmissao => ({
     remetenteNome: m.remetente_nome || '',
     remetenteCpfCnpj: m.remetente_cpf_cnpj || '',
     codigoObjeto: m.codigo_objeto,
-    transportadora: m.transportadora || 'Correios',
+    transportadora: 'BRHUB Envios',
     servico: m.nome_servico || '',
     codigoServico: m.codigo_servico || '',
     status: mapMarketplaceStatus(m.status_rastreio || m.status),
