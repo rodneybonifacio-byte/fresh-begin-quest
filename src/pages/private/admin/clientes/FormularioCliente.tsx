@@ -47,21 +47,59 @@ const FormularioCliente = () => {
 
     const { handleSubmit, reset, formState: { errors } } = methods;
 
+    // 🛡️ Mescla baseline (estado atual no backend) com APENAS os campos que o admin realmente alterou.
+    // Evita que checkboxes/configurações não tocadas sejam sobrescritas por defaults do yup ou por
+    // campos que a API GET não devolve.
+    const pickDirty = (baseline: any, data: any, dirty: any): any => {
+        if (!dirty || typeof dirty !== 'object') return baseline;
+        const result: any = Array.isArray(baseline) ? [...(baseline ?? [])] : { ...(baseline ?? {}) };
+        for (const key of Object.keys(dirty)) {
+            const dv = (dirty as any)[key];
+            if (dv === true) {
+                result[key] = data?.[key];
+            } else if (typeof dv === 'object' && dv !== null) {
+                // Arrays: react-hook-form marca itens individualmente; se qualquer item é dirty,
+                // substitui o array inteiro pelo enviado pelo form.
+                if (Array.isArray(data?.[key])) {
+                    result[key] = data[key];
+                } else {
+                    result[key] = pickDirty(baseline?.[key] ?? {}, data?.[key] ?? {}, dv);
+                }
+            }
+        }
+        return result;
+    };
+
     const mutation = useMutation({
         mutationFn: async (data: FormDataCliente) => {
             setIsLoading(true);
-            const requestData: any = { ...data, criadoEm: new Date().toISOString() };
-            // 🔒 GUARDRAIL: em edição, nunca enviar senha vazia — isso sobrescreve a senha do cliente no backend
-            if (data.id) {
+
+            // CREATE
+            if (!data.id) {
+                const requestData: any = { ...data, criadoEm: new Date().toISOString() };
                 const senhaTrim = typeof requestData.senha === 'string' ? requestData.senha.trim() : '';
-                if (!senhaTrim) {
-                    delete requestData.senha;
-                } else {
-                    requestData.senha = senhaTrim;
-                }
-                return service.update(data.id, requestData);
+                requestData.senha = senhaTrim;
+                return service.create(requestData);
             }
-            return service.create(requestData);
+
+            // UPDATE: parte do baseline do backend e sobrepõe SÓ o que o admin alterou
+            const baseline = cliente?.data ?? {};
+            const dirty = methods.formState.dirtyFields as any;
+            const requestData: any = pickDirty(baseline, data, dirty);
+
+            // Garante identificação e nunca sobrescreve criadoEm em edições
+            requestData.id = data.id;
+            delete requestData.criadoEm;
+
+            // 🔒 GUARDRAIL senha: nunca enviar vazia em edição (sobrescreveria a senha do cliente)
+            const senhaTrim = typeof requestData.senha === 'string' ? requestData.senha.trim() : '';
+            if (!senhaTrim) {
+                delete requestData.senha;
+            } else {
+                requestData.senha = senhaTrim;
+            }
+
+            return service.update(data.id, requestData);
         },
         onSuccess: () => {
             setIsLoading(false);
