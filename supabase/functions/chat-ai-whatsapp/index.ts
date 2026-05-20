@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { resolveChannelForConversation } from "../_shared/channel-resolver.ts";
 import { rastrearMarketplace } from "../_shared/marketplace.ts";
+import { getAdminTokenCached } from "../_shared/adminTokenCache.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
