@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 // @ts-ignore
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import { rastrearMarketplace } from "../_shared/marketplace.ts";
+import { getAdminTokenCached } from "../_shared/adminTokenCache.ts";
 
 declare const Deno: {
   env: {
@@ -77,27 +78,10 @@ serve(async (req: Request) => {
     }
 
     // Login admin para obter token
-    const adminEmail = Deno.env.get('API_ADMIN_EMAIL');
-    const adminPassword = Deno.env.get('API_ADMIN_PASSWORD');
+    // Obter token admin (cache)
+    console.log('🔐 Obtendo token admin (cache)...');
+    const token = await getAdminTokenCached();
 
-    if (!adminEmail || !adminPassword) {
-      throw new Error('Credenciais de admin não configuradas');
-    }
-
-    console.log('🔐 Fazendo login admin...');
-    const loginResponse = await fetch(`${BASE_API_URL}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: adminEmail, password: adminPassword }),
-    });
-
-    if (!loginResponse.ok) {
-      const errText = await loginResponse.text();
-      throw new Error(`Falha no login admin: ${loginResponse.status} - ${errText}`);
-    }
-
-    const loginData = await loginResponse.json();
-    const token = loginData.token;
 
     // Chamar API de rastreio
     console.log('📡 Chamando API de rastreio...');

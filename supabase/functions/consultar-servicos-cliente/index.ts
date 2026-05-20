@@ -1,6 +1,7 @@
 // @ts-nocheck
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { getAdminTokenCached } from "../_shared/adminTokenCache.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,30 +9,7 @@ const corsHeaders = {
 };
 
 async function getAdminToken(): Promise<string> {
-  const baseUrl = Deno.env.get('BASE_API_URL');
-  const email = Deno.env.get('API_ADMIN_EMAIL');
-  const password = Deno.env.get('API_ADMIN_PASSWORD');
-
-  console.log('🔐 Obtendo token admin...');
-
-  if (!baseUrl || !email || !password) {
-    throw new Error('Credenciais admin não configuradas');
-  }
-
-  const response = await fetch(`${baseUrl}/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Falha ao autenticar: ${response.status} - ${errorText}`);
-  }
-
-  const data = await response.json();
-  console.log('✅ Token admin obtido');
-  return data.data?.token || data.token;
+  return await getAdminTokenCached();
 }
 
 serve(async (req: Request) => {

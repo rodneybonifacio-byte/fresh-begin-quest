@@ -1,5 +1,6 @@
 // @ts-ignore: Deno types
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1';
+import { getAdminTokenCached } from "../_shared/adminTokenCache.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -40,38 +41,15 @@ Deno.serve(async (req) => {
     // @ts-ignore: Deno types
     const baseApiUrl = Deno.env.get('BASE_API_URL')
     // @ts-ignore: Deno types
-    const adminEmail = Deno.env.get('API_ADMIN_EMAIL')
-    // @ts-ignore: Deno types
-    const adminPassword = Deno.env.get('API_ADMIN_PASSWORD')
-    
-    if (!baseApiUrl) {
-      throw new Error('BASE_API_URL não configurada')
-    }
-
-    // 1. Login admin BRHUB é OPCIONAL — só é necessário para etiquetas do fluxo legado.
-    // Para etiquetas Marketplace o status vem do Supabase, então toleramos falha no login.
+    // Login admin BRHUB é OPCIONAL — usa cache compartilhado
     let authToken: string | null = null
     try {
-      if (adminEmail && adminPassword) {
-        console.log('🔐 Tentando login admin BRHUB (legado)...')
-        const loginResponse = await fetch(`${baseApiUrl}/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: adminEmail, password: adminPassword }),
-        })
-        if (loginResponse.ok) {
-          const loginData = await loginResponse.json()
-          authToken = loginData.token || null
-          if (authToken) console.log('✅ Login admin BRHUB realizado')
-        } else {
-          console.warn(`⚠️ Login admin BRHUB falhou (${loginResponse.status}) — seguindo sem token; etiquetas legadas serão puladas`)
-        }
-      } else {
-        console.warn('⚠️ Credenciais admin BRHUB ausentes — seguindo sem token')
-      }
+      authToken = await getAdminTokenCached()
+      if (authToken) console.log('✅ Token admin BRHUB pronto (cache)')
     } catch (loginErr) {
-      console.warn('⚠️ Erro no login admin BRHUB (seguindo sem token):', loginErr)
+      console.warn('⚠️ Falha ao obter token admin (seguindo sem token):', (loginErr as Error).message)
     }
+
 
     // 2. Buscar todas as etiquetas com créditos bloqueados
     const { data: etiquetas, error: etiquetasError } = await supabaseClient

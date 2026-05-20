@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { resolveChannelForConversation } from "../_shared/channel-resolver.ts";
 import { rastrearMarketplace } from "../_shared/marketplace.ts";
+import { getAdminTokenCached } from "../_shared/adminTokenCache.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -2789,24 +2790,13 @@ async function fetchRecipientPackagesByPhone(supabase: any, normalizedPhone: str
 }
 
 async function getAdminToken(): Promise<string | null> {
-  const BASE_API_URL = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br";
-  const email = Deno.env.get("API_ADMIN_EMAIL");
-  const password = Deno.env.get("API_ADMIN_PASSWORD");
-  if (!email || !password) return null;
-
   try {
-    const resp = await fetch(`${BASE_API_URL}/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-    if (!resp.ok) return null;
-    const data = await resp.json();
-    return data.token || null;
+    return await getAdminTokenCached();
   } catch {
     return null;
   }
 }
+
 
 // ═══════════════════════════════════════════════════════════
 // HELPERS: Mídia (imagem, áudio)
@@ -3129,21 +3119,13 @@ async function fetchTrackingData(codigo: string): Promise<any> {
 
   // 2) Fallback: API BRHUB legada
   const BASE_API_URL = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br";
-  const adminEmail = Deno.env.get("API_ADMIN_EMAIL");
-  const adminPassword = Deno.env.get("API_ADMIN_PASSWORD");
-  if (!adminEmail || !adminPassword) return null;
-
-  const loginResponse = await fetch(`${BASE_API_URL}/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: adminEmail, password: adminPassword }),
-  });
-  if (!loginResponse.ok) return null;
-  const loginData = await loginResponse.json();
+  let token: string | null = null;
+  try { token = await getAdminTokenCached(); } catch { token = null; }
+  if (!token) return null;
 
   const rastreioResponse = await fetch(`${BASE_API_URL}/rastrear?codigo=${code}`, {
     method: "GET",
-    headers: { Authorization: `Bearer ${loginData.token}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
   });
   if (!rastreioResponse.ok) return null;
   return await rastreioResponse.json();

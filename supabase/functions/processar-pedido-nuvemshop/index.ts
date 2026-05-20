@@ -1,5 +1,6 @@
 // @ts-ignore
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { getAdminTokenCached } from "../_shared/adminTokenCache.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -28,25 +29,9 @@ serve(async (req: Request) => {
     }
 
     // Fazer login no sistema BRHUB
-    const loginResponse = await fetch(`${baseApiUrl}/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        // @ts-ignore
-        email: Deno.env.get('API_ADMIN_EMAIL'),
-        // @ts-ignore
-        senha: Deno.env.get('API_ADMIN_PASSWORD'),
-      }),
-    });
+    // Obter token admin (cache)
+    const token = await getAdminTokenCached();
 
-    if (!loginResponse.ok) {
-      throw new Error('Erro ao fazer login no BRHUB');
-    }
-
-    const loginData = await loginResponse.json();
-    const token = loginData.data.token;
 
     // Calcular peso e dimensões totais dos produtos
     let pesoTotal = 0;

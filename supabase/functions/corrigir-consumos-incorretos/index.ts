@@ -1,5 +1,6 @@
 // @ts-ignore: Deno types
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1';
+import { getAdminTokenCached } from "../_shared/adminTokenCache.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -26,33 +27,17 @@ Deno.serve(async (req) => {
     // @ts-ignore: Deno types
     const baseApiUrl = Deno.env.get('BASE_API_URL')
     // @ts-ignore: Deno types
-    const adminEmail = Deno.env.get('API_ADMIN_EMAIL')
-    // @ts-ignore: Deno types
-    const adminPassword = Deno.env.get('API_ADMIN_PASSWORD')
-    
-    if (!baseApiUrl || !adminEmail || !adminPassword) {
-      throw new Error('Variáveis de ambiente não configuradas')
+    const baseApiUrl = Deno.env.get('BASE_API_URL')
+
+    if (!baseApiUrl) {
+      throw new Error('BASE_API_URL não configurado')
     }
 
-    // 1. Fazer login com credenciais admin
-    console.log('🔐 Fazendo login com credenciais de admin...')
-    
-    const loginResponse = await fetch(`${baseApiUrl}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: adminEmail,
-        password: adminPassword,
-      }),
-    })
+    // 1. Obter token admin (cache)
+    console.log('🔐 Obtendo token admin (cache)...')
+    const authToken = await getAdminTokenCached();
+    console.log('✅ Token admin pronto')
 
-    if (!loginResponse.ok) {
-      throw new Error('Falha na autenticação com a API externa')
-    }
-
-    const loginData = await loginResponse.json()
-    const authToken = loginData.token
-    console.log('✅ Login admin realizado com sucesso')
 
     // 2. Buscar transações consumidas que têm blocked_until expirado
     const { data: transacoesConsumidas, error: transacoesError } = await supabaseClient

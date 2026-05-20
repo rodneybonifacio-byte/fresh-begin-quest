@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { getAdminTokenCached } from "../_shared/adminTokenCache.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,15 +9,7 @@ const corsHeaders = {
 };
 
 async function getAdminToken(): Promise<string> {
-  const BASE_API_URL = Deno.env.get('BASE_API_URL') || 'https://envios.brhubb.com.br/api';
-  const res = await fetch(`${BASE_API_URL}/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: Deno.env.get('API_ADMIN_EMAIL'), password: Deno.env.get('API_ADMIN_PASSWORD') }),
-  });
-  if (!res.ok) throw new Error(`Login falhou: ${res.status}`);
-  const d = await res.json();
-  return d.token || d.accessToken;
+  return await getAdminTokenCached();
 }
 
 async function buscarEmissao(cod: string, token: string) {
