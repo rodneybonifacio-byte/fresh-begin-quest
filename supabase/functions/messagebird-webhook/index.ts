@@ -804,7 +804,8 @@ serve(async (req) => {
         } else if (channel?.ai_enabled && !isWrongPerson && !isAutoReply) {
           // Garantir IA sempre ativa para qualquer inbound não-passivo
           const isMediaMessage = ["image", "video", "document", "audio", "location"].includes(contentType);
-          const hasSubstantialContent = isMediaMessage || (messageContent || "").trim().length > 2;
+          const reopensDormantGreeting = intentResult.reason === "greeting_reopens_dormant" || intentResult.reason === "greeting_with_tracking_context";
+          const hasSubstantialContent = isMediaMessage || reopensDormantGreeting || (messageContent || "").trim().length > 2;
           
           if (hasSubstantialContent && !intentResult.isPassive) {
             // Verificar cooldown de admin (30 min) — só respeitar se admin respondeu recentemente
