@@ -172,21 +172,17 @@ export const formatDateLocalSystem = (date: Date): string => {
 export const formatDateTime = (input: string | null | undefined, formatStr = 'dd/MM/yyyy HH:mm') => {
     if (!input) return '';
 
-    // Interpreta a data respeitando o timezone de origem (Z, +00:00, sem offset, etc.)
-    // e CONVERTE para horário de Brasília (America/Sao_Paulo).
-    // Importante: moment.tz(input, 'America/Sao_Paulo') trata a string como se já
-    // estivesse em SP — o correto é parsear preservando o offset e depois .tz().
-    const hasOffset = typeof input === 'string' && /(Z|[+-]\d{2}:?\d{2})$/.test(input);
-    const m = hasOffset
-        ? moment.parseZone(input).tz('America/Sao_Paulo')
-        : moment.tz(input, 'America/Sao_Paulo');
+    // IMPORTANTE: os timestamps vindos do backend já estão em horário de Brasília
+    // (mesmo quando marcados com offset +00:00/Z). Por isso usamos parseZone para
+    // preservar o "wall-clock" exatamente como veio, sem aplicar conversão de fuso.
+    const m = moment.parseZone(input);
     if (!m.isValid()) {
         console.warn(`Data inválida recebida: ${input}`);
         return input;
     }
 
-    // Constrói um Date com os componentes "wall-clock" de Brasília para que
-    // o date-fns format use exatamente esses valores, independente do TZ do browser.
+    // Constrói um Date com os componentes literais (ano, mês, dia, hora...) para que
+    // o date-fns format exiba exatamente esses valores, independente do TZ do browser.
     const date = new Date(m.year(), m.month(), m.date(), m.hour(), m.minute(), m.second());
     return format(date, formatStr);
 };
