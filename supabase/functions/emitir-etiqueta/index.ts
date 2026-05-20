@@ -622,7 +622,14 @@ serve(async (req) => {
             nome_servico: emissaoPayload?.cotacao?.nomeServico ?? null,
             valor_total: mpEmissao.frete?.valorTotal ?? null,
             valor_original: emissaoPayload?.cotacao?.valorOriginalSemGrupo ?? null,
-            valor_custo: emissaoPayload?.cotacao?.valorOriginalSemGrupo ?? mpEmissao.frete?.valorTotal ?? null,
+            // v3.4: precoCusto = preço bruto MaisEnvios (antes do markup/fixed_price).
+            // Preferimos o campo explícito vindo da cotação; fallback nas heurísticas antigas.
+            valor_custo:
+              emissaoPayload?.cotacao?.precoCusto
+              ?? mpEmissao?.precoCusto
+              ?? emissaoPayload?.cotacao?.valorOriginalSemGrupo
+              ?? mpEmissao.frete?.valorTotal
+              ?? null,
             prazo: emissaoPayload?.cotacao?.prazo ?? null,
             cep_origem: rem?.endereco?.cep ?? null,
             cep_destino: destEnd?.cep ?? null,
@@ -652,9 +659,10 @@ serve(async (req) => {
             chave_nfe: emissaoPayload?.chaveNFe ?? null,
             numero_nota_fiscal: emissaoPayload?.numeroNotaFiscal ?? null,
             observacao: emissaoPayload?.observacao ?? null,
-            // Estado inicial
-            status: 'emitida',
+            // v3.4: nasce "aberto" — só vira "postado" (pronto p/ fatura) quando o objeto for postado.
+            status: 'aberto',
             status_rastreio: 'PRE_POSTADO',
+
             transportadora: mpEmissao.raw?.data?.transportadora || mpEmissao.raw?.transportadora || null,
             formato_codigo: mpEmissao.raw?.data?.formatoCodigo || mpEmissao.raw?.formatoCodigo || null,
             payload_request: emissaoPayload,

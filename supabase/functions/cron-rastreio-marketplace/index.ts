@@ -114,7 +114,19 @@ serve(async (req: Request) => {
         };
         if (dataPostagem) updates.data_postagem = dataPostagem;
         if (dataEntrega) updates.data_entrega = dataEntrega;
-        if (status === "ENTREGUE") updates.status = "entregue";
+        // v3.4: ciclo de vida pra faturamento.
+        //   "aberto"  → enquanto pré-postado (não entra na fatura).
+        //   "postado" → objeto efetivamente postado, pronto para ser incluído na próxima fatura.
+        //   "entregue"→ entrega confirmada.
+        if (status === "ENTREGUE") {
+          updates.status = "entregue";
+        } else if (
+          (status === "POSTADO" || status === "EM_TRANSITO" || status === "SAIU_PARA_ENTREGA" || status === "AGUARDANDO_RETIRADA")
+          && (r.status === "aberto" || r.status === "emitida" || !r.status)
+        ) {
+          updates.status = "postado";
+        }
+
 
         // Disparos WhatsApp com flags de dedup
         let celular = String(r.destinatario_celular || "").replace(/\D/g, "");
