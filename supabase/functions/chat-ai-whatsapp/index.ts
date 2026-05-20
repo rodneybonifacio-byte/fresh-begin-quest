@@ -2790,24 +2790,13 @@ async function fetchRecipientPackagesByPhone(supabase: any, normalizedPhone: str
 }
 
 async function getAdminToken(): Promise<string | null> {
-  const BASE_API_URL = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br";
-  const email = Deno.env.get("API_ADMIN_EMAIL");
-  const password = Deno.env.get("API_ADMIN_PASSWORD");
-  if (!email || !password) return null;
-
   try {
-    const resp = await fetch(`${BASE_API_URL}/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-    if (!resp.ok) return null;
-    const data = await resp.json();
-    return data.token || null;
+    return await getAdminTokenCached();
   } catch {
     return null;
   }
 }
+
 
 // ═══════════════════════════════════════════════════════════
 // HELPERS: Mídia (imagem, áudio)
