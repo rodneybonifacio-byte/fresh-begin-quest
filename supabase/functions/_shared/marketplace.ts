@@ -160,6 +160,7 @@ export interface NormalizedEmissaoResult {
   codigoObjeto: string | null;
   uuidMarketplace?: string | null;
   pdfUrl?: string | null;
+  pdfBase64?: string | null;
   frete: { valorTotal: number };
   origem: 'brhub' | 'marketplace';
   raw: any;
