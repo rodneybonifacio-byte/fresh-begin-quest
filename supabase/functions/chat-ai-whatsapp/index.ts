@@ -3119,21 +3119,13 @@ async function fetchTrackingData(codigo: string): Promise<any> {
 
   // 2) Fallback: API BRHUB legada
   const BASE_API_URL = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br";
-  const adminEmail = Deno.env.get("API_ADMIN_EMAIL");
-  const adminPassword = Deno.env.get("API_ADMIN_PASSWORD");
-  if (!adminEmail || !adminPassword) return null;
-
-  const loginResponse = await fetch(`${BASE_API_URL}/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: adminEmail, password: adminPassword }),
-  });
-  if (!loginResponse.ok) return null;
-  const loginData = await loginResponse.json();
+  let token: string | null = null;
+  try { token = await getAdminTokenCached(); } catch { token = null; }
+  if (!token) return null;
 
   const rastreioResponse = await fetch(`${BASE_API_URL}/rastrear?codigo=${code}`, {
     method: "GET",
-    headers: { Authorization: `Bearer ${loginData.token}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
   });
   if (!rastreioResponse.ok) return null;
   return await rastreioResponse.json();
