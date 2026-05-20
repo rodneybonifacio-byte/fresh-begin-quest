@@ -50,8 +50,17 @@ const FormularioCliente = () => {
     const mutation = useMutation({
         mutationFn: async (data: FormDataCliente) => {
             setIsLoading(true);
-            const requestData = { ...data, criadoEm: new Date().toISOString() };
-            if (data.id) return service.update(data.id, requestData);
+            const requestData: any = { ...data, criadoEm: new Date().toISOString() };
+            // 🔒 GUARDRAIL: em edição, nunca enviar senha vazia — isso sobrescreve a senha do cliente no backend
+            if (data.id) {
+                const senhaTrim = typeof requestData.senha === 'string' ? requestData.senha.trim() : '';
+                if (!senhaTrim) {
+                    delete requestData.senha;
+                } else {
+                    requestData.senha = senhaTrim;
+                }
+                return service.update(data.id, requestData);
+            }
             return service.create(requestData);
         },
         onSuccess: () => {
