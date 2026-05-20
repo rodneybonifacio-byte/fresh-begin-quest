@@ -91,20 +91,10 @@ serve(async (req) => {
     const API_ADMIN_EMAIL = Deno.env.get('API_ADMIN_EMAIL');
     const API_ADMIN_PASSWORD = Deno.env.get('API_ADMIN_PASSWORD');
 
-    // Login admin para obter token com permissões totais
-    console.log('🔐 Fazendo login admin...');
-    const loginResponse = await fetch(`${BASE_API_URL}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: API_ADMIN_EMAIL, password: API_ADMIN_PASSWORD }),
-    });
+    // Login admin (cache)
+    console.log('🔐 Obtendo token admin (cache)...');
+    const adminToken = await getAdminTokenCached();
 
-    if (!loginResponse.ok) {
-      throw new Error('Falha no login admin');
-    }
-
-    const loginData = await loginResponse.json();
-    const adminToken = loginData.token;
 
     // Buscar etiquetas do OPERA KIDS na data especificada (ou hoje)
     const dataFiltro = data || new Date().toISOString().split('T')[0];
