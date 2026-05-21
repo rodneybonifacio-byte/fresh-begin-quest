@@ -317,8 +317,8 @@ export async function emitirEtiquetaMarketplace(
   let j: any;
   try { j = JSON.parse(text); } catch { j = { raw: text }; }
 
-  if ((!r.ok || j?.success === false) && isCorreios && !temNFValida && text.includes('PPN-353')) {
-    console.warn('[MP] PPN-353 em Correios sem NF; retentando só com declaração, sem valor declarado/NF');
+  if ((!r.ok || j?.success === false) && isCorreios && text.includes('PPN-353')) {
+    console.warn('[MP] PPN-353 em Correios; retentando como declaração de conteúdo, sem NF/valor declarado');
     mpPayload = buildMpPayload({ enviarItens: true });
     delete mpPayload.valorDeclarado;
     delete mpPayload.chaveNFe;
