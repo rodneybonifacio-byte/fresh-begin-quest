@@ -229,8 +229,8 @@ serve(async (req) => {
     }
     payload.quantidadeVolumes = payload.quantidadeVolumes || 1;
 
-    delete payload.notificarWhatsapp;
-    delete payload.rastreamentoWhatsapp;
+    payload.notificarWhatsapp = false;
+    payload.rastreamentoWhatsapp = false;
 
     console.log('📦 Payload:', JSON.stringify(payload));
 
