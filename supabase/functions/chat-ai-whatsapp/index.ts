@@ -2202,8 +2202,8 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
             // Extrair texto SEM o prefixo do agente para o TTS (não falar o nome)
             const agentPrefixPattern = /^\*[^*]+:\*\n\n/;
             const ttsText = aiReply.replace(agentPrefixPattern, "");
-            const audioUrl = await generateTTSAudio(ttsText, elevenLabsKey, voiceConfig);
-            if (audioUrl) {
+            const audioUrls = await generateTTSAudios(ttsText, elevenLabsKey, voiceConfig);
+            if (audioUrls.length > 0) {
               // 1. Enviar texto com nome do agente em negrito primeiro
               const agentLabel = `*${agentDisplayName}:*`;
               const mbTextResponse = await fetch("https://conversations.messagebird.com/v1/send", {
@@ -2231,33 +2231,38 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
                 ai_generated: true,
               });
 
-              // 2. Enviar áudio logo em seguida
-              const mbAudioResponse = await fetch("https://conversations.messagebird.com/v1/send", {
-                method: "POST",
-                headers: {
-                  Authorization: `AccessKey ${channel.access_key}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  to: contactPhone,
-                  from: channel.channel_id,
-                  type: "audio",
-                  content: { audio: { url: audioUrl } },
-                }),
-              });
-              const mbAudioResult = await mbAudioResponse.json();
+              // 2. Enviar cada áudio (chunk) em sequência
+              const ttsChunks = splitTextForTTS(ttsText);
+              for (let ai = 0; ai < audioUrls.length; ai++) {
+                const audioUrl = audioUrls[ai];
+                const chunkText = ttsChunks[ai] || ttsText;
+                const mbAudioResponse = await fetch("https://conversations.messagebird.com/v1/send", {
+                  method: "POST",
+                  headers: {
+                    Authorization: `AccessKey ${channel.access_key}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    to: contactPhone,
+                    from: channel.channel_id,
+                    type: "audio",
+                    content: { audio: { url: audioUrl } },
+                  }),
+                });
+                const mbAudioResult = await mbAudioResponse.json();
 
-              await supabase.from("whatsapp_messages").insert({
-                conversation_id: conversationId,
-                messagebird_id: mbAudioResult.id || null,
-                direction: "outbound",
-                content_type: "voice",
-                content: ttsText,
-                media_url: audioUrl,
-                status: "sent",
-                sent_by: agentName,
-                ai_generated: true,
-              });
+                await supabase.from("whatsapp_messages").insert({
+                  conversation_id: conversationId,
+                  messagebird_id: mbAudioResult.id || null,
+                  direction: "outbound",
+                  content_type: "voice",
+                  content: chunkText,
+                  media_url: audioUrl,
+                  status: "sent",
+                  sent_by: agentName,
+                  ai_generated: true,
+                });
+              }
               audioSent = true;
             }
           } catch (ttsError) {
