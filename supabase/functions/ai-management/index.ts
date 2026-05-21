@@ -20,18 +20,31 @@ Deno.serve(async (req) => {
       });
     }
 
-    const token = authHeader.replace("Bearer ", "");
+    const token = authHeader.replace("Bearer ", "").trim();
     
     // Decodificar JWT para verificar role
     const parts = token.split(".");
     if (parts.length !== 3) {
-      return new Response(JSON.stringify({ error: "Token inválido" }), {
+      console.error("Token inválido - parts:", parts.length, "tokenLen:", token.length);
+      return new Response(JSON.stringify({ error: "Token inválido (formato)" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const payload = JSON.parse(atob(parts[1]));
+    let payload: any;
+    try {
+      // base64url -> base64 com padding
+      let b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+      while (b64.length % 4) b64 += "=";
+      payload = JSON.parse(atob(b64));
+    } catch (e) {
+      console.error("Falha ao decodificar payload JWT:", e);
+      return new Response(JSON.stringify({ error: "Token inválido (payload)" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     if (payload.role !== "ADMIN") {
       return new Response(JSON.stringify({ error: "Acesso restrito a administradores" }), {
         status: 403,
