@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 import { getAdminTokenCached } from '../_shared/adminTokenCache.ts';
+import { emitirEtiquetaMarketplace } from '../_shared/marketplace.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
