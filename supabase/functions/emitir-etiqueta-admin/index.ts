@@ -35,6 +35,32 @@ serve(async (req) => {
     const { clienteId, emissaoData } = requestData;
     console.log('👤 ClienteId:', clienteId);
 
+    // Auto-desabilitar rastreio via WhatsApp (preservando demais campos da config)
+    try {
+      const cfgRes = await fetch(`${baseUrl}/clientes/${clienteId}/configuracoes`, {
+        headers: { 'Authorization': `Bearer ${adminToken}` },
+      });
+      if (cfgRes.ok) {
+        const cfgJson = await cfgRes.json();
+        const cfg = cfgJson?.data || cfgJson || {};
+        if (cfg?.rastreio_via_whatsapp !== false) {
+          const merged = { ...cfg, rastreio_via_whatsapp: false };
+          const putRes = await fetch(`${baseUrl}/clientes/${clienteId}/configuracoes`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(merged),
+          });
+          console.log('🔧 rastreio_via_whatsapp desabilitado:', putRes.status);
+        }
+      } else {
+        console.warn('⚠️ GET configuracoes falhou:', cfgRes.status);
+      }
+    } catch (e) {
+      console.warn('⚠️ Falha ao normalizar config WhatsApp:', e?.message || e);
+    }
+
+
+
 
     // 4. Preparar payload de emissão
     const digitsOnly = (v: any) => String(v ?? '').replace(/\D/g, '');
