@@ -172,14 +172,18 @@ export const formatDateLocalSystem = (date: Date): string => {
 export const formatDateTime = (input: string | null | undefined, formatStr = 'dd/MM/yyyy HH:mm') => {
     if (!input) return '';
 
-    // Os timestamps do backend vêm em UTC (ex.: "2026-05-20T16:44:25+00:00").
-    // Precisamos preservar o offset de origem e CONVERTER para America/Sao_Paulo
-    // para exibir o horário de Brasília correto e fixo (não muda entre refreshes).
-    // Strings sem offset são interpretadas como horário de Brasília (legado).
-    const hasOffset = typeof input === 'string' && /(Z|[+-]\d{2}:?\d{2})$/.test(input);
-    const m = hasOffset
+    // Convenção do projeto:
+    //  - Supabase devolve timestamps reais em UTC com offset "+00:00" (ou similar).
+    //  - A API BRHUB devolve horário de Brasília "fake-UTC" terminando em "Z"
+    //    (ex.: "2026-05-21T11:32:06.000Z" já é 11:32 em Brasília).
+    //  - Strings sem offset também são consideradas horário de Brasília (legado).
+    // Portanto: tratamos "Z" e ausência de offset como Brasília; qualquer outro
+    // offset (+00:00, -03:00, etc.) é convertido para America/Sao_Paulo.
+    const offsetMatch = typeof input === 'string' ? input.match(/(Z|[+-]\d{2}:?\d{2})$/) : null;
+    const isRealUtcOrOffset = !!offsetMatch && offsetMatch[0] !== 'Z';
+    const m = isRealUtcOrOffset
         ? moment.parseZone(input).tz('America/Sao_Paulo')
-        : moment.tz(input, 'America/Sao_Paulo');
+        : moment.tz(typeof input === 'string' ? input.replace(/Z$/, '') : input, 'America/Sao_Paulo');
 
     if (!m.isValid()) {
         console.warn(`Data inválida recebida: ${input}`);
