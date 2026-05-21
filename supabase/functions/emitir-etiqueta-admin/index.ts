@@ -223,28 +223,60 @@ serve(async (req) => {
 
     console.log('📦 Payload:', JSON.stringify(payload));
 
-    // 5. Emitir com ADMIN TOKEN
-    console.log('🏷️ Emitindo etiqueta...');
-    const emissaoRes = await fetch(`${baseUrl}/emissoes`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${adminToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
+    // 5. Emitir — Marketplace OU BRHUB direto
+    const origemCotacao = String(emissaoData?.cotacao?.origem || '').toLowerCase();
+    let emissaoResult: any;
 
-    const responseText = await emissaoRes.text();
-    console.log('📄 Resposta:', emissaoRes.status, responseText.substring(0, 500));
-
-    if (!emissaoRes.ok) {
-      return new Response(JSON.stringify({ error: responseText, status: emissaoRes.status }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: emissaoRes.status,
+    if (origemCotacao === 'marketplace') {
+      console.log('🏷️ Emitindo via MARKETPLACE...');
+      try {
+        const mp = await emitirEtiquetaMarketplace(payload);
+        const codigoObjetoMp = mp?.codigoObjeto || null;
+        const uuidMp = mp?.uuidMarketplace || mp?.id || null;
+        emissaoResult = { data: { id: uuidMp, codigoObjeto: codigoObjetoMp, ...mp }, origem: 'marketplace' };
+        try {
+          const dest = payload?.destinatario || {};
+          const destEnd = dest?.endereco || {};
+          const emb = payload?.embalagem || {};
+          const rem = payload?.remetente || {};
+          await supabase.from('emissoes_marketplace').insert({
+            cliente_id: clienteId,
+            uuid_marketplace: uuidMp,
+            codigo_objeto: codigoObjetoMp,
+            codigo_servico: payload?.cotacao?.codigoServico ?? null,
+            nome_servico: payload?.cotacao?.nomeServico ?? null,
+            destinatario_nome: dest?.nome ?? null,
+            destinatario_celular: dest?.celular ?? null,
+            destinatario_cep: destEnd?.cep ?? null,
+            remetente_nome: rem?.nome ?? null,
+            valor_declarado: payload?.valorDeclarado ?? null,
+            peso: emb?.peso ?? null,
+          });
+        } catch (e) { console.warn('⚠️ Persist MP falhou:', e?.message || e); }
+      } catch (e: any) {
+        console.error('❌ MP emissão falhou:', e?.message || e);
+        return new Response(JSON.stringify({ error: e?.message || 'Falha marketplace' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: e?.status || 400,
+        });
+      }
+    } else {
+      console.log('🏷️ Emitindo via BRHUB direto...');
+      const emissaoRes = await fetch(`${baseUrl}/emissoes`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
+      const responseText = await emissaoRes.text();
+      console.log('📄 Resposta:', emissaoRes.status, responseText.substring(0, 500));
+      if (!emissaoRes.ok) {
+        return new Response(JSON.stringify({ error: responseText, status: emissaoRes.status }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: emissaoRes.status,
+        });
+      }
+      emissaoResult = JSON.parse(responseText);
     }
-
-    const emissaoResult = JSON.parse(responseText);
     console.log('✅ Etiqueta emitida!');
 
     // 6. Bloquear créditos
