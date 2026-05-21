@@ -3040,45 +3040,97 @@ interface VoiceConfig {
   speed: number;
 }
 
+// Divide texto longo em pedaços respeitando fronteiras de sentença
+// para não cortar áudio no meio da frase. Máx ~1200 chars por chunk
+// (ElevenLabs aceita até 5000, mas pedaços menores = áudios mais leves
+// e WhatsApp entrega melhor).
+function splitTextForTTS(text: string, maxLen = 1200): string[] {
+  const clean = String(text || "").trim();
+  if (!clean) return [];
+  if (clean.length <= maxLen) return [clean];
+
+  const sentences = clean.match(/[^.!?\n]+[.!?\n]+|[^.!?\n]+$/g) || [clean];
+  const chunks: string[] = [];
+  let current = "";
+  for (const s of sentences) {
+    const piece = s.trim();
+    if (!piece) continue;
+    if ((current + " " + piece).trim().length > maxLen && current) {
+      chunks.push(current.trim());
+      current = piece;
+    } else {
+      current = (current ? current + " " : "") + piece;
+    }
+    while (current.length > maxLen) {
+      chunks.push(current.slice(0, maxLen));
+      current = current.slice(maxLen);
+    }
+  }
+  if (current.trim()) chunks.push(current.trim());
+  return chunks;
+}
+
 async function generateTTSAudio(text: string, apiKey: string, voiceConfig?: VoiceConfig): Promise<string | null> {
-  const ttsText = text.length > 500 ? text.substring(0, 497) + "..." : text;
+  const urls = await generateTTSAudios(text, apiKey, voiceConfig);
+  return urls[0] || null;
+}
+
+async function generateTTSAudios(text: string, apiKey: string, voiceConfig?: VoiceConfig): Promise<string[]> {
+  const chunks = splitTextForTTS(text);
+  if (chunks.length === 0) return [];
+
   const voiceId = voiceConfig?.voiceId || "FGY2WhTYpPnrIDTdsKH5";
   const modelId = voiceConfig?.model || "eleven_multilingual_v2";
-
-  const response = await fetch(
-    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=opus_48000_128`,
-    {
-      method: "POST",
-      headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        text: ttsText,
-        model_id: modelId,
-        voice_settings: {
-          stability: voiceConfig?.stability ?? 0.5,
-          similarity_boost: voiceConfig?.similarityBoost ?? 0.75,
-          style: voiceConfig?.style ?? 0.0,
-          use_speaker_boost: true,
-          speed: voiceConfig?.speed ?? 1.0,
-        },
-      }),
-    }
-  );
-
-  if (!response.ok) throw new Error(`TTS error: ${response.status}`);
-  const audioBuffer = await response.arrayBuffer();
-
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-  const fileName = `tts-${Date.now()}.ogg`;
-  const { error: uploadError } = await supabase.storage
-    .from("avatars")
-    .upload(`tts-audio/${fileName}`, new Uint8Array(audioBuffer), {
-      contentType: "audio/ogg; codecs=opus",
-      upsert: true,
-    });
 
-  if (uploadError) return null;
-  const { data: publicUrl } = supabase.storage.from("avatars").getPublicUrl(`tts-audio/${fileName}`);
-  return publicUrl.publicUrl;
+  const urls: string[] = [];
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    try {
+      const response = await fetch(
+        `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=opus_48000_128`,
+        {
+          method: "POST",
+          headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: chunk,
+            model_id: modelId,
+            previous_text: i > 0 ? chunks[i - 1].slice(-300) : undefined,
+            next_text: i < chunks.length - 1 ? chunks[i + 1].slice(0, 300) : undefined,
+            voice_settings: {
+              stability: voiceConfig?.stability ?? 0.5,
+              similarity_boost: voiceConfig?.similarityBoost ?? 0.75,
+              style: voiceConfig?.style ?? 0.0,
+              use_speaker_boost: true,
+              speed: voiceConfig?.speed ?? 1.0,
+            },
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        console.warn(`⚠️ TTS chunk ${i + 1}/${chunks.length} falhou: ${response.status}`);
+        continue;
+      }
+      const audioBuffer = await response.arrayBuffer();
+      const fileName = `tts-${Date.now()}-${i}.ogg`;
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(`tts-audio/${fileName}`, new Uint8Array(audioBuffer), {
+          contentType: "audio/ogg; codecs=opus",
+          upsert: true,
+        });
+      if (uploadError) {
+        console.warn(`⚠️ Upload TTS chunk ${i + 1} falhou:`, uploadError);
+        continue;
+      }
+      const { data: publicUrl } = supabase.storage.from("avatars").getPublicUrl(`tts-audio/${fileName}`);
+      urls.push(publicUrl.publicUrl);
+    } catch (e) {
+      console.warn(`⚠️ Erro gerando chunk ${i + 1}:`, e);
+    }
+  }
+  return urls;
 }
 
 // ═══════════════════════════════════════════════════════════
