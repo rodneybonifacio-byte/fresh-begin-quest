@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 import { getAdminTokenCached } from '../_shared/adminTokenCache.ts';
+import { emitirEtiquetaMarketplace } from '../_shared/marketplace.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -34,6 +35,61 @@ serve(async (req) => {
 
     const { clienteId, emissaoData } = requestData;
     console.log('👤 ClienteId:', clienteId);
+
+    // Auto-desabilitar rastreio via WhatsApp (preservando demais campos da config)
+    try {
+      const getRes = await fetch(`${baseUrl}/clientes/${clienteId}`, {
+        headers: { 'Authorization': `Bearer ${adminToken}` },
+      });
+      if (getRes.ok) {
+        const j = await getRes.json();
+        const cli = j?.data || j || {};
+        const cfg = cli.configuracoes || {};
+        const configuracoesCorrigidas = {
+          periodo_faturamento: cfg.periodo_faturamento || 'SEMANAL',
+          horario_coleta: cfg.horario_coleta || '08:00',
+          link_whatsapp: String(cfg.link_whatsapp || ''),
+          incluir_valor_declarado_na_nota: false,
+          aplicar_valor_declarado: false,
+          rastreio_via_whatsapp: false,
+          fatura_via_whatsapp: false,
+          valor_disparo_evento_rastreio_whatsapp: String(cfg.valor_disparo_evento_rastreio_whatsapp || '0'),
+          eventos_rastreio_habilitados_via_whatsapp: [],
+        };
+        const transportadoraCorrigidas = (cli.transportadoraConfiguracoes || []).map((t: any) => ({
+          ...t,
+          valorAcrescimo: typeof t.valorAcrescimo === 'string' ? parseFloat(t.valorAcrescimo) || 0 : (t.valorAcrescimo ?? 0),
+          sobrepreco: typeof t.sobrepreco === 'string' ? parseFloat(t.sobrepreco) || 0 : (t.sobrepreco ?? 0),
+        }));
+        const body = {
+          nomeEmpresa: cli.nomeEmpresa,
+          nomeResponsavel: cli.nomeResponsavel,
+          cpfCnpj: cli.cpfCnpj,
+          email: cli.email,
+          telefone: cli.telefone || '',
+          celular: cli.celular,
+          role: cli.role || 'CLIENTE',
+          endereco: cli.endereco,
+          status: cli.status || 'ATIVO',
+          configuracoes: configuracoesCorrigidas,
+          transportadoraConfiguracoes: transportadoraCorrigidas,
+          senha: '__MANTER__',
+        };
+        const putRes = await fetch(`${baseUrl}/clientes/${clienteId}`, {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        console.log('🔧 PUT /clientes:', putRes.status);
+      } else {
+        console.warn('⚠️ GET cliente falhou:', getRes.status);
+      }
+    } catch (e) {
+      console.warn('⚠️ Falha ao normalizar config WhatsApp:', e?.message || e);
+    }
+
+
+
 
 
     // 4. Preparar payload de emissão
@@ -167,28 +223,60 @@ serve(async (req) => {
 
     console.log('📦 Payload:', JSON.stringify(payload));
 
-    // 5. Emitir com ADMIN TOKEN
-    console.log('🏷️ Emitindo etiqueta...');
-    const emissaoRes = await fetch(`${baseUrl}/emissoes`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${adminToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
+    // 5. Emitir — Marketplace OU BRHUB direto
+    const origemCotacao = String(emissaoData?.cotacao?.origem || '').toLowerCase();
+    let emissaoResult: any;
 
-    const responseText = await emissaoRes.text();
-    console.log('📄 Resposta:', emissaoRes.status, responseText.substring(0, 500));
-
-    if (!emissaoRes.ok) {
-      return new Response(JSON.stringify({ error: responseText, status: emissaoRes.status }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: emissaoRes.status,
+    if (origemCotacao === 'marketplace') {
+      console.log('🏷️ Emitindo via MARKETPLACE...');
+      try {
+        const mp = await emitirEtiquetaMarketplace(payload);
+        const codigoObjetoMp = mp?.codigoObjeto || null;
+        const uuidMp = mp?.uuidMarketplace || mp?.id || null;
+        emissaoResult = { data: { id: uuidMp, codigoObjeto: codigoObjetoMp, ...mp }, origem: 'marketplace' };
+        try {
+          const dest = payload?.destinatario || {};
+          const destEnd = dest?.endereco || {};
+          const emb = payload?.embalagem || {};
+          const rem = payload?.remetente || {};
+          await supabase.from('emissoes_marketplace').insert({
+            cliente_id: clienteId,
+            uuid_marketplace: uuidMp,
+            codigo_objeto: codigoObjetoMp,
+            codigo_servico: payload?.cotacao?.codigoServico ?? null,
+            nome_servico: payload?.cotacao?.nomeServico ?? null,
+            destinatario_nome: dest?.nome ?? null,
+            destinatario_celular: dest?.celular ?? null,
+            destinatario_cep: destEnd?.cep ?? null,
+            remetente_nome: rem?.nome ?? null,
+            valor_declarado: payload?.valorDeclarado ?? null,
+            peso: emb?.peso ?? null,
+          });
+        } catch (e) { console.warn('⚠️ Persist MP falhou:', e?.message || e); }
+      } catch (e: any) {
+        console.error('❌ MP emissão falhou:', e?.message || e);
+        return new Response(JSON.stringify({ error: e?.message || 'Falha marketplace' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: e?.status || 400,
+        });
+      }
+    } else {
+      console.log('🏷️ Emitindo via BRHUB direto...');
+      const emissaoRes = await fetch(`${baseUrl}/emissoes`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
+      const responseText = await emissaoRes.text();
+      console.log('📄 Resposta:', emissaoRes.status, responseText.substring(0, 500));
+      if (!emissaoRes.ok) {
+        return new Response(JSON.stringify({ error: responseText, status: emissaoRes.status }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: emissaoRes.status,
+        });
+      }
+      emissaoResult = JSON.parse(responseText);
     }
-
-    const emissaoResult = JSON.parse(responseText);
     console.log('✅ Etiqueta emitida!');
 
     // 6. Bloquear créditos
