@@ -37,27 +37,56 @@ serve(async (req) => {
 
     // Auto-desabilitar rastreio via WhatsApp (preservando demais campos da config)
     try {
-      const cfgRes = await fetch(`${baseUrl}/clientes/${clienteId}/configuracoes`, {
+      const getRes = await fetch(`${baseUrl}/clientes/${clienteId}`, {
         headers: { 'Authorization': `Bearer ${adminToken}` },
       });
-      if (cfgRes.ok) {
-        const cfgJson = await cfgRes.json();
-        const cfg = cfgJson?.data || cfgJson || {};
-        if (cfg?.rastreio_via_whatsapp !== false) {
-          const merged = { ...cfg, rastreio_via_whatsapp: false };
-          const putRes = await fetch(`${baseUrl}/clientes/${clienteId}/configuracoes`, {
-            method: 'PUT',
-            headers: { 'Authorization': `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify(merged),
-          });
-          console.log('🔧 rastreio_via_whatsapp desabilitado:', putRes.status);
-        }
+      if (getRes.ok) {
+        const j = await getRes.json();
+        const cli = j?.data || j || {};
+        const cfg = cli.configuracoes || {};
+        const configuracoesCorrigidas = {
+          periodo_faturamento: cfg.periodo_faturamento || 'SEMANAL',
+          horario_coleta: cfg.horario_coleta || '08:00',
+          link_whatsapp: String(cfg.link_whatsapp || ''),
+          incluir_valor_declarado_na_nota: false,
+          aplicar_valor_declarado: false,
+          rastreio_via_whatsapp: false,
+          fatura_via_whatsapp: false,
+          valor_disparo_evento_rastreio_whatsapp: String(cfg.valor_disparo_evento_rastreio_whatsapp || '0'),
+          eventos_rastreio_habilitados_via_whatsapp: [],
+        };
+        const transportadoraCorrigidas = (cli.transportadoraConfiguracoes || []).map((t: any) => ({
+          ...t,
+          valorAcrescimo: typeof t.valorAcrescimo === 'string' ? parseFloat(t.valorAcrescimo) || 0 : (t.valorAcrescimo ?? 0),
+          sobrepreco: typeof t.sobrepreco === 'string' ? parseFloat(t.sobrepreco) || 0 : (t.sobrepreco ?? 0),
+        }));
+        const body = {
+          nomeEmpresa: cli.nomeEmpresa,
+          nomeResponsavel: cli.nomeResponsavel,
+          cpfCnpj: cli.cpfCnpj,
+          email: cli.email,
+          telefone: cli.telefone || '',
+          celular: cli.celular,
+          role: cli.role || 'CLIENTE',
+          endereco: cli.endereco,
+          status: cli.status || 'ATIVO',
+          configuracoes: configuracoesCorrigidas,
+          transportadoraConfiguracoes: transportadoraCorrigidas,
+          senha: '__MANTER__',
+        };
+        const putRes = await fetch(`${baseUrl}/clientes/${clienteId}`, {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        console.log('🔧 PUT /clientes:', putRes.status);
       } else {
-        console.warn('⚠️ GET configuracoes falhou:', cfgRes.status);
+        console.warn('⚠️ GET cliente falhou:', getRes.status);
       }
     } catch (e) {
       console.warn('⚠️ Falha ao normalizar config WhatsApp:', e?.message || e);
     }
+
 
 
 
