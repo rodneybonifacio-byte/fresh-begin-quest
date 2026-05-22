@@ -21,10 +21,14 @@ Deno.serve(async (req) => {
       const d = await r.json();
       const items: any[] = d.data || d || [];
       const filtered = items.filter((c: any) => (c.nome || '').toLowerCase().includes(clienteNome.toLowerCase()));
-      if (filtered.length > 1) {
-        return new Response(JSON.stringify({ ambiguous: true, candidates: filtered.map((c: any) => ({ id: c.id, nome: c.nome, cpfCnpj: c.cpfCnpj, email: c.email })) }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+      if (filtered.length !== 1) {
+        return new Response(JSON.stringify({
+          ambiguous: true,
+          total_raw: items.length,
+          filtered_count: filtered.length,
+          sample_names: items.slice(0, 20).map((c: any) => c.nome),
+          candidates: filtered.map((c: any) => ({ id: c.id, nome: c.nome, cpfCnpj: c.cpfCnpj, email: c.email })),
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       foundCliente = filtered[0];
       foundClienteId = foundCliente?.id;
