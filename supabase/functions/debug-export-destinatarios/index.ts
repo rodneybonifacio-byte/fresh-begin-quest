@@ -20,14 +20,17 @@ Deno.serve(async (req) => {
       if (!r.ok) throw new Error(`clientes search ${r.status}: ${(await r.text()).slice(0, 200)}`);
       const d = await r.json();
       const items: any[] = d.data || d || [];
-      const filtered = items.filter((c: any) => (c.nome || '').toLowerCase().includes(clienteNome.toLowerCase()));
+      const lc = clienteNome.toLowerCase();
+      const matchName = (c: any) => [c.nome, c.nomeFantasia, c.razaoSocial, c.razao_social, c.nome_fantasia, c.email].some((v: any) => (v || '').toLowerCase().includes(lc));
+      const filtered = items.filter(matchName);
       if (filtered.length !== 1) {
         return new Response(JSON.stringify({
           ambiguous: true,
           total_raw: items.length,
           filtered_count: filtered.length,
-          sample_names: items.slice(0, 20).map((c: any) => c.nome),
-          candidates: filtered.map((c: any) => ({ id: c.id, nome: c.nome, cpfCnpj: c.cpfCnpj, email: c.email })),
+          first_item_keys: items[0] ? Object.keys(items[0]) : [],
+          first_item: items[0],
+          candidates: filtered.map((c: any) => ({ id: c.id, nome: c.nome || c.nomeFantasia || c.razaoSocial, cpfCnpj: c.cpfCnpj, email: c.email })),
         }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       foundCliente = filtered[0];
