@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
     let offset = 0;
     const limit = 100;
     while (true) {
-      const url = `${BASE_API_URL}/clientes/${foundClienteId}/destinatarios?limit=${limit}&offset=${offset}`;
+      const url = `${BASE_API_URL}/destinatarios?clienteId=${foundClienteId}&limit=${limit}&offset=${offset}`;
       const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       if (!r.ok) {
         const txt = await r.text();
