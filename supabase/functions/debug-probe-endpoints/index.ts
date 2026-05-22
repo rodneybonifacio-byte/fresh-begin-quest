@@ -15,24 +15,16 @@ async function probe(token: string, path: string) {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
-    const { clienteId } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const { paths: customPaths, clienteId } = body || {};
     const token = await getAdminTokenCached();
-    const paths = [
-      `/admin/emissoes?clienteId=${clienteId}&limit=5`,
-      `/relatorios/emissoes?clienteId=${clienteId}&limit=5`,
-      `/admin/clientes/${clienteId}/emissoes?limit=5`,
-      `/admin/clientes/${clienteId}/destinatarios?limit=5`,
-      `/admin/destinatarios?clienteId=${clienteId}&limit=5`,
-      `/dashboard/emissoes?clienteId=${clienteId}&limit=5`,
-      `/emissoes?limit=5&clienteId=${clienteId}`,
-      `/emissoes?limit=5&cliente_id=${clienteId}`,
-      `/emissoes?clienteIds[]=${clienteId}&limit=5`,
-      `/emissoes/admin?clienteId=${clienteId}&limit=5`,
-      `/relatorios/clientes/${clienteId}`,
-      `/relatorios/cliente/${clienteId}/emissoes?limit=5`,
-      `/clientes/${clienteId}`,
-      `/clientes/${clienteId}/dashboard`,
-      `/clientes/${clienteId}/emissoes?limit=5`,
+    const paths = customPaths || [
+      `/clientes?limit=100&offset=0`,
+      `/clientes?limit=100&offset=100`,
+      `/clientes?limit=100&offset=200`,
+      `/clientes?limit=100&offset=500`,
+      `/clientes?limit=100&offset=1000`,
+      `/clientes?limit=100&page=2`,
     ];
     const out: any = {};
     for (const p of paths) out[p] = await probe(token, p);
