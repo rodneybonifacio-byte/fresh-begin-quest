@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
       const d = await r.json();
       const list = d.data || d || [];
       if (!list.length) return new Response(JSON.stringify({ error: 'cliente não encontrado', searchNome }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      if (list.length > 1) return new Response(JSON.stringify({ matches: list.map((c: any) => ({ id: c.id, nome: c.nome, cpfCnpj: c.cpfCnpj })) }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (list.length > 1) return new Response(JSON.stringify({ matches: list.map((c: any) => ({ id: c.id, nome: c.nome || c.razaoSocial || c.nomeFantasia, cpfCnpj: c.cpfCnpj, email: c.email })) }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       clienteId = list[0].id;
     }
     if (!clienteId) return new Response(JSON.stringify({ error: 'clienteId ou searchNome requerido' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
