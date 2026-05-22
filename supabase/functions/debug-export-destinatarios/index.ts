@@ -17,18 +17,33 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
     const body = await req.json();
-    const { searchNome, maxOffset = 50000, concurrency = 8 } = body;
+    const { searchNome, findByCnpj, maxOffset = 50000, concurrency = 8 } = body;
     let { clienteId } = body;
     const token = await getAdminTokenCached();
-    if (!clienteId && searchNome) {
-      const r = await fetch(`${BASE_API_URL}/clientes?search=${encodeURIComponent(searchNome)}`, { headers: { Authorization: `Bearer ${token}` } });
-      const d = await r.json();
-      const list = d.data || d || [];
-      if (!list.length) return new Response(JSON.stringify({ error: 'cliente não encontrado', searchNome }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      if (list.length > 1) return new Response(JSON.stringify({ matches: list.map((c: any) => ({ id: c.id, nome: c.nome || c.razaoSocial || c.nomeFantasia, cpfCnpj: c.cpfCnpj, email: c.email })) }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      clienteId = list[0].id;
+    if (!clienteId && (searchNome || findByCnpj)) {
+      const cnpjLimpo = (findByCnpj || '').replace(/\D/g, '');
+      const all: any[] = [];
+      for (let off = 0; off < 10000; off += 100) {
+        const r = await fetch(`${BASE_API_URL}/clientes?limit=100&offset=${off}&search=${encodeURIComponent(searchNome || findByCnpj || '')}`, { headers: { Authorization: `Bearer ${token}` } });
+        const d = await r.json();
+        const list = (d.data || d || []) as any[];
+        if (!list.length) break;
+        all.push(...list);
+        if (list.length < 100) break;
+        if (cnpjLimpo && list.some((c) => (c.cpfCnpj || '').replace(/\D/g, '') === cnpjLimpo)) break;
+        if (searchNome && list.some((c) => ((c.nome || c.razaoSocial || c.nomeFantasia || '').toLowerCase().includes(searchNome.toLowerCase())))) break;
+      }
+      let hit: any = null;
+      if (cnpjLimpo) hit = all.find((c) => (c.cpfCnpj || '').replace(/\D/g, '') === cnpjLimpo);
+      else if (searchNome) {
+        const matches = all.filter((c) => ((c.nome || c.razaoSocial || c.nomeFantasia || '').toLowerCase().includes(searchNome.toLowerCase())));
+        if (matches.length === 1) hit = matches[0];
+        else if (matches.length > 1) return new Response(JSON.stringify({ matches: matches.map((c: any) => ({ id: c.id, nome: c.nome || c.razaoSocial, cpfCnpj: c.cpfCnpj, email: c.email })) }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      if (!hit) return new Response(JSON.stringify({ error: 'cliente não encontrado', scanned: all.length }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      clienteId = hit.id;
     }
-    if (!clienteId) return new Response(JSON.stringify({ error: 'clienteId ou searchNome requerido' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    if (!clienteId) return new Response(JSON.stringify({ error: 'clienteId, searchNome ou findByCnpj requerido' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     const destMap = new Map<string, any>();
     const otherClientes = new Set<string>();
     let scanned = 0;
