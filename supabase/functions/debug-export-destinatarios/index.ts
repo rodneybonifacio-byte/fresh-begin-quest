@@ -21,6 +21,7 @@ Deno.serve(async (req) => {
     let { clienteId } = body;
     const token = await getAdminTokenCached();
     if (!clienteId && (searchNome || findByCnpj)) {
+      const cnpjLimpo = (findByCnpj || '').replace(/\D/g, '');
       const r = await fetch(`${BASE_API_URL}/clientes?limit=1000`, { headers: { Authorization: `Bearer ${token}` } });
       const d = await r.json();
       const all = (d.data || d || []) as any[];
@@ -31,13 +32,6 @@ Deno.serve(async (req) => {
         const matches = all.filter((c) => getNome(c).toLowerCase().includes(searchNome.toLowerCase()));
         if (matches.length === 1) hit = matches[0];
         else if (matches.length > 1) return new Response(JSON.stringify({ matches: matches.map((c: any) => ({ id: c.id, nome: getNome(c), cpfCnpj: c.cpfCnpj, email: c.email })) }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      }
-      let hit: any = null;
-      if (cnpjLimpo) hit = all.find((c) => (c.cpfCnpj || '').replace(/\D/g, '') === cnpjLimpo);
-      else if (searchNome) {
-        const matches = all.filter((c) => ((c.nome || c.razaoSocial || c.nomeFantasia || '').toLowerCase().includes(searchNome.toLowerCase())));
-        if (matches.length === 1) hit = matches[0];
-        else if (matches.length > 1) return new Response(JSON.stringify({ matches: matches.map((c: any) => ({ id: c.id, nome: c.nome || c.razaoSocial, cpfCnpj: c.cpfCnpj, email: c.email })) }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       if (!hit) return new Response(JSON.stringify({ error: 'cliente não encontrado', scanned: all.length }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       clienteId = hit.id;
