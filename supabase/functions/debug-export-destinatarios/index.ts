@@ -20,8 +20,8 @@ Deno.serve(async (req) => {
       if (!r.ok) throw new Error(`clientes search ${r.status}: ${(await r.text()).slice(0, 200)}`);
       const d = await r.json();
       const items: any[] = d.data || d || [];
-      const lc = clienteNome.toLowerCase();
-      const matchName = (c: any) => [c.nome, c.nomeFantasia, c.razaoSocial, c.razao_social, c.nome_fantasia, c.email].some((v: any) => (v || '').toLowerCase().includes(lc));
+      const lc = clienteNome.toLowerCase().replace(/\s+/g, '');
+      const matchName = (c: any) => [c.nome, c.nomeFantasia, c.razaoSocial, c.razao_social, c.nome_fantasia, c.nomeEmpresa, c.nomeResponsavel, c.email].some((v: any) => (v || '').toLowerCase().replace(/\s+/g, '').includes(lc));
       const filtered = items.filter(matchName);
       if (filtered.length !== 1) {
         return new Response(JSON.stringify({
