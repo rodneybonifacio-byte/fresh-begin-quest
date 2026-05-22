@@ -4,71 +4,48 @@ import { getAdminTokenCached } from '../_shared/adminTokenCache.ts';
 
 const BASE_API_URL = Deno.env.get('BASE_API_URL') || 'https://envios.brhubb.com.br/api';
 
+async function fetchPage(token: string, clienteId: string, offset: number, limit = 100) {
+  const r = await fetch(`${BASE_API_URL}/emissoes/admin?clienteId=${clienteId}&limit=${limit}&offset=${offset}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!r.ok) throw new Error(`${r.status}: ${(await r.text()).slice(0,200)}`);
+  const d = await r.json();
+  return (d.data || d || []) as any[];
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
-    const { clienteNome, clienteId } = await req.json();
+    const { clienteId, maxOffset = 50000, concurrency = 8 } = await req.json();
+    if (!clienteId) return new Response(JSON.stringify({ error: 'clienteId requerido' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     const token = await getAdminTokenCached();
-
-    let foundClienteId = clienteId;
-    let foundCliente: any = null;
-
-    if (!foundClienteId && clienteNome) {
-      const r = await fetch(`${BASE_API_URL}/clientes?search=${encodeURIComponent(clienteNome)}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!r.ok) throw new Error(`clientes search ${r.status}: ${(await r.text()).slice(0, 200)}`);
-      const d = await r.json();
-      const items: any[] = d.data || d || [];
-      const lc = clienteNome.toLowerCase();
-      const matchName = (c: any) => [c.nome, c.nomeFantasia, c.razaoSocial, c.razao_social, c.nome_fantasia, c.email].some((v: any) => (v || '').toLowerCase().includes(lc));
-      const filtered = items.filter(matchName);
-      if (filtered.length !== 1) {
-        return new Response(JSON.stringify({
-          ambiguous: true,
-          total_raw: items.length,
-          filtered_count: filtered.length,
-          first_item_keys: items[0] ? Object.keys(items[0]) : [],
-          first_item: items[0],
-          candidates: filtered.map((c: any) => ({ id: c.id, nome: c.nome || c.nomeFantasia || c.razaoSocial, cpfCnpj: c.cpfCnpj, email: c.email })),
-        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      }
-      foundCliente = filtered[0];
-      foundClienteId = foundCliente?.id;
-    }
-
-    if (!foundClienteId) {
-      return new Response(JSON.stringify({ error: 'cliente não encontrado', clienteNome }), {
-        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // buscar destinatarios do cliente
-    const all: any[] = [];
+    const destMap = new Map<string, any>();
+    const otherClientes = new Set<string>();
+    let scanned = 0;
     let offset = 0;
+    let stop = false;
     const limit = 100;
-    while (true) {
-      const url = `${BASE_API_URL}/clientes/destinatarios?clienteId=${foundClienteId}&limit=${limit}&offset=${offset}`;
-      const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-      if (!r.ok) {
-        const txt = await r.text();
-        throw new Error(`destinatarios ${r.status}: ${txt.slice(0, 300)}`);
+    while (!stop && offset < maxOffset) {
+      const batch = Array.from({ length: concurrency }, (_, i) => offset + i * limit);
+      const pages = await Promise.all(batch.map((off) => fetchPage(token, clienteId, off, limit).catch(() => [] as any[])));
+      for (const items of pages) {
+        if (!items.length) { stop = true; continue; }
+        scanned += items.length;
+        for (const e of items) {
+          const ecid = e.cliente?.id || e.clienteId || e.cliente_id;
+          if (ecid && ecid !== clienteId) { otherClientes.add(ecid); continue; }
+          const dest = e.destinatario;
+          if (dest && dest.id && !destMap.has(dest.id)) destMap.set(dest.id, dest);
+        }
+        if (items.length < limit) stop = true;
       }
-      const d = await r.json();
-      const items: any[] = d.data || d || [];
-      if (!items.length) break;
-      all.push(...items);
-      if (items.length < limit) break;
-      offset += limit;
-      if (offset > 100000) break;
+      offset += limit * concurrency;
     }
-
-    return new Response(JSON.stringify({ cliente: foundCliente, clienteId: foundClienteId, total: all.length, data: all }), {
+    const data = Array.from(destMap.values());
+    return new Response(JSON.stringify({ clienteId, scanned, last_offset: offset, total_destinatarios: data.length, other_clientes_seen: Array.from(otherClientes).slice(0, 5), data }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
-    return new Response(JSON.stringify({ error: (e as Error).message }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(JSON.stringify({ error: (e as Error).message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });
