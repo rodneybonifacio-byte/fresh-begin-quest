@@ -14,27 +14,19 @@ Deno.serve(async (req) => {
     let foundCliente: any = null;
 
     if (!foundClienteId && clienteNome) {
-      // buscar clientes paginado
-      let offset = 0;
-      const limit = 100;
-      while (true) {
-        const r = await fetch(`${BASE_API_URL}/clientes?limit=${limit}&offset=${offset}`, {
-          headers: { Authorization: `Bearer ${token}` },
+      const r = await fetch(`${BASE_API_URL}/clientes?search=${encodeURIComponent(clienteNome)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!r.ok) throw new Error(`clientes search ${r.status}: ${(await r.text()).slice(0, 200)}`);
+      const d = await r.json();
+      const items: any[] = d.data || d || [];
+      if (items.length > 1) {
+        return new Response(JSON.stringify({ ambiguous: true, candidates: items.map((c: any) => ({ id: c.id, nome: c.nome, cpfCnpj: c.cpfCnpj })) }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
-        if (!r.ok) throw new Error(`clientes ${r.status}: ${(await r.text()).slice(0, 200)}`);
-        const d = await r.json();
-        const items: any[] = d.data || d || [];
-        if (!items.length) break;
-        const match = items.find((c) => (c.nome || '').toLowerCase().includes(clienteNome.toLowerCase()));
-        if (match) {
-          foundCliente = match;
-          foundClienteId = match.id;
-          break;
-        }
-        if (items.length < limit) break;
-        offset += limit;
-        if (offset > 50000) break;
       }
+      foundCliente = items[0];
+      foundClienteId = foundCliente?.id;
     }
 
     if (!foundClienteId) {
