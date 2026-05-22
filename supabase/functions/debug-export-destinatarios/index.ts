@@ -20,12 +20,13 @@ Deno.serve(async (req) => {
       if (!r.ok) throw new Error(`clientes search ${r.status}: ${(await r.text()).slice(0, 200)}`);
       const d = await r.json();
       const items: any[] = d.data || d || [];
-      if (items.length > 1) {
-        return new Response(JSON.stringify({ ambiguous: true, candidates: items.map((c: any) => ({ id: c.id, nome: c.nome, cpfCnpj: c.cpfCnpj })) }), {
+      const filtered = items.filter((c: any) => (c.nome || '').toLowerCase().includes(clienteNome.toLowerCase()));
+      if (filtered.length > 1) {
+        return new Response(JSON.stringify({ ambiguous: true, candidates: filtered.map((c: any) => ({ id: c.id, nome: c.nome, cpfCnpj: c.cpfCnpj, email: c.email })) }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      foundCliente = items[0];
+      foundCliente = filtered[0];
       foundClienteId = foundCliente?.id;
     }
 
