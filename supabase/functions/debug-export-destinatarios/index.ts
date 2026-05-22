@@ -16,9 +16,19 @@ async function fetchPage(token: string, clienteId: string, offset: number, limit
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
-    const { clienteId, maxOffset = 50000, concurrency = 8 } = await req.json();
-    if (!clienteId) return new Response(JSON.stringify({ error: 'clienteId requerido' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const body = await req.json();
+    const { searchNome, maxOffset = 50000, concurrency = 8 } = body;
+    let { clienteId } = body;
     const token = await getAdminTokenCached();
+    if (!clienteId && searchNome) {
+      const r = await fetch(`${BASE_API_URL}/clientes?search=${encodeURIComponent(searchNome)}`, { headers: { Authorization: `Bearer ${token}` } });
+      const d = await r.json();
+      const list = d.data || d || [];
+      if (!list.length) return new Response(JSON.stringify({ error: 'cliente não encontrado', searchNome }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (list.length > 1) return new Response(JSON.stringify({ matches: list.map((c: any) => ({ id: c.id, nome: c.nome, cpfCnpj: c.cpfCnpj })) }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      clienteId = list[0].id;
+    }
+    if (!clienteId) return new Response(JSON.stringify({ error: 'clienteId ou searchNome requerido' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     const destMap = new Map<string, any>();
     const otherClientes = new Set<string>();
     let scanned = 0;
