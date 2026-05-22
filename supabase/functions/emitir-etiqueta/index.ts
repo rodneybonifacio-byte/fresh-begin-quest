@@ -230,19 +230,24 @@ async function disableClientWhatsApp(clienteId: string, adminToken: string): Pro
     const cfg = clienteAtual.configuracoes || {};
     console.log('📋 Config atual WhatsApp:', JSON.stringify(cfg));
 
-    // Forçar desativação de WhatsApp E de NF/valor declarado para evitar PPN-353.
-    // Política da plataforma: emitir SEMPRE usando declaração de conteúdo,
-    // sem NF e sem valor declarado (Correios rejeita NF placeholder).
+    // Forçar desativação APENAS de NF/valor declarado para evitar PPN-353.
+    // Política: emitir SEMPRE com declaração de conteúdo, sem NF e sem valor declarado.
+    // IMPORTANTE: NÃO mexer nos flags de WhatsApp — alguns clientes (ex.: 7DAYS)
+    // têm a API BRHUB exigindo `rastreio_via_whatsapp = true` e retornam
+    // ERR-IUHZQ5 "Rastreamento via WhatsApp não está habilitado" se desligado.
     const configuracoesCorrigidas = {
       periodo_faturamento: cfg.periodo_faturamento || 'SEMANAL',
       horario_coleta: cfg.horario_coleta || '08:00',
       link_whatsapp: String(cfg.link_whatsapp || ''),
       incluir_valor_declarado_na_nota: false,
       aplicar_valor_declarado: false,
-      rastreio_via_whatsapp: false,
-      fatura_via_whatsapp: false,
+      // Preservar configuração atual de WhatsApp do cliente
+      rastreio_via_whatsapp: toBoolean(cfg.rastreio_via_whatsapp),
+      fatura_via_whatsapp: toBoolean(cfg.fatura_via_whatsapp),
       valor_disparo_evento_rastreio_whatsapp: String(cfg.valor_disparo_evento_rastreio_whatsapp || '0'),
-      eventos_rastreio_habilitados_via_whatsapp: [],
+      eventos_rastreio_habilitados_via_whatsapp: Array.isArray(cfg.eventos_rastreio_habilitados_via_whatsapp)
+        ? cfg.eventos_rastreio_habilitados_via_whatsapp
+        : [],
     };
 
     // Corrigir tipos nas configurações de transportadora (se existirem)
