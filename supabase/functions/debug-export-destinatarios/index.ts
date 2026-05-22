@@ -21,17 +21,16 @@ Deno.serve(async (req) => {
     let { clienteId } = body;
     const token = await getAdminTokenCached();
     if (!clienteId && (searchNome || findByCnpj)) {
-      const cnpjLimpo = (findByCnpj || '').replace(/\D/g, '');
-      const all: any[] = [];
-      for (let off = 0; off < 10000; off += 100) {
-        const r = await fetch(`${BASE_API_URL}/clientes?limit=100&offset=${off}&search=${encodeURIComponent(searchNome || findByCnpj || '')}`, { headers: { Authorization: `Bearer ${token}` } });
-        const d = await r.json();
-        const list = (d.data || d || []) as any[];
-        if (!list.length) break;
-        all.push(...list);
-        if (list.length < 100) break;
-        if (cnpjLimpo && list.some((c) => (c.cpfCnpj || '').replace(/\D/g, '') === cnpjLimpo)) break;
-        if (searchNome && list.some((c) => ((c.nome || c.razaoSocial || c.nomeFantasia || '').toLowerCase().includes(searchNome.toLowerCase())))) break;
+      const r = await fetch(`${BASE_API_URL}/clientes?limit=1000`, { headers: { Authorization: `Bearer ${token}` } });
+      const d = await r.json();
+      const all = (d.data || d || []) as any[];
+      const getNome = (c: any) => c.nomeEmpresa || c.nome || c.razaoSocial || c.nomeFantasia || c.nomeResponsavel || '';
+      let hit: any = null;
+      if (cnpjLimpo) hit = all.find((c) => (c.cpfCnpj || '').replace(/\D/g, '') === cnpjLimpo);
+      else if (searchNome) {
+        const matches = all.filter((c) => getNome(c).toLowerCase().includes(searchNome.toLowerCase()));
+        if (matches.length === 1) hit = matches[0];
+        else if (matches.length > 1) return new Response(JSON.stringify({ matches: matches.map((c: any) => ({ id: c.id, nome: getNome(c), cpfCnpj: c.cpfCnpj, email: c.email })) }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       let hit: any = null;
       if (cnpjLimpo) hit = all.find((c) => (c.cpfCnpj || '').replace(/\D/g, '') === cnpjLimpo);
