@@ -16,9 +16,27 @@ async function fetchPage(token: string, clienteId: string, offset: number, limit
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
-    const { clienteId, maxOffset = 50000, concurrency = 8 } = await req.json();
-    if (!clienteId) return new Response(JSON.stringify({ error: 'clienteId requerido' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const body = await req.json();
+    const { searchNome, findByCnpj, maxOffset = 50000, concurrency = 8 } = body;
+    let { clienteId } = body;
     const token = await getAdminTokenCached();
+    if (!clienteId && (searchNome || findByCnpj)) {
+      const cnpjLimpo = (findByCnpj || '').replace(/\D/g, '');
+      const r = await fetch(`${BASE_API_URL}/clientes?limit=1000`, { headers: { Authorization: `Bearer ${token}` } });
+      const d = await r.json();
+      const all = (d.data || d || []) as any[];
+      const getNome = (c: any) => c.nomeEmpresa || c.nome || c.razaoSocial || c.nomeFantasia || c.nomeResponsavel || '';
+      let hit: any = null;
+      if (cnpjLimpo) hit = all.find((c) => (c.cpfCnpj || '').replace(/\D/g, '') === cnpjLimpo);
+      else if (searchNome) {
+        const matches = all.filter((c) => getNome(c).toLowerCase().includes(searchNome.toLowerCase()));
+        if (matches.length === 1) hit = matches[0];
+        else if (matches.length > 1) return new Response(JSON.stringify({ matches: matches.map((c: any) => ({ id: c.id, nome: getNome(c), cpfCnpj: c.cpfCnpj, email: c.email })) }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      if (!hit) return new Response(JSON.stringify({ error: 'cliente não encontrado', scanned: all.length }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      clienteId = hit.id;
+    }
+    if (!clienteId) return new Response(JSON.stringify({ error: 'clienteId, searchNome ou findByCnpj requerido' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     const destMap = new Map<string, any>();
     const otherClientes = new Set<string>();
     let scanned = 0;
