@@ -88,8 +88,43 @@ async function executeTool(toolName: string, args: any, contactPhone: string, co
       case "rastrear_objeto": {
         const data = await fetchTrackingData(args.codigo_rastreio);
         if (!data) {
-          // === FUZZY MATCHING: Se código não retorna dados, buscar similares ===
           const inputCode = (args.codigo_rastreio || "").toUpperCase();
+
+          // === FALLBACK: API pública de rastreio (Correios + transportadoras privadas) ===
+          try {
+            if (/^[A-Z0-9-]{6,40}$/.test(inputCode)) {
+              const publicResp = await fetch(
+                `https://icnwmceefmgavmbzsomo.supabase.co/functions/v1/public-tracking?code=${encodeURIComponent(inputCode)}`,
+                { method: "GET", headers: { "Content-Type": "application/json" } }
+              );
+              if (publicResp.ok) {
+                const publicData = await publicResp.json();
+                const eventos = publicData?.eventos || publicData?.data?.eventos || [];
+                const status = publicData?.status || publicData?.data?.status || publicData?.situacao;
+                if (eventos.length > 0 || status) {
+                  let result = `Rastreio do código ${inputCode} (via API pública):\n`;
+                  if (status) result += `Status atual: ${status}\n`;
+                  if (publicData?.transportadora || publicData?.servico) {
+                    result += `Transportadora/Serviço: ${publicData.transportadora || publicData.servico}\n`;
+                  }
+                  if (eventos.length > 0) {
+                    result += `\nÚltimos eventos:\n`;
+                    for (const ev of eventos.slice(0, 6)) {
+                      const d = ev.dataCompleta || ev.data || ev.dataHora || "";
+                      const desc = ev.descricao || ev.status || "";
+                      const local = ev.unidade?.cidadeUf || ev.local || "";
+                      result += `- ${d} | ${desc}${local ? ` (${local})` : ""}\n`;
+                    }
+                  }
+                  return result;
+                }
+              }
+            }
+          } catch (e) {
+            console.error("[rastrear_objeto] fallback público falhou:", e);
+          }
+
+          // === FUZZY MATCHING: Se código não retorna dados, buscar similares ===
           const suggestion = await findSimilarTrackingCode(supabase, inputCode, contactPhone, conversationId);
           if (suggestion) {
             return `Código ${inputCode} não retornou dados. Encontrei um código similar: ${suggestion}. Você quis dizer ${suggestion}?`;
