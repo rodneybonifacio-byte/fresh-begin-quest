@@ -7,70 +7,49 @@ const BASE_API_URL = Deno.env.get('BASE_API_URL') || 'https://envios.brhubb.com.
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
-    const { clienteNome, clienteId } = await req.json();
+    const { clienteIds, maxOffset = 30000, concurrency = 8 } = await req.json();
+    if (!Array.isArray(clienteIds) || !clienteIds.length) {
+      return new Response(JSON.stringify({ error: 'clienteIds[] requerido' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
     const token = await getAdminTokenCached();
+    const wanted = new Set<string>(clienteIds);
 
-    let foundClienteId = clienteId;
-    let foundCliente: any = null;
-
-    if (!foundClienteId && clienteNome) {
-      const r = await fetch(`${BASE_API_URL}/clientes?search=${encodeURIComponent(clienteNome)}&limit=100`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!r.ok) throw new Error(`clientes search ${r.status}`);
-      const d = await r.json();
-      const items: any[] = d.data || d || [];
-      const lc = clienteNome.toLowerCase().replace(/\s+/g, '');
-      const matchName = (c: any) => [c.nome, c.nomeFantasia, c.razaoSocial, c.nomeEmpresa, c.nomeResponsavel, c.email]
-        .some((v: any) => (v || '').toLowerCase().replace(/\s+/g, '').includes(lc));
-      const filtered = items.filter(matchName);
-      if (filtered.length !== 1) {
-        return new Response(JSON.stringify({
-          ambiguous: true, total_raw: items.length, filtered_count: filtered.length,
-          candidates: filtered.map((c: any) => ({ id: c.id, nome: c.nomeEmpresa || c.nome, cpfCnpj: c.cpfCnpj, email: c.email })),
-        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      }
-      foundCliente = filtered[0];
-      foundClienteId = foundCliente?.id;
-    }
-
-    if (!foundClienteId) {
-      return new Response(JSON.stringify({ error: 'cliente não encontrado' }), {
-        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Extrair destinatarios únicos a partir das emissões do cliente
-    const destMap = new Map<string, any>();
-    let offset = 0;
     const limit = 100;
-    let totalEmissoes = 0;
-    while (true) {
-      const url = `${BASE_API_URL}/emissoes?clienteId=${foundClienteId}&limit=${limit}&offset=${offset}`;
-      const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-      if (!r.ok) throw new Error(`emissoes ${r.status}: ${(await r.text()).slice(0,300)}`);
-      const d = await r.json();
-      const items: any[] = d.data || d || [];
-      if (!items.length) break;
-      for (const e of items) {
-        const ecid = e.cliente?.id || e.clienteId || e.cliente_id;
-        if (ecid && ecid !== foundClienteId) continue;
-        const dest = e.destinatario;
-        if (dest && dest.id && !destMap.has(dest.id)) destMap.set(dest.id, dest);
+    const results: Record<string, Map<string, any>> = {};
+    for (const id of clienteIds) results[id] = new Map();
+    let totalScanned = 0;
+    let stop = false;
+
+    let offset = 0;
+    while (!stop && offset < maxOffset) {
+      const batch = Array.from({ length: concurrency }, (_, i) => offset + i * limit);
+      const responses = await Promise.all(batch.map(async (off) => {
+        const r = await fetch(`${BASE_API_URL}/emissoes?limit=${limit}&offset=${off}`, { headers: { Authorization: `Bearer ${token}` } });
+        if (!r.ok) return { off, items: [], err: r.status };
+        const d = await r.json();
+        return { off, items: (d.data || d || []) as any[] };
+      }));
+      for (const { items } of responses) {
+        if (!items.length) { stop = true; continue; }
+        totalScanned += items.length;
+        for (const e of items) {
+          const ecid = e.cliente?.id || e.clienteId || e.cliente_id;
+          if (ecid && wanted.has(ecid) && e.destinatario && e.destinatario.id) {
+            results[ecid].set(e.destinatario.id, e.destinatario);
+          }
+        }
+        if (items.length < limit) stop = true;
       }
-      totalEmissoes += items.length;
-      if (items.length < limit) break;
-      offset += limit;
-      if (offset > 200000) break;
+      offset += limit * concurrency;
     }
 
-    const data = Array.from(destMap.values());
-    return new Response(JSON.stringify({ cliente: foundCliente, clienteId: foundClienteId, total: data.length, total_emissoes: totalEmissoes, data }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    const out: any = { total_scanned: totalScanned, last_offset: offset, clientes: {} };
+    for (const id of clienteIds) {
+      const arr = Array.from(results[id].values());
+      out.clientes[id] = { total: arr.length, data: arr };
+    }
+    return new Response(JSON.stringify(out), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e) {
-    return new Response(JSON.stringify({ error: (e as Error).message }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(JSON.stringify({ error: (e as Error).message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });
