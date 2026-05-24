@@ -1,15 +1,19 @@
 import { LayoutBase } from '../layout';
 import { VeronicaChatWidget } from '../components/chat/VeronicaChatWidget';
 import { LayoutProvider } from '../providers/LayoutContext';
-import { AuthProvider } from '../providers/AuthContext';
+import { AuthProvider, useAuth } from '../providers/AuthContext';
 import { IdleProvider } from '../providers/IdleProvider';
 import { useSyncUserData } from '../hooks/useSyncUserData';
 import { usePresenceTracking } from '../hooks/usePresenceTracking';
 import { useEffect, useState } from 'react';
 import { RemetenteSupabaseDirectService } from '../services/RemetenteSupabaseDirectService';
 import { ModalCadastrarRemetente } from '../pages/private/remetente/ModalCadastrarRemetente';
+import { isClienteDescontinuado, getNomeClienteDescontinuado } from '../utils/clientesDescontinuados';
+import { SistemaDescontinuadoBlock } from '../components/SistemaDescontinuadoBlock';
 
 const AppLayoutContent = () => {
+    const { user, userRole, logout } = useAuth();
+    const bloqueado = userRole !== 'ADMIN' && isClienteDescontinuado(user?.clienteId);
     useSyncUserData();
     usePresenceTracking();
 
