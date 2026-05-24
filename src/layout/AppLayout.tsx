@@ -82,6 +82,15 @@ const AppLayoutContent = () => {
         });
     }, [isRemetenteModalOpen]);
 
+    if (bloqueado) {
+        return (
+            <SistemaDescontinuadoBlock
+                nomeCliente={getNomeClienteDescontinuado(user?.clienteId)}
+                onLogout={logout}
+            />
+        );
+    }
+
     return (
         <>
             <LayoutBase />
