@@ -1,5 +1,4 @@
 import { AlertTriangle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 interface Props {
     nomeCliente?: string | null;
@@ -28,9 +27,12 @@ export const SistemaDescontinuadoBlock = ({ nomeCliente, onLogout }: Props) => {
                 <p className="text-sm text-muted-foreground mb-8">
                     Para mais informações, entre em contato com o suporte BRHUB.
                 </p>
-                <Button onClick={onLogout} variant="outline" className="w-full">
+                <button
+                    onClick={onLogout}
+                    className="w-full rounded-lg border border-border bg-background px-6 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                >
                     Sair
-                </Button>
+                </button>
             </div>
         </div>
     );
