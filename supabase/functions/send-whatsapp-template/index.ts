@@ -43,11 +43,14 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (blocked) {
-      console.log(`🚫 BLOCKLIST: Número ${normalizedPhone} bloqueado. Motivo: ${blocked.reason}. Template ${trigger_key} NÃO enviado.`);
-      return new Response(
-        JSON.stringify({ blocked: true, reason: blocked.reason, phone: normalizedPhone }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      const onlyAvaliacao = (blocked.reason || "").toLowerCase().includes("nao_enviar_avaliacao");
+      if (!onlyAvaliacao || trigger_key === "avaliacao") {
+        console.log(`🚫 BLOCKLIST: Número ${normalizedPhone} bloqueado. Motivo: ${blocked.reason}. Template ${trigger_key} NÃO enviado.`);
+        return new Response(
+          JSON.stringify({ blocked: true, reason: blocked.reason, phone: normalizedPhone }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // Fetch template config
