@@ -284,9 +284,28 @@ serve(async (req) => {
     if (!pdfResponse.ok) {
       const errorText = await pdfResponse.text();
       console.error('❌ Erro ao baixar PDF:', errorText);
+
+      let parsedError: any = null;
+      try {
+        parsedError = JSON.parse(errorText);
+      } catch (_) {
+        parsedError = null;
+      }
+
+      const detail = String(parsedError?.detail || parsedError?.title || errorText || '');
+      const isProcessing = pdfResponse.status === 400 && detail.toLowerCase().includes('processamento');
+
       return new Response(
-        JSON.stringify({ error: `Erro ao baixar PDF: ${pdfResponse.status}` }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          success: false,
+          code: isProcessing ? 'PDF_PROCESSING' : 'PDF_UNAVAILABLE',
+          error: isProcessing
+            ? 'Boleto emitido, PDF ainda em processamento pelo Banco Inter.'
+            : `Erro ao baixar PDF: ${pdfResponse.status}`,
+          nossoNumero: boletoNossoNumero,
+          detalhes: parsedError || errorText,
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 

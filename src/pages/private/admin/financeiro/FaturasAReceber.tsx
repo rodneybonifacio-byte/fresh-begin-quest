@@ -48,13 +48,15 @@ const FinanceiroFaturasAReceber = () => {
         nomeCliente?: string;
         boletoInfo?: any;
         boletoNaoEncontrado?: boolean;
+        boletoPdfProcessando?: boolean;
         faturaParaReemitir?: IFatura;
     }>({ 
         isOpen: false, 
         faturaPdf: '', 
         boletoPdf: null, 
         codigoFatura: '',
-        boletoNaoEncontrado: false
+        boletoNaoEncontrado: false,
+        boletoPdfProcessando: false
     });
     const [debugInfo, setDebugInfo] = useState<{
         httpCode?: number;
@@ -403,14 +405,19 @@ const FinanceiroFaturasAReceber = () => {
             setFechamentosMap(prev => ({ ...prev, [faturaId]: fechamentoData }));
             
             // Abrir modal com os PDFs separados
+            const boletoPdfProcessando = !!result.boleto_info?.nossoNumero && !result.boleto_pdf;
             setIsModalFechamento({
                 isOpen: true,
                 faturaPdf: result.fatura_pdf,
                 boletoPdf: result.boleto_pdf,
                 codigoFatura: codigoFatura,
                 nomeCliente: nomeCliente,
-                boletoInfo: result.boleto_info
+                boletoInfo: result.boleto_info,
+                boletoPdfProcessando
             });
+            if (boletoPdfProcessando) {
+                toast.warning('Boleto emitido. PDF ainda processando no Banco Inter.');
+            }
             
             // Forçar re-renderização da lista para mostrar o botão "Visualizar Boleto"
             setForceUpdate(prev => prev + 1);
@@ -570,10 +577,12 @@ const FinanceiroFaturasAReceber = () => {
                     console.warn('Não foi possível buscar PDF da fatura:', e);
                 }
                 
+                const boletoPdfProcessando = result?.code === 'PDF_PROCESSING';
+
                 // Verificar se houve erro ou boleto não encontrado
                 if (error || !result?.pdf) {
                     console.error('Boleto não encontrado ou erro:', error);
-                    toast.warning('Boleto não encontrado. Você pode re-emitir um novo boleto.');
+                    toast.warning(boletoPdfProcessando ? 'Boleto emitido. PDF ainda processando.' : 'Boleto não encontrado. Você pode re-emitir um novo boleto.');
                     
                     setIsModalFechamento({
                         isOpen: true,
@@ -581,9 +590,12 @@ const FinanceiroFaturasAReceber = () => {
                         boletoPdf: null,
                         codigoFatura: fechamentoData.codigoFatura,
                         nomeCliente: fechamentoData.nomeCliente,
-                        boletoInfo: fechamentoData.boletoInfo,
-                        boletoNaoEncontrado: true,
-                        faturaParaReemitir: fatura
+                        boletoInfo: result?.nossoNumero
+                            ? { ...fechamentoData.boletoInfo, nossoNumero: result.nossoNumero }
+                            : fechamentoData.boletoInfo,
+                        boletoNaoEncontrado: !boletoPdfProcessando,
+                        boletoPdfProcessando,
+                        faturaParaReemitir: boletoPdfProcessando ? undefined : fatura
                     });
                     return;
                 }
@@ -819,6 +831,7 @@ const FinanceiroFaturasAReceber = () => {
                         nomeCliente={isModalFechamento.nomeCliente}
                         boletoInfo={isModalFechamento.boletoInfo}
                         boletoNaoEncontrado={isModalFechamento.boletoNaoEncontrado}
+                        boletoPdfProcessando={isModalFechamento.boletoPdfProcessando}
                         onReemitirBoleto={isModalFechamento.faturaParaReemitir ? async () => {
                             const fatura = isModalFechamento.faturaParaReemitir;
                             if (!fatura) return;

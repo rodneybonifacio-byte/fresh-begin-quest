@@ -19,6 +19,7 @@ interface ModalVisualizarFechamentoProps {
         valor: number;
     };
     boletoNaoEncontrado?: boolean;
+    boletoPdfProcessando?: boolean;
     onReemitirBoleto?: () => void;
 }
 
@@ -31,6 +32,7 @@ export const ModalVisualizarFechamento: React.FC<ModalVisualizarFechamentoProps>
     nomeCliente,
     boletoInfo,
     boletoNaoEncontrado = false,
+    boletoPdfProcessando = false,
     onReemitirBoleto
 }) => {
     const [mergedPdfUrl, setMergedPdfUrl] = useState<string | null>(null);
@@ -143,18 +145,21 @@ export const ModalVisualizarFechamento: React.FC<ModalVisualizarFechamentoProps>
                         </button>
                     </div>
 
-                    {/* Alerta de boleto não encontrado */}
-                    {boletoNaoEncontrado && (
+                    {/* Alerta de boleto não encontrado/processando */}
+                    {(boletoNaoEncontrado || boletoPdfProcessando) && (
                         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 rounded-lg">
                             <div className="flex items-start gap-3">
                                 <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                                 <div className="flex-1">
-                                    <h3 className="font-semibold text-amber-800 dark:text-amber-300">Boleto não encontrado</h3>
+                                    <h3 className="font-semibold text-amber-800 dark:text-amber-300">
+                                        {boletoPdfProcessando ? 'Boleto emitido, PDF em processamento' : 'Boleto não encontrado'}
+                                    </h3>
                                     <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
-                                        O boleto original foi gerado com dados incorretos e não pode ser recuperado.
-                                        Clique em "Re-emitir Boleto" para gerar um novo boleto corretamente.
+                                        {boletoPdfProcessando
+                                            ? 'A cobrança foi criada no Banco Inter, mas o PDF ainda não ficou disponível. Aguarde alguns minutos e clique em visualizar novamente.'
+                                            : 'O boleto original foi gerado com dados incorretos e não pode ser recuperado. Clique em "Re-emitir Boleto" para gerar um novo boleto corretamente.'}
                                     </p>
-                                    {onReemitirBoleto && (
+                                    {onReemitirBoleto && !boletoPdfProcessando && (
                                         <ButtonComponent 
                                             variant="primary" 
                                             onClick={onReemitirBoleto}
@@ -234,16 +239,19 @@ export const ModalVisualizarFechamento: React.FC<ModalVisualizarFechamentoProps>
                             title="PDF Mesclado"
                             onError={handleIframeError}
                         />
-                    ) : boletoNaoEncontrado ? (
+                    ) : boletoNaoEncontrado || boletoPdfProcessando ? (
                         <div className="h-full flex items-center justify-center">
                             <div className="text-center max-w-md px-4">
                                 <AlertTriangle className="h-16 w-16 mx-auto mb-4 text-amber-500" />
-                                <h3 className="text-xl font-semibold mb-2 text-foreground">PDF Não Disponível</h3>
+                                <h3 className="text-xl font-semibold mb-2 text-foreground">
+                                    {boletoPdfProcessando ? 'PDF do boleto em processamento' : 'PDF Não Disponível'}
+                                </h3>
                                 <p className="text-muted-foreground mb-6">
-                                    O boleto original não foi encontrado no Banco Inter. 
-                                    Use o botão acima para re-emitir um novo boleto com os dados corretos.
+                                    {boletoPdfProcessando
+                                        ? 'A fatura foi fechada e o boleto existe. O PDF costuma liberar após alguns minutos.'
+                                        : 'O boleto original não foi encontrado no Banco Inter. Use o botão acima para re-emitir um novo boleto com os dados corretos.'}
                                 </p>
-                                {onReemitirBoleto && (
+                                {onReemitirBoleto && !boletoPdfProcessando && (
                                     <ButtonComponent 
                                         variant="primary" 
                                         onClick={onReemitirBoleto}
