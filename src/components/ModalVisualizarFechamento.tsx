@@ -239,16 +239,19 @@ export const ModalVisualizarFechamento: React.FC<ModalVisualizarFechamentoProps>
                             title="PDF Mesclado"
                             onError={handleIframeError}
                         />
-                    ) : boletoNaoEncontrado ? (
+                    ) : boletoNaoEncontrado || boletoPdfProcessando ? (
                         <div className="h-full flex items-center justify-center">
                             <div className="text-center max-w-md px-4">
                                 <AlertTriangle className="h-16 w-16 mx-auto mb-4 text-amber-500" />
-                                <h3 className="text-xl font-semibold mb-2 text-foreground">PDF Não Disponível</h3>
+                                <h3 className="text-xl font-semibold mb-2 text-foreground">
+                                    {boletoPdfProcessando ? 'PDF do boleto em processamento' : 'PDF Não Disponível'}
+                                </h3>
                                 <p className="text-muted-foreground mb-6">
-                                    O boleto original não foi encontrado no Banco Inter. 
-                                    Use o botão acima para re-emitir um novo boleto com os dados corretos.
+                                    {boletoPdfProcessando
+                                        ? 'A fatura foi fechada e o boleto existe. O PDF costuma liberar após alguns minutos.'
+                                        : 'O boleto original não foi encontrado no Banco Inter. Use o botão acima para re-emitir um novo boleto com os dados corretos.'}
                                 </p>
-                                {onReemitirBoleto && (
+                                {onReemitirBoleto && !boletoPdfProcessando && (
                                     <ButtonComponent 
                                         variant="primary" 
                                         onClick={onReemitirBoleto}
