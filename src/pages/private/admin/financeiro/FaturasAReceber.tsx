@@ -48,13 +48,15 @@ const FinanceiroFaturasAReceber = () => {
         nomeCliente?: string;
         boletoInfo?: any;
         boletoNaoEncontrado?: boolean;
+        boletoPdfProcessando?: boolean;
         faturaParaReemitir?: IFatura;
     }>({ 
         isOpen: false, 
         faturaPdf: '', 
         boletoPdf: null, 
         codigoFatura: '',
-        boletoNaoEncontrado: false
+        boletoNaoEncontrado: false,
+        boletoPdfProcessando: false
     });
     const [debugInfo, setDebugInfo] = useState<{
         httpCode?: number;
@@ -570,10 +572,12 @@ const FinanceiroFaturasAReceber = () => {
                     console.warn('Não foi possível buscar PDF da fatura:', e);
                 }
                 
+                const boletoPdfProcessando = result?.code === 'PDF_PROCESSING';
+
                 // Verificar se houve erro ou boleto não encontrado
                 if (error || !result?.pdf) {
                     console.error('Boleto não encontrado ou erro:', error);
-                    toast.warning('Boleto não encontrado. Você pode re-emitir um novo boleto.');
+                    toast.warning(boletoPdfProcessando ? 'Boleto emitido. PDF ainda processando.' : 'Boleto não encontrado. Você pode re-emitir um novo boleto.');
                     
                     setIsModalFechamento({
                         isOpen: true,
@@ -581,9 +585,12 @@ const FinanceiroFaturasAReceber = () => {
                         boletoPdf: null,
                         codigoFatura: fechamentoData.codigoFatura,
                         nomeCliente: fechamentoData.nomeCliente,
-                        boletoInfo: fechamentoData.boletoInfo,
-                        boletoNaoEncontrado: true,
-                        faturaParaReemitir: fatura
+                        boletoInfo: result?.nossoNumero
+                            ? { ...fechamentoData.boletoInfo, nossoNumero: result.nossoNumero }
+                            : fechamentoData.boletoInfo,
+                        boletoNaoEncontrado: !boletoPdfProcessando,
+                        boletoPdfProcessando,
+                        faturaParaReemitir: boletoPdfProcessando ? undefined : fatura
                     });
                     return;
                 }
