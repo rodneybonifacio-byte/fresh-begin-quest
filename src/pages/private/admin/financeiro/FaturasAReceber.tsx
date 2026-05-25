@@ -405,14 +405,19 @@ const FinanceiroFaturasAReceber = () => {
             setFechamentosMap(prev => ({ ...prev, [faturaId]: fechamentoData }));
             
             // Abrir modal com os PDFs separados
+            const boletoPdfProcessando = !!result.boleto_info?.nossoNumero && !result.boleto_pdf;
             setIsModalFechamento({
                 isOpen: true,
                 faturaPdf: result.fatura_pdf,
                 boletoPdf: result.boleto_pdf,
                 codigoFatura: codigoFatura,
                 nomeCliente: nomeCliente,
-                boletoInfo: result.boleto_info
+                boletoInfo: result.boleto_info,
+                boletoPdfProcessando
             });
+            if (boletoPdfProcessando) {
+                toast.warning('Boleto emitido. PDF ainda processando no Banco Inter.');
+            }
             
             // Forçar re-renderização da lista para mostrar o botão "Visualizar Boleto"
             setForceUpdate(prev => prev + 1);
@@ -826,6 +831,7 @@ const FinanceiroFaturasAReceber = () => {
                         nomeCliente={isModalFechamento.nomeCliente}
                         boletoInfo={isModalFechamento.boletoInfo}
                         boletoNaoEncontrado={isModalFechamento.boletoNaoEncontrado}
+                        boletoPdfProcessando={isModalFechamento.boletoPdfProcessando}
                         onReemitirBoleto={isModalFechamento.faturaParaReemitir ? async () => {
                             const fatura = isModalFechamento.faturaParaReemitir;
                             if (!fatura) return;
