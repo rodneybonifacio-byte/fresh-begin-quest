@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Fatura NEXX - R$ 533,06</title>
+  <title>Fatura NEXX - R$ 196,78</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -17,14 +17,12 @@
     .client-section h3 { color: #F2541B; margin-bottom: 15px; font-size: 16px; }
     .client-info { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .client-info p { font-size: 14px; }
-    .client-info strong { color: #333; }
     .transp-tag { display:inline-block; padding:4px 10px; border-radius:6px; background:#1565c0; color:#fff; font-size:11px; font-weight:600; letter-spacing:.5px; margin-left:8px; }
     .items-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
     .items-table th { background: #F2541B; color: white; padding: 12px 15px; text-align: left; font-size: 13px; }
     .items-table th:nth-child(4), .items-table th:nth-child(5), .items-table th:nth-child(6), .items-table th:nth-child(7) { text-align: right; }
     .items-table td { padding: 12px 15px; border-bottom: 1px solid #eee; font-size: 13px; }
     .items-table td:nth-child(4), .items-table td:nth-child(5), .items-table td:nth-child(6), .items-table td:nth-child(7) { text-align: right; }
-    .items-table tr:nth-child(even) { background: #f9f9f9; }
     .valor-venda { font-weight: 600; color: #333; }
     .valor-custo { color: #d32f2f; }
     .valor-lucro { color: #388e3c; font-weight: 600; }
@@ -43,9 +41,7 @@
     .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
     .badge-pending { background: #fff3e0; color: #F2541B; }
     .download-btn { position: fixed; bottom: 20px; right: 20px; background: #F2541B; color: white; border: none; padding: 15px 30px; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600; box-shadow: 0 4px 15px rgba(242,84,27,0.4); z-index: 1000; }
-    .download-btn:hover { background: #d94516; }
     .boleto-section { margin-top: 40px; padding: 30px; background: #f0f4f8; border-radius: 12px; text-align: center; }
-    .boleto-section h3 { color: #333; margin-bottom: 20px; }
     @media print { .download-btn { display: none; } body { padding: 20px; } }
   </style>
 </head>
@@ -53,12 +49,12 @@
   <div id="fatura-content">
     <div class="header">
       <div class="logo-section">
-        <h1>🚚 BRHUB ENVIOS</h1>
+        <h1>BRHUB ENVIOS</h1>
         <p>Sistema de Gestão de Envios</p>
       </div>
       <div class="invoice-info">
         <h2>FATURA</h2>
-        <p><strong>Nº:</strong> FAT-NEXX-RTE-001</p>
+        <p><strong>Nº:</strong> FAT-NEXX-RTE-18MAI</p>
         <p><strong>Emissão:</strong> 25/05/2026</p>
         <p><strong>Vencimento:</strong> 01/06/2026</p>
         <p><span class="badge badge-pending">PENDENTE</span></p>
@@ -66,7 +62,7 @@
     </div>
 
     <div class="client-section">
-      <h3>📋 DADOS DO CLIENTE <span class="transp-tag">RODONAVES • RTE</span></h3>
+      <h3>DADOS DO CLIENTE <span class="transp-tag">RODONAVES • RTE</span></h3>
       <div class="client-info">
         <p><strong>Razão Social:</strong> NEXX</p>
         <p><strong>CNPJ:</strong> 45.038.500/0001-50</p>
@@ -78,7 +74,7 @@
       </div>
     </div>
 
-    <h3 style="color: #333; margin-bottom: 15px; font-size: 16px;">📦 ITENS DA FATURA — TRANSPORTADORA RODONAVES</h3>
+    <h3 style="color: #333; margin-bottom: 15px; font-size: 16px;">ITEM DA FATURA — TRANSPORTADORA RODONAVES</h3>
     <table class="items-table">
       <thead>
         <tr>
@@ -101,80 +97,60 @@
           <td class="valor-venda">R$ 196,78</td>
           <td>18/05/2026</td>
         </tr>
-        <tr>
-          <td>56271358</td>
-          <td>MARIA JOSE FORCONI</td>
-          <td>Goiânia/GO</td>
-          <td class="valor-custo">R$ 136,37</td>
-          <td class="valor-lucro">R$ 40,91</td>
-          <td class="valor-venda">R$ 177,28</td>
-          <td>31/03/2026</td>
-        </tr>
-        <tr>
-          <td>56219599</td>
-          <td>MARIA JOSE FORCONI</td>
-          <td>Goiânia/GO</td>
-          <td class="valor-custo">R$ 122,31</td>
-          <td class="valor-lucro">R$ 36,69</td>
-          <td class="valor-venda">R$ 159,00</td>
-          <td>25/03/2026</td>
-        </tr>
       </tbody>
     </table>
 
     <div class="resumo-financeiro">
       <div class="resumo-box custo">
         <p>TOTAL CUSTO</p>
-        <h3>R$ 410,05</h3>
+        <h3>R$ 151,37</h3>
         <small>Rodonaves</small>
       </div>
       <div class="resumo-box lucro">
         <p>ACRÉSCIMO</p>
-        <h3>R$ 123,01</h3>
+        <h3>R$ 45,41</h3>
         <small>30%</small>
       </div>
       <div class="resumo-box venda">
         <p>TOTAL A PAGAR</p>
-        <h3>R$ 533,06</h3>
-        <small>3 envios</small>
+        <h3>R$ 196,78</h3>
+        <small>1 envio</small>
       </div>
     </div>
 
     <div class="payment-info">
-      <h4>⚠️ INFORMAÇÕES DE PAGAMENTO</h4>
-      <p><strong>Valor a Cobrar do Cliente:</strong> R$ 533,06</p>
+      <h4>INFORMAÇÕES DE PAGAMENTO</h4>
+      <p><strong>Valor a Cobrar do Cliente:</strong> R$ 196,78</p>
       <p><strong>Período de Faturamento:</strong> Semanal</p>
       <p><strong>Multa após vencimento:</strong> 10%</p>
       <p><strong>Juros após vencimento:</strong> 1% ao mês</p>
-      <p>Realize o pagamento até a data de vencimento para evitar encargos.</p>
     </div>
 
     <div class="boleto-section">
-      <h3>🏦 DADOS DO BOLETO - BANCO INTER</h3>
-      <p style="margin-bottom: 10px;"><strong>Valor:</strong> R$ 533,06</p>
+      <h3>DADOS DO BOLETO - BANCO INTER</h3>
+      <p style="margin-bottom: 10px;"><strong>Valor:</strong> R$ 196,78</p>
       <p style="margin-bottom: 10px;"><strong>Vencimento:</strong> 01/06/2026</p>
       <p style="color: #666; font-size: 12px;">Boleto e PIX serão gerados automaticamente no fechamento da fatura.</p>
     </div>
 
     <div class="footer">
       <p>BRHUB Envios - Sistema de Gestão de Envios</p>
-      <p>Fatura de exemplo gerada em 25/05/2026 — Cliente: NEXX (c620629a-0f6f-4cfc-9bef-3a8bdbd122eb)</p>
+      <p>Fatura de exemplo gerada em 25/05/2026 — Cliente: NEXX</p>
     </div>
   </div>
 
-  <button class="download-btn" onclick="baixarPDF()">📥 Baixar PDF</button>
+  <button class="download-btn" onclick="baixarPDF()">Baixar PDF</button>
 
   <script>
     function baixarPDF() {
       const element = document.getElementById('fatura-content');
-      const opt = {
+      html2pdf().set({
         margin: 10,
-        filename: 'FATURA_NEXX_RODONAVES_533.06.pdf',
+        filename: 'FATURA_NEXX_RODONAVES_18-05_196.78.pdf',
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      };
-      html2pdf().set(opt).from(element).save();
+      }).from(element).save();
     }
   </script>
 </body>
