@@ -2870,6 +2870,20 @@ CODIGO_RASTREIO: [código encontrado ou NENHUM]
 CEP_ORIGEM: [se visível, ou NENHUM]
 CEP_DESTINO: [se visível, ou NENHUM]`;
 
+  const extractImageFields = (text: string) => {
+    const codeFromLabel = text.match(/CODIGO_RASTREIO:\s*([A-Z]{2}\d{9,13}[A-Z]{2})/i)?.[1];
+    const codeGeneric = text.match(/\b([A-Z]{2}\d{9,13}[A-Z]{2})\b/i)?.[1];
+    const desc = text.match(/DESCRI[CÇ][AÃ]O:\s*(.+)/i)?.[1]?.trim();
+    const cepOrigem = text.match(/CEP_ORIGEM:\s*(\d{5}-?\d{3})/i)?.[1];
+    const cepDestino = text.match(/CEP_DESTINO:\s*(\d{5}-?\d{3})/i)?.[1];
+    return {
+      trackingCode: (codeFromLabel || codeGeneric || "").toUpperCase() || null,
+      description: desc || "Imagem analisada",
+      cepOrigem,
+      cepDestino,
+    };
+  };
+
   // Tentar com Gemini, com retry usando modelo mais capaz se falhar
   let trackingCode: string | null = null;
   let fullText = "";
@@ -2898,13 +2912,7 @@ CEP_DESTINO: [se visível, ou NENHUM]`;
       const data = await response.json();
       fullText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-      // Tentar extrair código
-      const codigoMatch = fullText.match(/CODIGO_RASTREIO:\s*([A-Z]{2}\d{9,13}[A-Z]{2})/i);
-      if (codigoMatch) trackingCode = codigoMatch[1].toUpperCase();
-      if (!trackingCode) {
-        const genericMatch = fullText.match(/\b([A-Z]{2}\d{9,13}[A-Z]{2})\b/);
-        if (genericMatch) trackingCode = genericMatch[1].toUpperCase();
-      }
+      trackingCode = extractImageFields(fullText).trackingCode;
 
       // Se encontrou código ou é o último modelo, parar
       if (trackingCode || model === models[models.length - 1]) break;
@@ -2915,17 +2923,52 @@ CEP_DESTINO: [se visível, ou NENHUM]`;
     }
   }
 
-  const descMatch = fullText.match(/DESCRI[CÇ][AÃ]O:\s*(.+)/i);
-  const description = descMatch ? descMatch[1].trim() : "Imagem analisada";
+  if (!fullText || !trackingCode) {
+    const openaiKey = Deno.env.get("OPENAI_API_KEY");
+    if (openaiKey) {
+      try {
+        console.log("🔀 OCR imagem: Gemini sem resultado, tentando OpenAI vision");
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "gpt-5-mini",
+            messages: [{
+              role: "user",
+              content: [
+                { type: "text", text: prompt },
+                { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64Image}` } },
+              ],
+            }],
+            max_completion_tokens: 800,
+          }),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const openaiText = data.choices?.[0]?.message?.content || "";
+          if (openaiText) {
+            fullText = openaiText;
+            trackingCode = extractImageFields(fullText).trackingCode;
+            console.log("✅ OpenAI vision extraiu imagem:", fullText.substring(0, 200));
+          }
+        } else {
+          const errText = await response.text();
+          console.warn(`⚠️ OpenAI vision error: ${response.status} - ${errText.substring(0, 200)}`);
+        }
+      } catch (err) {
+        console.warn("⚠️ OpenAI vision falhou:", err);
+      }
+    }
+  }
 
-  const cepOrigemMatch = fullText.match(/CEP_ORIGEM:\s*(\d{5}-?\d{3})/);
-  const cepDestinoMatch = fullText.match(/CEP_DESTINO:\s*(\d{5}-?\d{3})/);
+  const fields = extractImageFields(fullText);
+  const description = fields.description;
 
   return {
     description,
-    trackingCode,
-    cepOrigem: cepOrigemMatch?.[1] || undefined,
-    cepDestino: cepDestinoMatch?.[1] || undefined,
+    trackingCode: fields.trackingCode,
+    cepOrigem: fields.cepOrigem || undefined,
+    cepDestino: fields.cepDestino || undefined,
     fullAnalysis: fullText || undefined,
   };
 }
