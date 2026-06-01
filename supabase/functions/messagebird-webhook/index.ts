@@ -1188,6 +1188,14 @@ serve(async (req) => {
               .eq("conversation_id", conversation.id)
               .in("status", ["open", "pending", "pending_close"]);
 
+          } else if (isGreetingAck) {
+            shouldCallAI = true;
+            console.log(`👋 Saudação passiva após resposta IA — mantendo IA ativa: ${conversation.id}`);
+            await supabase
+              .from("whatsapp_conversations")
+              .update({ ai_enabled: true, status: "open" })
+              .eq("id", conversation.id);
+            conversation.ai_enabled = true;
           } else {
             // Passivo genérico após HSM não-delivery — suprimir silenciosamente
             shouldCallAI = false;
