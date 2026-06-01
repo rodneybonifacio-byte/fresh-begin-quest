@@ -1174,7 +1174,7 @@ serve(async (req) => {
     }
 
     const systemPrompt = agentConfig?.system_prompt || getDefaultPrompt(agentName);
-    const modelName = agentConfig?.model || "gemini-2.5-flash";
+    let modelName = agentConfig?.model || "gemini-2.5-flash";
     const temperature = agentConfig?.temperature || 0.7;
     const maxTokens = Math.min(agentConfig?.max_tokens || 1500, 8192);
     const providerName = agentConfig?.provider || "gemini";
@@ -1896,6 +1896,7 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
           if (fbResp.ok) {
             aiResponse = fbResp;
             aiEndpoint = fallbackEndpoint; // atualiza para logs subsequentes
+            modelName = fallbackModel;
             console.log(`✅ Fallback para ${fallbackProvider} bem sucedido`);
           } else {
             const fbErr = await fbResp.text();
