@@ -1,0 +1,1 @@
+UPDATE public.whatsapp_conversations SET status='open', ai_enabled=true WHERE id='f1257ca4-d292-4091-9a5d-07d14ea1c5d7';
