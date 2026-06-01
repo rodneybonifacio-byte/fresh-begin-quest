@@ -783,9 +783,18 @@ serve(async (req) => {
         const isLastMsgFarewell = isAfterFarewell; // reuse pre-computed value
         const isPassiveFollowUpAfterAI = !!lastOutbound?.ai_generated && shouldSuppress;
 
+        // Só suprimir se a mensagem for MUITO curta (ack mínimo tipo "ok", "👍", "sim").
+        // Mensagens maiores merecem resposta da IA mesmo classificadas como PASSIVE.
+        const _contentNoEmoji = (messageContent || "").trim()
+          .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{200D}\u{20E3}]/gu, "")
+          .replace(/[!.,;:?]/g, "")
+          .trim();
+        const isMinimalPassive = _contentNoEmoji.length <= 3;
+
         // Não suprimir saudações — já foram tratadas como ACTIVE acima
-        if ((isLastMsgPassiveHSM || isLastMsgFarewell || isPassiveFollowUpAfterAI) && shouldSuppress && !isSimpleGreeting) {
-          console.log("⏭️ Inbound passivo após", isLastMsgPassiveHSM ? "HSM" : isLastMsgFarewell ? "despedida IA" : "resposta IA", "— suprimindo:", conversation.id, "msg:", messageContent);
+        // Só auto-fechar quando o ack for realmente mínimo ("ok", "sim", emoji). Caso contrário, deixar IA responder.
+        if ((isLastMsgPassiveHSM || isLastMsgFarewell || isPassiveFollowUpAfterAI) && shouldSuppress && !isSimpleGreeting && isMinimalPassive) {
+          console.log("⏭️ Inbound passivo MÍNIMO após", isLastMsgPassiveHSM ? "HSM" : isLastMsgFarewell ? "despedida IA" : "resposta IA", "— suprimindo:", conversation.id, "msg:", messageContent);
           updateData.ai_enabled = false;
           updateData.status = "closed";
           // Fechar tickets abertos dessa conversa
@@ -958,8 +967,14 @@ serve(async (req) => {
         ? intentResult 
         : await classifyMessageIntent(messageContent, "Resposta a HSM automático");
       const shouldSuppressForAI = intentForAI.isPassive;
+      // Só suprimir quando o ack for realmente mínimo (≤3 chars sem emoji/pontuação)
+      const _ackNoEmoji = (messageContent || "").trim()
+        .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{200D}\u{20E3}]/gu, "")
+        .replace(/[!.,;:?]/g, "")
+        .trim();
+      const isMinimalAck = _ackNoEmoji.length <= 3;
 
-      if (isPassiveHSM && shouldSuppressForAI) {
+      if (isPassiveHSM && shouldSuppressForAI && isMinimalAck) {
         console.log("⏭️ Inbound passivo após HSM — verificando tipo:", conversation.id);
 
         // Buscar último HSM para saber o trigger_key
