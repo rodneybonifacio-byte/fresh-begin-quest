@@ -2289,6 +2289,13 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
     // Remover prefixo duplicado se a IA já incluiu (ex: "*Veronica:*\n\n")
     const prefixPattern = /^\*[A-Za-zÀ-ú]+:\*\s*\n*/;
     aiReply = aiReply.replace(prefixPattern, "").trimStart();
+
+    // Guarda final: se após sanitize/strip ficou vazio, usa mensagem de instabilidade
+    if (!aiReply || aiReply.trim() === "") {
+      console.warn("⚠️ aiReply vazio após sanitize/strip-prefix — usando fallback de instabilidade");
+      aiReply = "Estou com instabilidade para montar a resposta agora. Pode repetir sua pergunta em uma frase?";
+    }
+
     aiReply = `*${agentDisplayName}:*\n\n${aiReply}`;
 
     console.log("🤖 Resposta final:", aiReply.substring(0, 150));
