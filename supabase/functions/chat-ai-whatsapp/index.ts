@@ -28,6 +28,25 @@ function getAIEndpoint(provider: string): { url: string; apiKey: string; provide
   return { url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", apiKey: key, providerName: "gemini" };
 }
 
+function modelForProvider(providerName: string, requestedModel: string): string {
+  const provider = (providerName || "").toLowerCase();
+  const model = (requestedModel || "").trim();
+
+  if (provider === "openai") {
+    if (model.startsWith("openai/")) return model.replace(/^openai\//, "");
+    if (!model || model.startsWith("google/") || model.startsWith("gemini-")) return "gpt-5-mini";
+    return model;
+  }
+
+  if (provider === "gemini") {
+    if (model.startsWith("openai/") || model.startsWith("gpt-")) return "gemini-2.5-flash";
+    if (model.startsWith("google/")) return model.replace(/^google\//, "");
+    return model || "gemini-2.5-flash";
+  }
+
+  return model;
+}
+
 // ═══════════════════════════════════════════════════════════
 // TOOLS: Carregadas dinamicamente do banco (ai_tools.ai_callable = true)
 // ═══════════════════════════════════════════════════════════
