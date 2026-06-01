@@ -28,6 +28,25 @@ function getAIEndpoint(provider: string): { url: string; apiKey: string; provide
   return { url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", apiKey: key, providerName: "gemini" };
 }
 
+function modelForProvider(providerName: string, requestedModel: string): string {
+  const provider = (providerName || "").toLowerCase();
+  const model = (requestedModel || "").trim();
+
+  if (provider === "openai") {
+    if (model.startsWith("openai/")) return model.replace(/^openai\//, "");
+    if (!model || model.startsWith("google/") || model.startsWith("gemini-")) return "gpt-5-mini";
+    return model;
+  }
+
+  if (provider === "gemini") {
+    if (model.startsWith("openai/") || model.startsWith("gpt-")) return "gemini-2.5-flash";
+    if (model.startsWith("google/")) return model.replace(/^google\//, "");
+    return model || "gemini-2.5-flash";
+  }
+
+  return model;
+}
+
 // ═══════════════════════════════════════════════════════════
 // TOOLS: Carregadas dinamicamente do banco (ai_tools.ai_callable = true)
 // ═══════════════════════════════════════════════════════════
@@ -1177,7 +1196,11 @@ serve(async (req) => {
     let modelName = agentConfig?.model || "gemini-2.5-flash";
     const temperature = agentConfig?.temperature || 0.7;
     const maxTokens = Math.min(agentConfig?.max_tokens || 1500, 8192);
-    const providerName = agentConfig?.provider || "gemini";
+    const configuredProvider = (agentConfig?.provider || "gemini").toLowerCase();
+    const providerName = configuredProvider === "gemini" ? "openai" : configuredProvider;
+    if (configuredProvider === "gemini") {
+      console.warn("⚠️ Gemini desviado temporariamente para OpenAI: GEMINI_API_KEY está retornando 403 de billing");
+    }
 
     // === BUSCAR HISTÓRICO (mais recente primeiro, depois reordenar para cronológico) ===
     const { data: historyDesc } = await supabase
@@ -1866,7 +1889,7 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
       console.log(`🔄 Iteração ${iteration + 1} - ${messages.length} mensagens (provider: ${aiEndpoint.providerName})`);
 
       const requestBody: any = {
-        model: modelName,
+        model: modelForProvider(aiEndpoint.providerName, modelName),
         messages,
         max_tokens: maxTokens,
         temperature,
@@ -1915,8 +1938,8 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
         try {
           const fallbackEndpoint = getAIEndpoint(fallbackProvider);
           // Modelo equivalente
-          const fallbackModel = fallbackProvider === "openai" ? "gpt-5-mini" : "google/gemini-2.5-flash";
-          const fallbackBody: any = { ...requestBody, model: fallbackModel };
+          const fallbackModel = fallbackProvider === "openai" ? "gpt-5-mini" : "gemini-2.5-flash";
+          const fallbackBody: any = { ...requestBody, model: modelForProvider(fallbackProvider, fallbackModel) };
           // GPT-5 family usa max_completion_tokens em vez de max_tokens e não aceita temperature custom
           if (fallbackProvider === "openai" && fallbackBody.max_tokens !== undefined) {
             fallbackBody.max_completion_tokens = fallbackBody.max_tokens;
@@ -1932,7 +1955,7 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
           if (fbResp.ok) {
             aiResponse = fbResp;
             aiEndpoint = fallbackEndpoint; // atualiza para logs subsequentes
-            modelName = fallbackModel;
+            modelName = modelForProvider(fallbackProvider, fallbackModel);
             console.log(`✅ Fallback para ${fallbackProvider} bem sucedido`);
           } else {
             const fbErr = await fbResp.text();
@@ -2078,9 +2101,9 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
         console.warn(`⚠️ RESPOSTA VAZIA (finish_reason=${finishReason}, completion_tokens=${completionTokens}, provider=${aiEndpoint.providerName}, model=${modelName}). Iniciando cascata de fallbacks...`);
 
         // === NÍVEL 1: mesmo provider, modelo mais robusto + tokens dobrados (Gemini Pro pensa menos em vão) ===
-        const sameProviderRetryModel = aiEndpoint.providerName === "gemini" ? "google/gemini-2.5-pro" : "openai/gpt-5";
+        const sameProviderRetryModel = aiEndpoint.providerName === "gemini" ? "gemini-2.5-pro" : "gpt-5";
         try {
-          const retryBody: any = { ...requestBody, model: sameProviderRetryModel, max_tokens: 8192 };
+          const retryBody: any = { ...requestBody, model: modelForProvider(aiEndpoint.providerName, sameProviderRetryModel), max_tokens: 8192 };
           if (aiEndpoint.providerName === "openai") {
             retryBody.max_completion_tokens = retryBody.max_tokens;
             delete retryBody.max_tokens;
@@ -2114,8 +2137,8 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
         const fallbackProvider = aiEndpoint.providerName === "gemini" ? "openai" : "gemini";
         try {
           const fallbackEndpoint = getAIEndpoint(fallbackProvider);
-          const fallbackModel = fallbackProvider === "openai" ? "openai/gpt-5-mini" : "google/gemini-2.5-flash";
-          const fallbackBody: any = { ...requestBody, model: fallbackModel, max_tokens: 8192 };
+          const fallbackModel = fallbackProvider === "openai" ? "gpt-5-mini" : "gemini-2.5-flash";
+          const fallbackBody: any = { ...requestBody, model: modelForProvider(fallbackProvider, fallbackModel), max_tokens: 8192 };
           if (fallbackProvider === "openai") {
             fallbackBody.max_completion_tokens = fallbackBody.max_tokens;
             delete fallbackBody.max_tokens;
@@ -2154,9 +2177,9 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
           ];
           const emergencyProvider = aiEndpoint.providerName === "gemini" ? "openai" : "gemini";
           const emergencyEndpoint = getAIEndpoint(emergencyProvider);
-          const emergencyModel = emergencyProvider === "openai" ? "openai/gpt-5-mini" : "google/gemini-2.5-flash-lite";
+          const emergencyModel = emergencyProvider === "openai" ? "gpt-5-mini" : "gemini-2.5-flash-lite";
           const emergencyBody: any = {
-            model: emergencyModel,
+            model: modelForProvider(emergencyProvider, emergencyModel),
             messages: emergencyMessages,
             max_tokens: 1024,
             temperature: 0.5,
@@ -2197,6 +2220,45 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
 
       aiReply = rawContent;
       break;
+    }
+
+    if (!aiReply || aiReply.trim() === "") {
+      console.warn("⚠️ Loop encerrou sem resposta textual após tool calls. Forçando resposta final sem novas tools.");
+      try {
+        const finalBody: any = {
+          model: modelForProvider(aiEndpoint.providerName, modelName),
+          messages: [
+            ...messages,
+            { role: "system", content: "Responda agora ao cliente com base nos dados das ferramentas acima. Não chame novas ferramentas. Seja direto e útil." },
+          ],
+          max_tokens: Math.min(maxTokens || 1500, 2500),
+          temperature,
+        };
+        if (aiEndpoint.providerName === "openai") {
+          finalBody.max_completion_tokens = finalBody.max_tokens;
+          delete finalBody.max_tokens;
+          delete finalBody.temperature;
+        }
+        const finalResp = await fetch(aiEndpoint.url, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${aiEndpoint.apiKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify(finalBody),
+        });
+        if (finalResp.ok) {
+          const finalData = await finalResp.json();
+          aiReply = finalData.choices?.[0]?.message?.content || "";
+          totalInputTokens += finalData.usage?.prompt_tokens || 0;
+          totalOutputTokens += finalData.usage?.completion_tokens || 0;
+        } else {
+          console.error(`❌ Resposta final forçada falhou ${finalResp.status}: ${(await finalResp.text()).substring(0, 200)}`);
+        }
+      } catch (finalErr: any) {
+        console.error("❌ Erro na resposta final forçada:", finalErr?.message || finalErr);
+      }
+
+      if (!aiReply || aiReply.trim() === "") {
+        aiReply = "Estou com instabilidade para montar a resposta completa agora. Me manda sua pergunta de novo em uma frase que eu respondo direto.";
+      }
     }
 
     // === GUARD: Verificar se já existe resposta da IA recente para esta conversa (anti-duplicata) ===
