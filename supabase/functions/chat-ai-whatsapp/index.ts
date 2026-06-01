@@ -2222,6 +2222,45 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
       break;
     }
 
+    if (!aiReply || aiReply.trim() === "") {
+      console.warn("⚠️ Loop encerrou sem resposta textual após tool calls. Forçando resposta final sem novas tools.");
+      try {
+        const finalBody: any = {
+          model: modelForProvider(aiEndpoint.providerName, modelName),
+          messages: [
+            ...messages,
+            { role: "system", content: "Responda agora ao cliente com base nos dados das ferramentas acima. Não chame novas ferramentas. Seja direto e útil." },
+          ],
+          max_tokens: Math.min(maxTokens || 1500, 2500),
+          temperature,
+        };
+        if (aiEndpoint.providerName === "openai") {
+          finalBody.max_completion_tokens = finalBody.max_tokens;
+          delete finalBody.max_tokens;
+          delete finalBody.temperature;
+        }
+        const finalResp = await fetch(aiEndpoint.url, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${aiEndpoint.apiKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify(finalBody),
+        });
+        if (finalResp.ok) {
+          const finalData = await finalResp.json();
+          aiReply = finalData.choices?.[0]?.message?.content || "";
+          totalInputTokens += finalData.usage?.prompt_tokens || 0;
+          totalOutputTokens += finalData.usage?.completion_tokens || 0;
+        } else {
+          console.error(`❌ Resposta final forçada falhou ${finalResp.status}: ${(await finalResp.text()).substring(0, 200)}`);
+        }
+      } catch (finalErr: any) {
+        console.error("❌ Erro na resposta final forçada:", finalErr?.message || finalErr);
+      }
+
+      if (!aiReply || aiReply.trim() === "") {
+        aiReply = "Estou com instabilidade para montar a resposta completa agora. Me manda sua pergunta de novo em uma frase que eu respondo direto.";
+      }
+    }
+
     // === GUARD: Verificar se já existe resposta da IA recente para esta conversa (anti-duplicata) ===
     const fiveSecsAgo = new Date(Date.now() - 5000).toISOString();
     const { data: recentAiResponse } = await supabase
