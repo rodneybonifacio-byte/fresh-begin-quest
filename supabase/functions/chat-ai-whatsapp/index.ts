@@ -2097,9 +2097,9 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
         console.warn(`⚠️ RESPOSTA VAZIA (finish_reason=${finishReason}, completion_tokens=${completionTokens}, provider=${aiEndpoint.providerName}, model=${modelName}). Iniciando cascata de fallbacks...`);
 
         // === NÍVEL 1: mesmo provider, modelo mais robusto + tokens dobrados (Gemini Pro pensa menos em vão) ===
-        const sameProviderRetryModel = aiEndpoint.providerName === "gemini" ? "google/gemini-2.5-pro" : "openai/gpt-5";
+        const sameProviderRetryModel = aiEndpoint.providerName === "gemini" ? "gemini-2.5-pro" : "gpt-5";
         try {
-          const retryBody: any = { ...requestBody, model: sameProviderRetryModel, max_tokens: 8192 };
+          const retryBody: any = { ...requestBody, model: modelForProvider(aiEndpoint.providerName, sameProviderRetryModel), max_tokens: 8192 };
           if (aiEndpoint.providerName === "openai") {
             retryBody.max_completion_tokens = retryBody.max_tokens;
             delete retryBody.max_tokens;
@@ -2133,8 +2133,8 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
         const fallbackProvider = aiEndpoint.providerName === "gemini" ? "openai" : "gemini";
         try {
           const fallbackEndpoint = getAIEndpoint(fallbackProvider);
-          const fallbackModel = fallbackProvider === "openai" ? "openai/gpt-5-mini" : "google/gemini-2.5-flash";
-          const fallbackBody: any = { ...requestBody, model: fallbackModel, max_tokens: 8192 };
+          const fallbackModel = fallbackProvider === "openai" ? "gpt-5-mini" : "gemini-2.5-flash";
+          const fallbackBody: any = { ...requestBody, model: modelForProvider(fallbackProvider, fallbackModel), max_tokens: 8192 };
           if (fallbackProvider === "openai") {
             fallbackBody.max_completion_tokens = fallbackBody.max_tokens;
             delete fallbackBody.max_tokens;
@@ -2173,9 +2173,9 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
           ];
           const emergencyProvider = aiEndpoint.providerName === "gemini" ? "openai" : "gemini";
           const emergencyEndpoint = getAIEndpoint(emergencyProvider);
-          const emergencyModel = emergencyProvider === "openai" ? "openai/gpt-5-mini" : "google/gemini-2.5-flash-lite";
+          const emergencyModel = emergencyProvider === "openai" ? "gpt-5-mini" : "gemini-2.5-flash-lite";
           const emergencyBody: any = {
-            model: emergencyModel,
+            model: modelForProvider(emergencyProvider, emergencyModel),
             messages: emergencyMessages,
             max_tokens: 1024,
             temperature: 0.5,
