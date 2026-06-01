@@ -1182,7 +1182,7 @@ serve(async (req) => {
     // === BUSCAR HISTÓRICO (mais recente primeiro, depois reordenar para cronológico) ===
     const { data: historyDesc } = await supabase
       .from("whatsapp_messages")
-      .select("direction, content, content_type, created_at, metadata")
+      .select("direction, content, content_type, media_url, created_at, metadata")
       .eq("conversation_id", conversationId)
       .order("created_at", { ascending: false })
       .limit(50);
@@ -1612,9 +1612,35 @@ EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de a
     // ═══════════════════════════════════════════════════════════
 
     let userContent = message || "";
+    let referencedImageConsumed = false;
+
+    const asksToUsePreviousImage = contentType === "text"
+      && !mediaUrl
+      && /\b(pega|olha|veja|ler|leia|consulta|consulte|rastreia|rastrear)\b[\s\S]{0,40}\b(imagem|foto|print|etiqueta)\b|\b(imagem|foto|print|etiqueta)\b[\s\S]{0,40}\b(pega|olha|veja|ler|leia|consulta|consulte|rastreia|rastrear)\b/i.test(message || "");
+
+    if (asksToUsePreviousImage) {
+      const latestImage = [...(historyDesc || [])]
+        .find((m: any) => m.direction === "inbound" && m.content_type === "image" && m.media_url);
+      if (latestImage?.media_url) {
+        try {
+          const geminiKey = Deno.env.get("GEMINI_API_KEY") || "";
+          const imageAnalysis = await analyzeImageWithGemini(latestImage.media_url, geminiKey);
+          const ocrCode = (imageAnalysis.trackingCode || "").toUpperCase().trim();
+          let imageInfo = "";
+          if (ocrCode) imageInfo = `Código de rastreio detectado via OCR na imagem anterior: ${ocrCode}. `;
+          const fullDesc = imageAnalysis.fullAnalysis || imageAnalysis.description || "Imagem analisada";
+          imageInfo += `Análise visual completa: ${fullDesc}`;
+          userContent = `[O cliente pediu para usar a imagem anterior. ${imageInfo}]\n\nMensagem do cliente: "${message}"`;
+          referencedImageConsumed = true;
+          console.log("🖼️ Usando última imagem do histórico para pedido textual:", latestImage.media_url.substring(0, 80));
+        } catch (err) {
+          console.warn("⚠️ Erro ao processar imagem anterior referenciada:", err);
+        }
+      }
+    }
 
     // IMAGEM → Gemini extrai dados relevantes
-    if (contentType === "image" && mediaUrl) {
+    if (!referencedImageConsumed && contentType === "image" && mediaUrl) {
       const geminiKey = Deno.env.get("GEMINI_API_KEY");
       if (geminiKey) {
         try {
@@ -1703,15 +1729,19 @@ EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de a
     let trackingContext = "";
     try {
       const trackingRegex = /\b[A-Z]{2}\d{9,13}[A-Z]{2}\b/g;
+      const isFalseExampleCode = (code: string) => /^AD123456789BR$/i.test(code || "");
+      const normalizeCodes = (codes: string[]) => codes
+        .map((code) => code.toUpperCase())
+        .filter((code) => !isFalseExampleCode(code));
       
       // Detectar códigos na mensagem atual
-      const currentCodes = (userContent || "").match(trackingRegex) || [];
+      const currentCodes = normalizeCodes((userContent || "").match(trackingRegex) || []);
       
       // Detectar códigos no histórico recente (últimas 5 mensagens inbound apenas)
       const historyCodes: string[] = [];
       if (history) {
         for (const msg of history.filter((m: any) => m.direction === "inbound").slice(-5)) {
-          const codes = (msg.content || "").match(trackingRegex) || [];
+          const codes = normalizeCodes((msg.content || "").match(trackingRegex) || []);
           historyCodes.push(...codes);
         }
       }
@@ -1841,6 +1871,12 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
         max_tokens: maxTokens,
         temperature,
       };
+      // GPT-5 family usa max_completion_tokens e não aceita temperature custom.
+      if (aiEndpoint.providerName === "openai") {
+        requestBody.max_completion_tokens = requestBody.max_tokens;
+        delete requestBody.max_tokens;
+        delete requestBody.temperature;
+      }
       // Só incluir tools se houver alguma disponível
       if (dynamicTools.length > 0) {
         requestBody.tools = dynamicTools;
@@ -2870,6 +2906,20 @@ CODIGO_RASTREIO: [código encontrado ou NENHUM]
 CEP_ORIGEM: [se visível, ou NENHUM]
 CEP_DESTINO: [se visível, ou NENHUM]`;
 
+  const extractImageFields = (text: string) => {
+    const codeFromLabel = text.match(/CODIGO_RASTREIO:\s*([A-Z]{2}\d{9,13}[A-Z]{2})/i)?.[1];
+    const codeGeneric = text.match(/\b([A-Z]{2}\d{9,13}[A-Z]{2})\b/i)?.[1];
+    const desc = text.match(/DESCRI[CÇ][AÃ]O:\s*(.+)/i)?.[1]?.trim();
+    const cepOrigem = text.match(/CEP_ORIGEM:\s*(\d{5}-?\d{3})/i)?.[1];
+    const cepDestino = text.match(/CEP_DESTINO:\s*(\d{5}-?\d{3})/i)?.[1];
+    return {
+      trackingCode: (codeFromLabel || codeGeneric || "").toUpperCase() || null,
+      description: desc || "Imagem analisada",
+      cepOrigem,
+      cepDestino,
+    };
+  };
+
   // Tentar com Gemini, com retry usando modelo mais capaz se falhar
   let trackingCode: string | null = null;
   let fullText = "";
@@ -2898,13 +2948,7 @@ CEP_DESTINO: [se visível, ou NENHUM]`;
       const data = await response.json();
       fullText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-      // Tentar extrair código
-      const codigoMatch = fullText.match(/CODIGO_RASTREIO:\s*([A-Z]{2}\d{9,13}[A-Z]{2})/i);
-      if (codigoMatch) trackingCode = codigoMatch[1].toUpperCase();
-      if (!trackingCode) {
-        const genericMatch = fullText.match(/\b([A-Z]{2}\d{9,13}[A-Z]{2})\b/);
-        if (genericMatch) trackingCode = genericMatch[1].toUpperCase();
-      }
+      trackingCode = extractImageFields(fullText).trackingCode;
 
       // Se encontrou código ou é o último modelo, parar
       if (trackingCode || model === models[models.length - 1]) break;
@@ -2915,17 +2959,52 @@ CEP_DESTINO: [se visível, ou NENHUM]`;
     }
   }
 
-  const descMatch = fullText.match(/DESCRI[CÇ][AÃ]O:\s*(.+)/i);
-  const description = descMatch ? descMatch[1].trim() : "Imagem analisada";
+  if (!fullText || !trackingCode) {
+    const openaiKey = Deno.env.get("OPENAI_API_KEY");
+    if (openaiKey) {
+      try {
+        console.log("🔀 OCR imagem: Gemini sem resultado, tentando OpenAI vision");
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "gpt-5-mini",
+            messages: [{
+              role: "user",
+              content: [
+                { type: "text", text: prompt },
+                { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64Image}` } },
+              ],
+            }],
+            max_completion_tokens: 800,
+          }),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const openaiText = data.choices?.[0]?.message?.content || "";
+          if (openaiText) {
+            fullText = openaiText;
+            trackingCode = extractImageFields(fullText).trackingCode;
+            console.log("✅ OpenAI vision extraiu imagem:", fullText.substring(0, 200));
+          }
+        } else {
+          const errText = await response.text();
+          console.warn(`⚠️ OpenAI vision error: ${response.status} - ${errText.substring(0, 200)}`);
+        }
+      } catch (err) {
+        console.warn("⚠️ OpenAI vision falhou:", err);
+      }
+    }
+  }
 
-  const cepOrigemMatch = fullText.match(/CEP_ORIGEM:\s*(\d{5}-?\d{3})/);
-  const cepDestinoMatch = fullText.match(/CEP_DESTINO:\s*(\d{5}-?\d{3})/);
+  const fields = extractImageFields(fullText);
+  const description = fields.description;
 
   return {
     description,
-    trackingCode,
-    cepOrigem: cepOrigemMatch?.[1] || undefined,
-    cepDestino: cepDestinoMatch?.[1] || undefined,
+    trackingCode: fields.trackingCode,
+    cepOrigem: fields.cepOrigem || undefined,
+    cepDestino: fields.cepDestino || undefined,
     fullAnalysis: fullText || undefined,
   };
 }
