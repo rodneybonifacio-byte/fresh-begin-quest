@@ -1847,12 +1847,13 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
         requestBody.tool_choice = "auto";
       }
 
-      // === RETRY + FALLBACK: tenta o provider atual com 2 retries; se persistir 5xx/429, faz fallback para o outro provider ===
+      // === RETRY + FALLBACK: tenta o provider atual com 2 retries; se falhar, faz fallback para o outro provider ===
       let aiResponse: Response | null = null;
       let lastErrText = "";
       let lastStatus = 0;
 
       const transientStatus = (s: number) => s === 429 || s === 502 || s === 503 || s === 504 || s === 500;
+      const shouldFallbackStatus = (s: number) => s === 401 || s === 403 || transientStatus(s);
 
       // 3 tentativas no provider primário com backoff exponencial (0ms, 800ms, 2000ms)
       for (let attempt = 0; attempt < 3; attempt++) {
@@ -1872,8 +1873,8 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
         if (!transientStatus(resp.status)) break; // erro permanente (4xx) → não retentar
       }
 
-      // Fallback para o outro provider se o primário continuar falhando com erro transiente
-      if (!aiResponse && transientStatus(lastStatus)) {
+      // Fallback para o outro provider se o primário continuar falhando
+      if (!aiResponse && shouldFallbackStatus(lastStatus)) {
         const fallbackProvider = aiEndpoint.providerName === "gemini" ? "openai" : "gemini";
         try {
           const fallbackEndpoint = getAIEndpoint(fallbackProvider);
