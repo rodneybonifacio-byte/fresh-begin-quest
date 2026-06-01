@@ -1196,11 +1196,7 @@ serve(async (req) => {
     let modelName = agentConfig?.model || "gemini-2.5-flash";
     const temperature = agentConfig?.temperature || 0.7;
     const maxTokens = Math.min(agentConfig?.max_tokens || 1500, 8192);
-    const configuredProvider = (agentConfig?.provider || "gemini").toLowerCase();
-    const providerName = configuredProvider === "gemini" ? "openai" : configuredProvider;
-    if (configuredProvider === "gemini") {
-      console.warn("⚠️ Gemini desviado temporariamente para OpenAI: GEMINI_API_KEY está retornando 403 de billing");
-    }
+    const providerName = (agentConfig?.provider || "gemini").toLowerCase();
 
     // === BUSCAR HISTÓRICO (mais recente primeiro, depois reordenar para cronológico) ===
     const { data: historyDesc } = await supabase
