@@ -501,6 +501,8 @@ serve(async (req) => {
       .limit(1)
       .single();
 
+    let intentResult: { isPassive: boolean; confidence: number; reason: string } | undefined;
+
     if (convError || !conversation) {
       const isOutbound = direction === "outbound";
       const { data: newConv, error: createError } = await supabase
@@ -549,7 +551,6 @@ serve(async (req) => {
           }
         }
       }
-      let intentResult: { isPassive: boolean; confidence: number; reason: string } | undefined;
       if (direction === "inbound") {
         updateData.unread_count = (conversation.unread_count || 0) + 1;
 
@@ -963,9 +964,12 @@ serve(async (req) => {
 
       const isPassiveHSM = lastOutMsg?.content_type === "hsm" && lastOutMsg?.sent_by === "system";
       // Reusar classificação IA já feita acima, ou classificar novamente se necessário
+      const isMediaForAI = ["image", "video", "document", "audio", "voice", "ptt", "location", "sticker"].includes(contentType);
       const intentForAI = typeof intentResult !== "undefined" 
-        ? intentResult 
-        : await classifyMessageIntent(messageContent, "Resposta a HSM automático");
+        ? intentResult
+        : isMediaForAI
+          ? { isPassive: false, confidence: 1.0, reason: "media_always_active" }
+          : await classifyMessageIntent(messageContent, "Resposta a HSM automático");
       const shouldSuppressForAI = intentForAI.isPassive;
       // Só suprimir quando o ack for realmente mínimo (≤3 chars sem emoji/pontuação)
       const _ackNoEmoji = (messageContent || "").trim()
@@ -985,7 +989,7 @@ serve(async (req) => {
           .update({ ai_enabled: true, status: "open" })
           .eq("id", conversation.id);
         conversation.ai_enabled = true;
-      } else if (isPassiveHSM && shouldSuppressForAI && isMinimalAck) {
+      } else if (isPassiveHSM && shouldSuppressForAI && isMinimalAck && !isMediaForAI) {
         console.log("⏭️ Inbound passivo após HSM — verificando tipo:", conversation.id);
 
         // Buscar último HSM para saber o trigger_key
