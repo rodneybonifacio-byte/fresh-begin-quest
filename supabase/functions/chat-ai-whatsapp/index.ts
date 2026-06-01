@@ -1871,6 +1871,12 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
         max_tokens: maxTokens,
         temperature,
       };
+      // GPT-5 family usa max_completion_tokens e não aceita temperature custom.
+      if (aiEndpoint.providerName === "openai") {
+        requestBody.max_completion_tokens = requestBody.max_tokens;
+        delete requestBody.max_tokens;
+        delete requestBody.temperature;
+      }
       // Só incluir tools se houver alguma disponível
       if (dynamicTools.length > 0) {
         requestBody.tools = dynamicTools;
