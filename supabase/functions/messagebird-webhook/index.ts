@@ -973,8 +973,19 @@ serve(async (req) => {
         .replace(/[!.,;:?]/g, "")
         .trim();
       const isMinimalAck = _ackNoEmoji.length <= 3;
+      const isGreetingAck = isGreetingOnlyMessage(messageContent)
+        || intentForAI.reason === "greeting_reopens_dormant"
+        || intentForAI.reason === "greeting_with_tracking_context";
 
-      if (isPassiveHSM && shouldSuppressForAI && isMinimalAck) {
+      if (isPassiveHSM && isGreetingAck) {
+        shouldCallAI = true;
+        console.log(`👋 Saudação após HSM — encaminhando para IA: ${conversation.id}`);
+        await supabase
+          .from("whatsapp_conversations")
+          .update({ ai_enabled: true, status: "open" })
+          .eq("id", conversation.id);
+        conversation.ai_enabled = true;
+      } else if (isPassiveHSM && shouldSuppressForAI && isMinimalAck) {
         console.log("⏭️ Inbound passivo após HSM — verificando tipo:", conversation.id);
 
         // Buscar último HSM para saber o trigger_key
