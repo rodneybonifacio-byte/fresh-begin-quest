@@ -1182,7 +1182,7 @@ serve(async (req) => {
     // === BUSCAR HISTÓRICO (mais recente primeiro, depois reordenar para cronológico) ===
     const { data: historyDesc } = await supabase
       .from("whatsapp_messages")
-      .select("direction, content, content_type, created_at, metadata")
+      .select("direction, content, content_type, media_url, created_at, metadata")
       .eq("conversation_id", conversationId)
       .order("created_at", { ascending: false })
       .limit(50);
@@ -1612,9 +1612,35 @@ EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de a
     // ═══════════════════════════════════════════════════════════
 
     let userContent = message || "";
+    let referencedImageConsumed = false;
+
+    const asksToUsePreviousImage = contentType === "text"
+      && !mediaUrl
+      && /\b(pega|olha|veja|ler|leia|consulta|consulte|rastreia|rastrear)\b[\s\S]{0,40}\b(imagem|foto|print|etiqueta)\b|\b(imagem|foto|print|etiqueta)\b[\s\S]{0,40}\b(pega|olha|veja|ler|leia|consulta|consulte|rastreia|rastrear)\b/i.test(message || "");
+
+    if (asksToUsePreviousImage) {
+      const latestImage = [...(historyDesc || [])]
+        .find((m: any) => m.direction === "inbound" && m.content_type === "image" && m.media_url);
+      if (latestImage?.media_url) {
+        try {
+          const geminiKey = Deno.env.get("GEMINI_API_KEY") || "";
+          const imageAnalysis = await analyzeImageWithGemini(latestImage.media_url, geminiKey);
+          const ocrCode = (imageAnalysis.trackingCode || "").toUpperCase().trim();
+          let imageInfo = "";
+          if (ocrCode) imageInfo = `Código de rastreio detectado via OCR na imagem anterior: ${ocrCode}. `;
+          const fullDesc = imageAnalysis.fullAnalysis || imageAnalysis.description || "Imagem analisada";
+          imageInfo += `Análise visual completa: ${fullDesc}`;
+          userContent = `[O cliente pediu para usar a imagem anterior. ${imageInfo}]\n\nMensagem do cliente: "${message}"`;
+          referencedImageConsumed = true;
+          console.log("🖼️ Usando última imagem do histórico para pedido textual:", latestImage.media_url.substring(0, 80));
+        } catch (err) {
+          console.warn("⚠️ Erro ao processar imagem anterior referenciada:", err);
+        }
+      }
+    }
 
     // IMAGEM → Gemini extrai dados relevantes
-    if (contentType === "image" && mediaUrl) {
+    if (!referencedImageConsumed && contentType === "image" && mediaUrl) {
       const geminiKey = Deno.env.get("GEMINI_API_KEY");
       if (geminiKey) {
         try {
