@@ -1885,7 +1885,7 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
       console.log(`🔄 Iteração ${iteration + 1} - ${messages.length} mensagens (provider: ${aiEndpoint.providerName})`);
 
       const requestBody: any = {
-        model: modelName,
+        model: modelForProvider(aiEndpoint.providerName, modelName),
         messages,
         max_tokens: maxTokens,
         temperature,
@@ -1934,8 +1934,8 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
         try {
           const fallbackEndpoint = getAIEndpoint(fallbackProvider);
           // Modelo equivalente
-          const fallbackModel = fallbackProvider === "openai" ? "gpt-5-mini" : "google/gemini-2.5-flash";
-          const fallbackBody: any = { ...requestBody, model: fallbackModel };
+          const fallbackModel = fallbackProvider === "openai" ? "gpt-5-mini" : "gemini-2.5-flash";
+          const fallbackBody: any = { ...requestBody, model: modelForProvider(fallbackProvider, fallbackModel) };
           // GPT-5 family usa max_completion_tokens em vez de max_tokens e não aceita temperature custom
           if (fallbackProvider === "openai" && fallbackBody.max_tokens !== undefined) {
             fallbackBody.max_completion_tokens = fallbackBody.max_tokens;
@@ -1951,7 +1951,7 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
           if (fbResp.ok) {
             aiResponse = fbResp;
             aiEndpoint = fallbackEndpoint; // atualiza para logs subsequentes
-            modelName = fallbackModel;
+            modelName = modelForProvider(fallbackProvider, fallbackModel);
             console.log(`✅ Fallback para ${fallbackProvider} bem sucedido`);
           } else {
             const fbErr = await fbResp.text();
