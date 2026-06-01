@@ -1729,15 +1729,19 @@ EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de a
     let trackingContext = "";
     try {
       const trackingRegex = /\b[A-Z]{2}\d{9,13}[A-Z]{2}\b/g;
+      const isFalseExampleCode = (code: string) => /^AD123456789BR$/i.test(code || "");
+      const normalizeCodes = (codes: string[]) => codes
+        .map((code) => code.toUpperCase())
+        .filter((code) => !isFalseExampleCode(code));
       
       // Detectar códigos na mensagem atual
-      const currentCodes = (userContent || "").match(trackingRegex) || [];
+      const currentCodes = normalizeCodes((userContent || "").match(trackingRegex) || []);
       
       // Detectar códigos no histórico recente (últimas 5 mensagens inbound apenas)
       const historyCodes: string[] = [];
       if (history) {
         for (const msg of history.filter((m: any) => m.direction === "inbound").slice(-5)) {
-          const codes = (msg.content || "").match(trackingRegex) || [];
+          const codes = normalizeCodes((msg.content || "").match(trackingRegex) || []);
           historyCodes.push(...codes);
         }
       }
