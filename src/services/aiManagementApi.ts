@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+
 
 interface Filter {
   column: string;
@@ -24,15 +24,26 @@ interface AiManagementRequest {
 
 export async function aiManagementQuery<T = any>(params: AiManagementRequest): Promise<T[]> {
   const token = localStorage.getItem("token");
-  
-  const { data, error } = await supabase.functions.invoke("ai-management", {
-    body: params,
+
+  if (!token || token.split(".").length !== 3) {
+    throw new Error("Sessão expirada. Faça login novamente.");
+  }
+
+  // Chamada direta via fetch para evitar que o supabase-js injete o Authorization
+  // da sessão GoTrue (anon key) sobre o nosso JWT BRHUB.
+  const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-management`;
+  const res = await fetch(url, {
+    method: "POST",
     headers: {
+      "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
+      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
     },
+    body: JSON.stringify(params),
   });
 
-  if (error) throw new Error(error.message || "Erro na requisição");
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || `Erro ${res.status}`);
   if (data?.error) throw new Error(data.error);
   return data?.data ?? [];
 }
