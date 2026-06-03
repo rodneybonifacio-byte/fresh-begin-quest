@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Send, Minimize2, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { jwtDecode } from 'jwt-decode';
-import veronicaAvatar from '@/assets/veronica-avatar.png';
+import rosaneAvatar from '@/assets/rosane-avatar.png';
 
 interface ChatMessage {
   id: string;
@@ -256,7 +256,7 @@ export function VeronicaChatWidget() {
         <div className="relative">
           <div className="absolute inset-0 rounded-full bg-primary/30 animate-ping" />
           <div className="relative w-16 h-16 rounded-full border-[3px] border-primary shadow-xl overflow-hidden transition-transform group-hover:scale-110 group-active:scale-95">
-            <img src={veronicaAvatar} alt="Rosane Beatriz" className="w-full h-full object-cover" />
+            <img src={rosaneAvatar} alt="Rosane Beatriz" className="w-full h-full object-cover" />
           </div>
           <div className="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 rounded-full border-2 border-background" />
         
@@ -272,7 +272,7 @@ export function VeronicaChatWidget() {
         className="fixed bottom-6 right-6 z-50 bg-foreground text-background rounded-full px-4 py-3 flex items-center gap-3 shadow-2xl cursor-pointer hover:opacity-90 transition-opacity"
         onClick={() => setIsMinimized(false)}
       >
-        <img src={veronicaAvatar} alt="Rosane Beatriz" className="w-8 h-8 rounded-full object-cover border-2 border-primary" />
+        <img src={rosaneAvatar} alt="Rosane Beatriz" className="w-8 h-8 rounded-full object-cover border-2 border-primary" />
         <span className="text-sm font-medium">Rosane Beatriz</span>
         <div className="w-2 h-2 bg-emerald-500 rounded-full" />
         <button
@@ -291,7 +291,7 @@ export function VeronicaChatWidget() {
       {/* Header */}
       <div className="bg-foreground text-background px-5 py-4 flex items-center gap-3 shrink-0">
         <div className="relative">
-          <img src={veronicaAvatar} alt="Rosane Beatriz" className="w-11 h-11 rounded-full object-cover border-2 border-primary" />
+          <img src={rosaneAvatar} alt="Rosane Beatriz" className="w-11 h-11 rounded-full object-cover border-2 border-primary" />
           <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-foreground" />
         </div>
         <div className="flex-1 min-w-0">
@@ -333,7 +333,7 @@ export function VeronicaChatWidget() {
             className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             {msg.role === 'assistant' && (
-              <img src={veronicaAvatar} alt="" className="w-7 h-7 rounded-full object-cover shrink-0 mt-1" />
+              <img src={rosaneAvatar} alt="" className="w-7 h-7 rounded-full object-cover shrink-0 mt-1" />
             )}
             <div
               className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
@@ -360,7 +360,7 @@ export function VeronicaChatWidget() {
 
         {isTyping && (
           <div className="flex gap-2 items-end">
-            <img src={veronicaAvatar} alt="" className="w-7 h-7 rounded-full object-cover" />
+            <img src={rosaneAvatar} alt="" className="w-7 h-7 rounded-full object-cover" />
             <div className="bg-card border border-border rounded-2xl rounded-bl-md px-4 py-3 shadow-sm">
               <div className="flex gap-1.5">
                 <div className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce [animation-delay:0ms]" />
