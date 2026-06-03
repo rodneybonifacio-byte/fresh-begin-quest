@@ -1806,6 +1806,7 @@ export type Database = {
           access_key: string
           ai_agent: string
           ai_enabled: boolean
+          bird_workspace_id: string | null
           channel_id: string
           created_at: string
           id: string
@@ -1818,6 +1819,7 @@ export type Database = {
           access_key: string
           ai_agent?: string
           ai_enabled?: boolean
+          bird_workspace_id?: string | null
           channel_id: string
           created_at?: string
           id?: string
@@ -1830,6 +1832,7 @@ export type Database = {
           access_key?: string
           ai_agent?: string
           ai_enabled?: boolean
+          bird_workspace_id?: string | null
           channel_id?: string
           created_at?: string
           id?: string
