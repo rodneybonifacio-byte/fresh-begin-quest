@@ -113,7 +113,7 @@ export const LandingConecta = () => {
 
   const exclusiveBenefits = [
   { icon: BarChart3, text: 'Dashboard completo' },
-  { icon: MessageCircle, text: 'Suporte da Veronica e do Will' },
+  { icon: MessageCircle, text: 'Suporte da Rosane Beatriz e do Will' },
   { icon: Gift, text: 'Promoções para parceiros' },
   { icon: Star, text: 'Comissão dobrada em campanhas "Conecta+ Week"' },
   { icon: Shield, text: 'Zero burocracia' },
