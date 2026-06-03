@@ -35,7 +35,7 @@ function getLoggedUser(): UserInfo | null {
 const WELCOME_MESSAGE: ChatMessage = {
   id: 'welcome',
   role: 'assistant',
-  content: 'Olá! 👋 Sou a Veronica, do time de suporte da BRHUB. Posso te ajudar com:\n\n• **Rastreio** de encomendas\n• **Gerar etiquetas** de envio\n• **Status** dos seus objetos\n• Dúvidas sobre **envios e serviços**\n\nComo posso te ajudar hoje?',
+  content: 'Olá! 👋 Sou a Rosane Beatriz, do time de suporte da BRHUB. Posso te ajudar com:\n\n• **Rastreio** de encomendas\n• **Gerar etiquetas** de envio\n• **Status** dos seus objetos\n• Dúvidas sobre **envios e serviços**\n\nComo posso te ajudar hoje?',
   timestamp: new Date(),
 };
 
@@ -71,7 +71,7 @@ function getProactiveGreeting(name: string): string {
 
 const FOLLOWUP_MESSAGE = 'Quer saber o que eu consigo fazer por aqui? 😉';
 
-export function VeronicaChatWidget() {
+export function Rosane BeatrizChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
@@ -251,12 +251,12 @@ export function VeronicaChatWidget() {
       <button
         onClick={() => setIsOpen(true)}
         className="fixed bottom-6 right-6 z-50 group"
-        aria-label="Abrir chat com Veronica"
+        aria-label="Abrir chat com Rosane Beatriz"
       >
         <div className="relative">
           <div className="absolute inset-0 rounded-full bg-primary/30 animate-ping" />
           <div className="relative w-16 h-16 rounded-full border-[3px] border-primary shadow-xl overflow-hidden transition-transform group-hover:scale-110 group-active:scale-95">
-            <img src={veronicaAvatar} alt="Veronica" className="w-full h-full object-cover" />
+            <img src={veronicaAvatar} alt="Rosane Beatriz" className="w-full h-full object-cover" />
           </div>
           <div className="absolute bottom-0 right-0 w-4 h-4 bg-emerald-500 rounded-full border-2 border-background" />
         
@@ -272,8 +272,8 @@ export function VeronicaChatWidget() {
         className="fixed bottom-6 right-6 z-50 bg-foreground text-background rounded-full px-4 py-3 flex items-center gap-3 shadow-2xl cursor-pointer hover:opacity-90 transition-opacity"
         onClick={() => setIsMinimized(false)}
       >
-        <img src={veronicaAvatar} alt="Veronica" className="w-8 h-8 rounded-full object-cover border-2 border-primary" />
-        <span className="text-sm font-medium">Veronica</span>
+        <img src={veronicaAvatar} alt="Rosane Beatriz" className="w-8 h-8 rounded-full object-cover border-2 border-primary" />
+        <span className="text-sm font-medium">Rosane Beatriz</span>
         <div className="w-2 h-2 bg-emerald-500 rounded-full" />
         <button
           onClick={(e) => { e.stopPropagation(); setIsOpen(false); setIsMinimized(false); }}
@@ -291,11 +291,11 @@ export function VeronicaChatWidget() {
       {/* Header */}
       <div className="bg-foreground text-background px-5 py-4 flex items-center gap-3 shrink-0">
         <div className="relative">
-          <img src={veronicaAvatar} alt="Veronica" className="w-11 h-11 rounded-full object-cover border-2 border-primary" />
+          <img src={veronicaAvatar} alt="Rosane Beatriz" className="w-11 h-11 rounded-full object-cover border-2 border-primary" />
           <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-foreground" />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-sm">Veronica</h3>
+          <h3 className="font-semibold text-sm">Rosane Beatriz</h3>
           <p className="text-xs opacity-70">Suporte BRHUB • Online</p>
         </div>
         <div className="flex items-center gap-1">
