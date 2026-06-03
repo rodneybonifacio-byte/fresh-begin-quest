@@ -138,6 +138,58 @@ serve(async (req) => {
       if (bodyStr.length > 2000) console.log("🎵 PAYLOAD MÍDIA (cont):", bodyStr.substring(2000, 4000));
     }
 
+    // === NORMALIZAÇÃO Bird API → formato legado MessageBird ===
+    // Bird envia: { service, event: "whatsapp.inbound"|"whatsapp.outbound", payload: {...} }
+    const birdEvent: string = body.event || body.type || "";
+    const isBirdInbound = birdEvent === "whatsapp.inbound" || birdEvent === "channel.message.created" || birdEvent.endsWith(".inbound");
+    const isBirdOutbound = birdEvent === "whatsapp.outbound" || birdEvent.endsWith(".outbound") || birdEvent === "channel.message.updated";
+
+    if ((isBirdInbound || isBirdOutbound) && body.payload) {
+      const p = body.payload;
+      const senderPhone = p.sender?.contact?.identifierValue || p.sender?.identifierValue || p.from;
+      const receiverPhone = p.receiver?.connector?.identifierValue || p.receiver?.identifierValue || p.to;
+      const contactName = p.sender?.contact?.annotations?.name || p.sender?.contact?.displayName || null;
+
+      const bodyType = p.body?.type || "text";
+      let textContent = "";
+      let mediaUrlBird: string | null = null;
+
+      if (bodyType === "text") {
+        textContent = p.body?.text?.text || p.body?.text || "";
+      } else if (bodyType === "image") {
+        mediaUrlBird = p.body?.image?.images?.[0]?.url || p.body?.image?.url || null;
+        textContent = p.body?.image?.caption?.text || p.body?.image?.caption || "";
+      } else if (bodyType === "video") {
+        mediaUrlBird = p.body?.video?.videos?.[0]?.url || p.body?.video?.url || null;
+        textContent = p.body?.video?.caption?.text || "";
+      } else if (bodyType === "audio" || bodyType === "voice") {
+        mediaUrlBird = p.body?.audio?.audios?.[0]?.url || p.body?.audio?.url || null;
+      } else if (bodyType === "file" || bodyType === "document") {
+        mediaUrlBird = p.body?.file?.files?.[0]?.url || p.body?.file?.url || p.body?.document?.url || null;
+        textContent = p.body?.file?.caption?.text || "";
+      }
+
+      const normalizedType = bodyType === "voice" ? "audio" : (bodyType === "file" ? "document" : bodyType);
+
+      body.type = isBirdInbound ? "message.created" : "message.updated";
+      body.message = {
+        id: p.id,
+        channelId: p.channelId,
+        direction: isBirdInbound ? "received" : "sent",
+        from: isBirdInbound ? senderPhone : receiverPhone,
+        to: isBirdInbound ? receiverPhone : senderPhone,
+        type: normalizedType,
+        status: p.status || null,
+        content: {
+          type: normalizedType,
+          text: textContent,
+          ...(mediaUrlBird ? { [normalizedType]: { url: mediaUrlBird } } : {}),
+        },
+      };
+      body.contact = { msisdn: senderPhone, displayName: contactName };
+      console.log(`🐦 Bird ${birdEvent} normalizado: dir=${body.message.direction} from=${body.message.from} type=${normalizedType}`);
+    }
+
     const eventType = body.type || body.event;
     const isMessageCreated = !!eventType && eventType.includes("message.created");
     const isMessageUpdated = !!eventType && eventType.includes("message.updated");
