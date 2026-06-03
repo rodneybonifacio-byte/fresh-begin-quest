@@ -1,3 +1,4 @@
+import { birdSend } from "../_shared/bird-compat.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { normalizeBrazilianPhone, phoneVariants } from "../_shared/normalize-phone.ts";
 
@@ -150,8 +151,8 @@ Deno.serve(async (req) => {
           .select("channel_id, access_key")
           .eq("is_default", true)
           .single();
-        channelId = def?.channel_id || Deno.env.get("MESSAGEBIRD_CHANNEL_ID")!;
-        accessKey = def?.access_key || Deno.env.get("MESSAGEBIRD_ACCESS_KEY")!;
+        channelId = def?.channel_id || Deno.env.get("BIRD_WHATSAPP_CHANNEL_ID")!;
+        accessKey = def?.access_key || Deno.env.get("BIRD_API_KEY")!;
       }
     } else {
       const { data: def } = await supabase
@@ -159,8 +160,8 @@ Deno.serve(async (req) => {
         .select("channel_id, access_key")
         .eq("is_default", true)
         .single();
-      channelId = def?.channel_id || Deno.env.get("MESSAGEBIRD_CHANNEL_ID")!;
-      accessKey = def?.access_key || Deno.env.get("MESSAGEBIRD_ACCESS_KEY")!;
+      channelId = def?.channel_id || Deno.env.get("BIRD_WHATSAPP_CHANNEL_ID")!;
+      accessKey = def?.access_key || Deno.env.get("BIRD_API_KEY")!;
     }
 
     // Phone already normalized above (line 34)
@@ -338,7 +339,7 @@ Deno.serve(async (req) => {
 
     console.log(`Sending template '${template.template_name}' to ${normalizedPhone}`, JSON.stringify(components));
 
-    const response = await fetch("https://conversations.messagebird.com/v1/send", {
+    const response = await birdSend("https://conversations.messagebird.com/v1/send", {
       method: "POST",
       headers: {
         Authorization: `AccessKey ${accessKey}`,

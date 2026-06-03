@@ -6,6 +6,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const BIRD_BASE = "https://api.bird.com";
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -16,111 +18,80 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Get channel_id from query or use default
     const url = new URL(req.url);
-    const channelId = url.searchParams.get("channel_id");
+    const channelDbId = url.searchParams.get("channel_id");
 
-    let accessKey: string;
+    let accessKey: string | undefined;
+    let birdChannelId: string | undefined;
+    let workspaceId: string | undefined;
 
-    if (channelId) {
+    if (channelDbId) {
       const { data: ch } = await supabase
         .from("whatsapp_channels")
-        .select("access_key")
-        .eq("id", channelId)
+        .select("access_key, channel_id, bird_workspace_id")
+        .eq("id", channelDbId)
         .single();
-      accessKey = ch?.access_key || Deno.env.get("MESSAGEBIRD_ACCESS_KEY")!;
+      accessKey = ch?.access_key;
+      birdChannelId = ch?.channel_id;
+      workspaceId = ch?.bird_workspace_id || undefined;
     } else {
       const { data: def } = await supabase
         .from("whatsapp_channels")
-        .select("access_key")
+        .select("access_key, channel_id, bird_workspace_id")
         .eq("is_default", true)
         .single();
-      accessKey = def?.access_key || Deno.env.get("MESSAGEBIRD_ACCESS_KEY")!;
+      accessKey = def?.access_key;
+      birdChannelId = def?.channel_id;
+      workspaceId = def?.bird_workspace_id || undefined;
     }
 
-    // Fetch templates from MessageBird Integrations API
-    const response = await fetch(
-      "https://integrations.messagebird.com/v2/platforms/whatsapp/templates",
-      {
-        headers: {
-          Authorization: `AccessKey ${accessKey}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    accessKey = accessKey || Deno.env.get("BIRD_API_KEY")!;
+    birdChannelId = birdChannelId || Deno.env.get("BIRD_WHATSAPP_CHANNEL_ID")!;
+    workspaceId = workspaceId || Deno.env.get("BIRD_WORKSPACE_ID")!;
+
+    // Bird API: GET /workspaces/{wsId}/channels/{chId}/templates
+    const endpoint = `${BIRD_BASE}/workspaces/${workspaceId}/channels/${birdChannelId}/templates`;
+    const response = await fetch(endpoint, {
+      headers: {
+        Authorization: `AccessKey ${accessKey}`,
+        "Content-Type": "application/json",
+      },
+    });
 
     const result = await response.json();
 
     if (!response.ok) {
-      console.error("MessageBird templates error:", JSON.stringify(result));
+      console.error("Bird templates error:", response.status, JSON.stringify(result).slice(0, 500));
       return new Response(
         JSON.stringify({ error: "Failed to fetch templates", details: result }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Filter only approved templates and format response
-    const templates = (result.data || result.items || result || []).map((t: any) => ({
-      name: t.name,
-      language: t.language,
-      status: t.status,
+    const rawTemplates = result.results || result.data || result.items || result || [];
+
+    // Normaliza para o formato esperado pelo restante do app
+    const templates = (Array.isArray(rawTemplates) ? rawTemplates : []).map((t: any) => ({
+      name: t.name || t.template?.name || t.projectId,
+      language: t.locale || t.language || t.template?.locale,
+      status: t.status || "approved",
       category: t.category,
-      namespace: t.namespace,
-      components: t.components,
+      namespace: t.namespace || "",
+      components: t.components || t.template?.components || [],
+      projectId: t.projectId || t.id,
     }));
 
-    // Only return approved ones
     const approved = templates.filter(
-      (t: any) => t.status === "approved" || t.status === "APPROVED"
+      (t: any) => !t.status || String(t.status).toLowerCase() === "approved" || String(t.status).toLowerCase() === "active"
     );
 
-    console.log(`Found ${approved.length} approved templates out of ${templates.length} total`);
-
-    // Auto-sync template_body for all existing notification templates
-    const syncMode = url.searchParams.get("sync") === "true";
-    if (syncMode) {
-      const { data: existingTemplates } = await supabase
-        .from("whatsapp_notification_templates")
-        .select("id, template_name, template_body");
-
-      if (existingTemplates) {
-        for (const et of existingTemplates) {
-          if (et.template_body) continue; // Already has body
-          const meta = approved.find((a: any) => a.name === et.template_name);
-          if (!meta?.components) continue;
-
-          const getCompText = (type: string) => {
-            const c = meta.components.find((c: any) => (c.type || '').toUpperCase() === type);
-            return c?.text || '';
-          };
-          const header = meta.components.find((c: any) => (c.type || '').toUpperCase() === 'HEADER');
-          const headerText = (header?.format === 'TEXT' || header?.format === 'text') ? header.text : '';
-          const footer = getCompText('FOOTER');
-          const btnComp = meta.components.find((c: any) => (c.type || '').toUpperCase() === 'BUTTONS');
-          const buttons = (btnComp?.buttons || []).map((b: any) => ({ text: b.text, type: b.type, url: b.url }));
-
-          const bodyData = JSON.stringify({
-            body: getCompText('BODY'),
-            header: headerText,
-            footer,
-            buttons,
-          });
-
-          await supabase
-            .from("whatsapp_notification_templates")
-            .update({ template_body: bodyData })
-            .eq("id", et.id);
-
-          console.log(`✅ Auto-synced template_body for: ${et.template_name}`);
-        }
-      }
-    }
+    console.log(`Found ${approved.length} templates (Bird) out of ${templates.length} total`);
 
     return new Response(
       JSON.stringify({ templates: approved, total: templates.length }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (err) {
+  } catch (err: any) {
     console.error("Error:", err);
     return new Response(
       JSON.stringify({ error: err.message }),

@@ -11,14 +11,18 @@ export interface WhatsAppChannel {
   id: string;
   name: string;
   phone_number: string;
+  /** Bird channel UUID (api.bird.com). Reaproveita coluna legada `channel_id`. */
   channel_id: string;
+  /** Bird API Access Key. Reaproveita coluna legada `access_key`. */
   access_key: string;
+  /** Bird Workspace UUID. */
+  bird_workspace_id?: string | null;
   is_default: boolean;
   ai_enabled: boolean;
   ai_agent: string;
 }
 
-/** Resolve canal pelo channel_id do MessageBird (usado no webhook) */
+/** Resolve canal pelo channel_id da Bird (usado no webhook) */
 export async function resolveChannelByMessageBirdId(channelId: string): Promise<WhatsAppChannel | null> {
   const supabase = getSupabase();
   const { data, error } = await supabase
@@ -61,7 +65,7 @@ export async function resolveChannelForConversation(conversationId: string): Pro
   return data as WhatsAppChannel;
 }
 
-/** Fallback: canal padrão ou env vars */
+/** Fallback: canal padrão do DB ou env vars Bird */
 export async function resolveDefaultChannel(): Promise<WhatsAppChannel | null> {
   const supabase = getSupabase();
   const { data, error } = await supabase
@@ -73,24 +77,26 @@ export async function resolveDefaultChannel(): Promise<WhatsAppChannel | null> {
 
   if (!error && data) return data as WhatsAppChannel;
 
-  // Fallback para env vars
-  const channelId = Deno.env.get("MESSAGEBIRD_CHANNEL_ID");
-  const accessKey = Deno.env.get("MESSAGEBIRD_ACCESS_KEY");
-  const phone = Deno.env.get("MESSAGEBIRD_WHATSAPP_NUMBER");
+  // Fallback para env vars Bird
+  const channelId = Deno.env.get("BIRD_WHATSAPP_CHANNEL_ID");
+  const accessKey = Deno.env.get("BIRD_API_KEY");
+  const workspaceId = Deno.env.get("BIRD_WORKSPACE_ID");
+  const phone = Deno.env.get("MESSAGEBIRD_WHATSAPP_NUMBER") || "";
 
-  if (channelId && accessKey && phone) {
+  if (channelId && accessKey) {
     return {
       id: "env-fallback",
-      name: "Fallback (env)",
+      name: "Fallback (env Bird)",
       phone_number: phone,
       channel_id: channelId,
       access_key: accessKey,
+      bird_workspace_id: workspaceId,
       is_default: true,
       ai_enabled: true,
       ai_agent: "veronica",
     };
   }
 
-  console.error("Nenhum canal encontrado e env vars não configuradas");
+  console.error("Nenhum canal encontrado e BIRD_* env vars não configuradas");
   return null;
 }

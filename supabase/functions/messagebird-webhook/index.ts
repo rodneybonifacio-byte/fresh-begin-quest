@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { birdSend } from "../_shared/bird-compat.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { resolveChannelByMessageBirdId } from "../_shared/channel-resolver.ts";
@@ -664,13 +665,13 @@ serve(async (req) => {
           console.log(`👤 HUMAN HANDOFF: Cliente ${normalizedPhone} pediu atendente humano. Desativando IA.`);
           updateData.ai_enabled = false;
           // Enviar mensagem de handoff
-          const accessKey = channel?.access_key || Deno.env.get("MESSAGEBIRD_ACCESS_KEY");
-          const mbChannelId = channel?.channel_id || Deno.env.get("MESSAGEBIRD_CHANNEL_ID");
+          const accessKey = channel?.access_key || Deno.env.get("BIRD_API_KEY");
+          const mbChannelId = channel?.channel_id || Deno.env.get("BIRD_WHATSAPP_CHANNEL_ID");
           const firstName = (contactName || "").split(" ")[0] || "amigo";
           
           try {
             const handoffMsg = `Entendo, ${firstName}! Vou acionar um atendente humano pra falar com você. Aguarde um momento, por favor. 😊`;
-            const mbResp = await fetch("https://conversations.messagebird.com/v1/send", {
+            const mbResp = await birdSend("https://conversations.messagebird.com/v1/send", {
               method: "POST",
               headers: {
                 Authorization: `AccessKey ${accessKey}`,
@@ -890,7 +891,7 @@ serve(async (req) => {
     let finalMediaUrl = mediaUrl;
     if (direction === "inbound" && mediaUrl && (contentType === "audio" || contentType === "voice" || contentType === "ptt" || contentType === "image")) {
       try {
-        const accessKey = channel?.access_key || Deno.env.get("MESSAGEBIRD_ACCESS_KEY");
+        const accessKey = channel?.access_key || Deno.env.get("BIRD_API_KEY");
         if (accessKey) {
           console.log("📥 Baixando mídia do MessageBird:", mediaUrl.substring(0, 80));
           const mediaResponse = await fetch(mediaUrl, {
@@ -1039,9 +1040,9 @@ serve(async (req) => {
             const positiveMsg = `Que bom que chegou, ${firstName}! 😊 Ficamos felizes! Se precisar de algo, é só chamar.`;
 
             try {
-              const accessKey = channel?.access_key || Deno.env.get("MESSAGEBIRD_ACCESS_KEY");
-              const mbChannelId = channel?.channel_id || Deno.env.get("MESSAGEBIRD_CHANNEL_ID");
-              const mbResp = await fetch("https://conversations.messagebird.com/v1/send", {
+              const accessKey = channel?.access_key || Deno.env.get("BIRD_API_KEY");
+              const mbChannelId = channel?.channel_id || Deno.env.get("BIRD_WHATSAPP_CHANNEL_ID");
+              const mbResp = await birdSend("https://conversations.messagebird.com/v1/send", {
                 method: "POST",
                 headers: {
                   Authorization: `AccessKey ${accessKey}`,
@@ -1134,12 +1135,12 @@ serve(async (req) => {
             shouldCallAI = false;
             console.log(`⭐ Feedback de avaliação recebido de ${contactName}: "${messageContent}"`);
             const firstName = (contactName || "").split(" ")[0] || "amigo";
-            const accessKey = channel?.access_key || Deno.env.get("MESSAGEBIRD_ACCESS_KEY");
-            const mbChannelId = channel?.channel_id || Deno.env.get("MESSAGEBIRD_CHANNEL_ID");
+            const accessKey = channel?.access_key || Deno.env.get("BIRD_API_KEY");
+            const mbChannelId = channel?.channel_id || Deno.env.get("BIRD_WHATSAPP_CHANNEL_ID");
             const thankYouMsg = `Muito obrigada pelo seu feedback, ${firstName}! 💛 Sua opinião é muito importante pra gente. Conte sempre com a gente!`;
 
             try {
-              const mbResp = await fetch("https://conversations.messagebird.com/v1/send", {
+              const mbResp = await birdSend("https://conversations.messagebird.com/v1/send", {
                 method: "POST",
                 headers: {
                   Authorization: `AccessKey ${accessKey}`,

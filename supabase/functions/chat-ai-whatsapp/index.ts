@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { birdSend } from "../_shared/bird-compat.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
@@ -1099,7 +1100,7 @@ serve(async (req) => {
 
           const triagemMsg = `*Veronica:*\n\n${nameGreeting}o Felipe é nosso especialista em casos de *atraso na entrega*, *extravio*, *apreensão* e *avaria* de pacotes. 📦\n\nMe conta o que tá acontecendo — se for um desses casos eu transfiro na hora pra ele! Se for outra coisa, posso te ajudar por aqui mesmo 😊`;
 
-          await fetch("https://conversations.messagebird.com/v1/send", {
+          await birdSend("https://conversations.messagebird.com/v1/send", {
             method: "POST",
             headers: { Authorization: `AccessKey ${triagemChannel.access_key}`, "Content-Type": "application/json" },
             body: JSON.stringify({ to: contactPhone, from: triagemChannel.channel_id, type: "text", content: { text: triagemMsg } }),
@@ -2040,7 +2041,7 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
 
                   const veronicaHandoffMsg = `*Veronica:*\n\n${nameGreeting}vi aqui que rolou um problema com seu pacote. Esse tipo de caso é tratado pelo Felipe, nosso especialista do Suporte Nível 2 — ele tem acesso direto à operação e vai te dar um retorno completo. Vou te transferir agora, um instante! 😊`;
 
-                  await fetch("https://conversations.messagebird.com/v1/send", {
+                  await birdSend("https://conversations.messagebird.com/v1/send", {
                     method: "POST",
                     headers: { Authorization: `AccessKey ${preHandoffChannel.access_key}`, "Content-Type": "application/json" },
                     body: JSON.stringify({ to: contactPhone, from: preHandoffChannel.channel_id, type: "text", content: { text: veronicaHandoffMsg } }),
@@ -2344,7 +2345,7 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
             if (audioUrls.length > 0) {
               // 1. Enviar texto com nome do agente em negrito primeiro
               const agentLabel = `*${agentDisplayName}:*`;
-              const mbTextResponse = await fetch("https://conversations.messagebird.com/v1/send", {
+              const mbTextResponse = await birdSend("https://conversations.messagebird.com/v1/send", {
                 method: "POST",
                 headers: {
                   Authorization: `AccessKey ${channel.access_key}`,
@@ -2374,7 +2375,7 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
               for (let ai = 0; ai < audioUrls.length; ai++) {
                 const audioUrl = audioUrls[ai];
                 const chunkText = ttsChunks[ai] || ttsText;
-                const mbAudioResponse = await fetch("https://conversations.messagebird.com/v1/send", {
+                const mbAudioResponse = await birdSend("https://conversations.messagebird.com/v1/send", {
                   method: "POST",
                   headers: {
                     Authorization: `AccessKey ${channel.access_key}`,
@@ -2439,7 +2440,7 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
                 await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 2000));
               }
               
-              const mbBlock = await fetch("https://conversations.messagebird.com/v1/send", {
+              const mbBlock = await birdSend("https://conversations.messagebird.com/v1/send", {
                 method: "POST",
                 headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
                 body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: blockText } }),
@@ -2453,7 +2454,7 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
             }
           } else {
             // Bloco único, enviar normal
-            const mbResponse = await fetch("https://conversations.messagebird.com/v1/send", {
+            const mbResponse = await birdSend("https://conversations.messagebird.com/v1/send", {
               method: "POST",
               headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
               body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: aiReply } }),
@@ -2467,7 +2468,7 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
           }
         } else {
           // Veronica ou mensagens curtas: enviar normal
-          const mbResponse = await fetch("https://conversations.messagebird.com/v1/send", {
+          const mbResponse = await birdSend("https://conversations.messagebird.com/v1/send", {
             method: "POST",
             headers: {
               Authorization: `AccessKey ${channel.access_key}`,
@@ -4195,7 +4196,7 @@ async function performHandoffToVeronica(
   try {
     const handoffMessage = "*Felipe:*\n\nSem problemas! Vou te passar pra Veronica agora, ela vai continuar te atendendo. Um momento 😊";
 
-    await fetch("https://conversations.messagebird.com/v1/send", {
+    await birdSend("https://conversations.messagebird.com/v1/send", {
       method: "POST",
       headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
       body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: handoffMessage } }),
@@ -4260,7 +4261,7 @@ Tom amigável, informal, acolhedor. Máximo 2-3 frases CURTAS. SEM emojis (vai v
         if (audioUrl) {
           // 1. Texto com nome do agente
           const agentLabel = "*Veronica:*";
-          const mbLabelResp = await fetch("https://conversations.messagebird.com/v1/send", {
+          const mbLabelResp = await birdSend("https://conversations.messagebird.com/v1/send", {
             method: "POST",
             headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
             body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: agentLabel } }),
@@ -4273,7 +4274,7 @@ Tom amigável, informal, acolhedor. Máximo 2-3 frases CURTAS. SEM emojis (vai v
           });
 
           // 2. Áudio sem o nome
-          const mbAudio = await fetch("https://conversations.messagebird.com/v1/send", {
+          const mbAudio = await birdSend("https://conversations.messagebird.com/v1/send", {
             method: "POST",
             headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
             body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "audio", content: { audio: { url: audioUrl } } }),
@@ -4291,7 +4292,7 @@ Tom amigável, informal, acolhedor. Máximo 2-3 frases CURTAS. SEM emojis (vai v
 
     // Fallback: se áudio falhou, manda texto
     if (!introAudioSent) {
-      const mbText = await fetch("https://conversations.messagebird.com/v1/send", {
+      const mbText = await birdSend("https://conversations.messagebird.com/v1/send", {
         method: "POST",
         headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
         body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: veronicaIntroReply } }),
@@ -4329,7 +4330,7 @@ async function performHandoffToFelipe(
   try {
     const handoffMessage = "*Veronica:*\n\nEntendi a situação! Para esse tipo de caso, nosso time de Suporte Nível 2 é quem cuida diretamente. Vou te passar pro Felipe, que é nosso especialista em resoluções — ele vai analisar tudo e te dar um retorno completo, tá? Um instante 😊";
 
-    await fetch("https://conversations.messagebird.com/v1/send", {
+    await birdSend("https://conversations.messagebird.com/v1/send", {
       method: "POST",
       headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
       body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: handoffMessage } }),
@@ -4394,7 +4395,7 @@ Tom calmo, confiante, informal. Máximo 2-3 frases CURTAS. SEM emojis (vai virar
         if (audioUrl) {
           // 1. Texto com nome do agente
           const agentLabel = "*Felipe:*";
-          const mbLabelResp = await fetch("https://conversations.messagebird.com/v1/send", {
+          const mbLabelResp = await birdSend("https://conversations.messagebird.com/v1/send", {
             method: "POST",
             headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
             body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: agentLabel } }),
@@ -4407,7 +4408,7 @@ Tom calmo, confiante, informal. Máximo 2-3 frases CURTAS. SEM emojis (vai virar
           });
 
           // 2. Áudio sem o nome
-          const mbAudio = await fetch("https://conversations.messagebird.com/v1/send", {
+          const mbAudio = await birdSend("https://conversations.messagebird.com/v1/send", {
             method: "POST",
             headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
             body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "audio", content: { audio: { url: audioUrl } } }),
@@ -4425,7 +4426,7 @@ Tom calmo, confiante, informal. Máximo 2-3 frases CURTAS. SEM emojis (vai virar
 
     // Fallback: se áudio falhou, manda texto
     if (!introAudioSent) {
-      const mbText = await fetch("https://conversations.messagebird.com/v1/send", {
+      const mbText = await birdSend("https://conversations.messagebird.com/v1/send", {
         method: "POST",
         headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
         body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: felipeIntroReply } }),
@@ -4539,7 +4540,7 @@ NUNCA terceirize ("entre em contato com os Correios"). NÓS somos os responsáve
             await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 2000));
           }
           
-          const mbBlock = await fetch("https://conversations.messagebird.com/v1/send", {
+          const mbBlock = await birdSend("https://conversations.messagebird.com/v1/send", {
             method: "POST",
             headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
             body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: blockText } }),
