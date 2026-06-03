@@ -1,41 +1,20 @@
-import { useState, useCallback, useEffect } from 'react';
-import { MessageSquare, Columns3, Bell, Wallet, MessageCircle } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { MessageSquare, Columns3, Bell, MessageCircle } from 'lucide-react';
 import CrmWhatsApp from './CrmWhatsApp';
 import CrmPipelineKanban from './CrmPipelineKanban';
 import CrmNotificationTemplates from './CrmNotificationTemplates';
 import CrmChat from './CrmChat';
 import MobileCrmLayout from './MobileCrmLayout';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
-import { supabase } from '@/integrations/supabase/client';
 
 const CrmLayout = () => {
   const isDesktop = useBreakpoint('lg');
   const [activeTab, setActiveTab] = useState<'conversas' | 'pipeline' | 'notificacoes' | 'chat'>('conversas');
   const [initialConversationId, setInitialConversationId] = useState<string | null>(null);
-  const [balance, setBalance] = useState<{ amount: number; type: string; payment: string } | null>(null);
-  const [balanceLoading, setBalanceLoading] = useState(true);
 
   const handleOpenConversation = useCallback((conversationId: string) => {
     setInitialConversationId(conversationId);
     setActiveTab('conversas');
-  }, []);
-
-  useEffect(() => {
-    const fetchBalance = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke('messagebird-balance');
-        if (!error && data && !data.error) {
-          setBalance(data);
-        }
-      } catch (e) {
-        console.error('Erro ao buscar saldo MessageBird:', e);
-      } finally {
-        setBalanceLoading(false);
-      }
-    };
-    fetchBalance();
-    const interval = setInterval(fetchBalance, 5 * 60 * 1000); // refresh every 5 min
-    return () => clearInterval(interval);
   }, []);
 
   if (!isDesktop) {
