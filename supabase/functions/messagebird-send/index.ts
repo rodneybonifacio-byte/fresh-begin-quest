@@ -77,11 +77,15 @@ serve(async (req) => {
       sendPayload.content = { file: { url: mediaUrl } };
     }
 
-    // Enviar via MessageBird
+    // Enviar via Bird API (usa BIRD_API_KEY do env, não a access_key legada do canal)
+    const birdApiKey = Deno.env.get("BIRD_API_KEY");
+    if (!birdApiKey) {
+      throw new Error("BIRD_API_KEY não configurado");
+    }
     const mbResponse = await birdSend("https://conversations.messagebird.com/v1/send", {
       method: "POST",
       headers: {
-        Authorization: `AccessKey ${channel.access_key}`,
+        Authorization: `AccessKey ${birdApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(sendPayload),
