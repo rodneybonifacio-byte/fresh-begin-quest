@@ -1,73 +1,96 @@
-## Problema
+## Migração MessageBird → Bird API
 
-Emissões via MaisEnvios (marketplace) são salvas só em `public.emissoes_marketplace`. Tudo no painel hoje lê da API BRHUB, então essas etiquetas:
+Corte total da integração MessageBird legacy (`conversations.messagebird.com`, `rest.messagebird.com`) para a nova **Bird API** (`api.bird.com`). 13 arquivos afetados, 4 edge functions reescritas, schema do DB renomeado e secrets renovados.
 
-- Não aparecem na lista `/app/emissao`
-- Não disparam WhatsApp `etiqueta_criada`
-- Não entram nos crons periódicos (`objeto-postado`, `saiu-para-entrega`, `aguardando-retirada`, `aviso-atraso`, `verificar-atrasos`, `avaliacao`)
-- Não atualizam status com base em rastreio
+---
 
-3 emissões já existem assim: AD465405677BR, AD465343589BR, AD465320044BR.
+### 1. Secrets a configurar (próximo passo após aprovação)
 
-## Solução em camadas
+Vou pedir via `add_secret`:
 
-### 1. Modelo de dados — `emissoes_marketplace`
-Adicionar colunas para servir como "espelho" de uma emissão BRHUB:
+- `BIRD_API_KEY` — Access Key gerada em Settings → Security → Access Keys (role `Application Developer`)
+- `BIRD_WORKSPACE_ID` — UUID do workspace
+- `BIRD_WHATSAPP_CHANNEL_ID` — UUID do canal WhatsApp ativo
 
-- `remetente_id`, `remetente_nome`, `remetente_cpf_cnpj`
-- `destinatario_celular`, `destinatario_cpf_cnpj`, endereço completo
-- `peso`, `altura`, `largura`, `comprimento`
-- `valor_declarado`, `valor_nota_fiscal`, `chave_nfe`
-- `status_rastreio` (último status SRO), `ultimo_evento_em`, `data_postagem`, `data_entrega`
-- `notificou_etiqueta_criada`, `notificou_postado`, `notificou_saiu_entrega`, `notificou_aguardando_retirada` (boolean)
-- `historico_rastreio` (jsonb)
+Os secrets antigos `MESSAGEBIRD_ACCESS_KEY`, `MESSAGEBIRD_CHANNEL_ID`, `MESSAGEBIRD_WHATSAPP_NUMBER` ficarão presentes mas sem uso (posso removê-los depois que tudo estiver validado em produção).
 
-Preencher backfill das 3 emissões existentes a partir de `payload_request`/`payload_response`.
+---
 
-### 2. Edge function `emitir-etiqueta`
-No ponto onde já persiste em `emissoes_marketplace` (linhas 577–593), gravar também os novos campos (remetente, destinatário completo, dimensões, valores) extraídos de `emissaoPayload`.
+### 2. Mudanças na Bird API vs MessageBird (resumo técnico)
 
-### 3. Listagem `/app/emissao`
-Em `ListaEmissoes.tsx`, após buscar emissões BRHUB, fazer um segundo fetch via `supabase.from('emissoes_marketplace').select(...).eq('cliente_id', ...)` e fundir os resultados, normalizando para o shape `IEmissaoViewModel` (mesma origem visual, com badge "Marketplace"). Reutilizar mesma ordenação, paginação e filtros (filtragem local conforme padrão BRHUB).
+| Aspecto | MessageBird (legacy) | Bird (novo) |
+|---|---|---|
+| Base URL | `conversations.messagebird.com/v1` | `api.bird.com` |
+| Auth header | `Authorization: AccessKey <key>` | `Authorization: AccessKey <key>` (igual) |
+| Send endpoint | `POST /send` | `POST /workspaces/{wsId}/channels/{chId}/messages` |
+| Payload | `{to, from, type, content}` | `{receiver:{contacts:[{identifierValue}]}, body:{type, text/image/...}}` |
+| Template HSM | `content.hsm` | `body.type:"template"` + `template.locale/projectId/...` |
+| Webhook payload | `{message:{id, channelId, from, content}}` | `{event:"channel.message.created", payload:{message:{...}}}` |
+| Saldo | `GET rest.messagebird.com/balance` | **não existe** — só via dashboard. Remover do CRM header. |
 
-### 4. Detalhe / PDF / cancelamento
-- Detalhe (`EmissaoViewDetail.tsx`): se `origem === 'marketplace'`, ler de `emissoes_marketplace` em vez de chamar BRHUB.
-- PDF: já roteado via `marketplace-pdf-etiqueta` (ok).
-- Cancelamento: estender `cancelar-etiqueta-admin` para chamar endpoint reversa marketplace quando `uuid_marketplace` existir, e estornar crédito via `liberar_credito_bloqueado`.
+---
 
-### 5. Notificação `etiqueta_criada`
-Em `cron-notificar-etiqueta-criada`, adicionar segundo passo que varre `emissoes_marketplace WHERE notificou_etiqueta_criada = false AND codigo_objeto IS NOT NULL`, dispara `send-whatsapp-template` com `trigger_key=etiqueta_criada` e marca a flag.
+### 3. Edge Functions a reescrever
 
-### 6. Rastreio periódico
-Criar `cron-rastreio-marketplace` (a cada 30 min) que:
-- Lê `emissoes_marketplace` não-entregues
-- Para cada `codigo_objeto`, chama o tracking BRHUB já existente (`testar-rastreio` / endpoint SRO atual)
-- Atualiza `status_rastreio`, `historico_rastreio`, `data_postagem`, `data_entrega`
-- Aciona, conforme transição de status, os mesmos triggers WhatsApp dos crons BRHUB:
-  - postado → `objeto_postado`
-  - saiu para entrega → `saiu_para_entrega`
-  - aguardando retirada → `aguardando_retirada`
-  - atraso (>prazo) → `aviso_atraso`
-  - entregue → `avaliacao` (após X dias, conforme regra atual)
-- Cada notificação consulta sua flag para evitar duplicidade (mesmo padrão dedup HSM universal).
+- **`messagebird-send` → renomear para `bird-send`**: usa `POST /workspaces/{wsId}/channels/{chId}/messages` com payload Bird. Mantém contrato externo `{conversationId, message, contentType, mediaUrl}` para não quebrar quem chama.
+- **`messagebird-webhook` → renomear para `bird-webhook`**: parsea evento `channel.message.created`, normaliza para mesma estrutura interna usada hoje.
+- **`send-whatsapp-template`**: substituir payload HSM. Bird usa `body.type:"template"` com `template.projectId`, `template.version`, `template.locale`, `template.parameters[]`.
+- **`list-whatsapp-templates`**: nova rota Bird `GET /workspaces/{wsId}/channels/{chId}/whatsapp-templates`.
+- **`messagebird-balance` → DELETAR**: Bird não expõe saldo via API. CRM header passa a esconder o widget.
 
-### 7. Faturamento
-`emissoes_marketplace.cobrada` + `valor_custo` para entrar no fechamento de fatura mensal junto com emissões BRHUB (alinhar com `realizar-fechamento`).
+---
 
-## Validação após deploy
+### 4. Mudanças no schema (`whatsapp_channels`)
 
-- Backfill: as 3 etiquetas existentes precisam aparecer na lista do cliente RODNEY.
-- Reemitir 1 etiqueta marketplace de teste → aparece na lista + WhatsApp `etiqueta_criada` chega.
-- Forçar 1 ciclo do novo cron → status atualiza no Supabase + nenhuma duplicata de mensagem.
-- Conferir log `ai_interaction_logs`/`emissoes_em_atraso` para garantir paridade com BRHUB.
+Migração para renomear/adicionar colunas com retrocompatibilidade:
 
-## Escopo / ordem de execução sugerida
+```text
+whatsapp_channels:
+  - channel_id        → renomear para bird_channel_id (UUID)
+  - access_key        → renomear para bird_api_key
+  + bird_workspace_id (UUID, novo)
+  - phone_number      → mantém (informativo)
+```
 
-1. Migration (campos + backfill)
-2. `emitir-etiqueta` (gravar campos novos)
-3. `ListaEmissoes` (merge)
-4. `cron-notificar-etiqueta-criada` (extensão MP)
-5. Novo `cron-rastreio-marketplace` + disparos WhatsApp
-6. Detalhe / cancelamento / faturamento
+`_shared/channel-resolver.ts` lê dos novos campos; mantém fallback para env vars `BIRD_*`.
 
-Confirma que avanço com tudo isso, ou prefere fazer só os passos 1–4 agora (lista + etiqueta_criada) e tratar rastreio/cancelamento/fatura num segundo ciclo?
+---
+
+### 5. Frontend
+
+- **`CrmLayout.tsx`**: remover bloco do saldo MessageBird (chama `messagebird-balance`). Substituir por badge estática "Bird" ou esconder.
+- **`CrmWhatsApp.tsx`**: trocar referências de texto "MessageBird" para "WhatsApp/Bird".
+- **`src/integrations/supabase/types.ts`**: regenerado automaticamente após a migração.
+
+---
+
+### 6. Outras edge functions tocadas
+
+- `chat-ai-whatsapp/index.ts` — apenas comentários/strings "MessageBird"; sem mudança funcional.
+- `classify-intent/index.ts` — idem.
+- `cron-followup-encerramento/index.ts` — usa `messagebird-send` → trocar para `bird-send`.
+- `reenviar-postados-falhados/index.ts` — chama `send-whatsapp-template` (sem mudança no caller).
+- `_shared/normalize-phone.ts` — comentário; sem mudança.
+
+---
+
+### 7. Ordem de execução
+
+1. **Pedir os 3 secrets Bird** via `add_secret` (bloqueia até o usuário preencher).
+2. **Migração SQL**: adicionar `bird_workspace_id`, renomear `channel_id`/`access_key`.
+3. **Reescrever `_shared/channel-resolver.ts`** com novos nomes.
+4. **Criar `bird-send` e `bird-webhook`**, deletar os antigos (`messagebird-send`, `messagebird-webhook`, `messagebird-balance`) via `delete_edge_functions`.
+5. **Atualizar `send-whatsapp-template` e `list-whatsapp-templates`** para Bird API.
+6. **Frontend**: remover widget de saldo, ajustar textos.
+7. **Testar**: enviar mensagem texto, enviar template HSM, simular webhook inbound via `test_edge_functions`.
+
+---
+
+### 8. Riscos / pontos de atenção
+
+- **Webhook URL muda**: depois do deploy, você precisa cadastrar a nova URL `https://xikvfybxthvqhpjbrszp.supabase.co/functions/v1/bird-webhook` no painel Bird → Connectors → Webhook Subscriptions. Isso eu não consigo fazer por API (Bird não tem API pública estável de subscription que cubra todos os canais).
+- **Templates HSM**: o `projectId` dos templates muda entre MessageBird e Bird. Você terá que reaprovar/recriar templates no painel Bird. O código vai funcionar mas templates antigos podem não disparar até serem migrados no painel.
+- **Conversas em andamento**: as `whatsapp_conversations` existentes continuam com o `whatsapp_channel_id` apontando para o registro renomeado, sem perda de histórico.
+- **MessageBird vai deixar de receber inbounds** assim que você apontar o número para o canal Bird no painel — corte instantâneo.
+
+Aprovando, sigo pedindo os 3 secrets e executando na ordem acima.
