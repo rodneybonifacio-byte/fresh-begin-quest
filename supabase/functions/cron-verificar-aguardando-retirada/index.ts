@@ -56,6 +56,12 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  // 🛑 KILL SWITCH HSM — desativado até segunda-feira por bloqueio no WhatsApp
+  return new Response(
+    JSON.stringify({ success: true, disabled: true, reason: "HSM cron temporariamente desativado por bloqueio no WhatsApp" }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+
 
   try {
     let codigoObjetoFiltro: string | null = null;
