@@ -1,0 +1,1 @@
+UPDATE public.whatsapp_channels SET channel_id = 'f9d2cee1-6cdf-594a-9918-bc12b3083817' WHERE id = '393253af-4856-4d5b-a661-d21df1de306f';
