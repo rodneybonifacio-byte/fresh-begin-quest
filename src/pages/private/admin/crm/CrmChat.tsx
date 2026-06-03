@@ -4,7 +4,7 @@ import { aiManagementQuery, aiManagementUpdate } from '@/services/aiManagementAp
 import { MessageCircle, Search, User, Bot, Clock, ChevronLeft, Send } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import veronicaAvatar from '@/assets/veronica-avatar.png';
+import rosaneAvatar from '@/assets/rosane-avatar.png';
 
 interface ChatConversation {
   id: string;
@@ -243,7 +243,7 @@ const CrmChat = () => {
                     <div key={msg.id} className={`flex gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
                       {!isUser && (
                         <img
-                          src={veronicaAvatar}
+                          src={rosaneAvatar}
                           alt="Rosane Beatriz"
                           className="w-7 h-7 rounded-full object-cover shrink-0 mt-1"
                         />
