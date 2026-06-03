@@ -71,7 +71,7 @@ function getProactiveGreeting(name: string): string {
 
 const FOLLOWUP_MESSAGE = 'Quer saber o que eu consigo fazer por aqui? 😉';
 
-export function Rosane BeatrizChatWidget() {
+export function VeronicaChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
