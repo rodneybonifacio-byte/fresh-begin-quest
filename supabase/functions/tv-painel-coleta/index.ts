@@ -183,6 +183,11 @@ Deno.serve(async (req) => {
         console.log(`🚫 Exclusão manual: removendo ${em.codigoObjeto}`);
         return false;
       }
+      // Exclusão manual por nome do remetente
+      if (isRemetenteOculto(em)) {
+        console.log(`🚫 Remetente oculto: removendo ${em.codigoObjeto}`);
+        return false;
+      }
       // Filtrar etiquetas de logística reversa
       const servicoCode = String(em.codigoServicoPostagem || em.codigoServicoVenda || '');
       const servicoNome = String(em.servico || '').toUpperCase();
