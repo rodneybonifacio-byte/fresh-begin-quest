@@ -164,6 +164,14 @@ Deno.serve(async (req) => {
       'AN677032672BR',
     ]);
 
+    // 3d. Remetentes ocultados manualmente do painel
+    const REMETENTES_OCULTOS = new Set(['EDSON SOUZA']);
+    const isRemetenteOculto = (em: any): boolean => {
+      const nome = (em.remetenteNome || em.remetente?.nome || '').toUpperCase().trim()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return REMETENTES_OCULTOS.has(nome);
+    };
+
     // 4. Códigos de serviço de logística reversa dos Correios
     const codigosServicoReversa = new Set(['04227', '04162', '03131', '03132']);
 
@@ -173,6 +181,11 @@ Deno.serve(async (req) => {
       // Exclusão manual por código de objeto
       if (codigosExcluidos.has(code)) {
         console.log(`🚫 Exclusão manual: removendo ${em.codigoObjeto}`);
+        return false;
+      }
+      // Exclusão manual por nome do remetente
+      if (isRemetenteOculto(em)) {
+        console.log(`🚫 Remetente oculto: removendo ${em.codigoObjeto}`);
         return false;
       }
       // Filtrar etiquetas de logística reversa
