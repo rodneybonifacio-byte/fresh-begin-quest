@@ -164,6 +164,14 @@ Deno.serve(async (req) => {
       'AN677032672BR',
     ]);
 
+    // 3d. Remetentes ocultados manualmente do painel
+    const REMETENTES_OCULTOS = new Set(['EDSON SOUZA']);
+    const isRemetenteOculto = (em: any): boolean => {
+      const nome = (em.remetenteNome || em.remetente?.nome || '').toUpperCase().trim()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return REMETENTES_OCULTOS.has(nome);
+    };
+
     // 4. Códigos de serviço de logística reversa dos Correios
     const codigosServicoReversa = new Set(['04227', '04162', '03131', '03132']);
 
