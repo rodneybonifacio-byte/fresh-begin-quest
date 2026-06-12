@@ -165,7 +165,7 @@ Deno.serve(async (req) => {
     ]);
 
     // 3d. Remetentes ocultados manualmente do painel
-    const REMETENTES_OCULTOS = new Set(['EDSON SOUZA']);
+    const REMETENTES_OCULTOS = new Set(['EDSON SOUZA', 'EDSON COSTA', 'PREMIUMVESTI', 'PREMIUM VESTI']);
     const isRemetenteOculto = (em: any): boolean => {
       const nome = (em.remetenteNome || em.remetente?.nome || '').toUpperCase().trim()
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
