@@ -164,11 +164,13 @@ Deno.serve(async (req) => {
       'AN677032672BR',
     ]);
 
-    // 3d. Remetentes ocultados manualmente do painel
+    // 3d. Remetentes ocultados manualmente do painel (+ nomes desconhecidos/vazios)
     const REMETENTES_OCULTOS = new Set(['EDSON SOUZA', 'EDSON COSTA', 'PREMIUMVESTI', 'PREMIUM VESTI']);
+    const NOMES_INVALIDOS = new Set(['', 'DESCONHECIDO', 'SEM NOME', 'SEM_NOME', 'NAO INFORMADO', 'NAO INFORMADA', 'N/A', 'NA', 'NULL', 'UNDEFINED', 'SEM REMETENTE']);
     const isRemetenteOculto = (em: any): boolean => {
       const nome = (em.remetenteNome || em.remetente?.nome || '').toUpperCase().trim()
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      if (NOMES_INVALIDOS.has(nome)) return true;
       return REMETENTES_OCULTOS.has(nome);
     };
 
