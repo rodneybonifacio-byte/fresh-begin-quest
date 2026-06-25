@@ -6,6 +6,7 @@ import { LoadSpinner } from '../../../../components/loading';
 import { MapPin, Package, Phone, Clock, Truck, RefreshCw, User } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { getEnderecoColetaOverride } from '../../../../utils/enderecoColetaOverride';
 
 /**
  * Formata dataHoraColeta da API para horário de Brasília legível.
@@ -209,7 +210,7 @@ const PainelColeta: React.FC = () => {
                             <div className="flex items-start gap-2.5">
                                 <MapPin className="w-4 h-4 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0" />
                                 <span className="text-sm text-gray-600 dark:text-gray-300">
-                                    {ordem.localColeta || 'Local não informado'}
+                                    {getEnderecoColetaOverride(ordem.cliente) || ordem.localColeta || 'Local não informado'}
                                 </span>
                             </div>
                             <div className="flex items-center gap-2.5">
