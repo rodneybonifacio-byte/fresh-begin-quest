@@ -214,10 +214,49 @@ Deno.serve(async (req) => {
       return true;
     });
 
-    console.log(`✅ Total final: ${filtradas.length} etiquetas (removidas ${prePostadasRecentes.length - filtradas.length} duplicadas)`);
+    console.log(`✅ Total final BRHUB: ${filtradas.length} etiquetas (removidas ${prePostadasRecentes.length - filtradas.length} duplicadas)`);
+
+    // 6. Buscar etiquetas externas (enviadas via API painel-coleta-ingest)
+    let externas: any[] = [];
+    try {
+      const supaUrl = Deno.env.get('SUPABASE_URL');
+      const supaKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      if (supaUrl && supaKey) {
+        const nowIso = new Date().toISOString();
+        const resp = await fetch(`${supaUrl}/rest/v1/painel_coleta_externo?select=*&expires_at=gt.${nowIso}&order=data_emissao.desc&limit=500`, {
+          headers: { apikey: supaKey, Authorization: `Bearer ${supaKey}` },
+        });
+        if (resp.ok) {
+          const rows = await resp.json();
+          externas = (rows || []).map((r: any) => ({
+            codigoObjeto: r.codigo_objeto,
+            remetenteNome: r.remetente_nome,
+            destinatario: { nome: r.destinatario_nome || '' },
+            servico: r.servico || '',
+            criadoEm: r.data_emissao,
+            origem: r.origem || 'externo',
+            _externo: true,
+          }));
+          // Aplica os mesmos filtros de remetente oculto/dedup
+          externas = externas.filter((em) => {
+            if (isRemetenteOculto(em)) return false;
+            const code = (em.codigoObjeto || '').toUpperCase().trim();
+            if (code && postadasByCode.has(code)) return false;
+            return true;
+          });
+          console.log(`✅ ${externas.length} etiquetas externas adicionadas`);
+        } else {
+          console.error('Erro ao buscar painel_coleta_externo:', resp.status);
+        }
+      }
+    } catch (e) {
+      console.error('Falha ao buscar etiquetas externas:', e);
+    }
+
+    const todas = [...filtradas, ...externas];
 
     return new Response(
-      JSON.stringify({ data: filtradas }),
+      JSON.stringify({ data: todas }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
