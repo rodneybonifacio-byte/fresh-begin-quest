@@ -1397,6 +1397,48 @@ export type Database = {
           },
         ]
       }
+      painel_coleta_externo: {
+        Row: {
+          codigo_objeto: string
+          created_at: string
+          data_emissao: string
+          destinatario_nome: string | null
+          expires_at: string
+          id: string
+          metadata: Json | null
+          origem: string
+          remetente_nome: string
+          servico: string | null
+          updated_at: string
+        }
+        Insert: {
+          codigo_objeto: string
+          created_at?: string
+          data_emissao?: string
+          destinatario_nome?: string | null
+          expires_at?: string
+          id?: string
+          metadata?: Json | null
+          origem?: string
+          remetente_nome: string
+          servico?: string | null
+          updated_at?: string
+        }
+        Update: {
+          codigo_objeto?: string
+          created_at?: string
+          data_emissao?: string
+          destinatario_nome?: string | null
+          expires_at?: string
+          id?: string
+          metadata?: Json | null
+          origem?: string
+          remetente_nome?: string
+          servico?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       parceiros: {
         Row: {
           agencia: string | null
