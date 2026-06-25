@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Package, Clock, Truck, RefreshCw, Lock, Eye, EyeOff, Users, ChevronDown, ChevronRight, MapPin, Volume2, VolumeX, Bell, Activity, Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import logoBrhub from '@/assets/logo-brhub-new.png';
+import { getEnderecoColetaOverride } from '@/utils/enderecoColetaOverride';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Etiqueta {
