@@ -190,7 +190,7 @@ const agruparPorRemetente = (etiquetas: Etiqueta[], horariosDb: ClienteHorario[]
       const matchDb = findHorario(key, horariosDb);
       clienteMap.set(key, {
         nome,
-        endereco: matchDb?.endereco || endereco || 'Endereço não informado',
+        endereco: getEnderecoColetaOverride(nome) || matchDb?.endereco || endereco || 'Endereço não informado',
         etiquetas: [],
         totalPrePostado: 0,
       });
