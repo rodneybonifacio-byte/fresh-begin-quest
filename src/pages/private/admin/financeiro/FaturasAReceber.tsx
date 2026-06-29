@@ -24,8 +24,10 @@ import { ModalVisualizarFechamento } from '../../../../components/ModalVisualiza
 import { toast } from 'sonner';
 import { BoletoService } from '../../../../services/BoletoService';
 import { getSupabaseWithAuth } from '../../../../integrations/supabase/custom-auth';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, FileSpreadsheet } from 'lucide-react';
 import { useFaturasOverride } from '../../../../hooks/useFaturasOverride';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
 const FinanceiroFaturasAReceber = () => {
     const { setIsLoading } = useLoadingSpinner();
@@ -739,7 +741,44 @@ const FinanceiroFaturasAReceber = () => {
                             Carregando...
                         </span>
                     )}
-                    
+
+                    {tab === 'faturamentos' && data.length > 0 && (
+                        <button
+                            onClick={async () => {
+                                try {
+                                    setIsLoading(true);
+                                    const token = localStorage.getItem('token') || localStorage.getItem('accessToken') || '';
+                                    const ids = data.map(f => f.id);
+                                    const resp = await fetch(`${SUPABASE_URL}/functions/v1/exportar-fechamentos-importacao`, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                        body: JSON.stringify({ fatura_ids: ids }),
+                                    });
+                                    if (!resp.ok) throw new Error(await resp.text());
+                                    const blob = await resp.blob();
+                                    const url = URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = `fechamentos_importacao_${new Date().toISOString().slice(0,10)}.xlsx`;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    a.remove();
+                                    URL.revokeObjectURL(url);
+                                    toastSuccess('Planilha gerada com sucesso');
+                                } catch (e: any) {
+                                    toast.error('Erro ao gerar planilha: ' + (e?.message || e));
+                                } finally {
+                                    setIsLoading(false);
+                                }
+                            }}
+                            className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                            title="Gerar planilha de importação com todas as etiquetas das faturas exibidas"
+                        >
+                            <FileSpreadsheet size={16} />
+                            Exportar p/ Importação
+                        </button>
+                    )}
+
                     {tab === 'faturamentos' && (
                         <RealtimeStatusIndicator 
                             isConnected={true}
