@@ -24,8 +24,10 @@ import { ModalVisualizarFechamento } from '../../../../components/ModalVisualiza
 import { toast } from 'sonner';
 import { BoletoService } from '../../../../services/BoletoService';
 import { getSupabaseWithAuth } from '../../../../integrations/supabase/custom-auth';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, FileSpreadsheet } from 'lucide-react';
 import { useFaturasOverride } from '../../../../hooks/useFaturasOverride';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
 const FinanceiroFaturasAReceber = () => {
     const { setIsLoading } = useLoadingSpinner();
