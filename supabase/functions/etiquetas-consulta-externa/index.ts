@@ -12,7 +12,8 @@ const corsHeaders = {
 };
 
 const BASE_API_URL = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.br";
-const EXTERNAL_KEY = Deno.env.get("BRHUB_EXTERNAL_API_KEY") || "";
+const EXTERNAL_KEY = Deno.env.get("ETIQUETAS_EXTERNA_API_KEY") || "";
+const LEGACY_KEY = Deno.env.get("BRHUB_EXTERNAL_API_KEY") || "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
