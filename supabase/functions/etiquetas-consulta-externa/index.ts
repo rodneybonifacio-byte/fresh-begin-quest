@@ -185,14 +185,14 @@ serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    if (!EXTERNAL_KEY) {
-      return new Response(JSON.stringify({ error: "BRHUB_EXTERNAL_API_KEY não configurada" }),
+    if (!EXTERNAL_KEY && !LEGACY_KEY) {
+      return new Response(JSON.stringify({ error: "API key não configurada" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const provided = req.headers.get("x-api-key") || req.headers.get("apikey")
       || (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
-    if (provided !== EXTERNAL_KEY) {
+    if (provided !== EXTERNAL_KEY && provided !== LEGACY_KEY) {
       return new Response(JSON.stringify({ error: "unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
