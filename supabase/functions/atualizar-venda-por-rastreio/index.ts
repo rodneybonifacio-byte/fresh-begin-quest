@@ -41,26 +41,13 @@ serve(async (req) => {
       if (offset > 20000) break;
     }
 
-    const remN = norm(remetenteNome);
-    const opera = all.filter((e: any) => {
-      const n1 = norm(e.remetenteNome || e.remetente?.nome);
-      const n2 = norm(e.cliente?.nome);
-      return n1.includes('OPERA') || n2.includes('OPERA');
-    });
-    console.log('total_all=', all.length, 'opera_any=', opera.length, 'opera_sample=', JSON.stringify(opera[0] || null));
-    const emissoes = all.filter((e: any) => {
-      const n1 = norm(e.remetenteNome || e.remetente?.nome);
-      const n2 = norm(e.cliente?.nome);
-      return n1 === remN || n2 === remN;
-    });
-    console.log('emissoes_filtered=', emissoes.length);
-
-    // Map codigoObjeto -> emissao
+    // Match APENAS por codigoObjeto (não filtrar por remetente para evitar inconsistências da API)
     const porCodigo = new Map<string, any>();
-    for (const e of emissoes) {
+    for (const e of all) {
       const cod = norm(e.codigoObjeto);
       if (cod) porCodigo.set(cod, e);
     }
+    console.log('total_all=', all.length, 'mapa_codigos=', porCodigo.size);
 
     const preview: any[] = [];
     const semMatch: any[] = [];
