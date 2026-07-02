@@ -42,12 +42,11 @@ serve(async (req) => {
     }
 
     const remN = norm(remetenteNome);
-    const nomesUnicos = new Set<string>();
-    for (const e of all) { nomesUnicos.add(String(e.remetenteNome || e.remetente?.nome || '')); }
-    const opera = [...nomesUnicos].filter(n => n.toUpperCase().includes('OPERA'));
-    console.log('total_all=', all.length, 'nomes_unicos=', nomesUnicos.size, 'opera_matches=', JSON.stringify(opera));
+    console.log('total_all=', all.length);
+    console.log('sample_keys=', JSON.stringify(Object.keys(all[0]||{})));
+    console.log('sample_row=', JSON.stringify(all[0]));
     const emissoes = all.filter((e: any) => norm(e.remetenteNome || e.remetente?.nome) === remN);
-    console.log('emissoes_filtered=', emissoes.length, 'sample_raw=', JSON.stringify(Object.keys(all[0]||{})));
+    console.log('emissoes_filtered=', emissoes.length);
 
     // Map codigoObjeto -> emissao
     const porCodigo = new Map<string, any>();
