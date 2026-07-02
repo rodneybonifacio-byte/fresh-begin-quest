@@ -78,7 +78,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         success: true, dryRun: true,
         resumo: {
-          totalEmissoesRemetente: emissoes.length,
+          totalEmissoesFetched: all.length,
           totalItens: itens.length,
           aAtualizar: preview.length,
           semAlteracao: semAlteracao.length,
