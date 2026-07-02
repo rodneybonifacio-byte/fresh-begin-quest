@@ -55,7 +55,8 @@ Deno.serve(async (req) => {
     // Helper para buscar lotes paginados
     async function fetchAllByStatus(st: string, maxRecords = 2000): Promise<any[]> {
       const results: any[] = [];
-      const batchSize = 200;
+      const batchSize = 100; // BRHUB API tem limite hard de 100/página
+
       let offset = 0;
       let hasMore = true;
 
