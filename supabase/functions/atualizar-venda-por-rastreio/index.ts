@@ -42,10 +42,17 @@ serve(async (req) => {
     }
 
     const remN = norm(remetenteNome);
-    console.log('total_all=', all.length);
-    console.log('sample_keys=', JSON.stringify(Object.keys(all[0]||{})));
-    console.log('sample_row=', JSON.stringify(all[0]));
-    const emissoes = all.filter((e: any) => norm(e.remetenteNome || e.remetente?.nome) === remN);
+    const opera = all.filter((e: any) => {
+      const n1 = norm(e.remetenteNome || e.remetente?.nome);
+      const n2 = norm(e.cliente?.nome);
+      return n1.includes('OPERA') || n2.includes('OPERA');
+    });
+    console.log('total_all=', all.length, 'opera_any=', opera.length, 'opera_sample=', JSON.stringify(opera[0] || null));
+    const emissoes = all.filter((e: any) => {
+      const n1 = norm(e.remetenteNome || e.remetente?.nome);
+      const n2 = norm(e.cliente?.nome);
+      return n1 === remN || n2 === remN;
+    });
     console.log('emissoes_filtered=', emissoes.length);
 
     // Map codigoObjeto -> emissao
