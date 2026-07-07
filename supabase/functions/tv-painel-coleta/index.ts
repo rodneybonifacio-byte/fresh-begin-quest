@@ -208,6 +208,16 @@ Deno.serve(async (req) => {
         console.log(`🚫 Remetente oculto: removendo ${em.codigoObjeto}`);
         return false;
       }
+      // Excluir etiquetas de TESTE
+      if (isEtiquetaTeste(em)) {
+        console.log(`🧪 Teste: removendo ${em.codigoObjeto}`);
+        return false;
+      }
+      // Excluir etiquetas Rodonaves
+      if (isRodonaves(em)) {
+        console.log(`🚛 Rodonaves: removendo ${em.codigoObjeto}`);
+        return false;
+      }
       // Filtrar etiquetas de logística reversa
       const servicoCode = String(em.codigoServicoPostagem || em.codigoServicoVenda || '');
       const servicoNome = String(em.servico || '').toUpperCase();
