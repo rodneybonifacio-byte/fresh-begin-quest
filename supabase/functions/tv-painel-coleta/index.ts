@@ -281,7 +281,22 @@ Deno.serve(async (req) => {
       console.error('Falha ao buscar etiquetas externas:', e);
     }
 
-    const todas = [...filtradas, ...externas];
+    // Dedup final por código de rastreio — prioriza etiquetas externas (emissor real)
+    // sobre eventuais duplicatas geradas via admin no BRHUB.
+    const vistos = new Set<string>();
+    const todas: any[] = [];
+    for (const em of [...externas, ...filtradas]) {
+      const code = (em.codigoObjeto || '').toUpperCase().trim();
+      if (code) {
+        if (vistos.has(code)) {
+          console.log(`🔁 Dedup final: removendo duplicata ${code}`);
+          continue;
+        }
+        vistos.add(code);
+      }
+      todas.push(em);
+    }
+    console.log(`📊 Painel final: ${todas.length} etiquetas (externas=${externas.length}, brhub=${filtradas.length})`);
 
     return new Response(
       JSON.stringify({ data: todas }),
