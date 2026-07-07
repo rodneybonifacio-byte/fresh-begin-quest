@@ -54,7 +54,7 @@ const REFRESH_INTERVAL = 120_000;
 const BRHUB_HORARIO = '16:00 – 17:00';
 
 // Clientes que devem ser ocultados do painel
-const HIDDEN_CLIENTS = ['OPERA KIDS', 'OPERAKIDS', 'ÓPERA KIDS', 'OPERA KIDS VAREJO', 'ÓPERA KIDS VAREJO', 'EDSON SOUZA', 'EDSON COSTA', 'PREMIUMVESTI', 'PREMIUM VESTI'];
+const HIDDEN_CLIENTS = ['OPERA KIDS', 'OPERAKIDS', 'ÓPERA KIDS', 'OPERA KIDS VAREJO', 'ÓPERA KIDS VAREJO', 'EDSON SOUZA', 'EDSON COSTA', 'PREMIUMVESTI', 'PREMIUM VESTI', 'BAKARI', 'BAKARIXYZ', 'BAKARI XYZ'];
 
 const normalizeName = (value: string): string => value
   .toUpperCase()
