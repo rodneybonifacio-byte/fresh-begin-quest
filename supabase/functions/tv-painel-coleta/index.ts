@@ -166,13 +166,30 @@ Deno.serve(async (req) => {
     ]);
 
     // 3d. Remetentes ocultados manualmente do painel (+ nomes desconhecidos/vazios)
-    const REMETENTES_OCULTOS = new Set(['EDSON SOUZA', 'EDSON COSTA', 'PREMIUMVESTI', 'PREMIUM VESTI']);
+    const REMETENTES_OCULTOS = new Set(['EDSON SOUZA', 'EDSON COSTA', 'PREMIUMVESTI', 'PREMIUM VESTI', 'BAKARIXYZ', 'BAKARI XYZ']);
     const NOMES_INVALIDOS = new Set(['', 'DESCONHECIDO', 'SEM NOME', 'SEM_NOME', 'NAO INFORMADO', 'NAO INFORMADA', 'N/A', 'NA', 'NULL', 'UNDEFINED', 'SEM REMETENTE']);
     const isRemetenteOculto = (em: any): boolean => {
       const nome = (em.remetenteNome || em.remetente?.nome || '').toUpperCase().trim()
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       if (NOMES_INVALIDOS.has(nome)) return true;
-      return REMETENTES_OCULTOS.has(nome);
+      if (REMETENTES_OCULTOS.has(nome)) return true;
+      // Bloquear qualquer coisa que contenha BAKARI
+      if (nome.includes('BAKARI')) return true;
+      return false;
+    };
+
+    // 3e. Detectar etiquetas de TESTE (remetente ou destinatário contendo "TESTE")
+    const isEtiquetaTeste = (em: any): boolean => {
+      const remet = (em.remetenteNome || em.remetente?.nome || '').toUpperCase();
+      const dest = (em.destinatario?.nome || em.destinatarioNome || '').toUpperCase();
+      return /\bTESTE\b/.test(remet) || /\bTESTE\b/.test(dest) || remet.includes('BRHUB TESTE') || dest.includes('BRHUB TESTE');
+    };
+
+    // 3f. Detectar etiquetas Rodonaves (não devem aparecer no painel)
+    const isRodonaves = (em: any): boolean => {
+      const servico = String(em.servico || '').toUpperCase();
+      const transp = String(em.transportadora || em.transportadoraNome || '').toUpperCase();
+      return servico.includes('RODONAVE') || transp.includes('RODONAVE') || transp.includes('RTE');
     };
 
     // 4. Códigos de serviço de logística reversa dos Correios
@@ -189,6 +206,16 @@ Deno.serve(async (req) => {
       // Exclusão manual por nome do remetente
       if (isRemetenteOculto(em)) {
         console.log(`🚫 Remetente oculto: removendo ${em.codigoObjeto}`);
+        return false;
+      }
+      // Excluir etiquetas de TESTE
+      if (isEtiquetaTeste(em)) {
+        console.log(`🧪 Teste: removendo ${em.codigoObjeto}`);
+        return false;
+      }
+      // Excluir etiquetas Rodonaves
+      if (isRodonaves(em)) {
+        console.log(`🚛 Rodonaves: removendo ${em.codigoObjeto}`);
         return false;
       }
       // Filtrar etiquetas de logística reversa
@@ -254,7 +281,22 @@ Deno.serve(async (req) => {
       console.error('Falha ao buscar etiquetas externas:', e);
     }
 
-    const todas = [...filtradas, ...externas];
+    // Dedup final por código de rastreio — prioriza etiquetas externas (emissor real)
+    // sobre eventuais duplicatas geradas via admin no BRHUB.
+    const vistos = new Set<string>();
+    const todas: any[] = [];
+    for (const em of [...externas, ...filtradas]) {
+      const code = (em.codigoObjeto || '').toUpperCase().trim();
+      if (code) {
+        if (vistos.has(code)) {
+          console.log(`🔁 Dedup final: removendo duplicata ${code}`);
+          continue;
+        }
+        vistos.add(code);
+      }
+      todas.push(em);
+    }
+    console.log(`📊 Painel final: ${todas.length} etiquetas (externas=${externas.length}, brhub=${filtradas.length})`);
 
     return new Response(
       JSON.stringify({ data: todas }),
