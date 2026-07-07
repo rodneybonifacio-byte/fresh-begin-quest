@@ -166,13 +166,30 @@ Deno.serve(async (req) => {
     ]);
 
     // 3d. Remetentes ocultados manualmente do painel (+ nomes desconhecidos/vazios)
-    const REMETENTES_OCULTOS = new Set(['EDSON SOUZA', 'EDSON COSTA', 'PREMIUMVESTI', 'PREMIUM VESTI']);
+    const REMETENTES_OCULTOS = new Set(['EDSON SOUZA', 'EDSON COSTA', 'PREMIUMVESTI', 'PREMIUM VESTI', 'BAKARIXYZ', 'BAKARI XYZ']);
     const NOMES_INVALIDOS = new Set(['', 'DESCONHECIDO', 'SEM NOME', 'SEM_NOME', 'NAO INFORMADO', 'NAO INFORMADA', 'N/A', 'NA', 'NULL', 'UNDEFINED', 'SEM REMETENTE']);
     const isRemetenteOculto = (em: any): boolean => {
       const nome = (em.remetenteNome || em.remetente?.nome || '').toUpperCase().trim()
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       if (NOMES_INVALIDOS.has(nome)) return true;
-      return REMETENTES_OCULTOS.has(nome);
+      if (REMETENTES_OCULTOS.has(nome)) return true;
+      // Bloquear qualquer coisa que contenha BAKARI
+      if (nome.includes('BAKARI')) return true;
+      return false;
+    };
+
+    // 3e. Detectar etiquetas de TESTE (remetente ou destinatário contendo "TESTE")
+    const isEtiquetaTeste = (em: any): boolean => {
+      const remet = (em.remetenteNome || em.remetente?.nome || '').toUpperCase();
+      const dest = (em.destinatario?.nome || em.destinatarioNome || '').toUpperCase();
+      return /\bTESTE\b/.test(remet) || /\bTESTE\b/.test(dest) || remet.includes('BRHUB TESTE') || dest.includes('BRHUB TESTE');
+    };
+
+    // 3f. Detectar etiquetas Rodonaves (não devem aparecer no painel)
+    const isRodonaves = (em: any): boolean => {
+      const servico = String(em.servico || '').toUpperCase();
+      const transp = String(em.transportadora || em.transportadoraNome || '').toUpperCase();
+      return servico.includes('RODONAVE') || transp.includes('RODONAVE') || transp.includes('RTE');
     };
 
     // 4. Códigos de serviço de logística reversa dos Correios
