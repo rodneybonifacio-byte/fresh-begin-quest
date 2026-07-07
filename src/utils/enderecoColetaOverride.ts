@@ -18,5 +18,9 @@ export function getEnderecoColetaOverride(nomeCliente?: string | null): string |
         return 'Rua Xavantes, 719 - 7º Andar';
     }
 
+    if (nome.includes('ABC SPACE') || nome.includes('ABCSPACE')) {
+        return 'Rua Gomes Cardim, 137, Brás 03050-000';
+    }
+
     return null;
 }
