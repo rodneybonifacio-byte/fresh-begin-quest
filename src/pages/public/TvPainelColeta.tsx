@@ -181,6 +181,7 @@ const agruparPorRemetente = (etiquetas: Etiqueta[], horariosDb: ClienteHorario[]
 
   for (const et of etiquetas) {
     const nome = et.remetenteNome || et.remetente?.nome || 'Desconhecido';
+    if (isClienteOcultoPainel(nome)) continue;
     const key = nome.toUpperCase().trim();
 
     if (!clienteMap.has(key)) {
