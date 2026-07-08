@@ -7,6 +7,7 @@ import { MapPin, Package, Phone, Clock, Truck, RefreshCw, User } from 'lucide-re
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { getEnderecoColetaOverride } from '../../../../utils/enderecoColetaOverride';
+import { isClienteOcultoPainel } from '../../../../utils/clientesOcultosPainel';
 
 /**
  * Formata dataHoraColeta da API para horário de Brasília legível.
