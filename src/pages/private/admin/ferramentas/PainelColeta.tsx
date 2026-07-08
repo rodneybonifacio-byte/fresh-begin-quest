@@ -7,6 +7,7 @@ import { MapPin, Package, Phone, Clock, Truck, RefreshCw, User } from 'lucide-re
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { getEnderecoColetaOverride } from '../../../../utils/enderecoColetaOverride';
+import { isClienteOcultoPainel } from '../../../../utils/clientesOcultosPainel';
 
 /**
  * Formata dataHoraColeta da API para horário de Brasília legível.
@@ -98,12 +99,11 @@ const PainelColeta: React.FC = () => {
 
     const coletas = useMemo(() => {
         const lista = ordemColeta?.data || [];
-        const temStatusNoPayload = lista.some((item: any) => typeof item?.status === 'string');
-
-        if (!temStatusNoPayload) return lista;
-
         return lista.filter((item: any) => {
-            const statusNormalizado = String(item?.status || '').toUpperCase().replace('-', '_');
+            if (isClienteOcultoPainel(item?.cliente)) return false;
+            const statusRaw = item?.status;
+            if (typeof statusRaw !== 'string' || !statusRaw) return true;
+            const statusNormalizado = statusRaw.toUpperCase().replace(/-/g, '_');
             return statusNormalizado === 'PRE_POSTADO';
         });
     }, [ordemColeta]);

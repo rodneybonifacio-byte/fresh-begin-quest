@@ -3,6 +3,7 @@ import { Package, Clock, Truck, RefreshCw, Lock, Eye, EyeOff, Users, ChevronDown
 import { supabase } from '@/integrations/supabase/client';
 import logoBrhub from '@/assets/logo-brhub-new.png';
 import { getEnderecoColetaOverride } from '@/utils/enderecoColetaOverride';
+import { isClienteOcultoPainel } from '@/utils/clientesOcultosPainel';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Etiqueta {
@@ -180,6 +181,7 @@ const agruparPorRemetente = (etiquetas: Etiqueta[], horariosDb: ClienteHorario[]
 
   for (const et of etiquetas) {
     const nome = et.remetenteNome || et.remetente?.nome || 'Desconhecido';
+    if (isClienteOcultoPainel(nome)) continue;
     const key = nome.toUpperCase().trim();
 
     if (!clienteMap.has(key)) {
