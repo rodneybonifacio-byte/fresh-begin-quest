@@ -91,6 +91,27 @@ const FaturaViewDetail = () => {
         }
     };
 
+    const handleExportarPlanilha = () => {
+        if (!fatura?.detalhe?.length) {
+            toast.error("Nenhum item para exportar");
+            return;
+        }
+        const rows = fatura.detalhe.map((d, i) => ({
+            '#': i + 1,
+            'Código Objeto': d.codigoObjeto || '',
+            'Status': d.status || '',
+            'Valor': Number(d.valor || 0),
+            'Data': d.criadoEm ? formatDateTime(d.criadoEm) : '',
+        }));
+        const ws = XLSX.utils.json_to_sheet(rows);
+        ws['!cols'] = [{ wch: 5 }, { wch: 22 }, { wch: 18 }, { wch: 12 }, { wch: 20 }];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Fechamento');
+        const nome = `fechamento_${fatura.codigo || fatura.id}_${new Date().toISOString().split('T')[0]}.xlsx`;
+        XLSX.writeFile(wb, nome);
+        toast.success("Planilha exportada");
+    };
+
     const podeRealizarFechamento = fatura?.status === "PENDENTE" || fatura?.status === "PAGO_PARCIAL";
 
     if (isError) return <NotFoundData />;
