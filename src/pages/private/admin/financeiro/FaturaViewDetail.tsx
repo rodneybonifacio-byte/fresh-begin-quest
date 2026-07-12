@@ -19,8 +19,9 @@ import { useAuth } from "../../../../providers/AuthContext";
 import { ToggleSection } from "../../../../components/ToggleSection";
 import { ButtonComponent } from "../../../../components/button";
 import { toast } from "sonner";
-import { FileText } from "lucide-react";
+import { FileText, Download } from "lucide-react";
 import { ModalVisualizarFechamento } from "../../../../components/ModalVisualizarFechamento";
+import * as XLSX from "xlsx";
 
 const FaturaViewDetail = () => {
     const { user } = useAuth();
