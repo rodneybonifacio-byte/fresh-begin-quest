@@ -122,17 +122,29 @@ const FaturaViewDetail = () => {
             titulo={`Fatura #${fatura?.codigo}`}
             subTitulo="Visualização mais detalhada da fatura"
         >
-            {user?.role === "ADMIN" && podeRealizarFechamento && (
-                <div className="mb-6 flex justify-end">
-                    <ButtonComponent
-                        variant="primary"
-                        onClick={handleRealizarFechamento}
-                        disabled={isProcessing}
-                        className="gap-2"
-                    >
-                        <FileText size={20} />
-                        {isProcessing ? "Processando..." : "REALIZAR FECHAMENTO"}
-                    </ButtonComponent>
+            {(user?.role === "ADMIN" || fatura?.detalhe?.length) && (
+                <div className="mb-6 flex justify-end gap-2">
+                    {fatura?.detalhe?.length > 0 && (
+                        <ButtonComponent
+                            variant="secondary"
+                            onClick={handleExportarPlanilha}
+                            className="gap-2"
+                        >
+                            <Download size={20} />
+                            EXPORTAR PLANILHA
+                        </ButtonComponent>
+                    )}
+                    {user?.role === "ADMIN" && podeRealizarFechamento && (
+                        <ButtonComponent
+                            variant="primary"
+                            onClick={handleRealizarFechamento}
+                            disabled={isProcessing}
+                            className="gap-2"
+                        >
+                            <FileText size={20} />
+                            {isProcessing ? "Processando..." : "REALIZAR FECHAMENTO"}
+                        </ButtonComponent>
+                    )}
                 </div>
             )}
             <div className="grid grid-cols-1 sm:grid-cols-1 gap-3">
