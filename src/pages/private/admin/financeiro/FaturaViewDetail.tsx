@@ -19,8 +19,9 @@ import { useAuth } from "../../../../providers/AuthContext";
 import { ToggleSection } from "../../../../components/ToggleSection";
 import { ButtonComponent } from "../../../../components/button";
 import { toast } from "sonner";
-import { FileText } from "lucide-react";
+import { FileText, Download } from "lucide-react";
 import { ModalVisualizarFechamento } from "../../../../components/ModalVisualizarFechamento";
+import * as XLSX from "xlsx";
 
 const FaturaViewDetail = () => {
     const { user } = useAuth();
@@ -90,6 +91,27 @@ const FaturaViewDetail = () => {
         }
     };
 
+    const handleExportarPlanilha = () => {
+        if (!fatura?.detalhe?.length) {
+            toast.error("Nenhum item para exportar");
+            return;
+        }
+        const rows = fatura.detalhe.map((d, i) => ({
+            '#': i + 1,
+            'Código Objeto': d.codigoObjeto || '',
+            'Status': d.status || '',
+            'Valor': Number(d.valor || 0),
+            'Data': d.criadoEm ? formatDateTime(d.criadoEm) : '',
+        }));
+        const ws = XLSX.utils.json_to_sheet(rows);
+        ws['!cols'] = [{ wch: 5 }, { wch: 22 }, { wch: 18 }, { wch: 12 }, { wch: 20 }];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Fechamento');
+        const nome = `fechamento_${fatura.codigo || fatura.id}_${new Date().toISOString().split('T')[0]}.xlsx`;
+        XLSX.writeFile(wb, nome);
+        toast.success("Planilha exportada");
+    };
+
     const podeRealizarFechamento = fatura?.status === "PENDENTE" || fatura?.status === "PAGO_PARCIAL";
 
     if (isError) return <NotFoundData />;
@@ -100,17 +122,29 @@ const FaturaViewDetail = () => {
             titulo={`Fatura #${fatura?.codigo}`}
             subTitulo="Visualização mais detalhada da fatura"
         >
-            {user?.role === "ADMIN" && podeRealizarFechamento && (
-                <div className="mb-6 flex justify-end">
-                    <ButtonComponent
-                        variant="primary"
-                        onClick={handleRealizarFechamento}
-                        disabled={isProcessing}
-                        className="gap-2"
-                    >
-                        <FileText size={20} />
-                        {isProcessing ? "Processando..." : "REALIZAR FECHAMENTO"}
-                    </ButtonComponent>
+            {(user?.role === "ADMIN" || fatura?.detalhe?.length) && (
+                <div className="mb-6 flex justify-end gap-2">
+                    {fatura?.detalhe?.length > 0 && (
+                        <ButtonComponent
+                            variant="secondary"
+                            onClick={handleExportarPlanilha}
+                            className="gap-2"
+                        >
+                            <Download size={20} />
+                            EXPORTAR PLANILHA
+                        </ButtonComponent>
+                    )}
+                    {user?.role === "ADMIN" && podeRealizarFechamento && (
+                        <ButtonComponent
+                            variant="primary"
+                            onClick={handleRealizarFechamento}
+                            disabled={isProcessing}
+                            className="gap-2"
+                        >
+                            <FileText size={20} />
+                            {isProcessing ? "Processando..." : "REALIZAR FECHAMENTO"}
+                        </ButtonComponent>
+                    )}
                 </div>
             )}
             <div className="grid grid-cols-1 sm:grid-cols-1 gap-3">
