@@ -2513,9 +2513,9 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
       }
 
       // === HANDOFF FELIPE → VERONICA (pós-resposta, caso detecte pedido) ===
-      if (agentName === "felipe" && detectBackToRosane BeatrizTrigger(message)) {
+      if (agentName === "felipe" && detectBackToRosaneBeatrizTrigger(message)) {
         console.log("🔄 Handoff: Felipe → Rosane Beatriz");
-        await performHandoffToRosane Beatriz(supabase, conversationId, contactPhone, message, channel);
+        await performHandoffToRosaneBeatriz(supabase, conversationId, contactPhone, message, channel);
       }
     }
 
