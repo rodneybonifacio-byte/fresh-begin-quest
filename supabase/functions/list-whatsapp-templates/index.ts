@@ -59,11 +59,7 @@ Deno.serve(async (req) => {
 
   try {
     const targetChannelId = "1d361180-7a89-4b2f-9a3c-ec5b4715916d";
-    const channels = uniqueValues([
-      Deno.env.get("MESSAGEBIRD_CHANNEL_ID"),
-      Deno.env.get("BIRD_WHATSAPP_CHANNEL_ID"),
-      targetChannelId,
-    ]);
+    const channels = [targetChannelId];
 
     const accessKeys = [
       { label: "MESSAGEBIRD_ACCESS_KEY", value: Deno.env.get("MESSAGEBIRD_ACCESS_KEY") },
@@ -109,25 +105,6 @@ Deno.serve(async (req) => {
         }
       }
 
-      if (items.length === 0) {
-        try {
-          const fetched = await fetchAllTemplates(auth, null);
-          attempts.push({ keySource: key.label, channelId: null, count: fetched.length });
-          if (fetched.length > 0) {
-            items = fetched;
-            channelIdUsed = null;
-            keySourceUsed = key.label;
-          }
-        } catch (err: any) {
-          attempts.push({
-            keySource: key.label,
-            channelId: null,
-            count: 0,
-            error: String(err?.message || err).slice(0, 180),
-          });
-        }
-      }
-
       if (items.length > 0) break;
     }
 
@@ -152,6 +129,9 @@ Deno.serve(async (req) => {
         channelIdUsed,
         keySourceUsed,
         attempts,
+        message: approved.length === 0
+          ? "Nenhum template aprovado encontrado para o channelId novo. A chave configurada autentica em outra conta ou o template ainda não está vinculado a este canal."
+          : undefined,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
