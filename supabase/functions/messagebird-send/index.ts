@@ -1,5 +1,4 @@
 // @ts-nocheck
-import { birdSend } from "../_shared/bird-compat.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { resolveChannelForConversation, resolveDefaultChannel } from "../_shared/channel-resolver.ts";
@@ -58,10 +57,17 @@ serve(async (req) => {
 
     console.log(`📤 Enviando mensagem via canal: ${channel.name} para ${conversation.contact_phone}`);
 
+    // Credenciais MessageBird clássico (env sempre tem prioridade sobre o registro do canal legado)
+    const mbAccessKey = Deno.env.get("MESSAGEBIRD_ACCESS_KEY") || channel.access_key;
+    const mbChannelId = Deno.env.get("MESSAGEBIRD_CHANNEL_ID") || channel.channel_id;
+    if (!mbAccessKey || !mbChannelId) {
+      throw new Error("MESSAGEBIRD_ACCESS_KEY / MESSAGEBIRD_CHANNEL_ID não configurados");
+    }
+
     // Montar payload para MessageBird /send API
     const sendPayload: any = {
       to: conversation.contact_phone,
-      from: channel.channel_id,
+      from: mbChannelId,
       type: "text",
       content: { text: message || "" },
     };
@@ -77,15 +83,10 @@ serve(async (req) => {
       sendPayload.content = { file: { url: mediaUrl } };
     }
 
-    // Enviar via Bird API (usa BIRD_API_KEY do env, não a access_key legada do canal)
-    const birdApiKey = Deno.env.get("BIRD_API_KEY");
-    if (!birdApiKey) {
-      throw new Error("BIRD_API_KEY não configurado");
-    }
-    const mbResponse = await birdSend("https://conversations.messagebird.com/v1/send", {
+    const mbResponse = await fetch("https://conversations.messagebird.com/v1/send", {
       method: "POST",
       headers: {
-        Authorization: `AccessKey ${birdApiKey}`,
+        Authorization: `AccessKey ${mbAccessKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(sendPayload),
