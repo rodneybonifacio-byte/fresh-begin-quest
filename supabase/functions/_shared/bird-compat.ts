@@ -21,7 +21,7 @@ export async function birdSend(url: string | URL, init?: RequestInit): Promise<R
   }
 
   const envAccessKey = Deno.env.get("MESSAGEBIRD_ACCESS_KEY");
-  const envChannelId = Deno.env.get("MESSAGEBIRD_CHANNEL_ID");
+  const systemChannelId = "1d361180-7a89-4b2f-9a3c-ec5b4715916d";
 
   const headers = new Headers(init?.headers || {});
   if (envAccessKey) {
@@ -31,13 +31,13 @@ export async function birdSend(url: string | URL, init?: RequestInit): Promise<R
     headers.set("Content-Type", "application/json");
   }
 
-  // Reescreve `from` (channel_id) quando um novo canal está definido no env
+  // Reescreve `from` (channel_id) para o canal oficial deste sistema.
   let body = init?.body;
-  if (envChannelId && body) {
+  if (body) {
     try {
       const parsed = JSON.parse(typeof body === "string" ? body : new TextDecoder().decode(body as ArrayBuffer));
       if (parsed && typeof parsed === "object" && "from" in parsed) {
-        parsed.from = envChannelId;
+        parsed.from = systemChannelId;
         body = JSON.stringify(parsed);
       }
     } catch {

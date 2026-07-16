@@ -1,5 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+const SYSTEM_MESSAGEBIRD_CHANNEL_ID = "1d361180-7a89-4b2f-9a3c-ec5b4715916d";
+
 const getSupabase = () => {
   return createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -34,7 +36,7 @@ export async function resolveChannelByMessageBirdId(channelId: string): Promise<
   if (!error && data) return data as WhatsAppChannel;
 
   // Se o channel_id do webhook bate com o env atual, retorna o default
-  const envChannelId = Deno.env.get("MESSAGEBIRD_CHANNEL_ID");
+  const envChannelId = SYSTEM_MESSAGEBIRD_CHANNEL_ID;
   if (envChannelId && channelId === envChannelId) {
     return resolveDefaultChannel();
   }
@@ -73,7 +75,7 @@ export async function resolveChannelForConversation(conversationId: string): Pro
 /** Fallback: env MessageBird > canal default no DB */
 export async function resolveDefaultChannel(): Promise<WhatsAppChannel | null> {
   // 1) Env MessageBird clássico tem prioridade — é a fonte de verdade após a troca de canal
-  const envChannelId = Deno.env.get("MESSAGEBIRD_CHANNEL_ID");
+  const envChannelId = SYSTEM_MESSAGEBIRD_CHANNEL_ID;
   const envAccessKey = Deno.env.get("MESSAGEBIRD_ACCESS_KEY");
   const envPhone = Deno.env.get("MESSAGEBIRD_WHATSAPP_NUMBER") || "";
 
