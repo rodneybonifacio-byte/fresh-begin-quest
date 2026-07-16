@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { birdSend } from "../_shared/bird-compat.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,7 +8,9 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const BIRD_BASE = "https://api.bird.com";
+// Canal oficial deste sistema (MessageBird clássico)
+const SYSTEM_MESSAGEBIRD_CHANNEL_ID = "1d361180-7a89-4b2f-9a3c-ec5b4715916d";
+const MB_SEND_URL = "https://conversations.messagebird.com/v1/send";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -28,7 +31,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 1) Única query pra pegar contato (canal resolve por env — não precisa join)
+    // 1) Contato da conversa
     const { data: conversation, error: convError } = await supabase
       .from("whatsapp_conversations")
       .select("id, contact_phone")
@@ -42,50 +45,57 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 2) Credenciais Bird (canal novo)
-    const birdKey = Deno.env.get("BIRD_API_KEY");
-    const workspaceId = Deno.env.get("BIRD_WORKSPACE_ID");
-    const birdChannelId = Deno.env.get("BIRD_WHATSAPP_CHANNEL_ID");
-    if (!birdKey || !workspaceId || !birdChannelId) {
-      throw new Error("BIRD_API_KEY / BIRD_WORKSPACE_ID / BIRD_WHATSAPP_CHANNEL_ID não configurados");
+    // 2) Credenciais MessageBird clássico
+    const accessKey = Deno.env.get("MESSAGEBIRD_ACCESS_KEY");
+    if (!accessKey) {
+      throw new Error("MESSAGEBIRD_ACCESS_KEY não configurada");
     }
 
-    // 3) Payload Bird Channels API
-    const phone = String(conversation.contact_phone).replace(/\D/g, "");
-    const bodyBlocks: any[] = [];
-    if (contentType === "text" || (!mediaUrl && message)) {
-      bodyBlocks.push({ type: "text", text: { text: message || "" } });
-    } else if (contentType === "image" && mediaUrl) {
-      bodyBlocks.push({ type: "image", image: { mediaUrl } });
-      if (message) bodyBlocks.push({ type: "text", text: { text: message } });
+    // 3) Payload MessageBird Conversations /v1/send
+    const phoneDigits = String(conversation.contact_phone).replace(/\D/g, "");
+    const toNumber = `+${phoneDigits}`;
+
+    let content: any;
+    if (contentType === "image" && mediaUrl) {
+      content = { image: { url: mediaUrl, caption: message || undefined } };
     } else if ((contentType === "audio" || contentType === "voice") && mediaUrl) {
-      bodyBlocks.push({ type: "audio", audio: { mediaUrl } });
+      content = { audio: { url: mediaUrl } };
+    } else if (contentType === "video" && mediaUrl) {
+      content = { video: { url: mediaUrl, caption: message || undefined } };
     } else if (contentType === "file" && mediaUrl) {
-      bodyBlocks.push({ type: "file", file: { mediaUrl } });
+      content = { file: { url: mediaUrl } };
+    } else {
+      content = { text: message || "" };
     }
+
+    const mbType =
+      contentType === "voice" ? "audio"
+      : contentType === "file" ? "file"
+      : contentType === "image" ? "image"
+      : contentType === "video" ? "video"
+      : contentType === "audio" ? "audio"
+      : "text";
 
     const payload = {
-      receiver: {
-        contacts: [{ identifierKey: "phonenumber", identifierValue: `+${phone}` }],
-      },
-      body: { type: bodyBlocks[0]?.type || "text", ...bodyBlocks[0] },
+      to: toNumber,
+      from: SYSTEM_MESSAGEBIRD_CHANNEL_ID,
+      type: mbType,
+      content,
     };
 
-    const url = `${BIRD_BASE}/workspaces/${workspaceId}/channels/${birdChannelId}/messages`;
     const start = Date.now();
-    const resp = await fetch(url, {
+    const resp = await birdSend(MB_SEND_URL, {
       method: "POST",
       headers: {
-        Authorization: `AccessKey ${birdKey}`,
+        Authorization: `AccessKey ${accessKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
     });
     const respText = await resp.text();
-    console.log(`Bird send ${resp.status} in ${Date.now() - start}ms | ${respText.slice(0, 300)}`);
+    console.log(`MB send ${resp.status} in ${Date.now() - start}ms | ${respText.slice(0, 400)}`);
 
     if (!resp.ok) {
-      // Salvar como failed pra rastreabilidade
       await supabase.from("whatsapp_messages").insert({
         conversation_id: conversationId,
         direction: "outbound",
@@ -95,21 +105,21 @@ Deno.serve(async (req) => {
         status: "failed",
         sent_by: "admin",
         ai_generated: false,
+        metadata: { error: respText.slice(0, 500), status: resp.status },
       });
       return new Response(
-        JSON.stringify({ error: "Bird send failed", status: resp.status, body: respText.slice(0, 500) }),
+        JSON.stringify({ error: "MessageBird send failed", status: resp.status, body: respText.slice(0, 500) }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    let birdResult: any = {};
-    try { birdResult = JSON.parse(respText); } catch {}
+    let mbResult: any = {};
+    try { mbResult = JSON.parse(respText); } catch {}
 
-    // 4) Persistência em paralelo (não bloqueia resposta)
     const persistPromise = Promise.all([
       supabase.from("whatsapp_messages").insert({
         conversation_id: conversationId,
-        messagebird_id: birdResult.id || null,
+        messagebird_id: mbResult.id || null,
         direction: "outbound",
         content_type: contentType,
         content: message,
@@ -120,12 +130,11 @@ Deno.serve(async (req) => {
       }),
       supabase.from("whatsapp_conversations").update({
         last_message_at: new Date().toISOString(),
-        last_message_preview: (message || "").substring(0, 100),
+        last_message_preview: (message || `[${contentType}]`).substring(0, 100),
         ai_enabled: false,
       }).eq("id", conversationId),
     ]);
 
-    // Aguarda mas com timeout curto pra não travar UI
     try {
       await Promise.race([
         persistPromise,
@@ -136,7 +145,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ ok: true, birdId: birdResult.id, response: birdResult }),
+      JSON.stringify({ ok: true, messagebirdId: mbResult.id, response: mbResult }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {
