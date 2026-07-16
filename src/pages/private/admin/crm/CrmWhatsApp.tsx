@@ -117,7 +117,6 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
   const [showContactPanel, setShowContactPanel] = useState(false);
   const [templateBodies, setTemplateBodies] = useState<Record<string, { body: string; header?: string; footer?: string; buttons?: { text: string }[]; variables?: any[] }>>({});
   const [conversationTab, setConversationTab] = useState<'sem_atendimento' | 'ia' | 'fechados'>('sem_atendimento');
-  const [closedConversationIds, setClosedConversationIds] = useState<Set<string>>(new Set());
   const [pipelineSearchData, setPipelineSearchData] = useState<Record<string, string>>({});
   const [cpfSearchData, setCpfSearchData] = useState<Record<string, string>>({});
 
@@ -194,21 +193,6 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
       setCpfSearchData(cpfMap);
     };
     loadCpfSearch();
-  }, []);
-
-  // Load closed ticket conversation IDs
-  const loadClosedConversationIds = useCallback(async () => {
-    try {
-      const data = await aiManagementQuery<{ conversation_id: string | null }>({
-        action: 'select',
-        table: 'whatsapp_tickets',
-        select: 'conversation_id',
-        filters: [{ column: 'status', op: 'in', value: ['closed', 'resolved'] }],
-      });
-      setClosedConversationIds(new Set(data.map((t) => t.conversation_id).filter(Boolean) as string[]));
-    } catch (error) {
-      console.error('Erro ao carregar tickets fechados:', error);
-    }
   }, []);
 
   const loadConversations = useCallback(async () => {
@@ -289,8 +273,7 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
 
   useEffect(() => {
     loadConversations();
-    loadClosedConversationIds();
-  }, [loadConversations, loadClosedConversationIds]);
+  }, [loadConversations]);
 
   // Abrir conversa vinda do Pipeline
   useEffect(() => {
@@ -334,18 +317,17 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
           });
         }
         loadConversations();
-        loadClosedConversationIds();
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'whatsapp_conversations' }, () => {
         loadConversations();
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'whatsapp_tickets' }, () => {
-        loadClosedConversationIds();
+        loadConversations();
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [selectedConversation?.id, loadConversations, loadClosedConversationIds]);
+  }, [selectedConversation?.id, loadConversations]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
