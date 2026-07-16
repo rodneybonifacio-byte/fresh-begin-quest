@@ -52,6 +52,35 @@ Deno.serve(async (req) => {
       } catch {}
     }
 
+    // Converte blocos Bird -> componentes formato Meta/WhatsApp
+    function blocksToMetaComponents(blocks: any[]): any[] {
+      const components: any[] = [];
+      const buttons: any[] = [];
+      for (const b of blocks || []) {
+        if (b.type === "text" && b.role !== "footer" && b.role !== "header") {
+          components.push({ type: "BODY", text: b.text?.text || "" });
+        } else if (b.type === "text" && b.role === "footer") {
+          components.push({ type: "FOOTER", text: b.text?.text || "" });
+        } else if (b.type === "text" && b.role === "header") {
+          components.push({ type: "HEADER", format: "TEXT", text: b.text?.text || "" });
+        } else if (b.type === "image") {
+          components.push({ type: "HEADER", format: "IMAGE", example: { header_handle: [b.image?.mediaUrl] } });
+        } else if (b.type === "video") {
+          components.push({ type: "HEADER", format: "VIDEO" });
+        } else if (b.type === "document" || b.type === "file") {
+          components.push({ type: "HEADER", format: "DOCUMENT" });
+        } else if (b.type === "reply-action") {
+          buttons.push({ type: "QUICK_REPLY", text: b.replyAction?.text || "" });
+        } else if (b.type === "link-action") {
+          buttons.push({ type: "URL", text: b.linkAction?.text || "", url: b.linkAction?.url || "" });
+        } else if (b.type === "call-action") {
+          buttons.push({ type: "PHONE_NUMBER", text: b.callAction?.text || "", phone_number: b.callAction?.phoneNumber || "" });
+        }
+      }
+      if (buttons.length) components.push({ type: "BUTTONS", buttons });
+      return components;
+    }
+
     const templates = allTemplates.map((t: any) => {
       const deployments: any[] = t.deployments || [];
       const nameDep = deployments.find((d) => d.key === "whatsappTemplateName");
@@ -65,8 +94,8 @@ Deno.serve(async (req) => {
         language: wa.locale || t.defaultLocale,
         status: approval.status || t.status,
         category: catDep?.value || t.category,
-        blocks: wa.blocks || [],
-        approvals: wa.approvals || [],
+        components: blocksToMetaComponents(wa.blocks || []),
+        namespace: "",
       };
     });
 
