@@ -206,3 +206,6 @@ verify_jwt = false
 
 [functions.transferir-etiqueta-cliente]
 verify_jwt = false
+
+[functions.messagebird-configure-webhook]
+verify_jwt = false
