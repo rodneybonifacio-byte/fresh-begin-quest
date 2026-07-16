@@ -25,24 +25,54 @@ Deno.serve(async (req) => {
     }
 
     // Bird API: templates ficam no workspace/canal (mesmo pra números MessageBird migrados)
-    // Tenta primeiro no canal Bird nativo; se falhar, tenta com o channel_id do MessageBird clássico
     const mbChannelId = Deno.env.get("MESSAGEBIRD_CHANNEL_ID");
-    const tryChannels = [channelId, mbChannelId].filter(Boolean);
+    const mbAccessKey = Deno.env.get("MESSAGEBIRD_ACCESS_KEY");
 
-    let response: Response | null = null;
-    let rawText = "";
-    let endpointUsed = "";
-    for (const ch of tryChannels) {
-      endpointUsed = `${BIRD_BASE}/workspaces/${workspaceId}/channels/${ch}/templates`;
-      response = await fetch(endpointUsed, {
-        headers: {
-          Authorization: `AccessKey ${accessKey}`,
-          "Content-Type": "application/json",
-        },
+    const attempts: Array<{ url: string; status: number; snippet: string }> = [];
+
+    // 1) Bird API (workspace/channel)
+    const birdCandidates = [
+      `${BIRD_BASE}/workspaces/${workspaceId}/channels/${channelId}/templates`,
+      `${BIRD_BASE}/workspaces/${workspaceId}/channels/${mbChannelId}/templates`,
+    ];
+    for (const url of birdCandidates) {
+      const r = await fetch(url, {
+        headers: { Authorization: `AccessKey ${accessKey}`, "Content-Type": "application/json" },
       });
-      rawText = await response.text();
-      if (response.ok) break;
+      const txt = await r.text();
+      attempts.push({ url, status: r.status, snippet: txt.slice(0, 160) });
+      if (r.ok) {
+        const result = JSON.parse(txt);
+        return normalizeAndRespond(result);
+      }
     }
+
+    // 2) MessageBird clássico
+    const mbCandidates = [
+      `https://conversations.messagebird.com/v1/platforms/whatsapp/${mbChannelId}/templates`,
+      `https://integrations.messagebird.com/v3/hsms?channelId=${mbChannelId}`,
+      `https://integrations.messagebird.com/v3/hsms`,
+    ];
+    for (const url of mbCandidates) {
+      const r = await fetch(url, {
+        headers: { Authorization: `AccessKey ${mbAccessKey}`, "Content-Type": "application/json" },
+      });
+      const txt = await r.text();
+      attempts.push({ url, status: r.status, snippet: txt.slice(0, 160) });
+      if (r.ok) {
+        try {
+          const result = JSON.parse(txt);
+          return normalizeAndRespond(result);
+        } catch {}
+      }
+    }
+
+    return new Response(
+      JSON.stringify({ error: "Nenhum endpoint de templates respondeu 2xx", attempts }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+
+    function normalizeAndRespond(result: any) {
     let result: any;
     try { result = JSON.parse(rawText); } catch { result = { raw: rawText.slice(0, 500) }; }
 
