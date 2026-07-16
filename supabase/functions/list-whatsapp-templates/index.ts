@@ -32,7 +32,9 @@ Deno.serve(async (req) => {
       },
     });
 
-    const result = await response.json();
+    const rawText = await response.text();
+    let result: any;
+    try { result = JSON.parse(rawText); } catch { result = { raw: rawText.slice(0, 500) }; }
 
     if (!response.ok) {
       console.error("MessageBird templates error:", response.status, JSON.stringify(result).slice(0, 500));
