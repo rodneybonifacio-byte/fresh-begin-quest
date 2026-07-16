@@ -50,26 +50,58 @@ async function fetchAllTemplates(headers: Record<string, string>, channelId: str
   return collected;
 }
 
+function uniqueValues(values: Array<string | null | undefined>) {
+  return [...new Set(values.map((v) => (v || "").trim()).filter(Boolean))];
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const accessKey = Deno.env.get("MESSAGEBIRD_ACCESS_KEY");
-    const channelId = Deno.env.get("MESSAGEBIRD_CHANNEL_ID") || null;
-    if (!accessKey) {
+    const targetChannelId = "1d361180-7a89-4b2f-9a3c-ec5b4715916d";
+    const channels = uniqueValues([
+      Deno.env.get("MESSAGEBIRD_CHANNEL_ID"),
+      Deno.env.get("BIRD_WHATSAPP_CHANNEL_ID"),
+      targetChannelId,
+    ]);
+
+    const accessKeys = [
+      { label: "MESSAGEBIRD_ACCESS_KEY", value: Deno.env.get("MESSAGEBIRD_ACCESS_KEY") },
+      { label: "BIRD_API_KEY", value: Deno.env.get("BIRD_API_KEY") },
+    ].filter((k) => Boolean(k.value));
+
+    if (accessKeys.length === 0) {
       return new Response(
-        JSON.stringify({ error: "MESSAGEBIRD_ACCESS_KEY não configurado" }),
+        JSON.stringify({ error: "Nenhuma chave MessageBird configurada" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const auth = {
-      Authorization: `AccessKey ${accessKey}`,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    };
+    let items: any[] = [];
+    let channelIdUsed: string | null = null;
+    let keySourceUsed: string | null = null;
+    const attempts: Array<{ keySource: string; channelId: string; count: number }> = [];
 
-    const items = await fetchAllTemplates(auth, channelId);
+    for (const key of accessKeys) {
+      const auth = {
+        Authorization: `AccessKey ${key.value}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      };
+
+      for (const channelId of channels) {
+        const fetched = await fetchAllTemplates(auth, channelId);
+        attempts.push({ keySource: key.label, channelId, count: fetched.length });
+        if (fetched.length > 0) {
+          items = fetched;
+          channelIdUsed = channelId;
+          keySourceUsed = key.label;
+          break;
+        }
+      }
+
+      if (items.length > 0) break;
+    }
 
     const templates = items.map((t: any) => ({
       name: t.name,
@@ -89,7 +121,9 @@ Deno.serve(async (req) => {
         templates: approved,
         total: templates.length,
         approvedCount: approved.length,
-        channelIdUsed: channelId,
+        channelIdUsed,
+        keySourceUsed,
+        attempts,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
