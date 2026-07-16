@@ -48,8 +48,11 @@ Deno.serve(async (req) => {
     };
 
     // MessageBird Integrations API - HSM Templates
-    // Endpoint retorna todos os templates da conta MessageBird
-    const url = `${MB}/v3/platforms/whatsapp/templates?limit=200`;
+    // Filtra por channelId para retornar somente os templates da WABA vinculada
+    // ao canal ativo (evita listar templates de outras WABAs da mesma conta).
+    const qs = new URLSearchParams({ limit: "200" });
+    if (channelId) qs.set("channelId", channelId);
+    const url = `${MB}/v3/platforms/whatsapp/templates?${qs.toString()}`;
     const res = await fetch(url, { headers: auth });
     const text = await res.text();
 
