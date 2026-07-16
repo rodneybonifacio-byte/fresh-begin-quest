@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
     let items: any[] = [];
     let channelIdUsed: string | null = null;
     let keySourceUsed: string | null = null;
-    const attempts: Array<{ keySource: string; channelId: string; count: number }> = [];
+    const attempts: Array<{ keySource: string; channelId: string; count: number; error?: string }> = [];
 
     for (const key of accessKeys) {
       const auth = {
@@ -90,13 +90,22 @@ Deno.serve(async (req) => {
       };
 
       for (const channelId of channels) {
-        const fetched = await fetchAllTemplates(auth, channelId);
-        attempts.push({ keySource: key.label, channelId, count: fetched.length });
-        if (fetched.length > 0) {
-          items = fetched;
-          channelIdUsed = channelId;
-          keySourceUsed = key.label;
-          break;
+        try {
+          const fetched = await fetchAllTemplates(auth, channelId);
+          attempts.push({ keySource: key.label, channelId, count: fetched.length });
+          if (fetched.length > 0) {
+            items = fetched;
+            channelIdUsed = channelId;
+            keySourceUsed = key.label;
+            break;
+          }
+        } catch (err: any) {
+          attempts.push({
+            keySource: key.label,
+            channelId,
+            count: 0,
+            error: String(err?.message || err).slice(0, 180),
+          });
         }
       }
 
