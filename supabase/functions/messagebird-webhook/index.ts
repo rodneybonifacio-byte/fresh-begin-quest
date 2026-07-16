@@ -871,42 +871,26 @@ serve(async (req) => {
           const hasSubstantialContent = isMediaMessage || reopensDormantGreeting || (messageContent || "").trim().length > 2;
           
           if (hasSubstantialContent && !intentResult.isPassive) {
-            // Verificar cooldown de admin (30 min) — só respeitar se admin respondeu recentemente
-            let adminRespondedRecently = false;
-            const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-            const { data: recentAdminMsgs } = await supabase
-              .from("whatsapp_messages")
-              .select("id")
-              .eq("conversation_id", conversation.id)
-              .eq("direction", "outbound")
-              .eq("sent_by", "admin")
-              .gte("created_at", thirtyMinAgo)
-              .limit(1);
-            adminRespondedRecently = (recentAdminMsgs && recentAdminMsgs.length > 0);
+            // Sempre ativar IA e abrir conversa para inbound substancial.
+            // Se o admin quiser assumir manualmente, usa o toggle/fechamento explícito no CRM.
+            updateData.ai_enabled = true;
+            updateData.status = "open";
             
-            if (!adminRespondedRecently) {
-              // Sempre ativar IA e abrir conversa
-              updateData.ai_enabled = true;
-              updateData.status = "open";
-              
-              if (conversation.status === "closed") {
-                console.log("🔓 Reabrindo conversa fechada — cliente mandou mensagem ativa:", conversation.id);
-                await supabase.from("whatsapp_tickets").insert({
-                  conversation_id: conversation.id,
-                  contact_phone: conversation.contact_phone,
-                  contact_name: conversation.contact_name,
-                  status: "open",
-                  category: "geral",
-                  subject: "Conversa reaberta pelo cliente",
-                  opened_at: new Date().toISOString(),
-                  first_message_at: new Date().toISOString(),
-                });
-              }
-              
-              console.log("🔄 IA ativada para conversa (inbound substancial):", conversation.id);
-            } else {
-              console.log("⏭️ IA não reativada — admin respondeu recentemente:", conversation.id);
+            if (conversation.status === "closed") {
+              console.log("🔓 Reabrindo conversa fechada — cliente mandou mensagem ativa:", conversation.id);
+              await supabase.from("whatsapp_tickets").insert({
+                conversation_id: conversation.id,
+                contact_phone: conversation.contact_phone,
+                contact_name: conversation.contact_name,
+                status: "open",
+                category: "geral",
+                subject: "Conversa reaberta pelo cliente",
+                opened_at: new Date().toISOString(),
+                first_message_at: new Date().toISOString(),
+              });
             }
+            
+            console.log("🔄 IA ativada para conversa (inbound substancial):", conversation.id);
           } else if (!hasSubstantialContent || intentResult.isPassive) {
             console.log("⏭️ Mensagem passiva/vazia, mantendo estado atual:", conversation.id, "msg:", (messageContent || "").substring(0, 50));
           }

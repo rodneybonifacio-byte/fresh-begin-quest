@@ -132,6 +132,7 @@ Deno.serve(async (req) => {
         last_message_at: new Date().toISOString(),
         last_message_preview: (message || `[${contentType}]`).substring(0, 100),
         status: "open",
+        ai_enabled: true,
       }).eq("id", conversationId),
     ]);
 
