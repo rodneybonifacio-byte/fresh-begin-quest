@@ -2088,39 +2088,11 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
               style: agentConfig?.voice_style ?? 0.0,
               speed: agentConfig?.voice_speed ?? 1.0,
             };
-            // Extrair texto SEM o prefixo do agente para o TTS (não falar o nome)
-            const agentPrefixPattern = /^\*[^*]+:\*\n\n/;
-            const ttsText = aiReply.replace(agentPrefixPattern, "");
+            // TTS direto no aiReply (já sem prefixo)
+            const ttsText = aiReply;
             const audioUrls = await generateTTSAudios(ttsText, elevenLabsKey, voiceConfig);
             if (audioUrls.length > 0) {
-              // 1. Enviar texto com nome do agente em negrito primeiro
-              const agentLabel = `*${agentDisplayName}:*`;
-              const mbTextResponse = await birdSend("https://conversations.messagebird.com/v1/send", {
-                method: "POST",
-                headers: {
-                  Authorization: `AccessKey ${channel.access_key}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  to: contactPhone,
-                  from: channel.channel_id,
-                  type: "text",
-                  content: { text: agentLabel },
-                }),
-              });
-              const mbTextResult = await mbTextResponse.json();
-              await supabase.from("whatsapp_messages").insert({
-                conversation_id: conversationId,
-                messagebird_id: mbTextResult.id || null,
-                direction: "outbound",
-                content_type: "text",
-                content: agentLabel,
-                status: "sent",
-                sent_by: agentName,
-                ai_generated: true,
-              });
-
-              // 2. Enviar cada áudio (chunk) em sequência
+              // Enviar cada áudio (chunk) em sequência — sem label de texto antes
               const ttsChunks = splitTextForTTS(ttsText);
               for (let ai = 0; ai < audioUrls.length; ai++) {
                 const audioUrl = audioUrls[ai];
