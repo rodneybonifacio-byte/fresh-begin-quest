@@ -32,6 +32,10 @@ Deno.serve(async (req) => {
 
     // 1) Bird API (workspace/channel)
     const birdCandidates = [
+      `${BIRD_BASE}/workspaces/${workspaceId}/channels/${channelId}/presets`,
+      `${BIRD_BASE}/workspaces/${workspaceId}/channels/${mbChannelId}/presets`,
+      `${BIRD_BASE}/workspaces/${workspaceId}/presets?channelId=${channelId}`,
+      `${BIRD_BASE}/workspaces/${workspaceId}/presets?channelId=${mbChannelId}`,
       `${BIRD_BASE}/workspaces/${workspaceId}/channels/${channelId}/templates`,
       `${BIRD_BASE}/workspaces/${workspaceId}/channels/${mbChannelId}/templates`,
     ];
