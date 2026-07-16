@@ -202,8 +202,8 @@ Deno.serve(async (req) => {
           : "";
 
         const closingMessage = firstName
-          ? `*Veronica:*\n\n${firstName}, se precisar de algo é só chamar! Vou encerrar o atendimento por aqui. 😊👋`
-          : `*Veronica:*\n\nSe precisar de algo é só chamar! Vou encerrar o atendimento por aqui. 😊👋`;
+          ? `*Sergio:*\n\n${firstName}, se precisar de algo é só chamar! Vou encerrar o atendimento por aqui. 😊👋`
+          : `*Sergio:*\n\nSe precisar de algo é só chamar! Vou encerrar o atendimento por aqui. 😊👋`;
 
         // Enviar via MessageBird
         const channel = await resolveChannelForConversation(conv.id);

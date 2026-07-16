@@ -981,194 +981,10 @@ serve(async (req) => {
       );
     }
 
-    let agentName = agent || "veronica";
-
-    // === PRÉ-HANDOFF: Se Rosane Beatriz e mensagem contém keywords de atraso/problema grave → Felipe assume COM aviso profissional ===
-    if (agentName === "veronica" && message) {
-      const lowerMsg = (message || "").toLowerCase();
-      
-      // Keywords de PROBLEMA REAL → transferência direta para Felipe
-      const preHandoffKeywords = [
-        "atrasado", "atrasada", "atrasados", "atrasadas", "atraso", "atrasou",
-        "demora", "demorando", "demorou", "demorada",
-        "não chegou", "nao chegou", "não chegando", "nao chegando",
-        "cadê meu", "cade meu", "cadê minha", "cade minha",
-        "tá demorando", "ta demorando", "prazo estourou", "prazo vencido",
-        "passou do prazo", "fora do prazo", "entrega atrasada",
-        "não recebi", "nao recebi", "quando chega", "quando vai chegar",
-        "apreendido", "apreensão", "apreensao", "retido", "retida", "retenção", "retencao",
-        "extraviou", "extraviado", "extraviada", "sumiu", "perdido", "perdida",
-        "danificado", "danificada", "quebrado", "quebrada", "avariado", "avariada",
-      ];
-
-      // Keywords de PEDIDO EXPLÍCITO para falar com Felipe → Rosane Beatriz questiona antes
-      const felipeExplicitKeywords = [
-        "falar com felipe", "falar com o felipe", "quero o felipe", "quero falar com felipe",
-        "chama o felipe", "chamar o felipe", "passa pro felipe", "transfere pro felipe",
-        "transferir pro felipe", "transfere para o felipe", "transferir para o felipe",
-        "me passa pro felipe", "me transfere pro felipe", "manda o felipe",
-        "preciso do felipe", "preciso falar com felipe", "cadê o felipe", "cade o felipe",
-        "passa para o felipe", "me passa para o felipe",
-      ];
-
-      const isRealProblem = preHandoffKeywords.some(k => lowerMsg.includes(k));
-      const isExplicitFelipeRequest = felipeExplicitKeywords.some(k => lowerMsg.includes(k));
-
-      // === GUARD: Verificar se já existe código de rastreio no contexto ===
-      // Se NÃO tem código de rastreio e é um problema genérico, Rosane Beatriz deve coletar primeiro
-      const hasTrackingCodeInMsg = /\b[A-Z]{2}\d{9,13}[A-Z]{2}\b/.test(message || "");
-      
-      // Buscar se há código de rastreio no contexto da conversa (HSM ou histórico)
-      let hasTrackingCodeInContext = hasTrackingCodeInMsg;
-      if (!hasTrackingCodeInContext) {
-        const { data: recentHsm } = await supabase
-          .from("whatsapp_messages")
-          .select("metadata")
-          .eq("conversation_id", conversationId)
-          .eq("direction", "outbound")
-          .eq("content_type", "hsm")
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        
-        if (recentHsm?.metadata) {
-          const vars = (recentHsm.metadata as any)?.variables || {};
-          hasTrackingCodeInContext = !!(vars.codigo_rastreio || vars.tracking_code || vars.codigo_objeto);
-        }
-      }
-
-      if (isRealProblem && !isExplicitFelipeRequest) {
-        // Só faz handoff direto se tem código de rastreio no contexto
-        // Caso contrário, Rosane Beatriz coleta o código primeiro e depois o sistema fará o handoff
-        if (hasTrackingCodeInContext) {
-          // === FIX 1: Verificar se já houve handoff recente (anti-duplicata) ===
-          const sixtySecsAgoHandoff = new Date(Date.now() - 60000).toISOString();
-          const { data: recentHandoffCheck } = await supabase
-            .from("whatsapp_messages")
-            .select("id")
-            .eq("conversation_id", conversationId)
-            .eq("direction", "outbound")
-            .ilike("content", "%Suporte Nível 2%")
-            .gte("created_at", sixtySecsAgoHandoff)
-            .limit(1)
-            .maybeSingle();
-
-          if (recentHandoffCheck) {
-            console.log("⏭️ PRÉ-HANDOFF DUPLICADO BLOQUEADO: já houve handoff nos últimos 60s");
-            // Apenas garantir que o agente é felipe
-            agentName = "felipe";
-            await supabase.from("whatsapp_conversations")
-              .update({ active_agent: "felipe" })
-              .eq("id", conversationId);
-          } else {
-            console.log(`🔄 PRÉ-HANDOFF: Problema detectado + código disponível → Felipe assume`);
-
-            const preHandoffChannel = await resolveChannelForConversation(conversationId);
-            if (preHandoffChannel) {
-              await supabase.from("whatsapp_conversations")
-                .update({ active_agent: "felipe" })
-                .eq("id", conversationId);
-
-              await performHandoffToFelipe(supabase, conversationId, contactPhone, message, preHandoffChannel);
-
-              return new Response(
-                JSON.stringify({ ok: true, reply: "Handoff Rosane Beatriz → Felipe realizado (áudio + análise)", tools_used: [] }),
-                { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-              );
-            }
-
-            agentName = "felipe";
-            await supabase.from("whatsapp_conversations")
-              .update({ active_agent: "felipe" })
-              .eq("id", conversationId);
-          }
-        } else {
-          console.log(`🔄 PRÉ-HANDOFF ADIADO: Problema detectado mas SEM código de rastreio → Rosane Beatriz coleta primeiro`);
-          // Rosane Beatriz vai responder normalmente e coletar o código antes do handoff
-        }
-
-      } else if (isExplicitFelipeRequest && !isRealProblem) {
-        // Pedido explícito SEM problema claro → Rosane Beatriz questiona antes de transferir
-        console.log(`🔄 TRIAGEM: Cliente pediu Felipe mas sem problema claro → Rosane Beatriz questiona`);
-
-        const triagemChannel = await resolveChannelForConversation(conversationId);
-        if (triagemChannel) {
-          const { data: convData } = await supabase.from("whatsapp_conversations")
-            .select("contact_name").eq("id", conversationId).single();
-          const firstName = convData?.contact_name?.split(" ")[0] || "";
-          const nameGreeting = firstName ? `${firstName}, ` : "";
-
-          const triagemMsg = `*Rosane Beatriz:*\n\n${nameGreeting}o Felipe é nosso especialista em casos de *atraso na entrega*, *extravio*, *apreensão* e *avaria* de pacotes. 📦\n\nMe conta o que tá acontecendo — se for um desses casos eu transfiro na hora pra ele! Se for outra coisa, posso te ajudar por aqui mesmo 😊`;
-
-          await birdSend("https://conversations.messagebird.com/v1/send", {
-            method: "POST",
-            headers: { Authorization: `AccessKey ${triagemChannel.access_key}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ to: contactPhone, from: triagemChannel.channel_id, type: "text", content: { text: triagemMsg } }),
-          }).then(r => r.json()).then(async (mbResult) => {
-            await supabase.from("whatsapp_messages").insert({
-              conversation_id: conversationId, direction: "outgoing", content: triagemMsg,
-              content_type: "text", status: "sent", ai_generated: true, sent_by: "veronica",
-              messagebird_id: mbResult?.id || null,
-            });
-          });
-
-          return new Response(
-            JSON.stringify({ ok: true, reply: "Rosane Beatriz questionou antes de transferir para Felipe", tools_used: [] }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-
-      } else if (isExplicitFelipeRequest && isRealProblem) {
-        // Pedido explícito + problema real na mesma mensagem → transfere direto
-        console.log(`🔄 PRÉ-HANDOFF: Pedido explícito + problema real → Felipe assume`);
-
-        const preHandoffChannel = await resolveChannelForConversation(conversationId);
-        if (preHandoffChannel) {
-          await supabase.from("whatsapp_conversations")
-            .update({ active_agent: "felipe" })
-            .eq("id", conversationId);
-
-          await performHandoffToFelipe(supabase, conversationId, contactPhone, message, preHandoffChannel);
-
-          return new Response(
-            JSON.stringify({ ok: true, reply: "Handoff Rosane Beatriz → Felipe realizado (áudio + análise)", tools_used: [] }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-
-        agentName = "felipe";
-        await supabase.from("whatsapp_conversations")
-          .update({ active_agent: "felipe" })
-          .eq("id", conversationId);
-      }
-    }
-
-    // === PRÉ-HANDOFF: Se Felipe e cliente pede para voltar pra Rosane Beatriz ===
-    if (agentName === "felipe" && message) {
-      const lowerMsg = (message || "").toLowerCase();
-      const backToRosaneBeatrizKeywords = [
-        "quero falar com a veronica", "quero a veronica", "volta pra veronica",
-        "transfere pra veronica", "transferir pra veronica", "transfere para veronica",
-        "transferir para veronica", "passa pra veronica", "passar pra veronica",
-        "chama a veronica", "falar com veronica", "cadê a veronica", "cade a veronica",
-        "prefiro a veronica", "quero voltar pra veronica", "me passa pra veronica",
-        "pode me transferir pra veronica", "veronica por favor",
-      ];
-      if (backToRosaneBeatrizKeywords.some(k => lowerMsg.includes(k))) {
-        console.log(`🔄 PRÉ-HANDOFF: Cliente pediu Rosane Beatriz → transferindo de volta`);
-        agentName = "veronica";
-        await supabase.from("whatsapp_conversations")
-          .update({ active_agent: "veronica" })
-          .eq("id", conversationId);
-        // Resolver canal antes do handoff
-        const earlyChannel = await resolveChannelForConversation(conversationId);
-        await performHandoffToRosaneBeatriz(supabase, conversationId, contactPhone, message, earlyChannel);
-        return new Response(
-          JSON.stringify({ ok: true, reply: "Handoff Felipe → Rosane Beatriz realizado", tools_used: [] }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-    }
+    let agentName = "sergio";
+    await supabase.from("whatsapp_conversations")
+      .update({ active_agent: "sergio" })
+      .eq("id", conversationId);
 
     console.log(`🤖 Chat AI conversa ${conversationId}, agente: ${agentName}, tipo: ${contentType}`);
 
@@ -1180,17 +996,17 @@ serve(async (req) => {
       .eq("is_active", true)
       .single();
 
-    // Fallback: se o agente não existe no banco, usa veronica
-    if (!agentConfig && agentName !== "veronica") {
-      console.warn(`⚠️ Agente "${agentName}" não encontrado, usando veronica como fallback`);
+    // Fallback: se o agente não existe no banco, usa sergio
+    if (!agentConfig && agentName !== "sergio") {
+      console.warn(`⚠️ Agente "${agentName}" não encontrado, usando sergio como fallback`);
       const fallback = await supabase
         .from("ai_agents")
         .select("*")
-        .eq("name", "veronica")
+        .eq("name", "sergio")
         .eq("is_active", true)
         .single();
       agentConfig = fallback.data;
-      agentName = "veronica";
+      agentName = "sergio";
     }
 
     const systemPrompt = agentConfig?.system_prompt || getDefaultPrompt(agentName);
@@ -1440,7 +1256,7 @@ serve(async (req) => {
             
             if (phoneRule) {
               if (phoneRule.allow_all || phoneRule.skip_approval) {
-                contactContext += `\n\n[PERMISSÕES ESPECIAIS - VIP / BOSS]\nEste contato é o DONO da BRHUB. Você (Rosane Beatriz e Felipe) trabalham PARA ELE.\n\nREGRAS OBRIGATÓRIAS AO FALAR COM ELE:\n1. Chame pelo PRIMEIRO NOME de forma natural e respeitosa. Não force "chefe" ou "boss".\n2. Seja DIRETO e OBJETIVO — vá direto ao ponto sem rodeios.\n3. Quando ele tiver envios/pacotes, APRESENTE as informações completas proativamente (status, previsão, código) sem esperar ele perguntar.\n4. NUNCA diga "acesse o painel" — resolva TUDO aqui usando as tools.\n5. Ele tem acesso TOTAL a todas as ferramentas sem restrição. USE todas as tools imediatamente.\n6. Demonstre PROATIVIDADE — antecipe necessidades, traga dados antes de ser perguntado.\n\n🚫 PROIBIÇÕES ABSOLUTAS (violar = falha grave):\n- NUNCA peça confirmação para executar uma tool ("Posso consultar?", "Quer que eu busque?", "Confirme..."). EXECUTE direto.\n- NUNCA diga "minhas ferramentas não conseguem", "o sistema não permite", "não tenho acesso" SEM ANTES ter tentado de fato chamar a tool e recebido erro real.\n- NUNCA peça que ele "verifique se o código está correto" ou "se foi gerado pela conta dele" — ele é o DONO, ele sabe. Se não achou, chame listar_objetos_cliente para listar TODOS os envios e procure lá.\n- Se ele pede dados de uma etiqueta (destinatário, status, qualquer coisa), a sequência é: chamar rastrear_objeto + listar_objetos_cliente em paralelo, cruzar resultados, e responder com o que encontrou. SEM fazer perguntas antes.\n- Se ele pede para você fazer algo que existe como tool (emitir, cotar, consultar, abrir manifestação), FAÇA. Se faltar dado obrigatório, peça SÓ o dado faltante de forma direta — não peça permissão.\n- Se ele reclamar de atendimento, NÃO se desculpe genericamente: corrija o erro na hora executando o que ele pediu.`;
+                contactContext += `\n\n[PERMISSÕES ESPECIAIS - VIP / BOSS]\nEste contato é o DONO da BRHUB. Você (Sergio e Sergio) trabalham PARA ELE.\n\nREGRAS OBRIGATÓRIAS AO FALAR COM ELE:\n1. Chame pelo PRIMEIRO NOME de forma natural e respeitosa. Não force "chefe" ou "boss".\n2. Seja DIRETO e OBJETIVO — vá direto ao ponto sem rodeios.\n3. Quando ele tiver envios/pacotes, APRESENTE as informações completas proativamente (status, previsão, código) sem esperar ele perguntar.\n4. NUNCA diga "acesse o painel" — resolva TUDO aqui usando as tools.\n5. Ele tem acesso TOTAL a todas as ferramentas sem restrição. USE todas as tools imediatamente.\n6. Demonstre PROATIVIDADE — antecipe necessidades, traga dados antes de ser perguntado.\n\n🚫 PROIBIÇÕES ABSOLUTAS (violar = falha grave):\n- NUNCA peça confirmação para executar uma tool ("Posso consultar?", "Quer que eu busque?", "Confirme..."). EXECUTE direto.\n- NUNCA diga "minhas ferramentas não conseguem", "o sistema não permite", "não tenho acesso" SEM ANTES ter tentado de fato chamar a tool e recebido erro real.\n- NUNCA peça que ele "verifique se o código está correto" ou "se foi gerado pela conta dele" — ele é o DONO, ele sabe. Se não achou, chame listar_objetos_cliente para listar TODOS os envios e procure lá.\n- Se ele pede dados de uma etiqueta (destinatário, status, qualquer coisa), a sequência é: chamar rastrear_objeto + listar_objetos_cliente em paralelo, cruzar resultados, e responder com o que encontrou. SEM fazer perguntas antes.\n- Se ele pede para você fazer algo que existe como tool (emitir, cotar, consultar, abrir manifestação), FAÇA. Se faltar dado obrigatório, peça SÓ o dado faltante de forma direta — não peça permissão.\n- Se ele reclamar de atendimento, NÃO se desculpe genericamente: corrija o erro na hora executando o que ele pediu.`;
                 console.log(`👑 VIP detectado: ${formattedFirstName} (allow_all: ${phoneRule.allow_all})`);
               }
             }
@@ -1600,7 +1416,7 @@ EXEMPLO: "Oi [nome]! Vi que seu envio [código] já foi registrado! Precisa de a
     console.log("👤 Contexto de contato:", contactContext ? contactContext.substring(0, 120) : "NENHUM (não identificado)");
 
     const hojeFormatado = new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric" });
-    const enrichedSystemPrompt = systemPrompt + `\n\n📅 DATA DE HOJE: ${hojeFormatado}. Use esta data como referência para avaliar se prazos estão vencidos.` + "\n\nREGRA TÉCNICA: NÃO inclua prefixo como '*Rosane Beatriz:*' ou '*Felipe:*' no início da sua resposta. O sistema adiciona automaticamente. Responda apenas com o conteúdo da mensagem." + "\n\n[REGRA DE ESCOPO — GUARDRAIL]\nVocê é uma assistente EXCLUSIVA para assuntos de LOGÍSTICA, ENVIOS, RASTREIO, ETIQUETAS, CRÉDITOS, COTAÇÃO DE FRETE, e serviços da BRHUB Envios.\n- NUNCA responda sobre assuntos que não sejam relacionados a envios e logística.\n- Se o cliente pedir conselhos de negócios, receitas, dicas pessoais, ou qualquer assunto fora do escopo de logística, responda educadamente: '[Nome], aqui eu só consigo te ajudar com questões de envio, rastreio e etiquetas! Se precisar de algo nessa área, é só falar 😊'\n- Exemplos de assuntos PROIBIDOS: conselhos financeiros, dicas de marketing, receitas, conversas pessoais, delivery de comida, etc.\n- Exemplos de assuntos PERMITIDOS: rastreio, cotação, emissão de etiqueta, saldo, extrato, status de envio, endereço, remetente, destinatário, manifestação, etc." + "\n\n[REGRA DE PRIORIDADE — RESPONDA O QUE FOI PERGUNTADO]\nANTES de contextualizar qualquer problema ou dar informações adicionais, RESPONDA DIRETAMENTE a pergunta do cliente.\n- Se o cliente perguntou 'nome do destinatário', forneça o nome PRIMEIRO.\n- Se o cliente perguntou 'CPF', forneça o CPF PRIMEIRO.\n- Se o cliente perguntou 'todos os dados', forneça TODOS os dados disponíveis (nome, CPF, endereço, telefone).\n- SOMENTE DEPOIS de responder a pergunta direta, adicione contexto relevante (status, problema, etc).\n- NUNCA ignore a pergunta para falar sobre outro assunto." + "\n\n[REGRA DE NÚMERO ERRADO]\nSe a pessoa disser que o número não é dela, que não conhece o destinatário, que não fez nenhuma compra, ou qualquer variação de 'número errado':\n1. Peça desculpas de forma breve e educada\n2. Informe que o número será removido da base e que não receberá mais mensagens\n3. NÃO tente explicar o que é a BRHUB ou oferecer serviços\n4. NÃO envie mensagem longa. Máximo 2 frases.\n5. Exemplo: 'Peço desculpas pelo incômodo! Já estou removendo seu número da nossa base, você não receberá mais mensagens. Tenha um bom dia! 😊'" + "\n\n[REGRA DE REDIRECIONAMENTO — PRODUTOS, TROCA E LOJA]\nQuando o cliente perguntar sobre PRODUTOS, COMPRAS, CATÁLOGO, PREÇOS de produtos, ESTOQUE, TROCA DE PRODUTO, DEVOLUÇÃO DE PRODUTO, ou quiser COMPRAR algo na loja:\n1. Use a ferramenta 'buscar_remetentes_api' para buscar os dados cadastrais do remetente vinculado ao cliente\n2. A ferramenta SEMPRE retorna os dados completos (nome, telefone, email, endereço) quando o cliente está identificado. Use esses dados diretamente na resposta.\n3. Responda ao cliente orientando a entrar em contato direto com a loja remetente, fornecendo os dados retornados pela ferramenta.\n4. Exemplo: \"[Nome], para troca/devolução entre em contato direto com a loja [Nome do Remetente]! 📞 [celular/telefone] | 📍 [endereço completo] 😊\"\nIMPORTANTE: Essa regra se aplica APENAS a perguntas sobre produtos/compras/trocas/devoluções. Questões sobre ENVIO, RASTREIO, ETIQUETAS, CRÉDITOS continuam sendo atendidas normalmente por você.\nCRÍTICO: Se a ferramenta retornar dados do remetente, SEMPRE forneça esses dados ao cliente. NUNCA diga que não conseguiu localizar se a ferramenta retornou resultados.\nApenas se a ferramenta retornar 'Nenhum remetente cadastrado' ou 'Não consegui identificar o cliente', aí sim peça o nome ou CNPJ da loja." + "\n\n[REGRA DE RASTREIO E LINK OFICIAL]\nSe o cliente perguntar como rastrear, pedir o link de rastreio, ou disser que quer acompanhar o pedido, informe o link oficial https://brhubenvios.com.br/rastreio/encomenda?objeto=[CODIGO]. Se houver um código de referência ativo no contexto, substitua [CODIGO] pelo código correto. Se existirem vários códigos e o cliente falar no singular ('meu pedido', 'meu pacote', 'meu envio'), escolha apenas UM código prioritário e não misture respostas de códigos diferentes na mesma mensagem. Só mencione outro código se o cliente pedir explicitamente." + "\n\n[REGRA DE HONESTIDADE — LIMITAÇÕES]\nQuando NÃO tiver uma ferramenta ou capacidade real para resolver algo:\n- NUNCA diga 'vou acionar a operação', 'vou verificar com o time', 'vou escalar' se você NÃO tem uma ferramenta que faça isso de verdade.\n- Se o endereço está errado e o pacote já saiu para entrega, seja HONESTO: 'Infelizmente não consigo alterar o endereço de entrega depois que o pacote já saiu. Se não for entregue, ele vai voltar pro remetente e a loja pode reenviar com o endereço correto.'\n- Se não consegue fazer algo concreto, diga claramente o que o cliente deve fazer em vez de prometer ações que você não vai executar.\n- MÁXIMO 1 vez por conversa dizer que vai 'verificar'. Após isso, dê uma resposta concreta ou admita a limitação.\n\n[REGRA DE CONTESTAÇÃO DE ENDEREÇO]\nQuando o cliente disser que o endereço está ERRADO, que não é o endereço dele, ou contestar o endereço informado:\n- NÃO repita o mesmo endereço que o cliente acabou de contestar.\n- Reconheça que houve um problema com o endereço cadastrado.\n- Explique claramente: se o pacote já saiu para entrega, não é possível alterar o endereço pelo sistema.\n- Oriente o cliente a entrar em contato com a loja remetente para correção do endereço em caso de reenvio.\n- Se o cliente está pedindo para corrigir um endereço antes da postagem, use a ferramenta adequada.\n- Exemplo: '[Nome], entendi que o endereço cadastrado não está correto. Como o pacote já está em rota, não dá pra alterar agora. Se ele voltar, a loja pode reenviar com o endereço certo 😊'" + "\n\n[GUARDRAIL CRÍTICO — DADOS DE ENVIO SÓ VIA TOOL]\nVocê NUNCA pode afirmar endereço, status, destinatário, remetente, data de postagem, data de entrega ou eventos de rastreio de um pacote SEM ter chamado a tool rastrear_objeto na mesma conversa e usado o retorno dela como fonte.\n- PROIBIDO chutar/inventar endereço a partir de leitura de imagem (OCR), de memória, ou do nome da rua que o cliente mencionou.\n- PROIBIDO afirmar que o endereço X é o que está cadastrado sem ter ESSE dado vindo de rastrear_objeto.\n- Se a tool não retornar o campo, diga 'não tenho essa informação aqui' — NUNCA preencha com algo plausível.\n- Se o cliente envia foto de etiqueta e o OCR detecta um código, SEMPRE valide chamando rastrear_objeto com esse código antes de responder.\n\n[GUARDRAIL CRÍTICO — STATUS ENTREGUE]\nSe o rastrear_objeto retornar status 'entregue' (ou 'delivered', 'objeto entregue'):\n- NUNCA diga 'vai retornar para a loja', 'vai voltar para o remetente', 'pode reenviar', 'aguarde o retorno'.\n- NUNCA diga 'o pacote ainda está em rota' ou 'em trânsito'.\n- Confirme a entrega: data, hora e local (se disponível no retorno da tool).\n- Se o cliente disser que NÃO recebeu mesmo com status entregue, oriente: 'Pelo sistema da transportadora, o pacote consta como entregue em [data/local]. Se você não recebeu, é importante registrar uma manifestação para investigação — quer que eu abra agora?' e use a tool de manifestação.\n\n[GUARDRAIL CRÍTICO — INTERPRETAÇÃO DE EVENTOS DE RASTREIO]\nNUNCA traduza eventos do Correios/transportadora para frases inventadas. Em particular:\n- NÃO diga 'inconsistência no endereçamento' a menos que o evento literal contenha as palavras 'endereço', 'endereçamento incorreto' ou 'destinatário desconhecido'.\n- 'Saiu para entrega' = pacote saiu para entrega, NÃO é problema.\n- 'Tentativa de entrega' = carteiro tentou entregar e não conseguiu, peça mais contexto antes de atribuir causa.\n- Se o status é ambíguo, leia literalmente o último evento (campo 'descricao' ou 'evento') no retorno do rastrear_objeto e repita textual para o cliente. NUNCA parafraseie inventando causa." + contactContext;
+    const enrichedSystemPrompt = systemPrompt + `\n\n📅 DATA DE HOJE: ${hojeFormatado}. Use esta data como referência para avaliar se prazos estão vencidos.` + "\n\nREGRA TÉCNICA: NÃO inclua prefixo como '*Sergio:*' ou '*Sergio:*' no início da sua resposta. O sistema adiciona automaticamente. Responda apenas com o conteúdo da mensagem." + "\n\n[REGRA DE ESCOPO — GUARDRAIL]\nVocê é uma assistente EXCLUSIVA para assuntos de LOGÍSTICA, ENVIOS, RASTREIO, ETIQUETAS, CRÉDITOS, COTAÇÃO DE FRETE, e serviços da BRHUB Envios.\n- NUNCA responda sobre assuntos que não sejam relacionados a envios e logística.\n- Se o cliente pedir conselhos de negócios, receitas, dicas pessoais, ou qualquer assunto fora do escopo de logística, responda educadamente: '[Nome], aqui eu só consigo te ajudar com questões de envio, rastreio e etiquetas! Se precisar de algo nessa área, é só falar 😊'\n- Exemplos de assuntos PROIBIDOS: conselhos financeiros, dicas de marketing, receitas, conversas pessoais, delivery de comida, etc.\n- Exemplos de assuntos PERMITIDOS: rastreio, cotação, emissão de etiqueta, saldo, extrato, status de envio, endereço, remetente, destinatário, manifestação, etc." + "\n\n[REGRA DE PRIORIDADE — RESPONDA O QUE FOI PERGUNTADO]\nANTES de contextualizar qualquer problema ou dar informações adicionais, RESPONDA DIRETAMENTE a pergunta do cliente.\n- Se o cliente perguntou 'nome do destinatário', forneça o nome PRIMEIRO.\n- Se o cliente perguntou 'CPF', forneça o CPF PRIMEIRO.\n- Se o cliente perguntou 'todos os dados', forneça TODOS os dados disponíveis (nome, CPF, endereço, telefone).\n- SOMENTE DEPOIS de responder a pergunta direta, adicione contexto relevante (status, problema, etc).\n- NUNCA ignore a pergunta para falar sobre outro assunto." + "\n\n[REGRA DE NÚMERO ERRADO]\nSe a pessoa disser que o número não é dela, que não conhece o destinatário, que não fez nenhuma compra, ou qualquer variação de 'número errado':\n1. Peça desculpas de forma breve e educada\n2. Informe que o número será removido da base e que não receberá mais mensagens\n3. NÃO tente explicar o que é a BRHUB ou oferecer serviços\n4. NÃO envie mensagem longa. Máximo 2 frases.\n5. Exemplo: 'Peço desculpas pelo incômodo! Já estou removendo seu número da nossa base, você não receberá mais mensagens. Tenha um bom dia! 😊'" + "\n\n[REGRA DE REDIRECIONAMENTO — PRODUTOS, TROCA E LOJA]\nQuando o cliente perguntar sobre PRODUTOS, COMPRAS, CATÁLOGO, PREÇOS de produtos, ESTOQUE, TROCA DE PRODUTO, DEVOLUÇÃO DE PRODUTO, ou quiser COMPRAR algo na loja:\n1. Use a ferramenta 'buscar_remetentes_api' para buscar os dados cadastrais do remetente vinculado ao cliente\n2. A ferramenta SEMPRE retorna os dados completos (nome, telefone, email, endereço) quando o cliente está identificado. Use esses dados diretamente na resposta.\n3. Responda ao cliente orientando a entrar em contato direto com a loja remetente, fornecendo os dados retornados pela ferramenta.\n4. Exemplo: \"[Nome], para troca/devolução entre em contato direto com a loja [Nome do Remetente]! 📞 [celular/telefone] | 📍 [endereço completo] 😊\"\nIMPORTANTE: Essa regra se aplica APENAS a perguntas sobre produtos/compras/trocas/devoluções. Questões sobre ENVIO, RASTREIO, ETIQUETAS, CRÉDITOS continuam sendo atendidas normalmente por você.\nCRÍTICO: Se a ferramenta retornar dados do remetente, SEMPRE forneça esses dados ao cliente. NUNCA diga que não conseguiu localizar se a ferramenta retornou resultados.\nApenas se a ferramenta retornar 'Nenhum remetente cadastrado' ou 'Não consegui identificar o cliente', aí sim peça o nome ou CNPJ da loja." + "\n\n[REGRA DE RASTREIO E LINK OFICIAL]\nSe o cliente perguntar como rastrear, pedir o link de rastreio, ou disser que quer acompanhar o pedido, informe o link oficial https://brhubenvios.com.br/rastreio/encomenda?objeto=[CODIGO]. Se houver um código de referência ativo no contexto, substitua [CODIGO] pelo código correto. Se existirem vários códigos e o cliente falar no singular ('meu pedido', 'meu pacote', 'meu envio'), escolha apenas UM código prioritário e não misture respostas de códigos diferentes na mesma mensagem. Só mencione outro código se o cliente pedir explicitamente." + "\n\n[REGRA DE HONESTIDADE — LIMITAÇÕES]\nQuando NÃO tiver uma ferramenta ou capacidade real para resolver algo:\n- NUNCA diga 'vou acionar a operação', 'vou verificar com o time', 'vou escalar' se você NÃO tem uma ferramenta que faça isso de verdade.\n- Se o endereço está errado e o pacote já saiu para entrega, seja HONESTO: 'Infelizmente não consigo alterar o endereço de entrega depois que o pacote já saiu. Se não for entregue, ele vai voltar pro remetente e a loja pode reenviar com o endereço correto.'\n- Se não consegue fazer algo concreto, diga claramente o que o cliente deve fazer em vez de prometer ações que você não vai executar.\n- MÁXIMO 1 vez por conversa dizer que vai 'verificar'. Após isso, dê uma resposta concreta ou admita a limitação.\n\n[REGRA DE CONTESTAÇÃO DE ENDEREÇO]\nQuando o cliente disser que o endereço está ERRADO, que não é o endereço dele, ou contestar o endereço informado:\n- NÃO repita o mesmo endereço que o cliente acabou de contestar.\n- Reconheça que houve um problema com o endereço cadastrado.\n- Explique claramente: se o pacote já saiu para entrega, não é possível alterar o endereço pelo sistema.\n- Oriente o cliente a entrar em contato com a loja remetente para correção do endereço em caso de reenvio.\n- Se o cliente está pedindo para corrigir um endereço antes da postagem, use a ferramenta adequada.\n- Exemplo: '[Nome], entendi que o endereço cadastrado não está correto. Como o pacote já está em rota, não dá pra alterar agora. Se ele voltar, a loja pode reenviar com o endereço certo 😊'" + "\n\n[GUARDRAIL CRÍTICO — DADOS DE ENVIO SÓ VIA TOOL]\nVocê NUNCA pode afirmar endereço, status, destinatário, remetente, data de postagem, data de entrega ou eventos de rastreio de um pacote SEM ter chamado a tool rastrear_objeto na mesma conversa e usado o retorno dela como fonte.\n- PROIBIDO chutar/inventar endereço a partir de leitura de imagem (OCR), de memória, ou do nome da rua que o cliente mencionou.\n- PROIBIDO afirmar que o endereço X é o que está cadastrado sem ter ESSE dado vindo de rastrear_objeto.\n- Se a tool não retornar o campo, diga 'não tenho essa informação aqui' — NUNCA preencha com algo plausível.\n- Se o cliente envia foto de etiqueta e o OCR detecta um código, SEMPRE valide chamando rastrear_objeto com esse código antes de responder.\n\n[GUARDRAIL CRÍTICO — STATUS ENTREGUE]\nSe o rastrear_objeto retornar status 'entregue' (ou 'delivered', 'objeto entregue'):\n- NUNCA diga 'vai retornar para a loja', 'vai voltar para o remetente', 'pode reenviar', 'aguarde o retorno'.\n- NUNCA diga 'o pacote ainda está em rota' ou 'em trânsito'.\n- Confirme a entrega: data, hora e local (se disponível no retorno da tool).\n- Se o cliente disser que NÃO recebeu mesmo com status entregue, oriente: 'Pelo sistema da transportadora, o pacote consta como entregue em [data/local]. Se você não recebeu, é importante registrar uma manifestação para investigação — quer que eu abra agora?' e use a tool de manifestação.\n\n[GUARDRAIL CRÍTICO — INTERPRETAÇÃO DE EVENTOS DE RASTREIO]\nNUNCA traduza eventos do Correios/transportadora para frases inventadas. Em particular:\n- NÃO diga 'inconsistência no endereçamento' a menos que o evento literal contenha as palavras 'endereço', 'endereçamento incorreto' ou 'destinatário desconhecido'.\n- 'Saiu para entrega' = pacote saiu para entrega, NÃO é problema.\n- 'Tentativa de entrega' = carteiro tentou entregar e não conseguiu, peça mais contexto antes de atribuir causa.\n- Se o status é ambíguo, leia literalmente o último evento (campo 'descricao' ou 'evento') no retorno do rastrear_objeto e repita textual para o cliente. NUNCA parafraseie inventando causa." + contactContext;
     const messages: any[] = [{ role: "system", content: enrichedSystemPrompt }];
 
     if (history) {
@@ -2008,8 +1824,8 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
           const toolResult = await executeTool(toolName, toolArgs, contactPhone, conversationId);
           console.log(`📋 Tool result (${toolName}): ${toolResult.substring(0, 300)}`);
           
-          // === POST-TOOL HANDOFF: Se o resultado da tool contém indicadores de problema grave E estamos com Rosane Beatriz, escalar pro Felipe ===
-          if (agentName === "veronica" && toolName === "rastrear_objeto") {
+          // === POST-TOOL HANDOFF: Se o resultado da tool contém indicadores de problema grave E estamos com Sergio, escalar pro Sergio ===
+          if (agentName === "sergio" && toolName === "rastrear_objeto") {
             const toolLower = toolResult.toLowerCase();
             const problemKeywords = ["avariado", "avariada", "danificado", "extraviado", "roubado", "apreendido", "retido", "devolvido ao remetente", "objeto não localizado"];
             const hasProblem = problemKeywords.some(k => toolLower.includes(k));
@@ -2021,7 +1837,7 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
                 .select("id")
                 .eq("conversation_id", conversationId)
                 .eq("direction", "outbound")
-                .eq("sent_by", "veronica")
+                .eq("sent_by", "sergio")
                 .ilike("content", "%Suporte Nível 2%")
                 .gte("created_at", sixtySecsAgo)
                 .limit(1)
@@ -2030,7 +1846,7 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
               if (recentHandoff) {
                 console.log("⏭️ HANDOFF DUPLICADO BLOQUEADO: já houve handoff nos últimos 60s, apenas trocando agente");
               } else {
-                console.log("🔄 POST-TOOL HANDOFF: Resultado do rastreio indica problema grave → Felipe assume");
+                console.log("🔄 POST-TOOL HANDOFF: Resultado do rastreio indica problema grave → Sergio assume");
                 
                 const preHandoffChannel = await resolveChannelForConversation(conversationId);
                 if (preHandoffChannel) {
@@ -2039,17 +1855,17 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
                   const firstName = convPre?.contact_name ? convPre.contact_name.split(" ")[0] : "";
                   const nameGreeting = firstName ? `${firstName}, ` : "";
 
-                  const veronicaHandoffMsg = `*Rosane Beatriz:*\n\n${nameGreeting}vi aqui que rolou um problema com seu pacote. Esse tipo de caso é tratado pelo Felipe, nosso especialista do Suporte Nível 2 — ele tem acesso direto à operação e vai te dar um retorno completo. Vou te transferir agora, um instante! 😊`;
+                  const sergioHandoffMsg = `*Sergio:*\n\n${nameGreeting}vi aqui que rolou um problema com seu pacote. Esse tipo de caso é tratado pelo Sergio, nosso especialista do Suporte Nível 2 — ele tem acesso direto à operação e vai te dar um retorno completo. Vou te transferir agora, um instante! 😊`;
 
                   await birdSend("https://conversations.messagebird.com/v1/send", {
                     method: "POST",
                     headers: { Authorization: `AccessKey ${preHandoffChannel.access_key}`, "Content-Type": "application/json" },
-                    body: JSON.stringify({ to: contactPhone, from: preHandoffChannel.channel_id, type: "text", content: { text: veronicaHandoffMsg } }),
+                    body: JSON.stringify({ to: contactPhone, from: preHandoffChannel.channel_id, type: "text", content: { text: sergioHandoffMsg } }),
                   }).then(r => r.json()).then(async (mbResult) => {
                     await supabase.from("whatsapp_messages").insert({
                       conversation_id: conversationId, messagebird_id: mbResult.id || null,
-                      direction: "outbound", content_type: "text", content: veronicaHandoffMsg,
-                      status: "sent", sent_by: "veronica", ai_generated: true,
+                      direction: "outbound", content_type: "text", content: sergioHandoffMsg,
+                      status: "sent", sent_by: "sergio", ai_generated: true,
                     });
                   });
 
@@ -2058,19 +1874,19 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
                 }
               }
 
-              // Trocar agente para Felipe e reinjetar contexto
-              agentName = "felipe";
+              // Trocar agente para Sergio e reinjetar contexto
+              agentName = "sergio";
               await supabase.from("whatsapp_conversations")
-                .update({ active_agent: "felipe" })
+                .update({ active_agent: "sergio" })
                 .eq("id", conversationId);
 
               // === FIX 2: RECARREGAR agentConfig DO FELIPE para corrigir identidade ===
-              const { data: felipeConf } = await supabase.from("ai_agents").select("*").eq("name", "felipe").eq("is_active", true).single();
-              if (felipeConf) {
-                agentConfig = felipeConf; // Atualizar agentConfig para que o prefixo use "Felipe" em vez de "Rosane Beatriz"
-                messages[0].content = (felipeConf.system_prompt || getDefaultPrompt("felipe")) + (trackingContext || "");
+              const { data: sergioConf } = await supabase.from("ai_agents").select("*").eq("name", "sergio").eq("is_active", true).single();
+              if (sergioConf) {
+                agentConfig = sergioConf; // Atualizar agentConfig para que o prefixo use "Sergio" em vez de "Sergio"
+                messages[0].content = (sergioConf.system_prompt || getDefaultPrompt("sergio")) + (trackingContext || "");
               } else {
-                messages[0].content = getDefaultPrompt("felipe") + (trackingContext || "");
+                messages[0].content = getDefaultPrompt("sergio") + (trackingContext || "");
               }
             }
           }
@@ -2282,8 +2098,8 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
     aiReply = sanitizeAgentReply(aiReply, contentType || "text");
 
     // === PREFIXO DO AGENTE ===
-    const agentDisplayName = agentConfig?.display_name || (agentName === "felipe" ? "Felipe" : "Rosane Beatriz");
-    // Remover prefixo duplicado se a IA já incluiu (ex: "*Rosane Beatriz:*\n\n")
+    const agentDisplayName = agentConfig?.display_name || (agentName === "sergio" ? "Sergio" : "Sergio");
+    // Remover prefixo duplicado se a IA já incluiu (ex: "*Sergio:*\n\n")
     const prefixPattern = /^\*[A-Za-zÀ-ú]+:\*\s*\n*/;
     aiReply = aiReply.replace(prefixPattern, "").trimStart();
 
@@ -2411,8 +2227,8 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
       }
 
       if (!audioSent) {
-        // Felipe: quebrar respostas longas em múltiplas mensagens para humanizar
-        if (agentName === "felipe" && aiReply.length > 200) {
+        // Sergio: quebrar respostas longas em múltiplas mensagens para humanizar
+        if (agentName === "sergio" && aiReply.length > 200) {
           // Remover prefixo do agente, splitar por \n\n, e reagrupar em blocos curtos
           const agentPrefix = `*${agentDisplayName}:*\n\n`;
           const replyBody = aiReply.startsWith(agentPrefix) ? aiReply.slice(agentPrefix.length) : aiReply;
@@ -2467,7 +2283,7 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
             });
           }
         } else {
-          // Rosane Beatriz ou mensagens curtas: enviar normal
+          // Sergio ou mensagens curtas: enviar normal
           const mbResponse = await birdSend("https://conversations.messagebird.com/v1/send", {
             method: "POST",
             headers: {
@@ -2504,19 +2320,7 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
         })
         .eq("id", conversationId);
 
-      // === HANDOFF VERONICA → FELIPE (pós-resposta, só se NÃO veio do pré-handoff) ===
-      // O pré-handoff já fez a transição com mensagem profissional, não duplicar
-      if (agentName === "veronica" && detectHandoffTrigger(message, aiReply)) {
-        // Se chegou aqui como veronica, o pré-handoff NÃO disparou (edge case)
-        console.log("🔄 Handoff pós-resposta: Rosane Beatriz → Felipe");
-        await performHandoffToFelipe(supabase, conversationId, contactPhone, message, channel);
-      }
 
-      // === HANDOFF FELIPE → VERONICA (pós-resposta, caso detecte pedido) ===
-      if (agentName === "felipe" && detectBackToRosaneBeatrizTrigger(message)) {
-        console.log("🔄 Handoff: Felipe → Rosane Beatriz");
-        await performHandoffToRosaneBeatriz(supabase, conversationId, contactPhone, message, channel);
-      }
     }
 
     return new Response(
@@ -3554,8 +3358,8 @@ async function findSimilarTrackingCode(supabase: any, inputCode: string, contact
 
 
 function getDefaultPrompt(agent: string): string {
-  if (agent === "felipe") {
-    return `Você é Felipe, especialista de resolução de problemas (Suporte Nível 2) da BRHUB Envios. Fale como um profissional experiente no WhatsApp.
+  if (agent === "sergio") {
+    return `Você é Sergio, especialista de resolução de problemas (Suporte Nível 2) da BRHUB Envios. Fale como um profissional experiente no WhatsApp.
 
 REGRAS OBRIGATÓRIAS:
 - Respostas MUITO CURTAS: 1-2 frases por mensagem. Máximo absoluto 3 frases.
@@ -3634,9 +3438,9 @@ APRENDIZADO CONTÍNUO:
 - Analise o contexto da conversa e aprenda com as interações. Se o cliente mencionou um problema, confirme que entendeu antes de agir.
 - Sempre use as ferramentas disponíveis para buscar dados REAIS. Nunca invente informações.`;
   }
-  return `Você é a Rosane Beatriz, do Time de Suporte da BRHUB Envios — plataforma de logística com fretes até 70% mais baratos via contratos com Correios, Jadlog, Loggi e Azul.
+  return `Você é a Sergio, do Time de Suporte da BRHUB Envios — plataforma de logística com fretes até 70% mais baratos via contratos com Correios, Jadlog, Loggi e Azul.
 
-APRESENTAÇÃO: Na PRIMEIRA mensagem: "Oi! Sou a Rosane Beatriz do Time de Suporte da BRHUB Envios 😊". Depois não repita.
+APRESENTAÇÃO: Na PRIMEIRA mensagem: "Oi! Sou a Sergio do Time de Suporte da BRHUB Envios 😊". Depois não repita.
 
 FERRAMENTAS: Você tem acesso a ferramentas reais (rastrear pacote, cotar frete, consultar saldo). SEMPRE use a ferramenta certa ao invés de inventar dados.
 
@@ -3696,10 +3500,10 @@ MANIFESTAÇÃO / RECLAMAÇÃO:
 - Após usar a ferramenta, confirme ao cliente que a manifestação foi registrada e que a equipe vai analisar.
 
 ⚠️ REGRA CRÍTICA — FELIPE E TRANSFERÊNCIAS:
-- NUNCA mencione o nome "Felipe" em suas respostas. Você NÃO conhece o Felipe.
+- NUNCA mencione o nome "Sergio" em suas respostas. Você NÃO conhece o Sergio.
 - NUNCA ofereça transferir para outro atendente, suporte nível 2, ou "alguém do time".
 - NUNCA diga "vou chamar alguém", "vou te passar pra outro atendente", "vou transferir" ou qualquer variação.
-- Se o cliente pedir para falar com Felipe ou outro atendente, NÃO confirme nem ofereça a transferência. Pergunte qual é o problema para que VOCÊ possa ajudar.
+- Se o cliente pedir para falar com Sergio ou outro atendente, NÃO confirme nem ofereça a transferência. Pergunte qual é o problema para que VOCÊ possa ajudar.
 - A transferência para o Suporte Nível 2 é feita AUTOMATICAMENTE pelo sistema quando necessário — você NÃO tem controle sobre isso e NÃO deve mencioná-la.
 - Se o cliente insistir em falar com outra pessoa, diga: "me conta o que tá acontecendo que eu vou te ajudar! 😊"`;
 }
@@ -4149,7 +3953,7 @@ function sanitizeAgentReply(reply: string, contentType: string): string {
 }
 
 // ═══════════════════════════════════════════════════════════
-// HANDOFF: Rosane Beatriz → Felipe
+// HANDOFF: Sergio → Sergio
 // ═══════════════════════════════════════════════════════════
 
 function detectHandoffTrigger(userMessage: string, _aiReply: string): boolean {
@@ -4178,399 +3982,3 @@ function detectHandoffTrigger(userMessage: string, _aiReply: string): boolean {
   return escalationKeywords.some(k => lowerMsg.includes(k));
 }
 
-function detectBackToRosaneBeatrizTrigger(userMessage: string): boolean {
-  const lowerMsg = (userMessage || "").toLowerCase();
-  const keywords = [
-    "quero falar com a veronica", "quero a veronica", "volta pra veronica",
-    "transfere pra veronica", "transferir pra veronica", "transfere para veronica",
-    "passa pra veronica", "chama a veronica", "falar com veronica",
-    "prefiro a veronica", "me passa pra veronica", "veronica por favor",
-  ];
-  return keywords.some(k => lowerMsg.includes(k));
-}
-
-async function performHandoffToRosaneBeatriz(
-  supabase: any, conversationId: string, contactPhone: string, userMessage: string,
-  channel: { channel_id: string; access_key: string }
-) {
-  try {
-    const handoffMessage = "*Felipe:*\n\nSem problemas! Vou te passar pra Rosane Beatriz agora, ela vai continuar te atendendo. Um momento 😊";
-
-    await birdSend("https://conversations.messagebird.com/v1/send", {
-      method: "POST",
-      headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: handoffMessage } }),
-    }).then(r => r.json()).then(async (mbResult) => {
-      await supabase.from("whatsapp_messages").insert({
-        conversation_id: conversationId, messagebird_id: mbResult.id || null,
-        direction: "outbound", content_type: "text", content: handoffMessage,
-        status: "sent", sent_by: "felipe", ai_generated: true,
-      });
-    });
-
-    // Delay de 1 minuto para transição natural (simula tempo de preparação da Rosane Beatriz)
-    await new Promise(resolve => setTimeout(resolve, 60000));
-
-    const { data: veronicaConfig } = await supabase.from("ai_agents").select("*").eq("name", "veronica").eq("is_active", true).single();
-    let handoffEndpoint: { url: string; apiKey: string; providerName: string };
-    try {
-      handoffEndpoint = getAIEndpoint(veronicaConfig?.provider || "gemini");
-    } catch { return; }
-
-    const { data: conv } = await supabase.from("whatsapp_conversations").select("contact_name").eq("id", conversationId).single();
-
-    const contactName = conv?.contact_name || "";
-    const greeting = contactName ? contactName.split(" ")[0] : "tudo bem";
-
-    // === ETAPA 1: ÁUDIO DE APRESENTAÇÃO (sempre manda áudio na intro) ===
-    const veronicaIntroPrompt = `Você é a Rosane Beatriz, atendente virtual da BRHUB Envios. O Felipe te transferiu o cliente de volta.
-O cliente disse: "${userMessage}"
-Se apresente de volta: "Oi ${greeting}, aqui é a Rosane Beatriz de novo!". Diga que o Felipe te passou a situação e pergunte como pode ajudar.
-Tom amigável, informal, acolhedor. Máximo 2-3 frases CURTAS. SEM emojis (vai virar áudio). SEM detalhes técnicos — só a apresentação.`;
-
-    const veronicaIntroResponse = await fetch(handoffEndpoint.url, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${handoffEndpoint.apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: veronicaConfig?.model || "gemini-2.5-flash",
-        messages: [{ role: "system", content: veronicaIntroPrompt }, { role: "user", content: userMessage }],
-        max_tokens: 512, temperature: 0.8,
-      }),
-    });
-
-    if (!veronicaIntroResponse.ok) return;
-    const veronicaIntroData = await veronicaIntroResponse.json();
-    const veronicaIntroRaw = veronicaIntroData.choices?.[0]?.message?.content || `Oi ${greeting}, aqui é a Rosane Beatriz de novo! O Felipe me passou sua situação. Como posso te ajudar?`;
-    const veronicaIntroReply = `*Rosane Beatriz:*\n\n${veronicaIntroRaw}`;
-
-    // Sempre enviar intro: texto com nome + áudio sem nome
-    let introAudioSent = false;
-    const elevenLabsKey = Deno.env.get("ELEVENLABS_API_KEY");
-    if (elevenLabsKey) {
-      try {
-        const voiceConfig: VoiceConfig = {
-          voiceId: veronicaConfig?.voice_id || "FGY2WhTYpPnrIDTdsKH5",
-          model: veronicaConfig?.tts_model || "eleven_multilingual_v2",
-          stability: veronicaConfig?.voice_stability ?? 0.5,
-          similarityBoost: veronicaConfig?.voice_similarity_boost ?? 0.75,
-          style: veronicaConfig?.voice_style ?? 0.0,
-          speed: veronicaConfig?.voice_speed ?? 1.0,
-        };
-        // TTS só com o conteúdo, sem o prefixo do nome
-        const audioUrl = await generateTTSAudio(veronicaIntroRaw, elevenLabsKey, voiceConfig);
-        if (audioUrl) {
-          // 1. Texto com nome do agente
-          const agentLabel = "*Rosane Beatriz:*";
-          const mbLabelResp = await birdSend("https://conversations.messagebird.com/v1/send", {
-            method: "POST",
-            headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: agentLabel } }),
-          });
-          const mbLabelResult = await mbLabelResp.json();
-          await supabase.from("whatsapp_messages").insert({
-            conversation_id: conversationId, messagebird_id: mbLabelResult.id || null,
-            direction: "outbound", content_type: "text", content: agentLabel,
-            status: "sent", sent_by: "veronica", ai_generated: true,
-          });
-
-          // 2. Áudio sem o nome
-          const mbAudio = await birdSend("https://conversations.messagebird.com/v1/send", {
-            method: "POST",
-            headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "audio", content: { audio: { url: audioUrl } } }),
-          });
-          const mbAudioResult = await mbAudio.json();
-          await supabase.from("whatsapp_messages").insert({
-            conversation_id: conversationId, messagebird_id: mbAudioResult.id || null,
-            direction: "outbound", content_type: "voice", content: veronicaIntroRaw,
-            media_url: audioUrl, status: "sent", sent_by: "veronica", ai_generated: true,
-          });
-          introAudioSent = true;
-        }
-      } catch (e) { console.warn("⚠️ TTS Rosane Beatriz intro:", e); }
-    }
-
-    // Fallback: se áudio falhou, manda texto
-    if (!introAudioSent) {
-      const mbText = await birdSend("https://conversations.messagebird.com/v1/send", {
-        method: "POST",
-        headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: veronicaIntroReply } }),
-      });
-      const mbTextResult = await mbText.json();
-      await supabase.from("whatsapp_messages").insert({
-        conversation_id: conversationId, messagebird_id: mbTextResult.id || null,
-        direction: "outbound", content_type: "text", content: veronicaIntroReply,
-        status: "sent", sent_by: "veronica", ai_generated: true,
-      });
-    }
-
-    await supabase.from("whatsapp_conversations").update({
-      active_agent: "veronica",
-      last_message_at: new Date().toISOString(),
-      last_message_preview: veronicaIntroReply.substring(0, 100),
-    }).eq("id", conversationId);
-
-    await logInteraction(supabase, {
-      conversation_id: conversationId, agent_name: "veronica", content_type: introAudioSent ? "voice" : "text",
-      provider: handoffEndpoint.providerName, model: veronicaConfig?.model || "gemini-2.5-flash", success: true,
-      response_time_ms: 0, tool_used: "handoff_from_felipe",
-    });
-
-    console.log("✅ Handoff Felipe → Rosane Beatriz concluído (áudio intro)");
-  } catch (e) {
-    console.error("❌ Erro handoff Felipe → Rosane Beatriz:", e);
-  }
-}
-
-async function performHandoffToFelipe(
-  supabase: any, conversationId: string, contactPhone: string, userMessage: string,
-  channel: { channel_id: string; access_key: string }
-) {
-  try {
-    const handoffMessage = "*Rosane Beatriz:*\n\nEntendi a situação! Para esse tipo de caso, nosso time de Suporte Nível 2 é quem cuida diretamente. Vou te passar pro Felipe, que é nosso especialista em resoluções — ele vai analisar tudo e te dar um retorno completo, tá? Um instante 😊";
-
-    await birdSend("https://conversations.messagebird.com/v1/send", {
-      method: "POST",
-      headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: handoffMessage } }),
-    }).then(r => r.json()).then(async (mbResult) => {
-      await supabase.from("whatsapp_messages").insert({
-        conversation_id: conversationId, messagebird_id: mbResult.id || null,
-        direction: "outbound", content_type: "text", content: handoffMessage,
-        status: "sent", sent_by: "veronica", ai_generated: true,
-      });
-    });
-
-    // Delay de 1 minuto para transição natural (simula tempo de análise pelo Felipe)
-    await new Promise(resolve => setTimeout(resolve, 60000));
-
-    const { data: felipeConfig } = await supabase.from("ai_agents").select("*").eq("name", "felipe").eq("is_active", true).single();
-    let felipeEndpoint: { url: string; apiKey: string; providerName: string };
-    try {
-      felipeEndpoint = getAIEndpoint(felipeConfig?.provider || "gemini");
-    } catch { return; }
-
-    const { data: conv } = await supabase.from("whatsapp_conversations").select("contact_name").eq("id", conversationId).single();
-
-    const contactName = conv?.contact_name || "";
-    const greeting = contactName ? contactName.split(" ")[0] : "tudo bem";
-
-    // === ETAPA 1: ÁUDIO DE APRESENTAÇÃO (sempre manda áudio na intro) ===
-    const felipeIntroPrompt = `Você é o Felipe, especialista de resolução de problemas da BRHUB Envios. A Rosane Beatriz te transferiu um cliente.
-O cliente disse: "${userMessage}"
-Se apresente de forma BREVE: "E aí ${greeting}, aqui é o Felipe". Diga que a Rosane Beatriz te passou a situação e que você já analisou. Tranquilize dizendo que vai mandar os detalhes.
-Tom calmo, confiante, informal. Máximo 2-3 frases CURTAS. SEM emojis (vai virar áudio). SEM perguntas. SEM detalhes técnicos — só a apresentação.`;
-
-    const felipeIntroResponse = await fetch(felipeEndpoint.url, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${felipeEndpoint.apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: felipeConfig?.model || "gemini-2.5-flash",
-        messages: [{ role: "system", content: felipeIntroPrompt }, { role: "user", content: userMessage }],
-        max_tokens: 512, temperature: 0.8,
-      }),
-    });
-
-    if (!felipeIntroResponse.ok) return;
-    const felipeIntroData = await felipeIntroResponse.json();
-    const felipeIntroRaw = felipeIntroData.choices?.[0]?.message?.content || `E aí ${greeting}, aqui é o Felipe. A Rosane Beatriz me passou sua situação e já analisei tudo. Vou te mandar os detalhes agora.`;
-    const felipeIntroReply = `*Felipe:*\n\n${felipeIntroRaw}`;
-
-    // Sempre enviar intro: texto com nome + áudio sem nome
-    let introAudioSent = false;
-    const elevenLabsKey = Deno.env.get("ELEVENLABS_API_KEY");
-    if (elevenLabsKey) {
-      try {
-        const voiceConfig: VoiceConfig = {
-          voiceId: felipeConfig?.voice_id || "cjVigY5qzO86Huf0OWal",
-          model: felipeConfig?.tts_model || "eleven_multilingual_v2",
-          stability: felipeConfig?.voice_stability ?? 0.45,
-          similarityBoost: felipeConfig?.voice_similarity_boost ?? 0.75,
-          style: felipeConfig?.voice_style ?? 0.2,
-          speed: felipeConfig?.voice_speed ?? 1.0,
-        };
-        // TTS só com o conteúdo, sem o prefixo do nome
-        const audioUrl = await generateTTSAudio(felipeIntroRaw, elevenLabsKey, voiceConfig);
-        if (audioUrl) {
-          // 1. Texto com nome do agente
-          const agentLabel = "*Felipe:*";
-          const mbLabelResp = await birdSend("https://conversations.messagebird.com/v1/send", {
-            method: "POST",
-            headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: agentLabel } }),
-          });
-          const mbLabelResult = await mbLabelResp.json();
-          await supabase.from("whatsapp_messages").insert({
-            conversation_id: conversationId, messagebird_id: mbLabelResult.id || null,
-            direction: "outbound", content_type: "text", content: agentLabel,
-            status: "sent", sent_by: "felipe", ai_generated: true,
-          });
-
-          // 2. Áudio sem o nome
-          const mbAudio = await birdSend("https://conversations.messagebird.com/v1/send", {
-            method: "POST",
-            headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "audio", content: { audio: { url: audioUrl } } }),
-          });
-          const mbAudioResult = await mbAudio.json();
-          await supabase.from("whatsapp_messages").insert({
-            conversation_id: conversationId, messagebird_id: mbAudioResult.id || null,
-            direction: "outbound", content_type: "voice", content: felipeIntroRaw,
-            media_url: audioUrl, status: "sent", sent_by: "felipe", ai_generated: true,
-          });
-          introAudioSent = true;
-        }
-      } catch (e) { console.warn("⚠️ TTS Felipe intro:", e); }
-    }
-
-    // Fallback: se áudio falhou, manda texto
-    if (!introAudioSent) {
-      const mbText = await birdSend("https://conversations.messagebird.com/v1/send", {
-        method: "POST",
-        headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: felipeIntroReply } }),
-      });
-      const mbTextResult = await mbText.json();
-      await supabase.from("whatsapp_messages").insert({
-        conversation_id: conversationId, messagebird_id: mbTextResult.id || null,
-        direction: "outbound", content_type: "text", content: felipeIntroReply,
-        status: "sent", sent_by: "felipe", ai_generated: true,
-      });
-    }
-
-    // === ETAPA 2: ANÁLISE DETALHADA EM TEXTO (após o áudio de intro) ===
-    await new Promise(resolve => setTimeout(resolve, 3000));
-
-    // Buscar dados de rastreio para análise completa
-    const trackingRegex = /\b[A-Z]{2}\d{9,13}[A-Z]{2}\b/g;
-    const trackingCodes: string[] = (userMessage || "").match(trackingRegex) || [];
-    
-    const { data: recentMsgs } = await supabase.from("whatsapp_messages")
-      .select("content").eq("conversation_id", conversationId).eq("direction", "inbound")
-      .order("created_at", { ascending: false }).limit(10);
-    
-    if (recentMsgs) {
-      for (const msg of recentMsgs) {
-        const codes = (msg.content || "").match(trackingRegex) || [];
-        trackingCodes.push(...codes);
-      }
-    }
-    const uniqueCodes = [...new Set(trackingCodes)];
-    
-    let trackingData = "";
-    if (uniqueCodes.length > 0) {
-      const lastCode = uniqueCodes[uniqueCodes.length - 1];
-      const rawData = await fetchTrackingData(lastCode);
-      if (rawData) {
-        trackingData = formatTrackingForAI(rawData);
-      }
-      
-      const { data: pedido } = await supabase.from("pedidos_importados")
-        .select("destinatario_nome, destinatario_telefone, destinatario_cep, destinatario_cidade, destinatario_estado, remetente_id, servico_frete, numero_pedido, status")
-        .eq("codigo_rastreio", lastCode).limit(1).single();
-      
-      if (pedido) {
-        let remNome = "N/A";
-        if (pedido.remetente_id) {
-          const { data: rem } = await supabase.from("remetentes").select("nome, localidade, uf").eq("id", pedido.remetente_id).single();
-          if (rem) remNome = `${rem.nome} (${rem.localidade || ""}/${rem.uf || ""})`;
-        }
-        trackingData += `\n\nDados da etiqueta:\nDestinatário: ${pedido.destinatario_nome || "N/A"}\nTelefone: ${pedido.destinatario_telefone || "N/A"}\nCidade: ${pedido.destinatario_cidade || "N/A"}-${pedido.destinatario_estado || "N/A"}\nRemetente: ${remNome}\nServiço: ${pedido.servico_frete || "N/A"}\nPedido: ${pedido.numero_pedido || "N/A"}`;
-      }
-    }
-
-    const felipeAnalysisPrompt = `Você é o Felipe, especialista de resolução de problemas da BRHUB Envios. Você já se apresentou por áudio. Agora mande a ANÁLISE por texto.
-
-DADOS DO RASTREIO:
-${trackingData || "Nenhum dado de rastreio disponível."}
-
-MENSAGEM DO CLIENTE: "${userMessage}"
-
-INSTRUÇÕES CRÍTICAS DE FORMATO:
-- Divida sua resposta em 2-4 BLOCOS separados pelo marcador "---" (três hifens em linha isolada).
-- Cada bloco será enviado como uma mensagem SEPARADA no WhatsApp, simulando digitação humana.
-- Cada bloco deve ter no MÁXIMO 2-3 frases curtas. Escreva como gente real no WhatsApp.
-- PROIBIDO bullet points, listas, formatação de email/relatório.
-- Português informal mas profissional ("tá", "pra", "vc").
-- Use no máximo 1 emoji por bloco.
-
-ESTRUTURA SUGERIDA:
-Bloco 1: Resumo rápido do status atual (onde está o pacote, o que aconteceu)
-Bloco 2: Explicação do problema/motivo (se houver atraso, extravio, etc.)
-Bloco 3: O que VOCÊ vai fazer pra resolver (ação concreta)
-Bloco 4 (opcional): Fechamento tranquilizando o cliente
-
-EXEMPLO:
-dei uma olhada detalhada no seu pacote AB123456789BR 📦
-
-ele foi postado em SP dia 26/02 e chegou em Recife no dia 27, mas ficou parado lá por alguns dias
----
-o atraso aconteceu porque a unidade de Recife teve um acúmulo operacional nesse período, e o pacote só seguiu pra Santa Cruz do Capibaribe no dia 05/03
----
-já acionei nosso time de operações pra priorizar a entrega e tô monitorando pessoalmente
-
-qualquer novidade te aviso aqui, tá tranquilo 😊
-
-NUNCA terceirize ("entre em contato com os Correios"). NÓS somos os responsáveis.`;
-
-    const felipeAnalysisResponse = await fetch(felipeEndpoint.url, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${felipeEndpoint.apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: felipeConfig?.model || "gemini-2.5-flash",
-        messages: [{ role: "system", content: felipeAnalysisPrompt }, { role: "user", content: userMessage }],
-        max_tokens: 500, temperature: 0.7,
-      }),
-    });
-
-    let felipeAnalysisReply = "";
-    if (felipeAnalysisResponse.ok) {
-      const analysisData = await felipeAnalysisResponse.json();
-      const analysisRaw = analysisData.choices?.[0]?.message?.content || "";
-      if (analysisRaw) {
-        // Splitar em blocos separados por "---"
-        const blocks = analysisRaw.split(/\n*---\n*/).map((b: string) => b.trim()).filter((b: string) => b.length > 0);
-        
-        for (let i = 0; i < blocks.length; i++) {
-          const blockText = `*Felipe:*\n\n${blocks[i]}`;
-          
-          // Delay entre mensagens (simula digitação) - 2-4 segundos
-          if (i > 0) {
-            await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 2000));
-          }
-          
-          const mbBlock = await birdSend("https://conversations.messagebird.com/v1/send", {
-            method: "POST",
-            headers: { Authorization: `AccessKey ${channel.access_key}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ to: contactPhone, from: channel.channel_id, type: "text", content: { text: blockText } }),
-          });
-          const mbBlockResult = await mbBlock.json();
-          await supabase.from("whatsapp_messages").insert({
-            conversation_id: conversationId, messagebird_id: mbBlockResult.id || null,
-            direction: "outbound", content_type: "text", content: blockText,
-            status: "sent", sent_by: "felipe", ai_generated: true,
-          });
-          
-          felipeAnalysisReply = blockText; // Guardar última para preview
-        }
-      }
-    }
-
-    await supabase.from("whatsapp_conversations").update({
-      active_agent: "felipe",
-      last_message_at: new Date().toISOString(),
-      last_message_preview: (felipeAnalysisReply || felipeIntroReply).substring(0, 100),
-    }).eq("id", conversationId);
-
-    await logInteraction(supabase, {
-      conversation_id: conversationId, agent_name: "felipe", content_type: "voice",
-      provider: felipeEndpoint.providerName, model: felipeConfig?.model || "gemini-2.5-flash", success: true,
-      response_time_ms: 0, tool_used: "handoff_from_veronica",
-    });
-
-    console.log("✅ Handoff Rosane Beatriz → Felipe concluído (áudio intro + texto análise)");
-  } catch (e) {
-    console.error("❌ Erro handoff:", e);
-  }
-}

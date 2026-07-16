@@ -64,7 +64,7 @@ export const ProfileAvatar = ({ name, size = 'md', className = '', showIcon = fa
       'joao', 'jose', 'carlos', 'paulo', 'pedro', 'lucas', 'gabriel', 'rafael',
       'daniel', 'marcelo', 'bruno', 'rodrigo', 'andre', 'alexandre', 'antonio',
       'fernando', 'ricardo', 'marcos', 'guilherme', 'henrique', 'diego', 'thiago',
-      'eduardo', 'felipe', 'leonardo', 'gustavo', 'matheus', 'vinicius', 'caio',
+      'eduardo', 'sergio', 'leonardo', 'gustavo', 'matheus', 'vinicius', 'caio',
       'arthur', 'bernardo', 'enzo', 'miguel', 'nicolas', 'davi', 'samuel',
       'heitor', 'lorenzo', 'theo', 'benjamin', 'murilo', 'francisco', 'joaquim',
       'roberto', 'sergio', 'jorge', 'claudio', 'renato', 'fabio', 'marcio',

@@ -89,7 +89,7 @@ export async function resolveDefaultChannel(): Promise<WhatsAppChannel | null> {
       bird_workspace_id: null,
       is_default: true,
       ai_enabled: true,
-      ai_agent: "veronica",
+      ai_agent: "sergio",
     };
   }
 

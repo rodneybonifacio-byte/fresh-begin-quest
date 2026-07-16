@@ -74,7 +74,7 @@ serve(async (req) => {
           phone_number: normalized,
           reason: reason || "Número errado / destinatário não reconhecido",
           contact_name: contact_name || null,
-          blocked_by: "veronica-ai",
+          blocked_by: "sergio-ai",
         });
 
       if (insertError) {

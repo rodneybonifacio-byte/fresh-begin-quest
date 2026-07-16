@@ -495,10 +495,10 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Se for atraso, Felipe assume automaticamente a conversa
+      // Se for atraso, Sergio assume automaticamente a conversa
       if (trigger_key === "atraso") {
-        convUpdate.active_agent = "felipe";
-        console.log(`🔄 Auto-assign Felipe para conversa ${existingConv.id} (atraso detectado)`);
+        convUpdate.active_agent = "sergio";
+        console.log(`🔄 Auto-assign Sergio para conversa ${existingConv.id} (atraso detectado)`);
       }
 
       await supabase
