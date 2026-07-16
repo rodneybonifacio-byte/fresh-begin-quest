@@ -21,13 +21,13 @@ Deno.serve(async (req) => {
     const auth = { Authorization: `AccessKey ${accessKey}`, "Content-Type": "application/json" };
 
     const candidates = [
-      `https://integrations.messagebird.com/v3/platforms/whatsapp/${channelId}/templates`,
-      `https://integrations.messagebird.com/v3/platforms/whatsapp/channels/${channelId}/templates`,
-      `https://integrations.messagebird.com/v3/whatsapp/${channelId}/templates`,
-      `https://integrations.messagebird.com/v3/whatsapp/templates?channelId=${channelId}`,
-      `https://integrations.messagebird.com/v3/hsm/templates?channelId=${channelId}`,
-      `https://integrations.messagebird.com/v2/platforms/whatsapp/${channelId}/templates`,
-      `https://conversations.messagebird.com/v1/platforms/whatsapp/${channelId}/templates`,
+      `https://integrations.messagebird.com/v3/whatsapp/templates`,
+      `https://integrations.messagebird.com/v3/platforms/whatsapp/senders/${channelId}/hsm`,
+      `https://integrations.messagebird.com/v3/platforms/whatsapp/senders/${channelId}/templates`,
+      `https://integrations.messagebird.com/v3/platforms/whatsapp/${channelId}/hsm`,
+      `https://integrations.messagebird.com/v3/hsm`,
+      `https://integrations.messagebird.com/v3/templates?channelId=${channelId}`,
+      `https://conversations.messagebird.com/v1/hsm?channelId=${channelId}`,
     ];
 
     const attempts: any[] = [];
