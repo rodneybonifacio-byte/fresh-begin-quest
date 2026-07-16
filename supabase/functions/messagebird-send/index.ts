@@ -1,17 +1,16 @@
 // @ts-nocheck
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { resolveChannelForConversation, resolveDefaultChannel } from "../_shared/channel-resolver.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+const BIRD_BASE = "https://api.bird.com";
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const supabase = createClient(
@@ -19,7 +18,8 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { conversationId, message, contentType = "text", mediaUrl } = await req.json();
+    const body = await req.json();
+    const { conversationId, message, contentType = "text", mediaUrl } = body;
 
     if (!conversationId || (!message && !mediaUrl)) {
       return new Response(
@@ -28,10 +28,10 @@ serve(async (req) => {
       );
     }
 
-    // Buscar conversa
+    // 1) Única query pra pegar contato (canal resolve por env — não precisa join)
     const { data: conversation, error: convError } = await supabase
       .from("whatsapp_conversations")
-      .select("*")
+      .select("id, contact_phone")
       .eq("id", conversationId)
       .single();
 
@@ -42,70 +42,74 @@ serve(async (req) => {
       );
     }
 
-    // Resolver canal
-    let channel = await resolveChannelForConversation(conversationId);
-    if (!channel) {
-      channel = await resolveDefaultChannel();
+    // 2) Credenciais Bird (canal novo)
+    const birdKey = Deno.env.get("BIRD_API_KEY");
+    const workspaceId = Deno.env.get("BIRD_WORKSPACE_ID");
+    const birdChannelId = Deno.env.get("BIRD_WHATSAPP_CHANNEL_ID");
+    if (!birdKey || !workspaceId || !birdChannelId) {
+      throw new Error("BIRD_API_KEY / BIRD_WORKSPACE_ID / BIRD_WHATSAPP_CHANNEL_ID não configurados");
     }
 
-    if (!channel) {
+    // 3) Payload Bird Channels API
+    const phone = String(conversation.contact_phone).replace(/\D/g, "");
+    const bodyBlocks: any[] = [];
+    if (contentType === "text" || (!mediaUrl && message)) {
+      bodyBlocks.push({ type: "text", text: { text: message || "" } });
+    } else if (contentType === "image" && mediaUrl) {
+      bodyBlocks.push({ type: "image", image: { mediaUrl } });
+      if (message) bodyBlocks.push({ type: "text", text: { text: message } });
+    } else if ((contentType === "audio" || contentType === "voice") && mediaUrl) {
+      bodyBlocks.push({ type: "audio", audio: { mediaUrl } });
+    } else if (contentType === "file" && mediaUrl) {
+      bodyBlocks.push({ type: "file", file: { mediaUrl } });
+    }
+
+    const payload = {
+      receiver: {
+        contacts: [{ identifierKey: "phonenumber", identifierValue: `+${phone}` }],
+      },
+      body: { type: bodyBlocks[0]?.type || "text", ...bodyBlocks[0] },
+    };
+
+    const url = `${BIRD_BASE}/workspaces/${workspaceId}/channels/${birdChannelId}/messages`;
+    const start = Date.now();
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `AccessKey ${birdKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+    const respText = await resp.text();
+    console.log(`Bird send ${resp.status} in ${Date.now() - start}ms | ${respText.slice(0, 300)}`);
+
+    if (!resp.ok) {
+      // Salvar como failed pra rastreabilidade
+      await supabase.from("whatsapp_messages").insert({
+        conversation_id: conversationId,
+        direction: "outbound",
+        content_type: contentType,
+        content: message,
+        media_url: mediaUrl || null,
+        status: "failed",
+        sent_by: "admin",
+        ai_generated: false,
+      });
       return new Response(
-        JSON.stringify({ error: "Nenhum canal WhatsApp configurado" }),
+        JSON.stringify({ error: "Bird send failed", status: resp.status, body: respText.slice(0, 500) }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log(`📤 Enviando mensagem via canal: ${channel.name} para ${conversation.contact_phone}`);
+    let birdResult: any = {};
+    try { birdResult = JSON.parse(respText); } catch {}
 
-    // Credenciais MessageBird clássico (env sempre tem prioridade sobre o registro do canal legado)
-    const mbAccessKey = Deno.env.get("MESSAGEBIRD_ACCESS_KEY") || channel.access_key;
-    const mbChannelId = Deno.env.get("MESSAGEBIRD_CHANNEL_ID") || channel.channel_id;
-    if (!mbAccessKey || !mbChannelId) {
-      throw new Error("MESSAGEBIRD_ACCESS_KEY / MESSAGEBIRD_CHANNEL_ID não configurados");
-    }
-
-    // Montar payload para MessageBird /send API
-    const sendPayload: any = {
-      to: conversation.contact_phone,
-      from: mbChannelId,
-      type: "text",
-      content: { text: message || "" },
-    };
-
-    if (contentType === "image" && mediaUrl) {
-      sendPayload.type = "image";
-      sendPayload.content = { image: { url: mediaUrl }, text: message || undefined };
-    } else if ((contentType === "audio" || contentType === "voice") && mediaUrl) {
-      sendPayload.type = "audio";
-      sendPayload.content = { audio: { url: mediaUrl } };
-    } else if (contentType === "file" && mediaUrl) {
-      sendPayload.type = "file";
-      sendPayload.content = { file: { url: mediaUrl } };
-    }
-
-    const mbResponse = await fetch("https://conversations.messagebird.com/v1/send", {
-      method: "POST",
-      headers: {
-        Authorization: `AccessKey ${mbAccessKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(sendPayload),
-    });
-
-    const mbResult = await mbResponse.json();
-    console.log("📨 MessageBird response:", mbResponse.status, JSON.stringify(mbResult).substring(0, 300));
-
-    if (!mbResponse.ok) {
-      console.error("❌ Erro MessageBird:", mbResult);
-      throw new Error(`MessageBird error: ${mbResult?.errors?.[0]?.description || JSON.stringify(mbResult)}`);
-    }
-
-    // Salvar mensagem enviada no banco
-    const { data: savedMsg, error: msgError } = await supabase
-      .from("whatsapp_messages")
-      .insert({
+    // 4) Persistência em paralelo (não bloqueia resposta)
+    const persistPromise = Promise.all([
+      supabase.from("whatsapp_messages").insert({
         conversation_id: conversationId,
-        messagebird_id: mbResult.id || null,
+        messagebird_id: birdResult.id || null,
         direction: "outbound",
         content_type: contentType,
         content: message,
@@ -113,27 +117,26 @@ serve(async (req) => {
         status: "sent",
         sent_by: "admin",
         ai_generated: false,
-      })
-      .select()
-      .single();
+      }),
+      supabase.from("whatsapp_conversations").update({
+        last_message_at: new Date().toISOString(),
+        last_message_preview: (message || "").substring(0, 100),
+        ai_enabled: false,
+      }).eq("id", conversationId),
+    ]);
 
-    if (msgError) {
-      console.error("⚠️ Erro ao salvar mensagem enviada:", msgError);
+    // Aguarda mas com timeout curto pra não travar UI
+    try {
+      await Promise.race([
+        persistPromise,
+        new Promise((_, rej) => setTimeout(() => rej(new Error("persist timeout")), 3000)),
+      ]);
+    } catch (e) {
+      console.warn("Persist demorou:", (e as any)?.message);
     }
 
-    // Atualizar conversa — desativar IA quando admin envia manualmente
-    await supabase
-      .from("whatsapp_conversations")
-      .update({
-        last_message_at: new Date().toISOString(),
-        last_message_preview: message.substring(0, 100),
-        ai_enabled: false,
-      })
-      .eq("id", conversationId);
-    console.log("🔒 IA desativada na conversa (admin enviou manualmente):", conversationId);
-
     return new Response(
-      JSON.stringify({ ok: true, message: savedMsg, messagebirdResponse: mbResult }),
+      JSON.stringify({ ok: true, birdId: birdResult.id, response: birdResult }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {
