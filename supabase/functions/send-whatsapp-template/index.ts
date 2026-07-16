@@ -8,6 +8,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const SYSTEM_MESSAGEBIRD_CHANNEL_ID = "1d361180-7a89-4b2f-9a3c-ec5b4715916d";
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -143,7 +145,7 @@ Deno.serve(async (req) => {
         .single();
 
       if (ch) {
-        channelId = ch.channel_id;
+        channelId = SYSTEM_MESSAGEBIRD_CHANNEL_ID;
         accessKey = ch.access_key;
       } else {
         const { data: def } = await supabase
@@ -151,7 +153,7 @@ Deno.serve(async (req) => {
           .select("channel_id, access_key")
           .eq("is_default", true)
           .single();
-        channelId = def?.channel_id || Deno.env.get("BIRD_WHATSAPP_CHANNEL_ID")!;
+        channelId = SYSTEM_MESSAGEBIRD_CHANNEL_ID;
         accessKey = def?.access_key || Deno.env.get("BIRD_API_KEY")!;
       }
     } else {
@@ -160,7 +162,7 @@ Deno.serve(async (req) => {
         .select("channel_id, access_key")
         .eq("is_default", true)
         .single();
-      channelId = def?.channel_id || Deno.env.get("BIRD_WHATSAPP_CHANNEL_ID")!;
+      channelId = SYSTEM_MESSAGEBIRD_CHANNEL_ID;
       accessKey = def?.access_key || Deno.env.get("BIRD_API_KEY")!;
     }
 
