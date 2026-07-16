@@ -1,12 +1,9 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
+// @ts-nocheck
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
-
-const BIRD_BASE = "https://api.bird.com";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -14,43 +11,20 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, serviceKey);
+    const accessKey = Deno.env.get("MESSAGEBIRD_ACCESS_KEY");
+    const channelId = Deno.env.get("MESSAGEBIRD_CHANNEL_ID");
 
-    const url = new URL(req.url);
-    const channelDbId = url.searchParams.get("channel_id");
-
-    let accessKey: string | undefined;
-    let birdChannelId: string | undefined;
-    let workspaceId: string | undefined;
-
-    if (channelDbId) {
-      const { data: ch } = await supabase
-        .from("whatsapp_channels")
-        .select("access_key, channel_id, bird_workspace_id")
-        .eq("id", channelDbId)
-        .single();
-      accessKey = ch?.access_key;
-      birdChannelId = ch?.channel_id;
-      workspaceId = ch?.bird_workspace_id || undefined;
-    } else {
-      const { data: def } = await supabase
-        .from("whatsapp_channels")
-        .select("access_key, channel_id, bird_workspace_id")
-        .eq("is_default", true)
-        .single();
-      accessKey = def?.access_key;
-      birdChannelId = def?.channel_id;
-      workspaceId = def?.bird_workspace_id || undefined;
+    if (!accessKey || !channelId) {
+      return new Response(
+        JSON.stringify({ error: "MESSAGEBIRD_ACCESS_KEY / MESSAGEBIRD_CHANNEL_ID não configurados" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    accessKey = accessKey || Deno.env.get("BIRD_API_KEY")!;
-    birdChannelId = birdChannelId || Deno.env.get("BIRD_WHATSAPP_CHANNEL_ID")!;
-    workspaceId = workspaceId || Deno.env.get("BIRD_WORKSPACE_ID")!;
+    // MessageBird clássico: HSM templates
+    // GET https://integrations.messagebird.com/v3/platforms/whatsapp/{channelId}/templates
+    const endpoint = `https://integrations.messagebird.com/v3/platforms/whatsapp/${channelId}/templates?limit=100`;
 
-    // Bird API: GET /workspaces/{wsId}/channels/{chId}/templates
-    const endpoint = `${BIRD_BASE}/workspaces/${workspaceId}/channels/${birdChannelId}/templates`;
     const response = await fetch(endpoint, {
       headers: {
         Authorization: `AccessKey ${accessKey}`,
@@ -61,31 +35,30 @@ Deno.serve(async (req) => {
     const result = await response.json();
 
     if (!response.ok) {
-      console.error("Bird templates error:", response.status, JSON.stringify(result).slice(0, 500));
+      console.error("MessageBird templates error:", response.status, JSON.stringify(result).slice(0, 500));
       return new Response(
         JSON.stringify({ error: "Failed to fetch templates", details: result }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const rawTemplates = result.results || result.data || result.items || result || [];
+    const rawTemplates = result.items || result.results || result.data || (Array.isArray(result) ? result : []);
 
-    // Normaliza para o formato esperado pelo restante do app
     const templates = (Array.isArray(rawTemplates) ? rawTemplates : []).map((t: any) => ({
-      name: t.name || t.template?.name || t.projectId,
-      language: t.locale || t.language || t.template?.locale,
-      status: t.status || "approved",
+      name: t.name,
+      language: t.language || t.locale,
+      status: t.status,
       category: t.category,
       namespace: t.namespace || "",
-      components: t.components || t.template?.components || [],
-      projectId: t.projectId || t.id,
+      components: t.components || [],
+      projectId: t.id || t.projectId,
     }));
 
     const approved = templates.filter(
-      (t: any) => !t.status || String(t.status).toLowerCase() === "approved" || String(t.status).toLowerCase() === "active"
+      (t: any) => !t.status || ["approved", "active"].includes(String(t.status).toLowerCase())
     );
 
-    console.log(`Found ${approved.length} templates (Bird) out of ${templates.length} total`);
+    console.log(`Found ${approved.length} templates out of ${templates.length} total`);
 
     return new Response(
       JSON.stringify({ templates: approved, total: templates.length }),
