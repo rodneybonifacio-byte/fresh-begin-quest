@@ -1146,7 +1146,7 @@ serve(async (req) => {
     // === PRÉ-HANDOFF: Se Felipe e cliente pede para voltar pra Rosane Beatriz ===
     if (agentName === "felipe" && message) {
       const lowerMsg = (message || "").toLowerCase();
-      const backToRosane BeatrizKeywords = [
+      const backToRosaneBeatrizKeywords = [
         "quero falar com a veronica", "quero a veronica", "volta pra veronica",
         "transfere pra veronica", "transferir pra veronica", "transfere para veronica",
         "transferir para veronica", "passa pra veronica", "passar pra veronica",
@@ -1154,7 +1154,7 @@ serve(async (req) => {
         "prefiro a veronica", "quero voltar pra veronica", "me passa pra veronica",
         "pode me transferir pra veronica", "veronica por favor",
       ];
-      if (backToRosane BeatrizKeywords.some(k => lowerMsg.includes(k))) {
+      if (backToRosaneBeatrizKeywords.some(k => lowerMsg.includes(k))) {
         console.log(`🔄 PRÉ-HANDOFF: Cliente pediu Rosane Beatriz → transferindo de volta`);
         agentName = "veronica";
         await supabase.from("whatsapp_conversations")
@@ -1162,7 +1162,7 @@ serve(async (req) => {
           .eq("id", conversationId);
         // Resolver canal antes do handoff
         const earlyChannel = await resolveChannelForConversation(conversationId);
-        await performHandoffToRosane Beatriz(supabase, conversationId, contactPhone, message, earlyChannel);
+        await performHandoffToRosaneBeatriz(supabase, conversationId, contactPhone, message, earlyChannel);
         return new Response(
           JSON.stringify({ ok: true, reply: "Handoff Felipe → Rosane Beatriz realizado", tools_used: [] }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -2513,9 +2513,9 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
       }
 
       // === HANDOFF FELIPE → VERONICA (pós-resposta, caso detecte pedido) ===
-      if (agentName === "felipe" && detectBackToRosane BeatrizTrigger(message)) {
+      if (agentName === "felipe" && detectBackToRosaneBeatrizTrigger(message)) {
         console.log("🔄 Handoff: Felipe → Rosane Beatriz");
-        await performHandoffToRosane Beatriz(supabase, conversationId, contactPhone, message, channel);
+        await performHandoffToRosaneBeatriz(supabase, conversationId, contactPhone, message, channel);
       }
     }
 
@@ -4178,7 +4178,7 @@ function detectHandoffTrigger(userMessage: string, _aiReply: string): boolean {
   return escalationKeywords.some(k => lowerMsg.includes(k));
 }
 
-function detectBackToRosane BeatrizTrigger(userMessage: string): boolean {
+function detectBackToRosaneBeatrizTrigger(userMessage: string): boolean {
   const lowerMsg = (userMessage || "").toLowerCase();
   const keywords = [
     "quero falar com a veronica", "quero a veronica", "volta pra veronica",
@@ -4189,7 +4189,7 @@ function detectBackToRosane BeatrizTrigger(userMessage: string): boolean {
   return keywords.some(k => lowerMsg.includes(k));
 }
 
-async function performHandoffToRosane Beatriz(
+async function performHandoffToRosaneBeatriz(
   supabase: any, conversationId: string, contactPhone: string, userMessage: string,
   channel: { channel_id: string; access_key: string }
 ) {
