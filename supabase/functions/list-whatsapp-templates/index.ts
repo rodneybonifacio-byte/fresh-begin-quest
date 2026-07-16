@@ -5,7 +5,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const BIRD_BASE = "https://api.bird.com";
+const BIRD = "https://api.bird.com";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -13,88 +13,70 @@ Deno.serve(async (req) => {
   try {
     const accessKey = Deno.env.get("BIRD_API_KEY");
     const workspaceId = Deno.env.get("BIRD_WORKSPACE_ID");
-    const channelId = Deno.env.get("BIRD_WHATSAPP_CHANNEL_ID");
-
-    if (!accessKey || !workspaceId || !channelId) {
+    if (!accessKey || !workspaceId) {
       return new Response(
-        JSON.stringify({
-          error: "BIRD_API_KEY / BIRD_WORKSPACE_ID / BIRD_WHATSAPP_CHANNEL_ID não configurados",
-        }),
+        JSON.stringify({ error: "BIRD_API_KEY / BIRD_WORKSPACE_ID não configurados" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Bird API: templates ficam no workspace/canal (mesmo pra números MessageBird migrados)
-    const mbChannelId = Deno.env.get("MESSAGEBIRD_CHANNEL_ID");
-    const mbAccessKey = Deno.env.get("MESSAGEBIRD_ACCESS_KEY");
+    const auth = { Authorization: `AccessKey ${accessKey}`, "Content-Type": "application/json" };
 
-    const attempts: Array<{ url: string; status: number; snippet: string }> = [];
+    // 1) Lista projetos do workspace
+    const projRes = await fetch(`${BIRD}/workspaces/${workspaceId}/projects?limit=100`, { headers: auth });
+    const projText = await projRes.text();
+    if (!projRes.ok) {
+      return new Response(
+        JSON.stringify({ error: "Falha ao listar projects", status: projRes.status, body: projText.slice(0, 500) }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const projJson = JSON.parse(projText);
+    const projects: any[] = projJson.results || projJson.data || projJson.items || [];
 
-    // 1) Bird API (workspace/channel)
-    const birdCandidates = [
-      `${BIRD_BASE}/workspaces/${workspaceId}/channels/${channelId}/presets`,
-      `${BIRD_BASE}/workspaces/${workspaceId}/channels/${mbChannelId}/presets`,
-      `${BIRD_BASE}/workspaces/${workspaceId}/presets?channelId=${channelId}`,
-      `${BIRD_BASE}/workspaces/${workspaceId}/presets?channelId=${mbChannelId}`,
-      `${BIRD_BASE}/workspaces/${workspaceId}/channels/${channelId}/templates`,
-      `${BIRD_BASE}/workspaces/${workspaceId}/channels/${mbChannelId}/templates`,
-    ];
-    for (const url of birdCandidates) {
-      const r = await fetch(url, {
-        headers: { Authorization: `AccessKey ${accessKey}`, "Content-Type": "application/json" },
-      });
-      const txt = await r.text();
-      attempts.push({ url, status: r.status, snippet: txt.slice(0, 160) });
-      if (r.ok) {
-        const result = JSON.parse(txt);
-        return normalizeAndRespond(result);
-      }
+    // 2) Para cada project, busca channel-templates
+    const allTemplates: any[] = [];
+    for (const p of projects) {
+      const pid = p.id || p.projectId;
+      if (!pid) continue;
+      const tRes = await fetch(
+        `${BIRD}/workspaces/${workspaceId}/projects/${pid}/channel-templates?limit=100`,
+        { headers: auth }
+      );
+      const tText = await tRes.text();
+      if (!tRes.ok) continue;
+      try {
+        const tJson = JSON.parse(tText);
+        const items = tJson.results || tJson.data || tJson.items || [];
+        for (const it of items) allTemplates.push({ ...it, _projectId: pid });
+      } catch {}
     }
 
-    // 2) MessageBird clássico
-    const mbCandidates = [
-      `https://conversations.messagebird.com/v1/platforms/whatsapp/${mbChannelId}/templates`,
-      `https://integrations.messagebird.com/v3/hsms?channelId=${mbChannelId}`,
-      `https://integrations.messagebird.com/v3/hsms`,
-    ];
-    for (const url of mbCandidates) {
-      const r = await fetch(url, {
-        headers: { Authorization: `AccessKey ${mbAccessKey}`, "Content-Type": "application/json" },
-      });
-      const txt = await r.text();
-      attempts.push({ url, status: r.status, snippet: txt.slice(0, 160) });
-      if (r.ok) {
-        try {
-          const result = JSON.parse(txt);
-          return normalizeAndRespond(result);
-        } catch {}
-      }
-    }
+    const templates = allTemplates.map((t: any) => {
+      const first = Array.isArray(t.channelTemplates) && t.channelTemplates.length ? t.channelTemplates[0] : t;
+      return {
+        name: t.name || first.name,
+        language: first.locale || t.locale,
+        status: first.status || t.status,
+        category: t.category || first.category,
+        namespace: first.namespace || "",
+        components: first.elements || first.components || t.components || [],
+        projectId: t.id || t._projectId,
+      };
+    });
 
-    return new Response(
-      JSON.stringify({ error: "Nenhum endpoint de templates respondeu 2xx", attempts }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    const approved = templates.filter(
+      (t) => !t.status || ["approved", "active"].includes(String(t.status).toLowerCase())
     );
 
-    function normalizeAndRespond(result: any) {
-      const rawTemplates = result.results || result.data || result.items || result.templates || (Array.isArray(result) ? result : []);
-      const templates = (Array.isArray(rawTemplates) ? rawTemplates : []).map((t: any) => ({
-        name: t.name || t.template?.name || t.projectId,
-        language: t.locale || t.language || t.template?.locale,
-        status: t.status || "approved",
-        category: t.category,
-        namespace: t.namespace || "",
-        components: t.components || t.template?.components || [],
-        projectId: t.projectId || t.id,
-      }));
-      const approved = templates.filter(
-        (t: any) => !t.status || ["approved", "active"].includes(String(t.status).toLowerCase())
-      );
-      return new Response(
-        JSON.stringify({ templates: approved, total: templates.length }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    return new Response(
+      JSON.stringify({
+        projectsCount: projects.length,
+        templates: approved,
+        total: templates.length,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   } catch (err: any) {
     console.error("Error:", err);
     return new Response(
