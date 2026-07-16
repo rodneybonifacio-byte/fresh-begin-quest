@@ -53,17 +53,20 @@ Deno.serve(async (req) => {
     }
 
     const templates = allTemplates.map((t: any) => {
-      const channels = t.channels || t.channelTemplates || [];
-      const first = Array.isArray(channels) && channels.length ? channels[0] : {};
+      const deployments: any[] = t.deployments || [];
+      const nameDep = deployments.find((d) => d.key === "whatsappTemplateName");
+      const catDep = deployments.find((d) => d.key === "whatsappCategory");
+      const platformContent: any[] = t.platformContent || [];
+      const wa = platformContent.find((p) => p.platform === "whatsapp") || platformContent[0] || {};
+      const approval = (wa.approvals && wa.approvals[0]) || {};
       return {
-        name: t.name || first.name || t.projectId,
-        language: first.locale || t.locale || first.language,
-        status: first.status || t.status,
-        category: t.category || first.category,
-        namespace: first.namespace || "",
-        components: first.elements || first.components || t.components || [],
         projectId: t.id || t._projectId,
-        raw: t,
+        name: nameDep?.value || t.name || t.id,
+        language: wa.locale || t.defaultLocale,
+        status: approval.status || t.status,
+        category: catDep?.value || t.category,
+        blocks: wa.blocks || [],
+        approvals: wa.approvals || [],
       };
     });
 
