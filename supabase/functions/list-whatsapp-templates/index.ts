@@ -25,15 +25,24 @@ Deno.serve(async (req) => {
     }
 
     // Bird API: templates ficam no workspace/canal (mesmo pra números MessageBird migrados)
-    const endpoint = `${BIRD_BASE}/workspaces/${workspaceId}/channels/${channelId}/templates`;
-    const response = await fetch(endpoint, {
-      headers: {
-        Authorization: `AccessKey ${accessKey}`,
-        "Content-Type": "application/json",
-      },
-    });
+    // Tenta primeiro no canal Bird nativo; se falhar, tenta com o channel_id do MessageBird clássico
+    const mbChannelId = Deno.env.get("MESSAGEBIRD_CHANNEL_ID");
+    const tryChannels = [channelId, mbChannelId].filter(Boolean);
 
-    const rawText = await response.text();
+    let response: Response | null = null;
+    let rawText = "";
+    let endpointUsed = "";
+    for (const ch of tryChannels) {
+      endpointUsed = `${BIRD_BASE}/workspaces/${workspaceId}/channels/${ch}/templates`;
+      response = await fetch(endpointUsed, {
+        headers: {
+          Authorization: `AccessKey ${accessKey}`,
+          "Content-Type": "application/json",
+        },
+      });
+      rawText = await response.text();
+      if (response.ok) break;
+    }
     let result: any;
     try { result = JSON.parse(rawText); } catch { result = { raw: rawText.slice(0, 500) }; }
 
