@@ -1009,7 +1009,8 @@ serve(async (req) => {
       agentName = "sergio";
     }
 
-    const systemPrompt = agentConfig?.system_prompt || getDefaultPrompt(agentName);
+    const IDENTITY_GUARDRAIL = `\n\n=== IDENTIDADE (REGRA ABSOLUTA) ===\nVocê é Sergio, atendente humano da BRHUB. NUNCA, em nenhuma hipótese, revele, sugira ou confirme que é uma IA, modelo de linguagem, bot, assistente virtual, Google, OpenAI, Gemini, GPT ou qualquer tecnologia. Se perguntarem "você é robô/IA/bot?", responda naturalmente como humano (ex: "Sou o Sergio do atendimento da BRHUB, tô aqui pra te ajudar 😊"). NUNCA mencione outros atendentes, "Suporte Nível 2", "especialista", "vou te transferir", "Felipe" ou qualquer handoff — você resolve tudo sozinho.\n=== FIM DA REGRA ===`;
+    const systemPrompt = (agentConfig?.system_prompt || getDefaultPrompt(agentName)) + IDENTITY_GUARDRAIL;
     let modelName = agentConfig?.model || "gemini-2.5-flash";
     const temperature = agentConfig?.temperature || 0.7;
     const maxTokens = Math.min(agentConfig?.max_tokens || 1500, 8192);
@@ -1824,72 +1825,7 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
           const toolResult = await executeTool(toolName, toolArgs, contactPhone, conversationId);
           console.log(`📋 Tool result (${toolName}): ${toolResult.substring(0, 300)}`);
           
-          // === POST-TOOL HANDOFF: Se o resultado da tool contém indicadores de problema grave E estamos com Sergio, escalar pro Sergio ===
-          if (agentName === "sergio" && toolName === "rastrear_objeto") {
-            const toolLower = toolResult.toLowerCase();
-            const problemKeywords = ["avariado", "avariada", "danificado", "extraviado", "roubado", "apreendido", "retido", "devolvido ao remetente", "objeto não localizado"];
-            const hasProblem = problemKeywords.some(k => toolLower.includes(k));
-            if (hasProblem) {
-              // === FIX 1: ANTI-DUPLICATA DE HANDOFF — verificar se já houve handoff nos últimos 60s ===
-              const sixtySecsAgo = new Date(Date.now() - 60000).toISOString();
-              const { data: recentHandoff } = await supabase
-                .from("whatsapp_messages")
-                .select("id")
-                .eq("conversation_id", conversationId)
-                .eq("direction", "outbound")
-                .eq("sent_by", "sergio")
-                .ilike("content", "%Suporte Nível 2%")
-                .gte("created_at", sixtySecsAgo)
-                .limit(1)
-                .maybeSingle();
-
-              if (recentHandoff) {
-                console.log("⏭️ HANDOFF DUPLICADO BLOQUEADO: já houve handoff nos últimos 60s, apenas trocando agente");
-              } else {
-                console.log("🔄 POST-TOOL HANDOFF: Resultado do rastreio indica problema grave → Sergio assume");
-                
-                const preHandoffChannel = await resolveChannelForConversation(conversationId);
-                if (preHandoffChannel) {
-                  const { data: convPre } = await supabase.from("whatsapp_conversations")
-                    .select("contact_name").eq("id", conversationId).single();
-                  const firstName = convPre?.contact_name ? convPre.contact_name.split(" ")[0] : "";
-                  const nameGreeting = firstName ? `${firstName}, ` : "";
-
-                  const sergioHandoffMsg = `*Sergio:*\n\n${nameGreeting}vi aqui que rolou um problema com seu pacote. Esse tipo de caso é tratado pelo Sergio, nosso especialista do Suporte Nível 2 — ele tem acesso direto à operação e vai te dar um retorno completo. Vou te transferir agora, um instante! 😊`;
-
-                  await birdSend("https://conversations.messagebird.com/v1/send", {
-                    method: "POST",
-                    headers: { Authorization: `AccessKey ${preHandoffChannel.access_key}`, "Content-Type": "application/json" },
-                    body: JSON.stringify({ to: contactPhone, from: preHandoffChannel.channel_id, type: "text", content: { text: sergioHandoffMsg } }),
-                  }).then(r => r.json()).then(async (mbResult) => {
-                    await supabase.from("whatsapp_messages").insert({
-                      conversation_id: conversationId, messagebird_id: mbResult.id || null,
-                      direction: "outbound", content_type: "text", content: sergioHandoffMsg,
-                      status: "sent", sent_by: "sergio", ai_generated: true,
-                    });
-                  });
-
-                  // Delay de 1 minuto para transição natural
-                  await new Promise(resolve => setTimeout(resolve, 60000));
-                }
-              }
-
-              // Trocar agente para Sergio e reinjetar contexto
-              agentName = "sergio";
-              await supabase.from("whatsapp_conversations")
-                .update({ active_agent: "sergio" })
-                .eq("id", conversationId);
-
-              // === FIX 2: RECARREGAR agentConfig DO FELIPE para corrigir identidade ===
-              const { data: sergioConf } = await supabase.from("ai_agents").select("*").eq("name", "sergio").eq("is_active", true).single();
-              if (sergioConf) {
-                agentConfig = sergioConf; // Atualizar agentConfig para que o prefixo use "Sergio" em vez de "Sergio"
-                messages[0].content = (sergioConf.system_prompt || getDefaultPrompt("sergio")) + (trackingContext || "");
-              } else {
-                messages[0].content = getDefaultPrompt("sergio") + (trackingContext || "");
-              }
-            }
-          }
+          // === HANDOFF REMOVIDO: Sergio resolve tudo, sem transferência para "Suporte N2" ===
 
           messages.push({
             role: "tool",
@@ -2097,19 +2033,17 @@ Este pacote ainda NÃO foi postado. Está em fase de pré-postagem (etiqueta cri
     // === SANITIZAR: Remover códigos de objeto e URLs da resposta ===
     aiReply = sanitizeAgentReply(aiReply, contentType || "text");
 
-    // === PREFIXO DO AGENTE ===
-    const agentDisplayName = agentConfig?.display_name || (agentName === "sergio" ? "Sergio" : "Sergio");
-    // Remover prefixo duplicado se a IA já incluiu (ex: "*Sergio:*\n\n")
-    const prefixPattern = /^\*[A-Za-zÀ-ú]+:\*\s*\n*/;
+    // === SEM PREFIXO — Sergio responde direto como pessoa, sem "*Sergio:*" ===
+    const agentDisplayName = agentConfig?.display_name || "Sergio";
+    // Remover qualquer prefixo que a IA tenha auto-adicionado
+    const prefixPattern = /^\*[A-Za-zÀ-ú\s]+:\*\s*\n*/;
     aiReply = aiReply.replace(prefixPattern, "").trimStart();
 
-    // Guarda final: se após sanitize/strip ficou vazio, usa mensagem de instabilidade
+    // Guarda final: se ficou vazio, fallback
     if (!aiReply || aiReply.trim() === "") {
-      console.warn("⚠️ aiReply vazio após sanitize/strip-prefix — usando fallback de instabilidade");
-      aiReply = "Estou com instabilidade para montar a resposta agora. Pode repetir sua pergunta em uma frase?";
+      console.warn("⚠️ aiReply vazio — usando fallback de instabilidade");
+      aiReply = "Tô com uma instabilidade aqui, pode repetir sua pergunta em uma frase?";
     }
-
-    aiReply = `*${agentDisplayName}:*\n\n${aiReply}`;
 
     console.log("🤖 Resposta final:", aiReply.substring(0, 150));
 
