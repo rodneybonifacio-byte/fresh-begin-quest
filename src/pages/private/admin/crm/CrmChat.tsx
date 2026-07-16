@@ -244,7 +244,7 @@ const CrmChat = () => {
                       {!isUser && (
                         <img
                           src={rosaneAvatar}
-                          alt="Rosane Beatriz"
+                          alt="Sergio"
                           className="w-7 h-7 rounded-full object-cover shrink-0 mt-1"
                         />
                       )}
@@ -258,7 +258,7 @@ const CrmChat = () => {
                         {!isUser && msg.ai_generated && (
                           <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-1">
                             <Bot className="w-3 h-3" />
-                            Rosane Beatriz IA
+                            Sergio IA
                           </div>
                         )}
                         <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -339,7 +339,7 @@ const CrmChat = () => {
               <MessageCircle className="w-10 h-10 text-primary/30" />
             </div>
             <h3 className="text-lg font-semibold mb-1">CRM Chat</h3>
-            <p className="text-sm">Conversas do painel web com a Rosane Beatriz</p>
+            <p className="text-sm">Conversas do painel web com a Sergio</p>
           </div>
         )}
       </div>

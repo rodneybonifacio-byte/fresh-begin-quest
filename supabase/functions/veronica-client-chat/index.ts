@@ -57,15 +57,15 @@ async function fetchTrackingData(codigo: string): Promise<any> {
       try {
         const mp = await rastrearMarketplace(mpRow.codigo_objeto);
         if (mp) {
-          console.log(`[veronica fetchTrackingData] origem=marketplace codigo=${mpRow.codigo_objeto}`);
+          console.log(`[sergio fetchTrackingData] origem=marketplace codigo=${mpRow.codigo_objeto}`);
           return { data: mp };
         }
       } catch (mpErr: any) {
-        console.warn("[veronica fetchTrackingData] marketplace falhou, fallback BRHUB:", mpErr?.message);
+        console.warn("[sergio fetchTrackingData] marketplace falhou, fallback BRHUB:", mpErr?.message);
       }
     }
   } catch (e: any) {
-    console.warn("[veronica fetchTrackingData] lookup falhou:", e?.message);
+    console.warn("[sergio fetchTrackingData] lookup falhou:", e?.message);
   }
 
   // 2) Fallback BRHUB legado
@@ -625,7 +625,7 @@ Deno.serve(async (req) => {
             cliente_id: clienteId,
             status: "open",
             ai_enabled: true,
-            active_agent: "veronica",
+            active_agent: "sergio",
             tags: ["painel-web"],
             last_message_at: new Date().toISOString(),
             last_message_preview: message.substring(0, 100),
@@ -715,7 +715,7 @@ Deno.serve(async (req) => {
     // 6. System prompt
     const today = new Date().toLocaleDateString("pt-BR", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
-    const systemPrompt = `Você é a Veronica, do time de suporte da BRHUB, atendendo via chat no painel web.
+    const systemPrompt = `Você é a Sergio, do time de suporte da BRHUB, atendendo via chat no painel web.
 
 DATA ATUAL: ${today}
 
@@ -834,9 +834,9 @@ REGRAS:
       content_type: "text",
       content: finalReply,
       status: "delivered",
-      sent_by: "veronica",
+      sent_by: "sergio",
       ai_generated: true,
-      metadata: { source: "web-panel", agent: "veronica" },
+      metadata: { source: "web-panel", agent: "sergio" },
     });
 
     await supabase.from("whatsapp_conversations").update({
@@ -847,7 +847,7 @@ REGRAS:
     // Log
     await supabase.from("ai_interaction_logs").insert({
       conversation_id: conversationId,
-      agent_name: "veronica-web",
+      agent_name: "sergio-web",
       content_type: "text",
       provider: "openai",
       model: "gpt-4o-mini",
@@ -863,7 +863,7 @@ REGRAS:
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("❌ veronica-client-chat error:", err);
+    console.error("❌ sergio-client-chat error:", err);
     return new Response(
       JSON.stringify({ error: err.message || "Erro interno" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

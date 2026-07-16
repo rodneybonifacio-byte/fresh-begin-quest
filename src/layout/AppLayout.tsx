@@ -1,5 +1,5 @@
 import { LayoutBase } from '../layout';
-import { VeronicaChatWidget } from '../components/chat/VeronicaChatWidget';
+import { SergioChatWidget } from '../components/chat/SergioChatWidget';
 import { LayoutProvider } from '../providers/LayoutContext';
 import { AuthProvider, useAuth } from '../providers/AuthContext';
 import { IdleProvider } from '../providers/IdleProvider';
@@ -99,7 +99,7 @@ const AppLayoutContent = () => {
                 onCancel={() => setIsRemetenteModalOpen(false)}
                 showWelcomeMessage
             />
-            <VeronicaChatWidget />
+            <SergioChatWidget />
         </>
     );
 };
