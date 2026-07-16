@@ -117,6 +117,8 @@ Deno.serve(async (req) => {
         total: templates.length,
         approvedCount: approved.length,
         channelIdUsed: channelId || null,
+        wabaId,
+        channelInfoDebug: channelInfo,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
