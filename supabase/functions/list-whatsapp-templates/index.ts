@@ -47,9 +47,31 @@ Deno.serve(async (req) => {
       Accept: "application/json",
     };
 
+    // Descobrir wabaId a partir do canal (templates são por WABA, não por canal)
+    let wabaId: string | null = null;
+    let channelInfo: any = null;
+    if (channelId) {
+      const chRes = await fetch(
+        `${MB}/v3/platforms/whatsapp/channels/${channelId}`,
+        { headers: auth }
+      );
+      if (chRes.ok) {
+        try {
+          channelInfo = await chRes.json();
+          wabaId =
+            channelInfo?.wabaId ||
+            channelInfo?.waba?.id ||
+            channelInfo?.arguments?.wabaId ||
+            channelInfo?.details?.wabaId ||
+            null;
+        } catch {}
+      }
+    }
+
     // MessageBird Integrations API - HSM Templates
-    // Endpoint retorna todos os templates da conta MessageBird
-    const url = `${MB}/v3/platforms/whatsapp/templates?limit=200`;
+    const qs = new URLSearchParams({ limit: "200" });
+    if (wabaId) qs.set("wabaId", wabaId);
+    const url = `${MB}/v3/platforms/whatsapp/templates?${qs.toString()}`;
     const res = await fetch(url, { headers: auth });
     const text = await res.text();
 
@@ -59,6 +81,8 @@ Deno.serve(async (req) => {
           error: "Falha ao buscar templates na MessageBird",
           status: res.status,
           details: text.slice(0, 800),
+          wabaId,
+          channelInfo,
         }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -93,6 +117,8 @@ Deno.serve(async (req) => {
         total: templates.length,
         approvedCount: approved.length,
         channelIdUsed: channelId || null,
+        wabaId,
+        channelInfoDebug: channelInfo,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
