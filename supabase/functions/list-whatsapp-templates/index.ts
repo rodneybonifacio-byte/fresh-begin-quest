@@ -73,40 +73,24 @@ Deno.serve(async (req) => {
     );
 
     function normalizeAndRespond(result: any) {
-    let result: any;
-    try { result = JSON.parse(rawText); } catch { result = { raw: rawText.slice(0, 500) }; }
-
-    if (!response.ok) {
-      console.error("Bird templates error:", response.status, JSON.stringify(result).slice(0, 500));
+      const rawTemplates = result.results || result.data || result.items || result.templates || (Array.isArray(result) ? result : []);
+      const templates = (Array.isArray(rawTemplates) ? rawTemplates : []).map((t: any) => ({
+        name: t.name || t.template?.name || t.projectId,
+        language: t.locale || t.language || t.template?.locale,
+        status: t.status || "approved",
+        category: t.category,
+        namespace: t.namespace || "",
+        components: t.components || t.template?.components || [],
+        projectId: t.projectId || t.id,
+      }));
+      const approved = templates.filter(
+        (t: any) => !t.status || ["approved", "active"].includes(String(t.status).toLowerCase())
+      );
       return new Response(
-        JSON.stringify({ error: "Failed to fetch templates", status: response.status, details: result }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ templates: approved, total: templates.length }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    const rawTemplates = result.results || result.data || result.items || (Array.isArray(result) ? result : []);
-
-    const templates = (Array.isArray(rawTemplates) ? rawTemplates : []).map((t: any) => ({
-      name: t.name || t.template?.name || t.projectId,
-      language: t.locale || t.language || t.template?.locale,
-      status: t.status || "approved",
-      category: t.category,
-      namespace: t.namespace || "",
-      components: t.components || t.template?.components || [],
-      projectId: t.projectId || t.id,
-    }));
-
-    const approved = templates.filter(
-      (t: any) => !t.status || ["approved", "active"].includes(String(t.status).toLowerCase())
-    );
-
-    console.log(`Found ${approved.length} templates (Bird) out of ${templates.length} total`);
-
-    return new Response(
-      JSON.stringify({ templates: approved, total: templates.length }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  } catch (err: any) {
     console.error("Error:", err);
     return new Response(
       JSON.stringify({ error: err.message }),
