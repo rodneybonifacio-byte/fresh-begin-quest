@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
 
     // MessageBird clássico: HSM templates
     // GET https://integrations.messagebird.com/v3/platforms/whatsapp/{channelId}/templates
-    const endpoint = `https://integrations.messagebird.com/v3/platforms/whatsapp/${channelId}/templates?limit=100`;
+    const endpoint = `https://conversations.messagebird.com/v1/platforms/whatsapp/${channelId}/templates?limit=100`;
 
     const response = await fetch(endpoint, {
       headers: {
