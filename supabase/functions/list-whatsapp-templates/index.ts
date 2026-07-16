@@ -6,14 +6,11 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const accessKey = Deno.env.get("MESSAGEBIRD_ACCESS_KEY");
     const channelId = Deno.env.get("MESSAGEBIRD_CHANNEL_ID");
-
     if (!accessKey || !channelId) {
       return new Response(
         JSON.stringify({ error: "MESSAGEBIRD_ACCESS_KEY / MESSAGEBIRD_CHANNEL_ID não configurados" }),
@@ -21,30 +18,45 @@ Deno.serve(async (req) => {
       );
     }
 
-    // MessageBird clássico: HSM templates
-    // GET https://integrations.messagebird.com/v3/platforms/whatsapp/{channelId}/templates
-    const endpoint = `https://conversations.messagebird.com/v1/platforms/whatsapp/${channelId}/templates?limit=100`;
+    const auth = { Authorization: `AccessKey ${accessKey}`, "Content-Type": "application/json" };
 
-    const response = await fetch(endpoint, {
-      headers: {
-        Authorization: `AccessKey ${accessKey}`,
-        "Content-Type": "application/json",
-      },
-    });
+    const candidates = [
+      `https://integrations.messagebird.com/v3/platforms/whatsapp/${channelId}/templates`,
+      `https://integrations.messagebird.com/v3/platforms/whatsapp/channels/${channelId}/templates`,
+      `https://integrations.messagebird.com/v3/whatsapp/${channelId}/templates`,
+      `https://integrations.messagebird.com/v3/whatsapp/templates?channelId=${channelId}`,
+      `https://integrations.messagebird.com/v3/hsm/templates?channelId=${channelId}`,
+      `https://integrations.messagebird.com/v2/platforms/whatsapp/${channelId}/templates`,
+      `https://conversations.messagebird.com/v1/platforms/whatsapp/${channelId}/templates`,
+    ];
 
-    const rawText = await response.text();
-    let result: any;
-    try { result = JSON.parse(rawText); } catch { result = { raw: rawText.slice(0, 500) }; }
+    const attempts: any[] = [];
+    let success: any = null;
 
-    if (!response.ok) {
-      console.error("MessageBird templates error:", response.status, JSON.stringify(result).slice(0, 500));
+    for (const url of candidates) {
+      const r = await fetch(url, { headers: auth });
+      const txt = await r.text();
+      attempts.push({ url, status: r.status, snippet: txt.slice(0, 120) });
+      if (r.ok) {
+        try {
+          success = { url, data: JSON.parse(txt) };
+          break;
+        } catch {
+          success = { url, data: { raw: txt.slice(0, 500) } };
+          break;
+        }
+      }
+    }
+
+    if (!success) {
       return new Response(
-        JSON.stringify({ error: "Failed to fetch templates", details: result }),
+        JSON.stringify({ error: "Nenhum endpoint respondeu 2xx", attempts }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const rawTemplates = result.items || result.results || result.data || (Array.isArray(result) ? result : []);
+    const result = success.data;
+    const rawTemplates = result.items || result.results || result.data || result.templates || (Array.isArray(result) ? result : []);
 
     const templates = (Array.isArray(rawTemplates) ? rawTemplates : []).map((t: any) => ({
       name: t.name,
@@ -60,14 +72,11 @@ Deno.serve(async (req) => {
       (t: any) => !t.status || ["approved", "active"].includes(String(t.status).toLowerCase())
     );
 
-    console.log(`Found ${approved.length} templates out of ${templates.length} total`);
-
     return new Response(
-      JSON.stringify({ templates: approved, total: templates.length }),
+      JSON.stringify({ endpoint: success.url, templates: approved, total: templates.length, attempts }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err: any) {
-    console.error("Error:", err);
     return new Response(
       JSON.stringify({ error: err.message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
