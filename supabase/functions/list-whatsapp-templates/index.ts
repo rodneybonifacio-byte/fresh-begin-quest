@@ -53,15 +53,17 @@ Deno.serve(async (req) => {
     }
 
     const templates = allTemplates.map((t: any) => {
-      const first = Array.isArray(t.channelTemplates) && t.channelTemplates.length ? t.channelTemplates[0] : t;
+      const channels = t.channels || t.channelTemplates || [];
+      const first = Array.isArray(channels) && channels.length ? channels[0] : {};
       return {
-        name: t.name || first.name,
-        language: first.locale || t.locale,
+        name: t.name || first.name || t.projectId,
+        language: first.locale || t.locale || first.language,
         status: first.status || t.status,
         category: t.category || first.category,
         namespace: first.namespace || "",
         components: first.elements || first.components || t.components || [],
         projectId: t.id || t._projectId,
+        raw: t,
       };
     });
 
