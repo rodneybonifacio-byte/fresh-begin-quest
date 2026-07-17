@@ -1950,6 +1950,66 @@ export type Database = {
           },
         ]
       }
+      whatsapp_conversations_archive: {
+        Row: {
+          active_agent: string | null
+          ai_enabled: boolean
+          archived_at: string
+          cliente_id: string | null
+          contact_avatar_url: string | null
+          contact_name: string | null
+          contact_phone: string
+          created_at: string
+          id: string
+          last_message_at: string | null
+          last_message_preview: string | null
+          notes: string | null
+          status: string
+          tags: string[] | null
+          unread_count: number
+          updated_at: string
+          whatsapp_channel_id: string | null
+        }
+        Insert: {
+          active_agent?: string | null
+          ai_enabled?: boolean
+          archived_at?: string
+          cliente_id?: string | null
+          contact_avatar_url?: string | null
+          contact_name?: string | null
+          contact_phone: string
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          notes?: string | null
+          status?: string
+          tags?: string[] | null
+          unread_count?: number
+          updated_at?: string
+          whatsapp_channel_id?: string | null
+        }
+        Update: {
+          active_agent?: string | null
+          ai_enabled?: boolean
+          archived_at?: string
+          cliente_id?: string | null
+          contact_avatar_url?: string | null
+          contact_name?: string | null
+          contact_phone?: string
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          notes?: string | null
+          status?: string
+          tags?: string[] | null
+          unread_count?: number
+          updated_at?: string
+          whatsapp_channel_id?: string | null
+        }
+        Relationships: []
+      }
       whatsapp_messages: {
         Row: {
           ai_generated: boolean
@@ -2005,6 +2065,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      whatsapp_messages_archive: {
+        Row: {
+          ai_generated: boolean
+          archived_at: string
+          content: string | null
+          content_type: string
+          conversation_id: string
+          created_at: string
+          direction: string
+          id: string
+          media_type: string | null
+          media_url: string | null
+          messagebird_id: string | null
+          metadata: Json | null
+          sent_by: string | null
+          status: string
+        }
+        Insert: {
+          ai_generated?: boolean
+          archived_at?: string
+          content?: string | null
+          content_type?: string
+          conversation_id: string
+          created_at?: string
+          direction: string
+          id?: string
+          media_type?: string | null
+          media_url?: string | null
+          messagebird_id?: string | null
+          metadata?: Json | null
+          sent_by?: string | null
+          status?: string
+        }
+        Update: {
+          ai_generated?: boolean
+          archived_at?: string
+          content?: string | null
+          content_type?: string
+          conversation_id?: string
+          created_at?: string
+          direction?: string
+          id?: string
+          media_type?: string | null
+          media_url?: string | null
+          messagebird_id?: string | null
+          metadata?: Json | null
+          sent_by?: string | null
+          status?: string
+        }
+        Relationships: []
       }
       whatsapp_notification_templates: {
         Row: {
@@ -2168,6 +2279,75 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      whatsapp_tickets_archive: {
+        Row: {
+          archived_at: string
+          category: string | null
+          closed_at: string | null
+          closed_by: string | null
+          contact_name: string | null
+          contact_phone: string
+          conversation_id: string
+          created_at: string
+          description: string | null
+          first_message_at: string | null
+          id: string
+          last_message_at: string | null
+          message_count: number | null
+          opened_at: string
+          priority: string | null
+          resolution: string | null
+          sentiment: string | null
+          status: string
+          subject: string | null
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string
+          category?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          contact_name?: string | null
+          contact_phone: string
+          conversation_id: string
+          created_at?: string
+          description?: string | null
+          first_message_at?: string | null
+          id?: string
+          last_message_at?: string | null
+          message_count?: number | null
+          opened_at?: string
+          priority?: string | null
+          resolution?: string | null
+          sentiment?: string | null
+          status?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string
+          category?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          contact_name?: string | null
+          contact_phone?: string
+          conversation_id?: string
+          created_at?: string
+          description?: string | null
+          first_message_at?: string | null
+          id?: string
+          last_message_at?: string | null
+          message_count?: number | null
+          opened_at?: string
+          priority?: string | null
+          resolution?: string | null
+          sentiment?: string | null
+          status?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {
