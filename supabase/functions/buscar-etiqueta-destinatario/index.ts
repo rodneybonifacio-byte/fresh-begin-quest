@@ -82,10 +82,15 @@ serve(async (req) => {
         const items = extractArr(await r.json().catch(() => null));
         if (items.length === 0) break;
 
+        if (debug && debugSamples.length < 2) {
+          debugSamples.push({ status, keys: Object.keys(items[0] || {}), sample: items[0] });
+        }
+
         for (const e of items) {
           const dest = extractDestinatario(e);
-          const remNome = pick(e.remetenteNome, e.remetente?.nome, e.remetente_nome);
-          const remCpf = onlyDigits(pick(e.remetente?.cpfCnpj, e.remetente?.cpf_cnpj, e.remetenteCpfCnpj, e.remetente_cpf_cnpj));
+          const remNome = pick(e.remetenteNome, e.remetente?.nome, e.remetente_nome, e.cliente?.nome, e.clienteNome, e.cliente_nome);
+          const remCpf = onlyDigits(pick(e.remetente?.cpfCnpj, e.remetente?.cpf_cnpj, e.remetenteCpfCnpj, e.remetente_cpf_cnpj, e.cliente?.cpfCnpj, e.cliente?.cpf_cnpj));
+          if (debug && remNome) remetenteNames.add(remNome);
           let match = false;
           let matchTipo = "";
           if (cpfBusca) {
