@@ -15,7 +15,7 @@ const BASE_API_URL = Deno.env.get("BASE_API_URL") || "https://envios.brhubb.com.
 
 const STATUS_ORDER = ["POSTADO", "EM_TRANSITO", "AGUARDANDO_RETIRADA", "PRE_POSTADO", "ATRASADO", "ENTREGUE"];
 const PAGE_SIZE = 100;
-const MAX_PAGES_PER_STATUS = 5; // até 500 por status
+const MAX_PAGES_PER_STATUS = 15; // até 1500 por status
 const TIMEOUT_MS = 15000;
 
 function onlyDigits(s: string) { return String(s || "").replace(/\D/g, ""); }
