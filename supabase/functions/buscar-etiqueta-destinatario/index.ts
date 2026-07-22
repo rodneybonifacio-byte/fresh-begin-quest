@@ -81,11 +81,23 @@ serve(async (req) => {
 
         for (const e of items) {
           const dest = extractDestinatario(e);
+          const remNome = pick(e.remetenteNome, e.remetente?.nome, e.remetente_nome);
+          const remCpf = onlyDigits(pick(e.remetente?.cpfCnpj, e.remetente?.cpf_cnpj, e.remetenteCpfCnpj, e.remetente_cpf_cnpj));
           let match = false;
-          if (cpfBusca && dest.cpfCnpj && dest.cpfCnpj === cpfBusca) match = true;
-          if (!match && nomeBusca && dest.nome) {
-            const dn = normText(dest.nome);
-            if (dn.includes(nomeBusca) || nomeBusca.includes(dn)) match = true;
+          let matchTipo = "";
+          if (cpfBusca) {
+            if (dest.cpfCnpj === cpfBusca) { match = true; matchTipo = "destinatario"; }
+            else if (remCpf === cpfBusca) { match = true; matchTipo = "remetente"; }
+          }
+          if (!match && nomeBusca) {
+            if (dest.nome) {
+              const dn = normText(dest.nome);
+              if (dn.includes(nomeBusca) || nomeBusca.includes(dn)) { match = true; matchTipo = "destinatario"; }
+            }
+            if (!match && remNome) {
+              const rn = normText(remNome);
+              if (rn.includes(nomeBusca) || nomeBusca.includes(rn)) { match = true; matchTipo = "remetente"; }
+            }
           }
           if (!match) continue;
 
@@ -95,9 +107,10 @@ serve(async (req) => {
           results.push({
             codigoObjeto: code,
             status: pick(e.status, status).toLowerCase(),
+            matchTipo,
             destinatarioNome: dest.nome,
             destinatarioCpfCnpj: dest.cpfCnpj ? "***" + dest.cpfCnpj.slice(-4) : null,
-            remetenteNome: pick(e.remetenteNome, e.remetente?.nome, e.remetente_nome),
+            remetenteNome: remNome,
             clienteId: pick(e.clienteId, e.cliente_id, e.cliente?.id),
             criadoEm: pick(e.criadoEm, e.createdAt, e.created_at),
           });
