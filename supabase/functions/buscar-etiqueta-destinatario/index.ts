@@ -59,6 +59,7 @@ serve(async (req) => {
     const cpfBusca = onlyDigits(body?.cpfCnpj || "");
     const nomeBusca = normText(body?.nome || "");
     const limit = Math.min(Number(body?.limit) || 10, 30);
+    const debug = !!body?.debug;
 
     if (!cpfBusca && !nomeBusca) {
       return new Response(JSON.stringify({ error: "Informe cpfCnpj ou nome" }),
@@ -68,6 +69,8 @@ serve(async (req) => {
     const token = await getAdminTokenCached();
     const results: any[] = [];
     const seen = new Set<string>();
+    const debugSamples: any[] = [];
+    const remetenteNames = new Set<string>();
 
     outer:
     for (const status of STATUS_ORDER) {
