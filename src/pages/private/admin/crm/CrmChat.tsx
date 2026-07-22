@@ -121,21 +121,8 @@ const CrmChat = () => {
     );
   });
 
-  const formatTime = (date: string) => {
-    try {
-      return format(new Date(date), 'HH:mm', { locale: ptBR });
-    } catch {
-      return '';
-    }
-  };
-
-  const formatDate = (date: string) => {
-    try {
-      return format(new Date(date), "dd/MM HH:mm", { locale: ptBR });
-    } catch {
-      return '';
-    }
-  };
+  const formatTime = (date: string) => formatTimeBRT(date);
+  const formatDate = (date: string) => formatDateTimeBRT(date);
 
   return (
     <div className="h-full lg:h-[calc(100vh-120px)] flex bg-background lg:rounded-xl lg:border lg:border-border overflow-hidden">
