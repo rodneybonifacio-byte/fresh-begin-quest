@@ -3,8 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { aiManagementQuery, aiManagementUpdate } from '@/services/aiManagementApi';
 import { MessageSquare, Send, Search, Phone, User, Bot, Clock, ChevronLeft, ToggleLeft, ToggleRight, Smile, Check, CheckCheck, Ticket, Mic, Paperclip, X, FileText, UserCircle, AlertTriangle } from 'lucide-react';
 import { differenceInHours } from 'date-fns';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { formatTimeBRT } from '@/utils/formatBRT';
 import TicketHistory from './TicketHistory';
 import { ContactIntelligencePanel } from './ContactIntelligencePanel';
 
@@ -709,7 +708,7 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
                         windowExpired ? 'text-amber-500 font-medium' : 'text-muted-foreground'
                       }`}>
                         {windowExpired && '⏱ '}
-                        {format(new Date(conv.last_message_at), 'HH:mm', { locale: ptBR })}
+                        {formatTimeBRT(conv.last_message_at)}
                       </span>
                     )}
                   </div>
@@ -974,7 +973,7 @@ const CrmWhatsApp = ({ initialConversationId, onConversationOpened }: { initialC
                       )}
                       <div className={`flex items-center justify-end gap-1 mt-1 ${msg.direction === 'outbound' ? 'text-white/60' : 'text-muted-foreground'}`}>
                         <span className="text-[10px]">
-                          {format(new Date(msg.created_at), 'HH:mm')}
+                          {formatTimeBRT(msg.created_at)}
                         </span>
                         {msg.direction === 'outbound' && (
                           msg.status === 'read' ? (

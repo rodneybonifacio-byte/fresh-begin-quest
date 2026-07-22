@@ -2,8 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { aiManagementQuery, aiManagementUpdate } from '@/services/aiManagementApi';
 import { MessageCircle, Search, User, Bot, Clock, ChevronLeft, Send } from 'lucide-react';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { formatTimeBRT, formatDateTimeBRT } from '@/utils/formatBRT';
 import rosaneAvatar from '@/assets/rosane-avatar.png';
 
 interface ChatConversation {
@@ -121,21 +120,8 @@ const CrmChat = () => {
     );
   });
 
-  const formatTime = (date: string) => {
-    try {
-      return format(new Date(date), 'HH:mm', { locale: ptBR });
-    } catch {
-      return '';
-    }
-  };
-
-  const formatDate = (date: string) => {
-    try {
-      return format(new Date(date), "dd/MM HH:mm", { locale: ptBR });
-    } catch {
-      return '';
-    }
-  };
+  const formatTime = (date: string) => formatTimeBRT(date);
+  const formatDate = (date: string) => formatDateTimeBRT(date);
 
   return (
     <div className="h-full lg:h-[calc(100vh-120px)] flex bg-background lg:rounded-xl lg:border lg:border-border overflow-hidden">
