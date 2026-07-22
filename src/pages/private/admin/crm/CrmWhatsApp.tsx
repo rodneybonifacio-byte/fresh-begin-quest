@@ -3,8 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { aiManagementQuery, aiManagementUpdate } from '@/services/aiManagementApi';
 import { MessageSquare, Send, Search, Phone, User, Bot, Clock, ChevronLeft, ToggleLeft, ToggleRight, Smile, Check, CheckCheck, Ticket, Mic, Paperclip, X, FileText, UserCircle, AlertTriangle } from 'lucide-react';
 import { differenceInHours } from 'date-fns';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { formatTimeBRT } from '@/utils/formatBRT';
 import TicketHistory from './TicketHistory';
 import { ContactIntelligencePanel } from './ContactIntelligencePanel';
 

@@ -2,8 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { aiManagementQuery, aiManagementUpdate } from '@/services/aiManagementApi';
 import { MessageCircle, Search, User, Bot, Clock, ChevronLeft, Send } from 'lucide-react';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { formatTimeBRT, formatDateTimeBRT } from '@/utils/formatBRT';
 import rosaneAvatar from '@/assets/rosane-avatar.png';
 
 interface ChatConversation {
