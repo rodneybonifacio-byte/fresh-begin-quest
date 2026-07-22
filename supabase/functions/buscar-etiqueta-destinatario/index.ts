@@ -132,6 +132,7 @@ serve(async (req) => {
       data: results,
       total: results.length,
       criterio: { cpfCnpj: cpfBusca ? "***" + cpfBusca.slice(-4) : null, nome: body?.nome || null },
+      ...(debug ? { debugSamples, remetentesEncontrados: Array.from(remetenteNames).slice(0, 50) } : {}),
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e: any) {
     console.error("[buscar-etiqueta-destinatario]", e?.message);
